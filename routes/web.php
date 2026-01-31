@@ -177,9 +177,10 @@ Route::middleware('auth')->group(function () {
         // SPMTH API
         Route::get('/api/spmth', [SpmthController::class, 'index'])->name('api.spmth.index');
         Route::post('/api/spmth', [SpmthController::class, 'store'])->name('api.spmth.store');
+        Route::get('/api/spmth/calculate', [SpmthController::class, 'calculate'])->name('api.spmth.calculate');
+        Route::get('/api/spmth/tahun', [SpmthController::class, 'getTahunAnggaran'])->name('api.spmth.tahun');
         Route::put('/api/spmth/{id}', [SpmthController::class, 'update'])->name('api.spmth.update');
         Route::delete('/api/spmth/{id}', [SpmthController::class, 'destroy'])->name('api.spmth.destroy');
-        Route::get('/api/spmth/calculate', [SpmthController::class, 'calculate'])->name('api.spmth.calculate');
 
         // SPTJ API
         Route::get('/api/sptj', [SptjController::class, 'index'])->name('api.sptj.index');
