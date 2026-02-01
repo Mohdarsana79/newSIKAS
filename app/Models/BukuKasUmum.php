@@ -52,4 +52,9 @@ class BukuKasUmum extends Model
         return $this->hasOne(TandaTerima::class);
     }
 
+    public function dokumen()
+    {
+        return $this->hasOne(Dokumen::class);
+    }
+
 }

@@ -1586,7 +1586,7 @@ export default function Bku({
                                 </button>
                             )}
                             <Link
-                                href={route('bku.rekap', { tahun, bulan: bulan.toLowerCase() })}
+                                href={route('penatausahaan.rekapitulasi', { tahun, bulan: bulan.toLowerCase() })}
                                 className="inline-flex items-center px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md font-semibold text-[10pt] text-gray-700 dark:text-gray-300 uppercase tracking-widest shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none transition ease-in-out duration-150"
                             >
                                 <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1610,8 +1610,8 @@ export default function Bku({
 
                 {/* Info Cards Section - UPDATED WITH REAL DATA */}
                 {is_closed ? (
-                    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 mb-8 shadow-sm">
-                        <div className="flex items-center gap-2 mb-6 text-blue-600 dark:text-blue-400">
+                    <div className="bg-gradient-to-br from-indigo-500 to-purple-600 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 mb-8 shadow-sm">
+                        <div className="flex items-center gap-2 mb-6 text-white dark:text-white">
                             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                             </svg>
@@ -1622,27 +1622,27 @@ export default function Bku({
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                             <div>
-                                <InputLabel value="Total Dibelanjakan Nontunai" className="!text-[10pt] mb-2 text-gray-600 dark:text-gray-400" />
+                                <InputLabel value="Total Dibelanjakan Nontunai" className="!text-[10pt] mb-2 text-white dark:text-white" />
                                 <div className="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-gray-500 dark:text-gray-300 font-bold text-[11pt]">
                                     {formatCurrency(totalBelanjaNonTunai)}
                                 </div>
                             </div>
                             <div>
-                                <InputLabel value="Total Dibelanjakan Tunai" className="!text-[10pt] mb-2 text-gray-600 dark:text-gray-400" />
+                                <InputLabel value="Total Dibelanjakan Tunai" className="!text-[10pt] mb-2 text-white dark:text-white" />
                                 <div className="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-gray-500 dark:text-gray-300 font-bold text-[11pt]">
                                     {formatCurrency(totalBelanjaTunai)}
                                 </div>
                             </div>
                             <div>
-                                <InputLabel value="Pajak Wajib Lapor" className="!text-[10pt] mb-2 text-gray-600 dark:text-gray-400" />
+                                <InputLabel value="Pajak Wajib Lapor" className="!text-[10pt] mb-2 text-white dark:text-white" />
                                 <div className="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-gray-500 dark:text-gray-300 font-bold text-[11pt]">
                                     {formatCurrency(totalPajakWajibLapor)}
                                 </div>
                             </div>
                             <div>
                                 <div className="flex items-center gap-1 mb-2">
-                                    <InputLabel value="Sisa Dana Tersedia" className="!text-[10pt] text-gray-600 dark:text-gray-400" />
-                                    <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <InputLabel value="Sisa Dana Tersedia" className="!text-[10pt] text-white dark:text-white" />
+                                    <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
                                         <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                                     </svg>
                                 </div>

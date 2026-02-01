@@ -90,7 +90,7 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
     // Logs State
     const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
     const [logs, setLogs] = useState<RecordLog[]>([]);
-    
+
     const handleShowLogs = async () => {
         try {
             // We need a route for logs. RkasPerubahanController has logs($id).
@@ -220,7 +220,7 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
 
     const handleSisip = async (id: number) => {
         try {
-             // For Sisip, we might still fetch basic info but clear allocation
+            // For Sisip, we might still fetch basic info but clear allocation
             const response = await axios.get(route('rkas-perubahan.edit', id));
             const editData = response.data.data;
 
@@ -253,7 +253,7 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
         if (preservedDetails.length > 0) {
             // If there are locked months, we perform an UPDATE to keep them and remove others
             // effectively "deleting" Jul-Dec by not including them.
-            
+
             const bulan = preservedDetails.map(a => a.month);
             const jumlah = preservedDetails.map(a => Number(a.quantity));
             const satuan = preservedDetails.map(a => a.unit);
@@ -302,7 +302,7 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
-        
+
         // Validasi Input Kosong pada Card Bulan
         const hasEmptyAllocation = data.alokasi.some(a => !a.quantity || !a.unit);
         if (hasEmptyAllocation) {
@@ -322,18 +322,18 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
         }
 
         // 2. Validasi Duplikat Item (Best Effort Client-Side for Uraian + Bulan)
-        const duplicates = data.alokasi.some(alloc => 
-            items.some(item => 
-                item.uraian.toLowerCase().trim() === data.uraian.toLowerCase().trim() && 
+        const duplicates = data.alokasi.some(alloc =>
+            items.some(item =>
+                item.uraian.toLowerCase().trim() === data.uraian.toLowerCase().trim() &&
                 item.bulan === alloc.month &&
-                (!isEditMode) 
+                (!isEditMode)
             )
         );
 
         if (duplicates && !isEditMode) {
-             // Opsional: Alert spesifik
+            // Opsional: Alert spesifik
         }
-        
+
         // Transform data to match backend expectation
         // Controller expects arrays: bulan[], jumlah[], satuan[]
         const bulan = data.alokasi.map(a => a.month);
@@ -381,11 +381,11 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                         setAlertMessage("Gagal Menyimpan: " + errors.message);
                         setIsAlertModalOpen(true);
                     } else if (typeof errors === 'object') {
-                         const firstError = Object.values(errors)[0];
-                         if (typeof firstError === 'string') {
-                             setAlertMessage(firstError);
-                             setIsAlertModalOpen(true);
-                         }
+                        const firstError = Object.values(errors)[0];
+                        if (typeof firstError === 'string') {
+                            setAlertMessage(firstError);
+                            setIsAlertModalOpen(true);
+                        }
                     }
                 }
             });
@@ -455,8 +455,8 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                                 </svg>
                                 Tambah
                             </PrimaryButton>
-                            
-                             {/* Tombol Perubahan Disabled or Active Style */}
+
+                            {/* Tombol Perubahan Disabled or Active Style */}
                             <button disabled className="text-gray-400 cursor-not-allowed flex items-center gap-1 text-sm font-medium px-3 py-2 border border-transparent rounded bg-gray-100 dark:bg-gray-700">
                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -472,7 +472,7 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                             </button>
 
                             {/* Tombol Record / Rekaman Perubahan */}
-                            <button 
+                            <button
                                 onClick={handleShowLogs}
                                 className="text-gray-500 hover:text-gray-700 flex items-center gap-1 text-sm font-medium px-3 py-2"
                             >
@@ -541,16 +541,6 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                             <div className="w-full bg-gray-200 rounded-full h-1.5 mb-4 dark:bg-gray-600">
                                 <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: '100%' }}></div>
                             </div>
-                            <button
-                                onClick={() => setIsDetailModalOpen(true)}
-                                className="bg-blue-400 text-white text-xs font-medium px-4 py-1.5 rounded-md hover:bg-blue-500 flex items-center gap-1"
-                            >
-                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                </svg>
-                                Detail
-                            </button>
                         </div>
 
                         {/* Tahap 2 Card */}
@@ -579,16 +569,6 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                             <div className="w-full bg-gray-200 rounded-full h-1.5 mb-4 dark:bg-gray-600">
                                 <div className="bg-green-500 h-1.5 rounded-full" style={{ width: '100%' }}></div>
                             </div>
-                            <button
-                                onClick={() => setIsDetailModal2Open(true)}
-                                className="bg-green-500 text-white text-xs font-medium px-4 py-1.5 rounded-md hover:bg-green-600 flex items-center gap-1"
-                            >
-                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                </svg>
-                                Detail
-                            </button>
                         </div>
                     </div>
                 </div>
@@ -907,10 +887,10 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                                                 <input
                                                     type="text"
                                                     className={`pl-5 w-full text-sm rounded-md shadow-sm h-9
-                                                        ${isLocked(alloc.month) 
-                                                            ? 'bg-gray-100 text-gray-500 cursor-not-allowed border-gray-300 dark:border-gray-700' 
-                                                            : (showValidationErrors && !alloc.quantity 
-                                                                ? 'border-red-500 focus:border-red-500 focus:ring-red-500 bg-red-50 dark:bg-red-900/10' 
+                                                        ${isLocked(alloc.month)
+                                                            ? 'bg-gray-100 text-gray-500 cursor-not-allowed border-gray-300 dark:border-gray-700'
+                                                            : (showValidationErrors && !alloc.quantity
+                                                                ? 'border-red-500 focus:border-red-500 focus:ring-red-500 bg-red-50 dark:bg-red-900/10'
                                                                 : 'border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300')
                                                         }
                                                     `}
@@ -923,9 +903,9 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                                             <input
                                                 type="text"
                                                 className={`w-full text-sm rounded-md shadow-sm h-9 
-                                                    ${index > 0 ? 'bg-gray-100 dark:bg-gray-800 text-gray-500 cursor-not-allowed border-gray-300 dark:border-gray-700' : 
-                                                        (showValidationErrors && !alloc.unit 
-                                                            ? 'border-red-500 focus:border-red-500 focus:ring-red-500 bg-red-50 dark:bg-red-900/10 dark:text-gray-300' 
+                                                    ${index > 0 ? 'bg-gray-100 dark:bg-gray-800 text-gray-500 cursor-not-allowed border-gray-300 dark:border-gray-700' :
+                                                        (showValidationErrors && !alloc.unit
+                                                            ? 'border-red-500 focus:border-red-500 focus:ring-red-500 bg-red-50 dark:bg-red-900/10 dark:text-gray-300'
                                                             : 'border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300')
                                                     }
                                                 `}
@@ -991,7 +971,7 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                         Konfirmasi Hapus
                     </h2>
                     <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">
-                        {data.alokasi.some(a => isLocked(a.month)) 
+                        {data.alokasi.some(a => isLocked(a.month))
                             ? "Data bulan Januari-Juni tidak akan dihapus. Apakah Anda yakin ingin menghapus alokasi bulan Juli-Desember?"
                             : "Apakah Anda yakin ingin menghapus semua data dalam kelompok kegiatan ini? Tindakan ini tidak dapat dibatalkan."}
                     </p>
@@ -1038,10 +1018,10 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                                             <div>
                                                 <span className={`inline-block px-2 py-1 text-xs font-semibold rounded-md mb-2 
                                                     ${log.action === 'create' ? 'bg-green-100 text-green-800' :
-                                                      log.action === 'update' ? 'bg-blue-100 text-blue-800' :
-                                                      log.action === 'delete' ? 'bg-red-100 text-red-800' :
-                                                      log.action === 'copy' ? 'bg-purple-100 text-purple-800' :
-                                                      'bg-gray-100 text-gray-800'}`}>
+                                                        log.action === 'update' ? 'bg-blue-100 text-blue-800' :
+                                                            log.action === 'delete' ? 'bg-red-100 text-red-800' :
+                                                                log.action === 'copy' ? 'bg-purple-100 text-purple-800' :
+                                                                    'bg-gray-100 text-gray-800'}`}>
                                                     {log.action.toUpperCase()}
                                                 </span>
                                                 <p className="text-sm text-gray-800 dark:text-gray-200">{log.description}</p>
@@ -1069,7 +1049,7 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
 
             {/* Modal Detail Item */}
             <Modal show={isItemDetailModalOpen} onClose={() => setIsItemDetailModalOpen(false)} maxWidth="4xl">
-                 {itemDetailData && (
+                {itemDetailData && (
                     <div className="flex flex-col h-full">
                         {/* Header */}
                         <div className="bg-purple-600 px-6 py-4 flex justify-between items-center rounded-t-lg">
@@ -1113,7 +1093,7 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                                     <div>
                                         <label className="block text-xs font-medium text-gray-500 mb-1">Rekening Belanja</label>
                                         <div className="w-full px-3 py-2 bg-white border border-gray-200 rounded-md text-sm text-gray-700">
-                                             {itemDetailData.rekening_belanja ? 
+                                            {itemDetailData.rekening_belanja ?
                                                 `${itemDetailData.rekening_belanja.kode_rekening} - ${itemDetailData.rekening_belanja.rincian_objek}` : '-'}
                                         </div>
                                     </div>
@@ -1163,7 +1143,7 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                                     </div>
                                 </div>
                                 <div className="bg-gray-100 p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                     {itemDetailData.bulan_data && itemDetailData.bulan_data.map((bulan: any, idx: number) => (
+                                    {itemDetailData.bulan_data && itemDetailData.bulan_data.map((bulan: any, idx: number) => (
                                         <div key={idx} className="bg-white rounded-lg p-3 shadow-sm border border-gray-200">
                                             <div className="flex justify-between items-center mb-3">
                                                 <span className="text-sm font-medium text-gray-700 w-1/2 border border-gray-300 rounded px-2 py-1">{bulan.bulan}</span>
@@ -1180,19 +1160,19 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                                                 </div>
                                             </div>
                                         </div>
-                                     ))}
-                                     {(!itemDetailData.bulan_data || itemDetailData.bulan_data.length === 0) && (
-                                         <div className="col-span-full text-center text-gray-500 py-4">
-                                             Tidak ada alokasi bulan.
-                                         </div>
-                                     )}
+                                    ))}
+                                    {(!itemDetailData.bulan_data || itemDetailData.bulan_data.length === 0) && (
+                                        <div className="col-span-full text-center text-gray-500 py-4">
+                                            Tidak ada alokasi bulan.
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
 
                         {/* Footer */}
                         <div className="px-6 py-4 border-t border-gray-200 bg-white flex justify-end rounded-b-lg">
-                            <button 
+                            <button
                                 onClick={() => setIsItemDetailModalOpen(false)}
                                 className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 transition-colors"
                             >
@@ -1205,7 +1185,7 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                     </div>
                 )}
             </Modal>
-            
+
             {/* Modal Alert Validasi */}
             <Modal show={isAlertModalOpen} onClose={() => setIsAlertModalOpen(false)} maxWidth="sm">
                 <div className="p-6">

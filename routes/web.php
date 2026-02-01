@@ -224,6 +224,12 @@ Route::middleware('auth')->group(function () {
     // Resource route MUST come after specific routes
     Route::resource('tanda-terima', TandaTerimaController::class);
 
+    // Dokumen
+    Route::get('/dokumen', [\App\Http\Controllers\DokumenController::class, 'index'])->name('dokumen.index');
+    Route::get('/api/dokumen/data', [\App\Http\Controllers\DokumenController::class, 'getData'])->name('api.dokumen.data');
+    Route::post('/dokumen', [\App\Http\Controllers\DokumenController::class, 'store'])->name('dokumen.store');
+    Route::delete('/dokumen/{id}', [\App\Http\Controllers\DokumenController::class, 'destroy'])->name('dokumen.destroy');
+
     // Laporan PDF Routes
     Route::get('/laporan/spmth/{id}/pdf', [SpmthController::class, 'generatePdf'])->name('laporan.spmth.pdf');
     Route::get('/laporan/sptj/{id}/pdf', [SptjController::class, 'generatePdf'])->name('laporan.sptj.pdf');
