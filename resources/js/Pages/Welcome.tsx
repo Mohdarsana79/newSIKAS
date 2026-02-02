@@ -5,7 +5,8 @@ export default function Welcome({
     auth,
     laravelVersion,
     phpVersion,
-}: PageProps<{ laravelVersion: string; phpVersion: string }>) {
+    hasUsers,
+}: PageProps<{ laravelVersion: string; phpVersion: string; hasUsers: boolean }>) {
     return (
         <div className="flex min-h-screen flex-col overflow-hidden bg-gray-50 text-gray-800 dark:bg-gray-900 dark:text-gray-100 font-sans">
             <Head title="Welcome to SIKAS" />
@@ -36,12 +37,14 @@ export default function Welcome({
                             >
                                 Masuk
                             </Link>
-                            <Link
-                                href={route('register')}
-                                className="rounded-full bg-indigo-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                            >
-                                Daftar
-                            </Link>
+                            {!hasUsers && (
+                                <Link
+                                    href={route('register')}
+                                    className="rounded-full bg-indigo-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                                >
+                                    Daftar
+                                </Link>
+                            )}
                         </>
                     )}
                 </div>
@@ -65,15 +68,39 @@ export default function Welcome({
                         Terintegrasi dengan standar nasional pendidikan untuk kemudahan pelaporan.
                     </p>
                     <div className="mt-10 flex items-center justify-center gap-x-6">
-                        <Link
-                            href={route('register')}
-                            className="rounded-full flex items-center gap-2 bg-indigo-600 px-8 py-3.5 text-sm font-semibold text-white shadow-xl transition-all hover:bg-indigo-500 hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
-                        >
-                            Mulai Sekarang
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                            </svg>
-                        </Link>
+                        {!auth.user && !hasUsers && (
+                            <Link
+                                href={route('register')}
+                                className="rounded-full flex items-center gap-2 bg-indigo-600 px-8 py-3.5 text-sm font-semibold text-white shadow-xl transition-all hover:bg-indigo-500 hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                            >
+                                Mulai Sekarang
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                                </svg>
+                            </Link>
+                        )}
+                        {auth.user && (
+                            <Link
+                                href={route('dashboard')}
+                                className="rounded-full flex items-center gap-2 bg-indigo-600 px-8 py-3.5 text-sm font-semibold text-white shadow-xl transition-all hover:bg-indigo-500 hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                            >
+                                Ke Dashboard
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                                </svg>
+                            </Link>
+                        )}
+                        {!auth.user && hasUsers && (
+                            <Link
+                                href={route('login')}
+                                className="rounded-full flex items-center gap-2 bg-indigo-600 px-8 py-3.5 text-sm font-semibold text-white shadow-xl transition-all hover:bg-indigo-500 hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                            >
+                                Masuk Sekarang
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                                </svg>
+                            </Link>
+                        )}
                         <a href="#features" className="text-sm font-semibold leading-6 text-gray-900 dark:text-gray-100 hover:text-indigo-600 transition">
                             Pelajari Fitur <span aria-hidden="true">→</span>
                         </a>

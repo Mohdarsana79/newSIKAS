@@ -20,6 +20,7 @@ createInertiaApp({
         root.render(<App {...props} />);
     },
     progress: {
-        color: '#4B5563',
+        // color: '#4B5563', // Disabled to allow CSS gradient override
+        showSpinner: true,
     },
 });

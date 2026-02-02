@@ -4,8 +4,11 @@ import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
 import GuestLayout from '@/Layouts/GuestLayout';
+import Modal from '@/Components/Modal';
+import SecondaryButton from '@/Components/SecondaryButton';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { FormEventHandler, useState } from 'react';
+import { FormEventHandler, useState, useEffect, useRef } from 'react';
+import { ShieldCheck } from 'lucide-react';
 
 export default function Login({
     status,
@@ -14,21 +17,70 @@ export default function Login({
     status?: string;
     canResetPassword: boolean;
 }) {
-    const { data, setData, post, processing, errors, reset } = useForm({
+    const { data, setData, post, processing, errors, reset, clearErrors } = useForm({
         username: '',
         password: '',
+        security_code: '',
         remember: false as boolean,
     });
 
     const [showPassword, setShowPassword] = useState(false);
+    const [showSecurityModal, setShowSecurityModal] = useState(false);
+    const securityCodeInput = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const errs = errors as any;
+        if (errs.two_factor_required) {
+            setShowSecurityModal(true);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            clearErrors('two_factor_required' as any); // Clear the trigger error so it doesn't persist weirdly
+            // Focus logic might need a timeout as Modal renders
+            setTimeout(() => securityCodeInput.current?.focus(), 100);
+        }
+        // Also show modal if there is a security_code error (user entered wrong code)
+        if (errors.security_code) {
+            setShowSecurityModal(true);
+        }
+    }, [errors]);
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
 
         post(route('login'), {
-            onFinish: () => reset('password'),
+            onError: (errors) => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const errs = errors as any;
+                // Only reset password if it's NOT a two-factor requirement
+                if (!errs.two_factor_required) {
+                    reset('password');
+                }
+            },
+            onSuccess: () => {
+                // On success (e.g. standard login without 2FA), standard reset default behavior is fine or explicit
+                reset('password');
+            }
         });
     };
+
+    const submitSecurityCode: FormEventHandler = (e) => {
+        e.preventDefault();
+        // Post again, this time with security_code populated in data
+        post(route('login'), {
+            onSuccess: () => setShowSecurityModal(false), // Should redirect anyway
+            onFinish: () => {
+                // If failed (e.g. wrong code), modal stays open due to errors.security_code being present
+                // Reset password might be needed if the controller requires it again (which it does)
+                reset('password');
+            }
+        });
+    };
+
+    const closeModal = () => {
+        setShowSecurityModal(false);
+        setData('security_code', '');
+        reset('password'); // Resetting password as we might need to re-enter it if flow restarts (though UX suggests we are 'in' simpler flow)
+    }
 
     return (
         <GuestLayout>
@@ -111,7 +163,7 @@ export default function Login({
                     <InputError message={errors.password} className="mt-2" />
                 </div>
 
-                <div className="flex items-center justify-between">
+                <div className="flex items-center">
                     <label className="flex items-center">
                         <Checkbox
                             name="remember"
@@ -122,15 +174,6 @@ export default function Login({
                             Ingat Saya
                         </span>
                     </label>
-
-                    {canResetPassword && (
-                        <Link
-                            href={route('password.request')}
-                            className="text-sm font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400"
-                        >
-                            Lupa password?
-                        </Link>
-                    )}
                 </div>
 
                 <div className="pt-2">
@@ -138,14 +181,57 @@ export default function Login({
                         Masuk
                     </PrimaryButton>
                 </div>
-
-                <p className="text-center text-sm text-gray-600 dark:text-gray-400">
-                    Belum punya akun?{' '}
-                    <Link href={route('register')} className="font-semibold text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">
-                        Daftar sekarang
-                    </Link>
-                </p>
             </form>
+
+            <Modal show={showSecurityModal} onClose={closeModal}>
+                <form onSubmit={submitSecurityCode} className="p-6">
+                    <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                        <ShieldCheck className="w-6 h-6 text-indigo-600" />
+                        Verifikasi Keamanan
+                    </h2>
+
+                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                        Akun ini dilindungi dengan kode keamanan. Silakan masukkan kode 6 digit yang telah Anda generate.
+                    </p>
+
+                    <div className="mt-6">
+                        <InputLabel
+                            htmlFor="security_code"
+                            value="Kode Keamanan"
+                        />
+
+                        <div className="mt-2 flex gap-2">
+                            <TextInput
+                                id="security_code"
+                                type="text"
+                                name="security_code"
+                                ref={securityCodeInput}
+                                value={data.security_code}
+                                onChange={(e) => setData('security_code', e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                className="block w-full text-center tracking-[0.5em] text-xl font-mono font-bold text-black"
+                                isFocused
+                                placeholder="000000"
+                                maxLength={6}
+                            />
+                        </div>
+
+                        <InputError
+                            message={errors.security_code}
+                            className="mt-2"
+                        />
+                    </div>
+
+                    <div className="mt-6 flex justify-end gap-3">
+                        <SecondaryButton onClick={closeModal}>
+                            Batal
+                        </SecondaryButton>
+
+                        <PrimaryButton disabled={processing} className="min-w-[100px] justify-center">
+                            {processing ? 'Memverifikasi...' : 'Verifikasi'}
+                        </PrimaryButton>
+                    </div>
+                </form>
+            </Modal>
         </GuestLayout >
     );
 }

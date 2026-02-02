@@ -102,7 +102,7 @@ export default function Register() {
                             autoComplete="new-password"
                             onChange={(e) => setData('password', e.target.value)}
                             required
-                            placeholder="Minimal 8 karakter"
+                            placeholder="Minimal 8 karakter dan karakter unik"
                         />
                         <button
                             type="button"
@@ -121,6 +121,28 @@ export default function Register() {
                             )}
                         </button>
                     </div>
+
+                    {data.password && (
+                        <div className="mt-2">
+                            <div className="h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
+                                <div
+                                    className={`h-full transition-all duration-300 ${data.password.length < 8 ? 'bg-red-500 w-1/3' :
+                                            !/(?=.*[a-z])(?=.*[A-Z])(?=.*[\W_])/.test(data.password) ? 'bg-yellow-500 w-2/3' :
+                                                'bg-green-500 w-full'
+                                        }`}
+                                ></div>
+                            </div>
+                            <p className={`text-xs mt-1 ${data.password.length < 8 ? 'text-red-500' :
+                                    !/(?=.*[a-z])(?=.*[A-Z])(?=.*[\W_])/.test(data.password) ? 'text-yellow-600' :
+                                        'text-green-600'
+                                }`}>
+                                {data.password.length < 8 ? 'Lemah (Minimal 8 karakter)' :
+                                    !/(?=.*[a-z])(?=.*[A-Z])(?=.*[\W_])/.test(data.password) ? 'Sedang (Gunakan huruf besar & simbol)' :
+                                        'Kuat'}
+                            </p>
+                        </div>
+                    )}
+
                     <InputError message={errors.password} className="mt-2" />
                 </div>
 

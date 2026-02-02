@@ -43,21 +43,44 @@ class ProfileController extends Controller
     /**
      * Delete the user's account.
      */
-    public function destroy(Request $request): RedirectResponse
+    /**
+     * DELETE functionality is disabled/replaced by Security features as per request.
+     */
+    // public function destroy(Request $request): RedirectResponse
+    // ...
+
+    /**
+     * Toggle Security Code Feature.
+     */
+    public function toggleSecurity(Request $request): RedirectResponse
     {
-        $request->validate([
-            'password' => ['required', 'current_password'],
-        ]);
-
         $user = $request->user();
+        $user->is_security_code_enabled = !$user->is_security_code_enabled;
+        
+        // If disabling, also clear the code? Maybe not, just keep it but ignore.
+        // If enabling, assume they will generate one.
+        
+        $user->save();
 
-        Auth::logout();
+        return Redirect::back();
+    }
 
-        $user->delete();
+    /**
+     * Generate a new Security Code.
+     */
+    public function generateSecurityCode(Request $request)
+    {
+        $user = $request->user();
+        
+        // Generate 6 digit random number string
+        $code = str_pad(mt_rand(0, 999999), 6, '0', STR_PAD_LEFT);
+        
+        $user->security_code = $code;
+        $user->save();
 
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
-
-        return Redirect::to('/');
+        return response()->json([
+            'code' => $code,
+            'message' => 'Kode keamanan berhasil digenerate.',
+        ]);
     }
 }

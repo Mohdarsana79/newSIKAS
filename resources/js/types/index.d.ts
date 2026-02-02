@@ -2,6 +2,8 @@ export interface User {
     id: number;
     name: string;
     email: string;
+    username: string;
+    is_security_code_enabled: boolean;
     email_verified_at?: string;
 }
 

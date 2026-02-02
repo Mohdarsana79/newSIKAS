@@ -31,6 +31,25 @@ class AuthenticatedSessionController extends Controller
     {
         $request->authenticate();
 
+        $user = Auth::user();
+
+        if ($user->is_security_code_enabled) {
+            if (!$request->filled('security_code')) {
+                Auth::logout();
+                // Send a generic error key that the frontend can detect to show the modal
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'two_factor_required' => true
+                ]);
+            }
+
+            if ($request->input('security_code') !== $user->security_code) {
+                Auth::logout();
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'security_code' => 'Kode keamanan yang Anda masukkan salah.'
+                ]);
+            }
+        }
+
         $request->session()->regenerate();
 
         return redirect()->intended(route('dashboard', absolute: false));

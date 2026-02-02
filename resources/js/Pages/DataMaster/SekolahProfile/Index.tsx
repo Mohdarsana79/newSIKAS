@@ -106,110 +106,185 @@ export default function Index({ auth, sekolah }: PageProps<{ sekolah?: Sekolah }
             <Head title="Profil Sekolah" />
 
             <div className="py-6">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Left Column: School ID Card Style */}
                     <div className="lg:col-span-2 space-y-6">
-                        <div className="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow sm:rounded-lg">
-                            <header className="flex justify-between items-center mb-6">
+                        <div className="bg-white dark:bg-gray-800 shadow-lg sm:rounded-xl overflow-hidden border border-gray-100 dark:border-gray-700">
+                            {/* Card Header */}
+                            <div className="px-6 py-5 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                                 <div>
-                                    <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">Informasi Sekolah</h2>
-                                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                                        Data identitas satuan pendidikan.
+                                    <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                        <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg text-indigo-600 dark:text-indigo-400">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                            </svg>
+                                        </div>
+                                        Informasi Sekolah
+                                    </h2>
+                                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-400 pl-12">
+                                        Kelola data identitas satuan pendidikan Anda.
                                     </p>
                                 </div>
-                                <PrimaryButton onClick={() => setIsModalOpen(true)}>
-                                    {sekolah ? 'Update Data Sekolah' : 'Input Data Sekolah'}
+                                <PrimaryButton
+                                    onClick={() => setIsModalOpen(true)}
+                                    className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md transform transition hover:-translate-y-0.5"
+                                >
+                                    <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        {sekolah ? (
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                        ) : (
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                        )}
+                                    </svg>
+                                    {sekolah ? 'Update Data' : 'Input Data'}
                                 </PrimaryButton>
-                            </header>
+                            </div>
 
-                            {sekolah ? (
-                                <dl className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
-                                    <div className="sm:col-span-1">
-                                        <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Nama Sekolah</dt>
-                                        <dd className="mt-1 text-sm text-gray-900 dark:text-gray-200">{sekolah.nama_sekolah}</dd>
+                            <div className="p-6">
+                                {sekolah ? (
+                                    <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                                        <div className="border-b border-gray-100 dark:border-gray-700 pb-3">
+                                            <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Nama Sekolah</dt>
+                                            <dd className="text-lg font-semibold text-gray-900 dark:text-gray-100">{sekolah.nama_sekolah}</dd>
+                                        </div>
+                                        <div className="border-b border-gray-100 dark:border-gray-700 pb-3">
+                                            <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">NPSN</dt>
+                                            <dd className="font-mono text-lg font-semibold text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-700 inline-block px-2 rounded">{sekolah.npsn}</dd>
+                                        </div>
+
+                                        <div className="border-b border-gray-100 dark:border-gray-700 pb-3">
+                                            <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Status</dt>
+                                            <dd className="text-base text-gray-900 dark:text-gray-200">
+                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${sekolah.status_sekolah === 'Negeri' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                                                    {sekolah.status_sekolah}
+                                                </span>
+                                            </dd>
+                                        </div>
+                                        <div className="border-b border-gray-100 dark:border-gray-700 pb-3">
+                                            <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Jenjang</dt>
+                                            <dd className="text-base text-gray-900 dark:text-gray-200">{sekolah.jenjang_sekolah}</dd>
+                                        </div>
+
+                                        <div className="md:col-span-2 mt-2">
+                                            <h4 className="text-sm font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider mb-3">Situsasi Wilayah</h4>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-gray-50 dark:bg-gray-700/30 p-4 rounded-lg">
+                                                <div>
+                                                    <dt className="text-xs text-gray-500 dark:text-gray-400">Provinsi</dt>
+                                                    <dd className="text-sm font-medium text-gray-900 dark:text-gray-200">{sekolah.provinsi}</dd>
+                                                </div>
+                                                <div>
+                                                    <dt className="text-xs text-gray-500 dark:text-gray-400">Kabupaten/Kota</dt>
+                                                    <dd className="text-sm font-medium text-gray-900 dark:text-gray-200">{sekolah.kabupaten_kota}</dd>
+                                                </div>
+                                                <div>
+                                                    <dt className="text-xs text-gray-500 dark:text-gray-400">Kecamatan</dt>
+                                                    <dd className="text-sm font-medium text-gray-900 dark:text-gray-200">{sekolah.kecamatan}</dd>
+                                                </div>
+                                                <div>
+                                                    <dt className="text-xs text-gray-500 dark:text-gray-400">Kelurahan/Desa</dt>
+                                                    <dd className="text-sm font-medium text-gray-900 dark:text-gray-200">{sekolah.kelurahan_desa}</dd>
+                                                </div>
+                                                <div className="sm:col-span-2 pt-2 border-t border-gray-200 dark:border-gray-600 mt-2">
+                                                    <dt className="text-xs text-gray-500 dark:text-gray-400">Alamat Lengkap</dt>
+                                                    <dd className="text-sm text-gray-900 dark:text-gray-200 mt-1">{sekolah.alamat}</dd>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </dl>
+                                ) : (
+                                    <div className="text-center py-16 px-4">
+                                        <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-full h-24 w-24 flex items-center justify-center mx-auto mb-4">
+                                            <svg className="w-10 h-10 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                            </svg>
+                                        </div>
+                                        <h3 className="text-lg font-medium text-gray-900 dark:text-white">Data Sekolah Belum Lengkap</h3>
+                                        <p className="mt-2 text-gray-500 dark:text-gray-400 max-w-sm mx-auto">
+                                            Silakan lengkapi data profil sekolah untuk memulai menggunakan aplikasi SIKAS.
+                                        </p>
+                                        <div className="mt-6">
+                                            <PrimaryButton onClick={() => setIsModalOpen(true)} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
+                                                Update Data Sekarang
+                                            </PrimaryButton>
+                                        </div>
                                     </div>
-                                    <div className="sm:col-span-1">
-                                        <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">NPSN</dt>
-                                        <dd className="mt-1 text-sm text-gray-900 dark:text-gray-200">{sekolah.npsn}</dd>
-                                    </div>
-                                    <div className="sm:col-span-1">
-                                        <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Status</dt>
-                                        <dd className="mt-1 text-sm text-gray-900 dark:text-gray-200">{sekolah.status_sekolah}</dd>
-                                    </div>
-                                    <div className="sm:col-span-1">
-                                        <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Jenjang</dt>
-                                        <dd className="mt-1 text-sm text-gray-900 dark:text-gray-200">{sekolah.jenjang_sekolah}</dd>
-                                    </div>
-                                    <div className="sm:col-span-1">
-                                        <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Provinsi</dt>
-                                        <dd className="mt-1 text-sm text-gray-900 dark:text-gray-200">{sekolah.provinsi}</dd>
-                                    </div>
-                                    <div className="sm:col-span-1">
-                                        <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Kabupaten/Kota</dt>
-                                        <dd className="mt-1 text-sm text-gray-900 dark:text-gray-200">{sekolah.kabupaten_kota}</dd>
-                                    </div>
-                                    <div className="sm:col-span-1">
-                                        <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Kecamatan</dt>
-                                        <dd className="mt-1 text-sm text-gray-900 dark:text-gray-200">{sekolah.kecamatan}</dd>
-                                    </div>
-                                    <div className="sm:col-span-1">
-                                        <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Kelurahan/Desa</dt>
-                                        <dd className="mt-1 text-sm text-gray-900 dark:text-gray-200">{sekolah.kelurahan_desa}</dd>
-                                    </div>
-                                    <div className="sm:col-span-2">
-                                        <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Alamat Lengkap</dt>
-                                        <dd className="mt-1 text-sm text-gray-900 dark:text-gray-200">{sekolah.alamat}</dd>
-                                    </div>
-                                </dl>
-                            ) : (
-                                <div className="text-center py-12 text-gray-500">
-                                    Belum ada data sekolah. Silakan input data terlebih dahulu.
-                                </div>
-                            )}
+                                )}
+                            </div>
                         </div>
                     </div>
 
                     {/* Right Column: Kop Surat */}
                     <div className="space-y-6">
-                        <div className="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow sm:rounded-lg">
-                            <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Kop Sekolah</h2>
+                        <div className="bg-white dark:bg-gray-800 shadow-lg sm:rounded-xl overflow-hidden border border-gray-100 dark:border-gray-700 h-full flex flex-col">
+                            <div className="px-6 py-5 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
+                                <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                    <div className="p-1.5 bg-pink-100 dark:bg-pink-900/30 rounded-lg text-pink-600 dark:text-pink-400">
+                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                        </svg>
+                                    </div>
+                                    Kop Sekolah
+                                </h2>
+                            </div>
 
-                            {sekolah?.kop_surat ? (
-                                <div className="space-y-4">
-                                    <div className="border rounded-lg p-2 bg-gray-50 dark:bg-gray-700 cursor-pointer group relative overflow-hidden" onClick={() => setIsPreviewOpen(true)}>
-                                        <img
-                                            src={`/storage/${sekolah.kop_surat.replace('public/', '')}`}
-                                            alt="Kop Surat"
-                                            className="w-full h-auto rounded transition-transform duration-300 group-hover:scale-105"
-                                        />
-                                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                            <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                            </svg>
+                            <div className="p-6 flex-1 flex flex-col">
+                                {sekolah?.kop_surat ? (
+                                    <div className="space-y-6 flex-1 flex flex-col">
+                                        <div className="border-2 border-dashed border-gray-200 dark:border-gray-600 rounded-xl p-2 bg-gray-50 dark:bg-gray-700/30 cursor-pointer group relative overflow-hidden flex-1 flex items-center justify-center min-h-[200px]" onClick={() => setIsPreviewOpen(true)}>
+                                            <img
+                                                src={`/storage/${sekolah.kop_surat.replace('public/', '')}`}
+                                                alt="Kop Surat"
+                                                className="w-full h-auto rounded-lg shadow-sm transition-transform duration-300 group-hover:scale-105"
+                                            />
+                                            <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg">
+                                                <svg className="w-10 h-10 text-white mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                                </svg>
+                                                <span className="text-white font-medium">Klik untuk Perbesar</span>
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-3">
+                                            <SecondaryButton
+                                                onClick={() => setIsUploadOpen(true)}
+                                                className="flex-1 justify-center border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                                            >
+                                                <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                                </svg>
+                                                Ganti
+                                            </SecondaryButton>
+                                            <DangerButton onClick={handleDeleteKop}>
+                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                            </DangerButton>
                                         </div>
                                     </div>
-                                    <div className="flex gap-2">
-                                        <SecondaryButton onClick={() => setIsPreviewOpen(true)} className="flex-1 justify-center">
-                                            Lihat
-                                        </SecondaryButton>
-                                        <SecondaryButton onClick={() => setIsUploadOpen(true)} className="flex-1 justify-center">
-                                            Ganti
-                                        </SecondaryButton>
-                                        <DangerButton onClick={handleDeleteKop}>
-                                            Hapus
-                                        </DangerButton>
+                                ) : (
+                                    <div className="text-center py-10 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 flex-1 flex flex-col justify-center items-center">
+                                        <div className="bg-gray-100 dark:bg-gray-700 rounded-full p-4 mb-3">
+                                            <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                            </svg>
+                                        </div>
+                                        <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mb-1">Kop Surat Belum Ada</p>
+                                        <p className="text-xs text-gray-400 mb-6">Format JPG/PNG, Max 2MB</p>
+
+                                        <PrimaryButton
+                                            onClick={() => setIsUploadOpen(true)}
+                                            disabled={!sekolah}
+                                            className="bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600"
+                                        >
+                                            <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                            </svg>
+                                            Upload Kop Baru
+                                        </PrimaryButton>
+
+                                        {!sekolah && <p className="text-xs text-red-500 mt-2 bg-red-50 px-2 py-1 rounded">Input data sekolah dulu!</p>}
                                     </div>
-                                </div>
-                            ) : (
-                                <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg">
-                                    <p className="text-sm text-gray-500 mb-4">Belum ada Kop Surat</p>
-                                    <PrimaryButton onClick={() => setIsUploadOpen(true)} disabled={!sekolah}>
-                                        Upload Kop
-                                    </PrimaryButton>
-                                    {!sekolah && <p className="text-xs text-red-500 mt-2">Input data sekolah dulu</p>}
-                                </div>
-                            )}
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -389,7 +464,7 @@ export default function Index({ auth, sekolah }: PageProps<{ sekolah?: Sekolah }
 
                         <div className="flex justify-end gap-2 mt-6">
                             <SecondaryButton onClick={() => setIsUploadOpen(false)} type="button">Batal</SecondaryButton>
-                            <PrimaryButton disabled={kopProcessing} className="flex items-center gap-2">
+                            <PrimaryButton disabled={kopProcessing} className="flex items-center gap-2 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 border-0">
                                 {kopProcessing ? (
                                     <>
                                         <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

@@ -5,11 +5,11 @@ export default function Guest({ children }: PropsWithChildren) {
     return (
         <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2">
             {/* Left Side - Branding & Visuals */}
-            <div className="relative hidden lg:flex flex-col justify-between p-12 bg-indigo-900 text-white overflow-hidden">
+            <div className="relative hidden lg:flex flex-col justify-between p-12 bg-purple-950 text-white overflow-hidden">
                 {/* Background Decorations */}
-                <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-indigo-800 to-blue-900 z-0"></div>
-                <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-600 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-blob"></div>
-                <div className="absolute bottom-0 left-0 w-96 h-96 bg-purple-600 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-blob animation-delay-2000"></div>
+                <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-violet-900 via-purple-900 to-fuchsia-900 z-0 opacity-90"></div>
+                <div className="absolute top-0 right-0 w-96 h-96 bg-fuchsia-600 rounded-full mix-blend-screen filter blur-3xl opacity-30 animate-blob"></div>
+                <div className="absolute bottom-0 left-0 w-96 h-96 bg-indigo-600 rounded-full mix-blend-screen filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
 
                 <div className="relative z-10 flex items-center gap-3">
                     <div className="flex items-center justify-center p-2 rounded-lg bg-white/10 backdrop-blur-sm shadow-inner">

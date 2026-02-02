@@ -74,3 +74,14 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* NProgress Customization */
+#nprogress .bar {
+  background: linear-gradient(to right, #4f46e5, #9333ea, #ec4899) !important;
+  height: 4px !important;
+  box-shadow: 0 0 10px rgba(147, 51, 234, 0.5);
+}
+
+#nprogress .peg {
+  box-shadow: 0 0 10px #ec4899, 0 0 5px #ec4899;
+}
