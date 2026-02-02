@@ -30,7 +30,7 @@ export default function Guest({ children }: PropsWithChildren) {
                 </div>
 
                 <div className="relative z-10 text-sm text-indigo-200">
-                    &copy; {new Date().getFullYear()} SIKAS Team. All rights reserved.
+                    &copy; 2025 SIKAS Team. Created By Moh Gian Darsana, S.Pd.,Gr
                 </div>
             </div>
 
