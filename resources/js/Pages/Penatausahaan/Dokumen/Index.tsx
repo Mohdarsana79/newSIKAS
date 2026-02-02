@@ -339,51 +339,93 @@ export default function Index({ auth, penganggarans }: Props) {
 
             {/* Modal Tambah Dokumen */}
             <Modal show={isModalOpen} onClose={closeModal}>
-                <form onSubmit={handleSubmit} className="p-6">
-                    <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                        Tambah Dokumen
-                    </h2>
-                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-400 mb-6">
-                        Menambahkan dokumen untuk: <span className="font-bold">{selectedBku?.uraian}</span>
-                    </p>
-
-                    <div className="mt-6">
-                        <InputLabel htmlFor="nama_dokumen" value="Nama Dokumen" />
-                        <TextInput
-                            id="nama_dokumen"
-                            type="text"
-                            className="mt-1 block w-full text-black"
-                            value={data.nama_dokumen}
-                            onChange={(e) => setData('nama_dokumen', e.target.value)}
-                            required
-                            placeholder="Contoh: Bukti Pembayaran"
-                        />
-                        {errors.nama_dokumen && <div className="text-red-500 text-sm mt-1">{errors.nama_dokumen}</div>}
+                <div className="flex flex-col h-full bg-white dark:bg-gray-800 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 shadow-xl">
+                    <div className="bg-gradient-to-r from-purple-600 to-indigo-600 p-6">
+                        <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 01-2-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            Tambah Dokumen
+                        </h2>
+                        <p className="mt-2 text-purple-100 text-sm">
+                            Silahkan lengkapi detail dokumen untuk transaksi di bawah ini.
+                        </p>
                     </div>
 
-                    <div className="mt-4">
-                        <InputLabel htmlFor="link_drive" value="Link Drive Dokumen" />
-                        <TextInput
-                            id="link_drive"
-                            type="url"
-                            className="mt-1 block w-full text-black"
-                            value={data.link_drive}
-                            onChange={(e) => setData('link_drive', e.target.value)}
-                            required
-                            placeholder="https://drive.google.com/..."
-                        />
-                        {errors.link_drive && <div className="text-red-500 text-sm mt-1">{errors.link_drive}</div>}
-                    </div>
+                    <form onSubmit={handleSubmit} className="flex-1">
+                        <div className="p-6 space-y-6">
+                            <div className="bg-purple-50 dark:bg-gray-700 p-4 rounded-lg border border-purple-100 dark:border-gray-600">
+                                <div className="text-xs text-purple-600 dark:text-purple-300 font-semibold uppercase tracking-wide">Uraian Transaksi</div>
+                                <div className="mt-1 text-gray-900 dark:text-gray-100 font-medium text-lg leading-relaxed">
+                                    {selectedBku?.uraian}
+                                </div>
+                            </div>
 
-                    <div className="mt-6 flex justify-end gap-3">
-                        <SecondaryButton onClick={closeModal} disabled={processing}>
-                            Batal
-                        </SecondaryButton>
-                        <PrimaryButton disabled={processing}>
-                            Simpan
-                        </PrimaryButton>
-                    </div>
-                </form>
+                            <div className="space-y-4">
+                                <div>
+                                    <InputLabel htmlFor="nama_dokumen" value="Nama Dokumen" className="text-gray-700 dark:text-gray-300 font-medium" />
+                                    <TextInput
+                                        id="nama_dokumen"
+                                        type="text"
+                                        className="mt-1 block w-full border-gray-300 dark:border-gray-600 focus:border-purple-500 focus:ring-purple-500 rounded-lg shadow-sm"
+                                        value={data.nama_dokumen}
+                                        onChange={(e) => setData('nama_dokumen', e.target.value)}
+                                        required
+                                        placeholder="Contoh: Bukti Pembayaran / Nota Dinas"
+                                    />
+                                    {errors.nama_dokumen && <div className="text-red-500 text-sm mt-1 animate-pulse">{errors.nama_dokumen}</div>}
+                                </div>
+
+                                <div>
+                                    <InputLabel htmlFor="link_drive" value="Link Drive Dokumen" className="text-gray-700 dark:text-gray-300 font-medium" />
+                                    <div className="mt-1 relative rounded-md shadow-sm">
+                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <span className="text-gray-500 sm:text-sm">
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                                                </svg>
+                                            </span>
+                                        </div>
+                                        <TextInput
+                                            id="link_drive"
+                                            type="url"
+                                            className="block w-full pl-10 border-gray-300 dark:border-gray-600 focus:border-purple-500 focus:ring-purple-500 rounded-lg shadow-sm"
+                                            value={data.link_drive}
+                                            onChange={(e) => setData('link_drive', e.target.value)}
+                                            required
+                                            placeholder="https://drive.google.com/..."
+                                        />
+                                    </div>
+                                    {errors.link_drive && <div className="text-red-500 text-sm mt-1 animate-pulse">{errors.link_drive}</div>}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="px-6 py-4 bg-gray-50 dark:bg-gray-750 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-3 rounded-b-lg">
+                            <SecondaryButton onClick={closeModal} disabled={processing} className="hover:bg-gray-100 dark:hover:bg-gray-600">
+                                Batal
+                            </SecondaryButton>
+                            <PrimaryButton disabled={processing} className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 border-none shadow-md hover:shadow-lg transition-all duration-200">
+                                {processing ? (
+                                    <div className="flex items-center gap-2">
+                                        <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        Menyimpan...
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-2">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                        </svg>
+                                        Simpan
+                                    </div>
+                                )}
+                            </PrimaryButton>
+                        </div>
+                    </form>
+                </div>
             </Modal>
 
             {/* Delete Confirmation Modal */}

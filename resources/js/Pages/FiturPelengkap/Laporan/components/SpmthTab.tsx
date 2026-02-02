@@ -325,133 +325,170 @@ export default function SpmthTab() {
 
             {/* Add/Edit Modal */}
             <Modal show={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} maxWidth="2xl">
-                <form onSubmit={handleSubmit} className="p-6">
-                    <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
-                        {formData.id ? 'Edit SPMTH' : 'Tambah SPMTH'}
-                    </h2>
+                <div className="flex flex-col h-full bg-white dark:bg-gray-800 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 shadow-xl">
+                    <div className="bg-gradient-to-r from-purple-600 to-indigo-600 p-6">
+                        <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            {formData.id ? 'Edit SPMTH' : 'Tambah SPMTH'}
+                        </h2>
+                        <p className="mt-2 text-purple-100 text-sm">
+                            Kelola Surat Pernyataan Tanggung Jawab Mutlak (Hibah)
+                        </p>
+                    </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <InputLabel htmlFor="nomor_surat" value="Nomor SPMTH" />
-                            <TextInput
-                                id="nomor_surat"
-                                type="text"
-                                className="mt-1 block w-full text-gray-900"
-                                value={formData.nomor_surat}
-                                onChange={(e) => setFormData({ ...formData, nomor_surat: e.target.value })}
-                                required
-                            />
+                    <form onSubmit={handleSubmit} className="flex-1">
+                        <div className="p-6 space-y-6">
+                            {/* Grid 1: Basic Info */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {/* Nomor Surat */}
+                                <div>
+                                    <InputLabel htmlFor="nomor_surat" value="Nomor SPMTH" className="text-gray-700 dark:text-gray-300 font-medium" />
+                                    <TextInput
+                                        id="nomor_surat"
+                                        type="text"
+                                        className="mt-1 block w-full border-gray-300 dark:border-gray-600 focus:border-purple-500 focus:ring-purple-500 rounded-lg shadow-sm"
+                                        value={formData.nomor_surat}
+                                        onChange={(e) => setFormData({ ...formData, nomor_surat: e.target.value })}
+                                        required
+                                        placeholder="Contoh: 001/SPMTH/2024"
+                                    />
+                                </div>
+                                {/* Tanggal */}
+                                <div>
+                                    <InputLabel htmlFor="tanggal_spmth" value="Tanggal SPMTH" className="text-gray-700 dark:text-gray-300 font-medium" />
+                                    <div className="mt-1">
+                                        <DatePicker
+                                            id="tanggal_spmth"
+                                            selected={formData.tanggal_spmth ? new Date(formData.tanggal_spmth) : null}
+                                            onChange={(date: Date | null) => {
+                                                if (date) {
+                                                    const offset = date.getTimezoneOffset();
+                                                    const localDate = new Date(date.getTime() - (offset * 60 * 1000));
+                                                    const formatted = localDate.toISOString().split('T')[0];
+                                                    setFormData({ ...formData, tanggal_spmth: formatted });
+                                                } else {
+                                                    setFormData({ ...formData, tanggal_spmth: '' });
+                                                }
+                                            }}
+                                            dateFormat="dd MMMM yyyy"
+                                            locale="id"
+                                            showMonthDropdown
+                                            showYearDropdown
+                                            dropdownMode="select"
+                                            className="block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-purple-500 focus:ring-purple-500 rounded-lg shadow-sm"
+                                            placeholderText="Pilih Tanggal"
+                                            isClearable
+                                        />
+                                    </div>
+                                </div>
+                                {/* Tahun */}
+                                <div>
+                                    <InputLabel htmlFor="tahun_anggaran" value="Tahun Anggaran" className="text-gray-700 dark:text-gray-300 font-medium" />
+                                    <select
+                                        id="tahun_anggaran"
+                                        className="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-purple-500 focus:ring-purple-500 rounded-lg shadow-sm"
+                                        value={formData.tahun_anggaran}
+                                        onChange={(e) => setFormData({ ...formData, tahun_anggaran: e.target.value })}
+                                        required
+                                    >
+                                        {availableYears.map(year => (
+                                            <option key={year.id} value={year.tahun_anggaran}>{year.tahun_anggaran}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                {/* Tahap */}
+                                <div>
+                                    <InputLabel htmlFor="tahap" value="Tahap" className="text-gray-700 dark:text-gray-300 font-medium" />
+                                    <select
+                                        id="tahap"
+                                        className="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-purple-500 focus:ring-purple-500 rounded-lg shadow-sm"
+                                        value={formData.tahap}
+                                        onChange={(e) => setFormData({ ...formData, tahap: e.target.value as '1' | '2' })}
+                                        required
+                                    >
+                                        <option value="1">1</option>
+                                        <option value="2">2</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            {/* Calculation Button Area */}
+                            <div className="flex justify-start">
+                                <button
+                                    type="button"
+                                    onClick={handleCalculate}
+                                    disabled={isCalculating}
+                                    className="inline-flex items-center px-4 py-2 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 text-sm font-medium rounded-lg hover:bg-indigo-200 dark:hover:bg-indigo-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
+                                >
+                                    {isCalculating ? (
+                                        <>
+                                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-indigo-700 dark:text-indigo-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                            Menghitung...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                                            Hitung Pagu & Realisasi
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+
+                            {/* Financial Details (Read Only) */}
+                            <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-4 uppercase tracking-wider">Rincian Anggaran</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <InputLabel htmlFor="pagu" value="Pagu Anggaran" className="text-gray-600 dark:text-gray-400 text-xs uppercase" />
+                                        <div className="font-semibold text-gray-900 dark:text-white text-lg">{formatCurrency(formData.pagu)}</div>
+                                        <input type="hidden" value={formData.pagu} />
+                                    </div>
+                                    <div>
+                                        <InputLabel htmlFor="realisasi_lalu" value="Realisasi Lalu" className="text-gray-600 dark:text-gray-400 text-xs uppercase" />
+                                        <div className="font-semibold text-gray-900 dark:text-white text-lg">{formatCurrency(formData.realisasi_lalu)}</div>
+                                    </div>
+                                    <div>
+                                        <InputLabel htmlFor="realisasi_ini" value="Realisasi Ini" className="text-gray-600 dark:text-gray-400 text-xs uppercase" />
+                                        <div className="font-semibold text-blue-600 dark:text-blue-400 text-lg">{formatCurrency(formData.realisasi_ini)}</div>
+                                    </div>
+                                    <div>
+                                        <InputLabel htmlFor="sisa" value="Sisa Anggaran" className="text-gray-600 dark:text-gray-400 text-xs uppercase" />
+                                        <div className={`font-semibold text-lg ${formData.sisa < 0 ? 'text-red-600' : 'text-green-600'}`}>{formatCurrency(formData.sisa)}</div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div>
-                            <InputLabel htmlFor="tanggal_spmth" value="Tanggal SPMTH" />
-                            <DatePicker
-                                id="tanggal_spmth"
-                                selected={formData.tanggal_spmth ? new Date(formData.tanggal_spmth) : null}
-                                onChange={(date: Date | null) => {
-                                    if (date) {
-                                        // Format to YYYY-MM-DD for consistency
-                                        const offset = date.getTimezoneOffset();
-                                        const localDate = new Date(date.getTime() - (offset * 60 * 1000));
-                                        const formatted = localDate.toISOString().split('T')[0];
-                                        setFormData({ ...formData, tanggal_spmth: formatted });
-                                    } else {
-                                        setFormData({ ...formData, tanggal_spmth: '' });
-                                    }
-                                }}
-                                dateFormat="dd MMMM yyyy"
-                                locale="id"
-                                showMonthDropdown
-                                showYearDropdown
-                                dropdownMode="select"
-                                className="mt-1 block w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
-                                placeholderText="Pilih Tanggal"
-                                isClearable
-                            />
-                        </div>
-                        <div>
-                            <InputLabel htmlFor="tahun_anggaran" value="Tahun Anggaran" />
-                            <select
-                                id="tahun_anggaran"
-                                className="mt-1 block w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
-                                value={formData.tahun_anggaran}
-                                onChange={(e) => setFormData({ ...formData, tahun_anggaran: e.target.value })}
-                                required
-                            >
-                                {availableYears.map(year => (
-                                    <option key={year.id} value={year.tahun_anggaran}>{year.tahun_anggaran}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div>
-                            <InputLabel htmlFor="tahap" value="Tahap" />
-                            <select
-                                id="tahap"
-                                className="mt-1 block w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
-                                value={formData.tahap}
-                                onChange={(e) => setFormData({ ...formData, tahap: e.target.value as '1' | '2' })}
-                                required
-                            >
-                                <option value="1">1</option>
-                                <option value="2">2</option>
-                            </select>
-                        </div>
-                        <div className="flex items-end">
-                            <PrimaryButton onClick={handleCalculate} type="button" disabled={isCalculating}>
-                                {isCalculating ? 'Menghitung...' : 'Hitung Pagu & Realisasi'}
+
+                        <div className="px-6 py-4 bg-gray-50 dark:bg-gray-750 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-3 rounded-b-lg">
+                            <SecondaryButton onClick={() => setIsAddModalOpen(false)} disabled={isSaving} className="hover:bg-gray-100 dark:hover:bg-gray-600">
+                                Batal
+                            </SecondaryButton>
+                            <PrimaryButton type="submit" disabled={isSaving} className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 border-none shadow-md hover:shadow-lg transition-all duration-200">
+                                {isSaving ? (
+                                    <div className="flex items-center gap-2">
+                                        <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        Menyimpan...
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-2">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                        </svg>
+                                        Simpan
+                                    </div>
+                                )}
                             </PrimaryButton>
                         </div>
-                    </div>
-
-                    <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <InputLabel htmlFor="pagu" value="Pagu Anggaran" />
-                            <TextInput
-                                id="pagu"
-                                type="text"
-                                className="mt-1 block w-full bg-gray-100 dark:bg-gray-700"
-                                value={formatCurrency(formData.pagu)}
-                                readOnly
-                            />
-                        </div>
-                        <div>
-                            <InputLabel htmlFor="realisasi_lalu" value="Realisasi Lalu" />
-                            <TextInput
-                                id="realisasi_lalu"
-                                type="text"
-                                className="mt-1 block w-full bg-gray-100 dark:bg-gray-700"
-                                value={formatCurrency(formData.realisasi_lalu)}
-                                readOnly
-                            />
-                        </div>
-                        <div>
-                            <InputLabel htmlFor="realisasi_ini" value="Realisasi Ini" />
-                            <TextInput
-                                id="realisasi_ini"
-                                type="text"
-                                className="mt-1 block w-full bg-gray-100 dark:bg-gray-700"
-                                value={formatCurrency(formData.realisasi_ini)}
-                                readOnly
-                            />
-                        </div>
-                        <div>
-                            <InputLabel htmlFor="sisa" value="Sisa Anggaran" />
-                            <TextInput
-                                id="sisa"
-                                type="text"
-                                className="mt-1 block w-full bg-gray-100 dark:bg-gray-700"
-                                value={formatCurrency(formData.sisa)}
-                                readOnly
-                            />
-                        </div>
-                    </div>
-
-                    <div className="mt-6 flex justify-end gap-3">
-                        <SecondaryButton onClick={() => setIsAddModalOpen(false)}>Batal</SecondaryButton>
-                        <PrimaryButton type="submit" disabled={isSaving}>
-                            {isSaving ? 'Menyimpan...' : 'Simpan'}
-                        </PrimaryButton>
-                    </div>
-                </form>
+                    </form>
+                </div>
             </Modal>
 
             {/* Delete Confirmation Modal */}

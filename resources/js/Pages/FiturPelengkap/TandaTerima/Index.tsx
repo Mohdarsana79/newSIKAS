@@ -408,10 +408,10 @@ export default function TandaTerimaIndex({ auth }: { auth: any }) {
                     </div>
 
                     {/* Filter Section */}
-                    <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow flex flex-col md:flex-row gap-4 items-end md:items-center">
+                    <div className="bg-gradient-to-br from-indigo-500 to-purple-600 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-4 rounded-lg shadow flex flex-col md:flex-row gap-4 items-end md:items-center">
                         <div className="flex-1 w-full md:w-auto grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Mulai</label>
+                                <label className="block text-sm font-medium text-white dark:text-white mb-1">Mulai</label>
                                 <DatePicker
                                     value={filters.start_date}
                                     onChange={(date) => handleFilterChange('start_date', date ? format(date, 'yyyy-MM-dd') : '')}
@@ -419,7 +419,7 @@ export default function TandaTerimaIndex({ auth }: { auth: any }) {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Akhir</label>
+                                <label className="block text-sm font-medium text-white dark:text-white mb-1">Akhir</label>
                                 <DatePicker
                                     value={filters.end_date}
                                     onChange={(date) => handleFilterChange('end_date', date ? format(date, 'yyyy-MM-dd') : '')}
@@ -429,7 +429,7 @@ export default function TandaTerimaIndex({ auth }: { auth: any }) {
                         </div>
 
                         <div className="flex-1 w-full">
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Pencarian</label>
+                            <label className="block text-sm font-medium text-white dark:text-white mb-1">Pencarian</label>
                             <input
                                 type="text"
                                 placeholder="Cari uraian, kode rekening, tanggal..."

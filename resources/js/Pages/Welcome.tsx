@@ -170,10 +170,7 @@ export default function Welcome({
             <footer className="mt-auto bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 py-12">
                 <div className="mx-auto max-w-7xl px-6 lg:px-8 flex flex-col items-center">
                     <p className="text-center text-xs leading-5 text-gray-500">
-                        &copy; {new Date().getFullYear()} SIKAS Team. All rights reserved.
-                    </p>
-                    <p className="text-center text-xs leading-5 text-gray-400 mt-2">
-                        Laravel v{laravelVersion} (PHP v{phpVersion})
+                        &copy; 2025 SIKAS Team. Created By Moh Gian Darsana.
                     </p>
                 </div>
             </footer>
