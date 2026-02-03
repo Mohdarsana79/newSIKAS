@@ -74,6 +74,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/rkas/{id}', [RkasController::class, 'destroy'])->name('rkas.destroy');
     Route::get('/rkas/{id}/summary', [RkasController::class, 'summary'])->name('rkas.summary');
     Route::get('/rkas/{id}/export-pdf', [RkasController::class, 'exportPdf'])->name('rkas.export-pdf');
+    Route::get('/rkas/{id}/export-tahapan-v1-pdf', [RkasController::class, 'exportTahapanV1Pdf'])->name('rkas.export-tahapan-v1-pdf');
     Route::get('/rkas/{id}/export-rekap-pdf', [RkasController::class, 'exportRekapPdf'])->name('rkas.export-rekap-pdf');
     Route::get('/rkas/{id}/export-lembar-kerja-pdf', [RkasController::class, 'exportLembarKerjaPdf'])->name('rkas.export-lembar-kerja-pdf');
     Route::get('/rkas/{id}/export-bulanan-pdf', [RkasController::class, 'exportBulananPdf'])->name('rkas.export-bulanan-pdf');
@@ -93,6 +94,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/rkas-perubahan/{id}/summary', [RkasPerubahanController::class, 'summary'])->name('rkas-perubahan.summary');
     Route::get('/rkas-perubahan/{id}/logs', [RkasPerubahanController::class, 'getLogs'])->name('rkas-perubahan.logs');
     Route::get('/rkas-perubahan/{id}/export-pdf', [RkasPerubahanController::class, 'generateTahapanPdf'])->name('rkas-perubahan.export-pdf');
+    Route::get('/rkas-perubahan/{id}/export-tahapan-v1-pdf', [RkasPerubahanController::class, 'exportTahapanV1Pdf'])->name('rkas-perubahan.export-tahapan-v1-pdf');
     Route::get('/rkas-perubahan/{id}/export-rekap-pdf', [RkasPerubahanController::class, 'generatePdfRkaRekap'])->name('rkas-perubahan.export-rekap-pdf');
     Route::get('/rkas-perubahan/{id}/export-lembar-kerja-pdf', [RkasPerubahanController::class, 'generateRkaDuaSatuPdf'])->name('rkas-perubahan.export-lembar-kerja-pdf');
     Route::get('/rkas-perubahan/{id}/export-bulanan-pdf', [RkasPerubahanController::class, 'generatePdfBulanan'])->name('rkas-perubahan.export-bulanan-pdf');

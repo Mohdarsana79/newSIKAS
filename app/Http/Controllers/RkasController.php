@@ -566,6 +566,37 @@ class RkasController extends Controller
         return $pdf->stream('rka_tahapan.pdf');
     }
 
+    public function exportTahapanV1Pdf(Request $request, $id)
+    {
+        $penganggaran = Penganggaran::with('sekolah')->findOrFail($id);
+        
+        $rkasData = Rkas::with(['kodeKegiatan', 'rekeningBelanja'])
+            ->where('penganggaran_id', $id)
+            ->orderBy('kode_id')
+            ->get()
+            ->groupBy(function ($item) {
+                return optional($item->kodeKegiatan)->kode;
+            })
+            ->filter(fn($group, $key) => !is_null($key));
+            
+        // Use the same logic as standard Tahapan, data includes 'bulanan' for T1/T2 split
+        $tahapanData = $this->kelolaDataRkas($rkasData);
+        $totalTahap1 = $this->calculateTotalTahap1($id);
+        $totalTahap2 = $this->calculateTotalTahap2($id);
+
+        $pdf = Pdf::loadView('laporan.rka_tahapan_v_1_pdf', [
+            'anggaran' => $penganggaran->toArray(),
+            'tahapanData' => $tahapanData,
+            'totalTahap1' => $totalTahap1,
+            'totalTahap2' => $totalTahap2,
+            'paper_size' => $request->paper_size,
+            'orientation' => $request->orientation,
+            'font_size' => $request->font_size
+        ]);
+
+        return $pdf->stream('rka_tahapan_v1.pdf');
+    }
+
     public function exportRekapPdf(Request $request, $id)
     {
         $penganggaran = Penganggaran::with('sekolah')->findOrFail($id);

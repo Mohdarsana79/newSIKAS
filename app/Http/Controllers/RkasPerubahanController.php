@@ -578,6 +578,44 @@ class RkasPerubahanController extends Controller
         ]);
     }
 
+    public function exportTahapanV1Pdf(Request $request, $id)
+    {
+        $penganggaran = Penganggaran::with('sekolah')->findOrFail($id);
+        
+        $rkasData = RkasPerubahan::with(['kodeKegiatan', 'rekeningBelanja'])
+            ->where('penganggaran_id', $id)
+            ->get();
+            
+        $rkasMurniData = Rkas::with(['kodeKegiatan', 'rekeningBelanja'])
+            ->where('penganggaran_id', $id)
+            ->get();
+            
+        $groupedRkas = $rkasData->groupBy(function ($item) {
+            return optional($item->kodeKegiatan)->kode;
+        })->filter(fn($group, $key) => !is_null($key));
+
+        $groupedMurni = $rkasMurniData->groupBy(function ($item) {
+            return optional($item->kodeKegiatan)->kode;
+        })->filter(fn($group, $key) => !is_null($key));
+
+        $tahapanData = $this->kelolaDataRkas($groupedRkas, $groupedMurni);
+        
+        $totalTahap1 = RkasPerubahan::getTotalTahap1($id);
+        $totalTahap2 = RkasPerubahan::getTotalTahap2($id);
+
+        $pdf = Pdf::loadView('laporan.rka_tahapan_perubahan_v_1_pdf', [
+            'anggaran' => $penganggaran->toArray(),
+            'tahapanData' => $tahapanData,
+            'totalTahap1' => $totalTahap1,
+            'totalTahap2' => $totalTahap2,
+            'paper_size' => $request->paper_size,
+            'orientation' => $request->orientation,
+            'font_size' => $request->font_size
+        ]);
+
+        return $pdf->stream('rka_perubahan_tahapan_v1.pdf');
+    }
+
     // Helpers
     private function kelolaDataRkas($rkasPerubahan, $rkasMurni = null)
     {
@@ -652,7 +690,7 @@ class RkasPerubahanController extends Controller
                         'tahap2' => 0,
                         'volume_murni' => 0,
                         'jumlah_murni' => 0,
-                        'months' => [] 
+                        'bulanan' => [] 
                     ];
                 }
 
@@ -678,7 +716,7 @@ class RkasPerubahanController extends Controller
                         'tahap2' => 0,
                         'volume_murni' => 0,
                         'jumlah_murni' => 0,
-                        'months' => [] 
+                        'bulanan' => [] 
                     ];
                 }
 
@@ -694,7 +732,7 @@ class RkasPerubahanController extends Controller
                     $groupedItems[$key]['tahap2'] += $totalItem;
                 }
 
-                $groupedItems[$key]['months'][$bulan] = [
+                $groupedItems[$key]['bulanan'][$bulan] = [
                     'volume' => $item->jumlah,
                     'total' => $totalItem
                 ];

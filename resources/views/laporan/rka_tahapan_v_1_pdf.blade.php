@@ -4,7 +4,7 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Cetak RKAS Tahapan</title>
+        <title>Cetak RKAS Tahapan V.1</title>
         <style>
             @page {
                 size: {{ $paper_size ?? 'A4' }} {{ $orientation ?? 'portrait' }};
@@ -107,7 +107,7 @@
 
     <body>
         <div class="header">
-            <h3 class="uppercase font-bold">KERTAS KERJA RENCANA KEGIATAN DAN ANGGARAN SEKOLAH (RKAS) PER TAHAP</h3>
+            <h3 class="uppercase font-bold">KERTAS KERJA RENCANA KEGIATAN DAN ANGGARAN SEKOLAH (RKAS) PER TAHAP V.1</h3>
             <h4 class="uppercase font-bold">TAHUN ANGGARAN : {{ $anggaran['tahun_anggaran'] }}</h4>
         </div>
 
@@ -177,18 +177,23 @@
             <table>
                 <thead>
                     <tr>
-                        <th rowspan="2" class="text-center" style="width: 30px;">No.</th>
-                        <th rowspan="2" class="text-center" style="width: 100px;">Kode Rekening</th>
-                        <th rowspan="2" class="text-center" style="width: 80px;">Kode Program</th>
-                        <th rowspan="2" class="text-center">Uraian</th>
-                        <th colspan="3" class="text-center">Rincian Perhitungan</th>
-                        <th rowspan="2" class="text-center" style="width: 100px;">Jumlah</th>
-                        <th colspan="2" class="text-center">Tahap</th>
+                        <th rowspan="3" class="text-center" style="width: 30px;">No.</th>
+                        <th rowspan="3" class="text-center" style="width: 100px;">Kode Rekening</th>
+                        <th rowspan="3" class="text-center" style="width: 80px;">Kode Program</th>
+                        <th rowspan="3" class="text-center">Uraian</th>
+                        <th colspan="5" class="text-center">Rincian Perhitungan</th>
+                        <th rowspan="3" class="text-center" style="width: 100px;">Jumlah</th>
+                        <th colspan="2" rowspan="2" class="text-center">Tahap</th>
                     </tr>
                     <tr>
-                        <th class="text-center" style="width: 50px;">Vol</th>
-                        <th class="text-center" style="width: 60px;">Satuan</th>
-                        <th class="text-center" style="width: 80px;">Tarif</th>
+                        <th rowspan="2" class="text-center" style="width: 50px;">Volume</th>
+                        <th colspan="2" class="text-center" style="width: 100px;">Tahap</th>
+                        <th rowspan="2" class="text-center" style="width: 60px;">Satuan</th>
+                        <th rowspan="2" class="text-center" style="width: 80px;">Tarif Harga</th>
+                    </tr>
+                    <tr>
+                        <th class="text-center" style="width: 50px;">T1</th>
+                        <th class="text-center" style="width: 50px;">T2</th>
                         <th class="text-center" style="width: 80px;">1</th>
                         <th class="text-center" style="width: 80px;">2</th>
                     </tr>
@@ -202,6 +207,8 @@
                             <td></td>
                             <td class="text-center font-bold">{{ $programKode }}</td>
                             <td class="font-bold">{{ $program['uraian'] }}</td>
+                            <td class="text-center">-</td>
+                            <td class="text-center">-</td>
                             <td class="text-center">-</td>
                             <td class="text-center">-</td>
                             <td class="text-center">-</td>
@@ -221,6 +228,8 @@
                                     <td class="text-center">-</td>
                                     <td class="text-center">-</td>
                                     <td class="text-center">-</td>
+                                    <td class="text-center">-</td>
+                                    <td class="text-center">-</td>
                                     <td class="text-right font-bold">
                                         {{ number_format($subProgram['jumlah'], 0, ',', '.') }}</td>
                                     <td class="text-right font-bold">
@@ -235,8 +244,10 @@
                                         <tr class="bg-teal">
                                             <td class="text-center font-bold">{{ $no++ }}</td>
                                             <td></td>
-                                    <td class="text-center font-bold">{{ str_contains((string)$uraianKode, '.') ? $uraianKode : $subProgramKode . '.' . $uraianKode }}</td>
+                                            <td class="text-center font-bold">{{ $uraianKode }}</td>
                                             <td class="font-bold">{{ $uraianProgram['uraian'] }}</td>
+                                            <td class="text-center">-</td>
+                                            <td class="text-center">-</td>
                                             <td class="text-center">-</td>
                                             <td class="text-center">-</td>
                                             <td class="text-center">-</td>
@@ -251,15 +262,38 @@
                                         <!-- Items -->
                                         @if (!empty($uraianProgram['items']))
                                             @foreach ($uraianProgram['items'] as $item)
+                                                @php
+                                                    // Calculate per-stage volumes
+                                                    $monthsT1 = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni'];
+                                                    $monthsT2 = ['Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+                                                    $volT1 = 0;
+                                                    $volT2 = 0;
+                                                    
+                                                    if(isset($item['bulanan'])) {
+                                                        foreach($monthsT1 as $m) {
+                                                            if(isset($item['bulanan'][$m])) {
+                                                                $volT1 += $item['bulanan'][$m]['volume'] ?? 0;
+                                                            }
+                                                        }
+                                                        foreach($monthsT2 as $m) {
+                                                            if(isset($item['bulanan'][$m])) {
+                                                                $volT2 += $item['bulanan'][$m]['volume'] ?? 0;
+                                                            }
+                                                        }
+                                                    }
+                                                    $volTotal = $volT1 + $volT2;
+                                                @endphp
                                                 <tr>
                                                     <td class="text-center">{{ $no++ }}</td>
                                                     <td class="text-center">{{ $item['kode_rekening'] }}</td>
-                                                    <td class="text-center">{{ str_contains((string)$uraianKode, '.') ? $uraianKode : $subProgramKode . '.' . $uraianKode }}</td>
+                                                    <td class="text-center">{{ $uraianKode }}</td>
                                                     <td>{{ $item['uraian'] }}</td>
-                                                    <td class="text-center">{{ $item['volume'] }}</td>
+                                                    <td class="text-center">{{ $volTotal }}</td>
+                                                    <td class="text-center">{{ $volT1 }}</td>
+                                                    <td class="text-center">{{ $volT2 }}</td>
                                                     <td class="text-center">{{ $item['satuan'] }}</td>
                                                     <td class="text-right">
-                                                        {{ number_format($item['harga_satuan'], 0, ',', '.') }}</td>
+                                                        {{ number_format($item['harga_satuan'] ?? $item['tarif'] ?? 0, 0, ',', '.') }}</td>
                                                     <td class="text-right font-bold">
                                                         {{ number_format($item['jumlah'], 0, ',', '.') }}</td>
                                                     <td class="text-right">
@@ -279,7 +313,7 @@
 
                     <!-- Grand Total -->
                     <tr class="bg-grey font-bold" style="border-top: 2px solid black;">
-                        <td colspan="7" class="text-center uppercase">Jumlah Total</td>
+                        <td colspan="9" class="text-center uppercase">Jumlah Total</td>
                         <td class="text-right">
                             {{ isset($totalTahap1) && isset($totalTahap2) ? number_format($totalTahap1 + $totalTahap2, 0, ',', '.') : '0' }}
                         </td>

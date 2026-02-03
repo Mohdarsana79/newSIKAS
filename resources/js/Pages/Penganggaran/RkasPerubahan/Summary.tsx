@@ -171,7 +171,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
     });
 
     const [showPrintModal, setShowPrintModal] = useState(false);
-    const [printTarget, setPrintTarget] = useState<'tahapan' | 'rekap' | 'lembar' | 'bulanan'>('tahapan');
+    const [printTarget, setPrintTarget] = useState<'tahapan' | 'tahapan_v1' | 'rekap' | 'lembar' | 'bulanan'>('tahapan');
     const [printSettings, setPrintSettings] = useState({
         paperSize: 'A4',
         orientation: 'portrait',
@@ -179,22 +179,24 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
     });
 
     const handlePrint = (monthOverride?: string) => {
-         let routeName = 'rkas-perubahan.export-pdf';
-         const params: any = { 
+        let routeName = 'rkas-perubahan.export-pdf';
+        const params: any = {
             id: anggaran.id,
             paper_size: printSettings.paperSize,
             orientation: printSettings.orientation,
             font_size: printSettings.fontSize
         };
 
-         if (printTarget === 'rekap') routeName = 'rkas-perubahan.export-rekap-pdf';
-         if (printTarget === 'lembar') routeName = 'rkas-perubahan.export-lembar-kerja-pdf';
-         if (printTarget === 'bulanan') {
-             routeName = 'rkas-perubahan.export-bulanan-pdf';
-             params.month = monthOverride || selectedMonth;
-         }
+        if (printTarget === 'rekap') routeName = 'rkas-perubahan.export-rekap-pdf';
+        if (printTarget === 'lembar') routeName = 'rkas-perubahan.export-lembar-kerja-pdf';
+        if (printTarget === 'tahapan_v1') routeName = 'rkas-perubahan.export-tahapan-v1-pdf';
 
-         const url = route(routeName, params);
+        if (printTarget === 'bulanan') {
+            routeName = 'rkas-perubahan.export-bulanan-pdf';
+            params.month = monthOverride || selectedMonth;
+        }
+
+        const url = route(routeName, params);
         window.open(url, '_blank');
         setShowPrintModal(false);
     };
@@ -218,6 +220,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
 
     const tabs = [
         { name: 'Rka Tahapan', label: 'Rka Tahapan' },
+        { name: 'Rka Tahapan V.1', label: 'Rka Tahapan V.1' },
         { name: 'Rka Rekap', label: 'Rka Rekap' },
         { name: 'Lembar Kerja 221', label: 'Lembar Kerja 221' },
         { name: 'Rka Bulanan', label: 'Rka Bulanan' },
@@ -253,9 +256,9 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                         <div className="space-y-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Ukuran Kertas</label>
-                                <select 
+                                <select
                                     value={printSettings.paperSize}
-                                    onChange={(e) => setPrintSettings({...printSettings, paperSize: e.target.value})}
+                                    onChange={(e) => setPrintSettings({ ...printSettings, paperSize: e.target.value })}
                                     className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                                 >
                                     <option value="A4">A4</option>
@@ -267,9 +270,9 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Orientasi</label>
-                                <select 
+                                <select
                                     value={printSettings.orientation}
-                                    onChange={(e) => setPrintSettings({...printSettings, orientation: e.target.value})}
+                                    onChange={(e) => setPrintSettings({ ...printSettings, orientation: e.target.value })}
                                     className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                                 >
                                     <option value="portrait">Portrait</option>
@@ -279,9 +282,9 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Ukuran Font</label>
-                                <select 
+                                <select
                                     value={printSettings.fontSize}
-                                    onChange={(e) => setPrintSettings({...printSettings, fontSize: e.target.value})}
+                                    onChange={(e) => setPrintSettings({ ...printSettings, fontSize: e.target.value })}
                                     className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                                 >
                                     <option value="8pt">Sangat Kecil (8pt)</option>
@@ -383,7 +386,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                             <div className="space-y-8 animate-fade-in-up">
                                 {/* Action Button */}
                                 <div className="flex justify-end mb-4">
-                                    <button 
+                                    <button
                                         onClick={() => {
                                             setPrintTarget('tahapan');
                                             setShowPrintModal(true);
@@ -471,16 +474,16 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                                                             <th rowSpan={2} className="px-2 py-2 text-center font-bold text-gray-900 dark:text-gray-100 w-24">Kode Rekening</th>
                                                             <th rowSpan={2} className="px-1 py-2 text-center font-bold text-gray-900 dark:text-gray-100 w-16">Kode Program</th>
                                                             <th rowSpan={2} className="px-2 py-2 text-center font-bold text-gray-900 dark:text-gray-100">Uraian</th>
-                                                            
+
                                                             <th colSpan={3} className="px-1 py-2 text-center font-bold text-gray-900 dark:text-gray-100 border-b border-gray-900 dark:border-gray-600">Rincian Perhitungan Sebelum Perubahan</th>
                                                             <th rowSpan={2} className="px-2 py-2 text-center font-bold text-gray-900 dark:text-gray-100 w-20">Jumlah</th>
-                                                            
+
                                                             <th colSpan={3} className="px-1 py-2 text-center font-bold text-gray-900 dark:text-gray-100 border-b border-gray-900 dark:border-gray-600">Rincian Perhitungan Sesudah Perubahan</th>
                                                             <th rowSpan={2} className="px-2 py-2 text-center font-bold text-gray-900 dark:text-gray-100 w-20">Jumlah</th>
-                                                            
+
                                                             <th rowSpan={2} className="px-2 py-2 text-center font-bold text-gray-900 dark:text-gray-100 w-20">Bertambah</th>
                                                             <th rowSpan={2} className="px-2 py-2 text-center font-bold text-gray-900 dark:text-gray-100 w-20">Berkurang</th>
-                                                            
+
                                                             <th colSpan={2} className="px-1 py-2 text-center font-bold text-gray-900 dark:text-gray-100 border-b border-gray-900 dark:border-gray-600">Tahap</th>
                                                         </tr>
                                                         <tr className="divide-x divide-gray-900 dark:divide-gray-600">
@@ -505,19 +508,19 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                                                                     <td className="px-2 py-2"></td>
                                                                     <td className="px-2 py-2 text-center font-medium text-gray-900 dark:text-gray-100">{progCode}</td>
                                                                     <td className="px-2 py-2 font-bold text-gray-900 dark:text-gray-100">{program.uraian}</td>
-                                                                    
+
                                                                     {/* Sebelum */}
                                                                     <td className="px-1 py-2 text-center">-</td>
                                                                     <td className="px-1 py-2 text-center">-</td>
                                                                     <td className="px-1 py-2 text-center">-</td>
                                                                     <td className="px-1 py-2 text-right font-medium">{formatCurrency(program.jumlah_murni || 0)}</td>
-                                                                    
+
                                                                     {/* Sesudah */}
                                                                     <td className="px-1 py-2 text-center">-</td>
                                                                     <td className="px-1 py-2 text-center">-</td>
                                                                     <td className="px-1 py-2 text-center">-</td>
                                                                     <td className="px-1 py-2 text-right font-bold text-gray-900 dark:text-gray-100">{formatCurrency(program.jumlah)}</td>
-                                                                    
+
                                                                     {/* Diff */}
                                                                     <td className="px-1 py-2 text-right">{program.jumlah > (program.jumlah_murni || 0) ? formatCurrency(program.jumlah - (program.jumlah_murni || 0)) : '-'}</td>
                                                                     <td className="px-1 py-2 text-right">{(program.jumlah_murni || 0) > program.jumlah ? formatCurrency((program.jumlah_murni || 0) - program.jumlah) : '-'}</td>
@@ -538,13 +541,13 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                                                                             <td className="px-2 py-2"></td>
                                                                             <td className="px-2 py-2 text-center font-medium text-gray-900 dark:text-gray-100">{subCode}</td>
                                                                             <td className="px-2 py-2 font-bold text-gray-900 dark:text-gray-100">{subProgram.uraian}</td>
-                                                                            
+
                                                                             {/* Sebelum */}
                                                                             <td className="px-1 py-2 text-center">-</td>
                                                                             <td className="px-1 py-2 text-center">-</td>
                                                                             <td className="px-1 py-2 text-center">-</td>
                                                                             <td className="px-1 py-2 text-right font-medium">{formatCurrency(subProgram.jumlah_murni || 0)}</td>
-                                                                            
+
                                                                             {/* Sesudah */}
                                                                             <td className="px-1 py-2 text-center">-</td>
                                                                             <td className="px-1 py-2 text-center">-</td>
@@ -564,27 +567,27 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                                                                         </tr>
 
                                                                         {subProgram.uraian_programs && Object.entries(subProgram.uraian_programs).map(([urCode, urProgram]: [string, any], uIndex) => (
-                                                                             <Fragment key={`ur-fragment-${pIndex}-${sIndex}-${uIndex}`}>
+                                                                            <Fragment key={`ur-fragment-${pIndex}-${sIndex}-${uIndex}`}>
                                                                                 {/* 3. Uraian Program Row (Teal) */}
                                                                                 <tr className="bg-teal-200 dark:bg-teal-900/50 divide-x divide-gray-900 dark:divide-gray-600">
                                                                                     <td className="px-2 py-2 text-center font-medium text-gray-900 dark:text-gray-100">{pIndex + 1}.{sIndex + 1}.{uIndex + 1}</td>
                                                                                     <td className="px-2 py-2"></td>
                                                                                     <td className="px-2 py-2 text-center font-medium text-gray-900 dark:text-gray-100">{urCode}</td>
                                                                                     <td className="px-2 py-2 font-medium text-gray-900 dark:text-gray-100">{urProgram.uraian}</td>
-                                                                                    
+
                                                                                     {/* Sebelum */}
                                                                                     <td className="px-1 py-2 text-center">-</td>
                                                                                     <td className="px-1 py-2 text-center">-</td>
                                                                                     <td className="px-1 py-2 text-center">-</td>
                                                                                     <td className="px-1 py-2 text-right font-medium">{formatCurrency(urProgram.jumlah_murni || 0)}</td>
-                                                                                    
+
                                                                                     {/* Sesudah */}
                                                                                     <td className="px-1 py-2 text-center">-</td>
                                                                                     <td className="px-1 py-2 text-center">-</td>
                                                                                     <td className="px-1 py-2 text-center">-</td>
                                                                                     <td className="px-1 py-2 text-right font-bold text-gray-900 dark:text-gray-100">{formatCurrency(urProgram.jumlah)}</td>
 
-                                                                                     {/* Diff */}
+                                                                                    {/* Diff */}
                                                                                     <td className="px-1 py-2 text-right">{urProgram.jumlah > (urProgram.jumlah_murni || 0) ? formatCurrency(urProgram.jumlah - (urProgram.jumlah_murni || 0)) : '-'}</td>
                                                                                     <td className="px-1 py-2 text-right">{(urProgram.jumlah_murni || 0) > urProgram.jumlah ? formatCurrency((urProgram.jumlah_murni || 0) - urProgram.jumlah) : '-'}</td>
 
@@ -683,11 +686,357 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                                 </div>
                             </div>
                         )}
+                        {activeTab === 'Rka Tahapan V.1' && (
+                            <div className="space-y-8 animate-fade-in-up">
+                                {/* Action Button */}
+                                <div className="flex justify-end mb-4">
+                                    <button
+                                        onClick={() => {
+                                            setPrintTarget('tahapan_v1');
+                                            setShowPrintModal(true);
+                                        }}
+                                        className="bg-indigo-600 text-white hover:bg-indigo-700 px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 shadow-sm transition-colors">
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        </svg>
+                                        Pengaturan Cetak
+                                    </button>
+                                </div>
+
+                                <div className="bg-white dark:bg-gray-800 p-8 border border-gray-200 dark:border-gray-700 shadow-sm rounded-lg print:border-none print:shadow-none">
+                                    {/* Report Header */}
+                                    <div className="text-center mb-8">
+                                        <h2 className="text-lg font-bold uppercase tracking-wider text-gray-900 dark:text-gray-100">KERTAS KERJA RKAS PERUBAHAN PER TAHAP V.1</h2>
+                                        <h3 className="text-md font-medium uppercase text-gray-600 dark:text-gray-400 mt-1">TAHUN ANGGARAN : {anggaran.tahun_anggaran}</h3>
+                                    </div>
+
+                                    {/* School Info */}
+                                    <div className="mb-6 grid grid-cols-[150px_10px_1fr] gap-1 text-sm">
+                                        <div className="text-gray-600 dark:text-gray-400">NPSN</div>
+                                        <div>:</div>
+                                        <div className="font-medium text-gray-900 dark:text-gray-100">{anggaran.sekolah?.npsn || '-'}</div>
+
+                                        <div className="text-gray-600 dark:text-gray-400">Nama Sekolah</div>
+                                        <div>:</div>
+                                        <div className="font-medium text-gray-900 dark:text-gray-100">{anggaran.sekolah?.nama_sekolah || '-'}</div>
+
+                                        <div className="text-gray-600 dark:text-gray-400">Alamat</div>
+                                        <div>:</div>
+                                        <div className="font-medium text-gray-900 dark:text-gray-100">{anggaran.sekolah?.alamat || '-'}</div>
+
+                                        <div className="text-gray-600 dark:text-gray-400">Kabupaten</div>
+                                        <div>:</div>
+                                        <div className="font-medium text-gray-900 dark:text-gray-100">{anggaran.sekolah?.kabupaten_kota || '-'}</div>
+
+                                        <div className="text-gray-600 dark:text-gray-400">Provinsi</div>
+                                        <div>:</div>
+                                        <div className="font-medium text-gray-900 dark:text-gray-100">{anggaran.sekolah?.provinsi || '-'}</div>
+
+                                        <div className="text-gray-600 dark:text-gray-400">Tahap</div>
+                                        <div>:</div>
+                                        <div className="font-medium text-gray-900 dark:text-gray-100">I dan II</div>
+                                    </div>
+
+                                    <div className="space-y-6">
+                                        {/* A. PENERIMAAN */}
+                                        <div>
+                                            <h4 className="text-sm font-bold text-gray-900 dark:text-white uppercase mb-1">A. Penerimaan</h4>
+                                            <div className="text-sm italic mb-1 text-gray-600">Sumber Dana :</div>
+                                            <div className="border border-gray-900 dark:border-gray-600">
+                                                <table className="min-w-full text-sm">
+                                                    <thead className="bg-gray-100 dark:bg-gray-700 border-b border-gray-900 dark:border-gray-600">
+                                                        <tr>
+                                                            <th className="px-4 py-2 text-center font-bold text-gray-900 dark:text-gray-100 border-r border-gray-900 dark:border-gray-600 w-32">No Kode</th>
+                                                            <th className="px-4 py-2 text-center font-bold text-gray-900 dark:text-gray-100 border-r border-gray-900 dark:border-gray-600">Penerimaan</th>
+                                                            <th className="px-4 py-2 text-right font-bold text-gray-900 dark:text-gray-100 w-48">Jumlah</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-gray-900 dark:divide-gray-600 bg-white dark:bg-gray-800">
+                                                        <tr>
+                                                            <td className="px-4 py-2 border-r border-gray-900 dark:border-gray-600 font-medium">4.3.1.01.</td>
+                                                            <td className="px-4 py-2 border-r border-gray-900 dark:border-gray-600">BOS Reguler</td>
+                                                            <td className="px-4 py-2 text-right font-medium">Rp. {formatCurrency(anggaran.pagu_anggaran)}</td>
+                                                        </tr>
+                                                        <tr className="bg-gray-200 dark:bg-gray-700/50 font-bold border-t border-gray-900 dark:border-gray-600">
+                                                            <td colSpan={2} className="px-4 py-2 border-r border-gray-900 dark:border-gray-600">Total Penerimaan</td>
+                                                            <td className="px-4 py-2 text-right">Rp. {formatCurrency(anggaran.pagu_anggaran)}</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+
+                                        {/* B. BELANJA */}
+                                        <div>
+                                            <h4 className="text-sm font-bold text-gray-900 dark:text-white uppercase mb-1">B. Belanja</h4>
+                                            <div className="border border-gray-900 dark:border-gray-600 overflow-x-auto">
+                                                <table className="min-w-full text-sm divide-y divide-gray-900 dark:divide-gray-600">
+                                                    <thead className="bg-gray-100 dark:bg-gray-700 border-b border-gray-900 dark:border-gray-600">
+                                                        <tr className="divide-x divide-gray-900 dark:divide-gray-600">
+                                                            <th rowSpan={3} className="px-1 py-1 text-center font-bold text-gray-900 dark:text-gray-100 w-10">No.</th>
+                                                            <th rowSpan={3} className="px-2 py-1 text-center font-bold text-gray-900 dark:text-gray-100 w-24">Kode Rekening</th>
+                                                            <th rowSpan={3} className="px-1 py-1 text-center font-bold text-gray-900 dark:text-gray-100 w-16">Kode Kegiatan</th>
+                                                            <th rowSpan={3} className="px-2 py-1 text-center font-bold text-gray-900 dark:text-gray-100 pl-40">Uraian</th>
+
+                                                            <th colSpan={5} className="px-1 py-2 text-center font-bold text-gray-900 dark:text-gray-100 border-b border-gray-900 dark:border-gray-600">Rincian Perhitungan Sebelum Perubahan</th>
+                                                            <th rowSpan={3} className="px-2 py-2 text-center font-bold text-gray-900 dark:text-gray-100 w-20">Jumlah</th>
+
+                                                            <th colSpan={5} className="px-1 py-2 text-center font-bold text-gray-900 dark:text-gray-100 border-b border-gray-900 dark:border-gray-600">Rincian Perhitungan Sesudah Perubahan</th>
+                                                            <th rowSpan={3} className="px-2 py-2 text-center font-bold text-gray-900 dark:text-gray-100 w-20">Jumlah</th>
+
+                                                            <th rowSpan={3} className="px-2 py-2 text-center font-bold text-gray-900 dark:text-gray-100 w-20">Bertambah</th>
+                                                            <th rowSpan={3} className="px-2 py-2 text-center font-bold text-gray-900 dark:text-gray-100 w-20">Berkurang</th>
+
+                                                            <th colSpan={2} rowSpan={2} className="px-1 py-2 text-center font-bold text-gray-900 dark:text-gray-100 border-b border-gray-900 dark:border-gray-600">Tahap</th>
+                                                        </tr>
+                                                        <tr className="divide-x divide-gray-900 dark:divide-gray-600">
+                                                            {/* Sebelum */}
+                                                            <th rowSpan={2} className="px-1 py-1 text-center font-bold text-[10px]">Volume</th>
+                                                            <th colSpan={2} className="px-1 py-1 text-center font-bold text-[10px] border-b border-gray-900 dark:border-gray-600">Tahap</th>
+                                                            <th rowSpan={2} className="px-1 py-1 text-center font-bold text-[10px]">Satuan</th>
+                                                            <th rowSpan={2} className="px-1 py-1 text-center font-bold text-[10px]">Tarif Harga</th>
+
+                                                            {/* Sesudah */}
+                                                            <th rowSpan={2} className="px-2 py-1 text-center font-bold text-xs border-b border-gray-900 dark:border-gray-600">Volume</th>
+                                                            <th colSpan={2} className="px-2 py-1 text-center font-bold text-xs border-b border-gray-900 dark:border-gray-600">Tahap</th>
+                                                            <th rowSpan={2} className="px-2 py-1 text-center font-bold text-xs border-b border-gray-900 dark:border-gray-600">Satuan</th>
+                                                            <th rowSpan={2} className="px-2 py-1 text-center font-bold text-xs border-b border-gray-900 dark:border-gray-600">Tarif Harga</th>
+                                                        </tr>
+                                                        <tr className="divide-x divide-gray-900 dark:divide-gray-600">
+                                                            {/* Tahap Sebelum */}
+                                                            <th className="px-2 py-1 text-center font-bold text-xs w-16">T1</th>
+                                                            <th className="px-2 py-1 text-center font-bold text-xs w-16">T2</th>
+
+                                                            {/* Tahap Sesudah */}
+                                                            <th className="px-2 py-1 text-center font-bold text-xs w-16">T1</th>
+                                                            <th className="px-2 py-1 text-center font-bold text-xs w-16">T2</th>
+
+                                                            {/* Tahap Footer */}
+                                                            <th className="px-2 py-1 text-center font-bold text-xs w-16">T1</th>
+                                                            <th className="px-2 py-1 text-center font-bold text-xs w-16">T2</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-gray-900 dark:divide-gray-600">
+                                                        {tahapanData && Object.entries(tahapanData).map(([progCode, program]: [string, any], pIndex) => (
+                                                            <Fragment key={`v1-prog-${pIndex}`}>
+                                                                {/* 1. Program Row (Orange) */}
+                                                                <tr className="bg-orange-200 dark:bg-orange-900/50 divide-x divide-gray-900 dark:divide-gray-600">
+                                                                    <td className="px-2 py-2 text-center font-medium text-gray-900 dark:text-gray-100">{pIndex + 1}</td>
+                                                                    <td className="px-2 py-2"></td>
+                                                                    <td className="px-2 py-2 text-center font-medium text-gray-900 dark:text-gray-100">{progCode}</td>
+                                                                    <td className="px-2 py-2 font-bold text-gray-900 dark:text-gray-100">{program.uraian}</td>
+
+                                                                    {/* Sebelum */}
+                                                                    <td className="px-1 py-2 text-center">-</td>
+                                                                    <td className="px-1 py-2 text-center">-</td>
+                                                                    <td className="px-1 py-2 text-center">-</td>
+                                                                    <td className="px-1 py-2 text-center">-</td>
+                                                                    <td className="px-1 py-2 text-center">-</td>
+                                                                    <td className="px-1 py-2 text-right font-medium">{formatCurrency(program.jumlah_murni || 0)}</td>
+
+                                                                    {/* Sesudah */}
+                                                                    <td className="px-1 py-2 text-center">-</td>
+                                                                    <td className="px-1 py-2 text-center">-</td>
+                                                                    <td className="px-1 py-2 text-center">-</td>
+                                                                    <td className="px-1 py-2 text-center">-</td>
+                                                                    <td className="px-1 py-2 text-center">-</td>
+                                                                    <td className="px-1 py-2 text-right font-bold text-gray-900 dark:text-gray-100">{formatCurrency(program.jumlah)}</td>
+
+                                                                    {/* Diff */}
+                                                                    <td className="px-1 py-2 text-right">{program.jumlah > (program.jumlah_murni || 0) ? formatCurrency(program.jumlah - (program.jumlah_murni || 0)) : '-'}</td>
+                                                                    <td className="px-1 py-2 text-right">{(program.jumlah_murni || 0) > program.jumlah ? formatCurrency((program.jumlah_murni || 0) - program.jumlah) : '-'}</td>
+
+                                                                    {/* Tahap Totals */}
+                                                                    <td className="px-1 py-2 text-right font-medium text-gray-900 dark:text-gray-100">
+                                                                        {formatCurrency(program.tahap1)}
+                                                                    </td>
+                                                                    <td className="px-1 py-2 text-right font-medium text-gray-900 dark:text-gray-100">
+                                                                        {formatCurrency(program.tahap2)}
+                                                                    </td>
+                                                                </tr>
+
+                                                                {program.sub_programs && Object.entries(program.sub_programs).map(([subCode, subProgram]: [string, any], sIndex) => (
+                                                                    <Fragment key={`v1-sub-${pIndex}-${sIndex}`}>
+                                                                        {/* 2. Sub-Program Row (Green) */}
+                                                                        <tr className="bg-green-200 dark:bg-green-900/50 divide-x divide-gray-900 dark:divide-gray-600">
+                                                                            <td className="px-2 py-2 text-center font-medium text-gray-900 dark:text-gray-100">{pIndex + 1}.{sIndex + 1}</td>
+                                                                            <td className="px-2 py-2"></td>
+                                                                            <td className="px-2 py-2 text-center font-medium text-gray-900 dark:text-gray-100">{subCode}</td>
+                                                                            <td className="px-2 py-2 font-bold text-gray-900 dark:text-gray-100">{subProgram.uraian}</td>
+
+                                                                            {/* Sebelum */}
+                                                                            <td className="px-1 py-2 text-center">-</td>
+                                                                            <td className="px-1 py-2 text-center">-</td>
+                                                                            <td className="px-1 py-2 text-center">-</td>
+                                                                            <td className="px-1 py-2 text-center">-</td>
+                                                                            <td className="px-1 py-2 text-center">-</td>
+                                                                            <td className="px-1 py-2 text-right font-medium">{formatCurrency(subProgram.jumlah_murni || 0)}</td>
+
+                                                                            {/* Sesudah */}
+                                                                            <td className="px-1 py-2 text-center">-</td>
+                                                                            <td className="px-1 py-2 text-center">-</td>
+                                                                            <td className="px-1 py-2 text-center">-</td>
+                                                                            <td className="px-1 py-2 text-center">-</td>
+                                                                            <td className="px-1 py-2 text-center">-</td>
+                                                                            <td className="px-1 py-2 text-right font-bold text-gray-900 dark:text-gray-100">{formatCurrency(subProgram.jumlah)}</td>
+
+                                                                            {/* Diff */}
+                                                                            <td className="px-1 py-2 text-right">{subProgram.jumlah > (subProgram.jumlah_murni || 0) ? formatCurrency(subProgram.jumlah - (subProgram.jumlah_murni || 0)) : '-'}</td>
+                                                                            <td className="px-1 py-2 text-right">{(subProgram.jumlah_murni || 0) > subProgram.jumlah ? formatCurrency((subProgram.jumlah_murni || 0) - subProgram.jumlah) : '-'}</td>
+
+                                                                            <td className="px-1 py-2 text-right font-medium text-gray-900 dark:text-gray-100">
+                                                                                {formatCurrency(subProgram.tahap1)}
+                                                                            </td>
+                                                                            <td className="px-1 py-2 text-right font-medium text-gray-900 dark:text-gray-100">
+                                                                                {formatCurrency(subProgram.tahap2)}
+                                                                            </td>
+                                                                        </tr>
+
+                                                                        {subProgram.uraian_programs && Object.entries(subProgram.uraian_programs).map(([urCode, urProgram]: [string, any], uIndex) => (
+                                                                            <Fragment key={`v1-ur-${pIndex}-${sIndex}-${uIndex}`}>
+                                                                                {/* 3. Uraian Program Row (Teal) */}
+                                                                                <tr className="bg-teal-200 dark:bg-teal-900/50 divide-x divide-gray-900 dark:divide-gray-600">
+                                                                                    <td className="px-2 py-2 text-center font-medium text-gray-900 dark:text-gray-100">{pIndex + 1}.{sIndex + 1}.{uIndex + 1}</td>
+                                                                                    <td className="px-2 py-2"></td>
+                                                                                    <td className="px-2 py-2 text-center font-medium text-gray-900 dark:text-gray-100">{urCode}</td>
+                                                                                    <td className="px-2 py-2 font-medium text-gray-900 dark:text-gray-100">{urProgram.uraian}</td>
+
+                                                                                    {/* Sebelum */}
+                                                                                    <td className="px-1 py-2 text-center">-</td>
+                                                                                    <td className="px-1 py-2 text-center">-</td>
+                                                                                    <td className="px-1 py-2 text-center">-</td>
+                                                                                    <td className="px-1 py-2 text-center">-</td>
+                                                                                    <td className="px-1 py-2 text-center">-</td>
+                                                                                    <td className="px-1 py-2 text-right font-medium">{formatCurrency(urProgram.jumlah_murni || 0)}</td>
+
+                                                                                    {/* Sesudah */}
+                                                                                    <td className="px-1 py-2 text-center">-</td>
+                                                                                    <td className="px-1 py-2 text-center">-</td>
+                                                                                    <td className="px-1 py-2 text-center">-</td>
+                                                                                    <td className="px-1 py-2 text-center">-</td>
+                                                                                    <td className="px-1 py-2 text-center">-</td>
+                                                                                    <td className="px-1 py-2 text-right font-bold text-gray-900 dark:text-gray-100">{formatCurrency(urProgram.jumlah)}</td>
+
+                                                                                    {/* Diff */}
+                                                                                    <td className="px-1 py-2 text-right">{urProgram.jumlah > (urProgram.jumlah_murni || 0) ? formatCurrency(urProgram.jumlah - (urProgram.jumlah_murni || 0)) : '-'}</td>
+                                                                                    <td className="px-1 py-2 text-right">{(urProgram.jumlah_murni || 0) > urProgram.jumlah ? formatCurrency((urProgram.jumlah_murni || 0) - urProgram.jumlah) : '-'}</td>
+
+                                                                                    <td className="px-1 py-2 text-right font-medium text-gray-900 dark:text-gray-100">
+                                                                                        {formatCurrency(urProgram.tahap1)}
+                                                                                    </td>
+                                                                                    <td className="px-1 py-2 text-right font-medium text-gray-900 dark:text-gray-100">
+                                                                                        {formatCurrency(urProgram.tahap2)}
+                                                                                    </td>
+                                                                                </tr>
+
+                                                                                {/* 4. Items Rows (White) */}
+                                                                                {urProgram.items && urProgram.items.map((item: any, iIndex: number) => {
+                                                                                    const monthsT1 = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni'];
+                                                                                    const monthsT2 = ['Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
+                                                                                    // Sesudah Volume Calculation
+                                                                                    const volT1 = monthsT1.reduce((acc, month) => acc + (item.bulanan?.[month]?.volume || 0), 0);
+                                                                                    const volT2 = monthsT2.reduce((acc, month) => acc + (item.bulanan?.[month]?.volume || 0), 0);
+                                                                                    const volTotal = volT1 + volT2;
+
+                                                                                    return (
+                                                                                        <tr key={`v1-item-${pIndex}-${sIndex}-${uIndex}-${iIndex}`} className="bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50 divide-x divide-gray-900 dark:divide-gray-600">
+                                                                                            <td className="px-2 py-2 text-center text-gray-600 dark:text-gray-400"></td>
+                                                                                            <td className="px-2 py-2 text-sm text-gray-800 dark:text-gray-200">{item.kode_rekening}</td>
+                                                                                            <td className="px-2 py-2 text-center text-sm text-gray-800 dark:text-gray-200">{item.program_code}</td>
+                                                                                            <td className="px-4 py-2 text-sm text-gray-800 dark:text-gray-200">{item.uraian}</td>
+
+                                                                                            {/* Sebelum */}
+                                                                                            <td className="px-1 py-2 text-center text-sm text-gray-600 dark:text-gray-400">{(item.volume_murni || 0) > 0 ? item.volume_murni : '-'}</td>
+                                                                                            <td className="px-1 py-2 text-center text-sm text-gray-600 dark:text-gray-400">-</td>
+                                                                                            <td className="px-1 py-2 text-center text-sm text-gray-600 dark:text-gray-400">-</td>
+                                                                                            <td className="px-1 py-2 text-center text-sm text-gray-600 dark:text-gray-400">{(item.volume_murni || 0) > 0 ? item.satuan : '-'}</td>
+                                                                                            <td className="px-1 py-2 text-right text-sm text-gray-600 dark:text-gray-400">{(item.volume_murni || 0) > 0 ? formatCurrency(item.tarif) : '-'}</td>
+                                                                                            <td className="px-1 py-2 text-right text-sm text-gray-600 dark:text-gray-400">{(item.jumlah_murni || 0) > 0 ? formatCurrency(item.jumlah_murni) : '-'}</td>
+
+                                                                                            {/* Sesudah */}
+                                                                                            <td className="px-1 py-2 text-center text-sm text-gray-600 dark:text-gray-400">{(volTotal || 0) > 0 ? volTotal : '-'}</td>
+                                                                                            <td className="px-1 py-2 text-center text-sm text-center text-gray-600 dark:text-gray-400">{volT1 > 0 ? volT1 : '-'}</td>
+                                                                                            <td className="px-1 py-2 text-center text-sm text-center text-gray-600 dark:text-gray-400">{volT2 > 0 ? volT2 : '-'}</td>
+                                                                                            <td className="px-1 py-2 text-center text-sm text-gray-600 dark:text-gray-400">{(item.volume || 0) > 0 ? item.satuan : '-'}</td>
+                                                                                            <td className="px-1 py-2 text-right text-sm text-gray-600 dark:text-gray-400">{(item.volume || 0) > 0 ? formatCurrency(item.tarif) : '-'}</td>
+                                                                                            <td className="px-1 py-2 text-right font-medium text-gray-900 dark:text-gray-100">{(item.jumlah || 0) > 0 ? formatCurrency(item.jumlah) : '-'}</td>
+
+                                                                                            {/* Diff */}
+                                                                                            <td className="px-1 py-2 text-right text-sm text-gray-600 dark:text-gray-400">
+                                                                                                {item.jumlah > (item.jumlah_murni || 0) ? formatCurrency(item.jumlah - (item.jumlah_murni || 0)) : '-'}
+                                                                                            </td>
+                                                                                            <td className="px-1 py-2 text-right text-sm text-gray-600 dark:text-gray-400">
+                                                                                                {(item.jumlah_murni || 0) > item.jumlah ? formatCurrency((item.jumlah_murni || 0) - item.jumlah) : '-'}
+                                                                                            </td>
+                                                                                            <td className="px-1 py-2 text-right text-sm text-gray-600 dark:text-gray-400">{item.tahap1 > 0 ? formatCurrency(item.tahap1) : '0'}</td>
+                                                                                            <td className="px-1 py-2 text-right text-sm text-gray-600 dark:text-gray-400">{item.tahap2 > 0 ? formatCurrency(item.tahap2) : '0'}</td>
+                                                                                        </tr>
+                                                                                    );
+                                                                                })}
+                                                                            </Fragment>
+                                                                        ))}
+                                                                    </Fragment>
+                                                                ))}
+                                                            </Fragment>
+                                                        ))}
+                                                        {/* Footer for total */}
+                                                        <tr className="bg-gray-200 dark:bg-gray-700 font-bold border-t-2 border-gray-900 dark:border-gray-500 divide-x divide-gray-900 dark:divide-gray-600">
+                                                            <td colSpan={15} className="px-4 py-2 text-center uppercase">Jumlah Total</td>
+                                                            <td className="px-2 py-2 text-right">
+                                                                {formatCurrency(Object.values(tahapanData || {}).reduce((acc: number, prog: any) => acc + prog.jumlah, 0))}
+                                                            </td>
+                                                            <td className="px-2 py-2 text-right">
+                                                                {formatCurrency(Object.values(tahapanData || {}).reduce((acc: number, prog: any) => acc + (Math.max(0, prog.jumlah - (prog.jumlah_murni || 0))), 0))}
+                                                            </td>
+                                                            <td className="px-2 py-2 text-right">
+                                                                {formatCurrency(Object.values(tahapanData || {}).reduce((acc: number, prog: any) => acc + (Math.max(0, (prog.jumlah_murni || 0) - prog.jumlah)), 0))}
+                                                            </td>
+                                                            <td className="px-2 py-2 text-right">
+                                                                {formatCurrency(Object.values(tahapanData || {}).reduce((acc: number, prog: any) => acc + prog.tahap1, 0))}
+                                                            </td>
+                                                            <td className="px-2 py-2 text-right">
+                                                                {formatCurrency(Object.values(tahapanData || {}).reduce((acc: number, prog: any) => acc + prog.tahap2, 0))}
+                                                            </td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+
+                                        {/* Footer Signatures */}
+                                        <div className="mt-12 flex justify-between text-sm text-gray-900 dark:text-gray-100 px-8">
+                                            <div className="text-center mt-8">
+                                                <p className="mb-20">Komite Sekolah,</p>
+                                                <p className="font-bold underline uppercase">{anggaran.komite || '-'}</p>
+                                            </div>
+
+                                            <div className="text-center">
+                                                <p className="mb-1">Mengetahui,</p>
+                                                <p className="mb-20">Kepala Sekolah,</p>
+                                                <p className="font-bold underline uppercase">{anggaran.kepala_sekolah || '-'}</p>
+                                                <p>NIP. {anggaran.nip_kepala_sekolah || '-'}</p>
+                                            </div>
+
+                                            <div className="text-center">
+                                                <p className="mb-1">Kec. {anggaran.sekolah?.kecamatan || '...'}, {anggaran.tanggal_perubahan ? format(new Date(anggaran.tanggal_perubahan), 'd MMMM yyyy', { locale: id }) : '...'}</p>
+                                                <p className="mb-20">Bendahara,</p>
+                                                <p className="font-bold underline uppercase">{anggaran.bendahara || '-'}</p>
+                                                <p>NIP. {anggaran.nip_bendahara || '-'}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+
 
                         {activeTab === 'Rka Rekap' && (
                             <div className="space-y-8 animate-fade-in-up">
                                 <div className="flex justify-end mb-4">
-                                    <button 
+                                    <button
                                         onClick={() => {
                                             setPrintTarget('rekap');
                                             setShowPrintModal(true);
@@ -706,10 +1055,10 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                                         <h2 className="text-lg">LEMBAR KERTAS KERJA</h2>
                                         <h3 className="text-md">TAHUN ANGGARAN {anggaran.tahun_anggaran}</h3>
                                     </div>
-                                    
+
                                     <div className="mb-6 text-sm font-bold text-gray-900 dark:text-gray-100 uppercase">
                                         <table className="w-full">
-                                             <tbody>
+                                            <tbody>
                                                 <tr>
                                                     <td className="w-48 py-1">Urusan Pemerintahan</td>
                                                     <td className="w-4 py-1">:</td>
@@ -720,7 +1069,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                                                     <td className="py-1">:</td>
                                                     <td className="py-1">{anggaran.sekolah?.nama_sekolah}</td>
                                                 </tr>
-                                             </tbody>
+                                            </tbody>
                                         </table>
                                     </div>
 
@@ -737,16 +1086,16 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-900 dark:divide-gray-600">
-                                                 <tr className="divide-x divide-gray-900 dark:divide-gray-600">
+                                                <tr className="divide-x divide-gray-900 dark:divide-gray-600">
                                                     <td className="px-3 py-2 align-top text-gray-900 dark:text-gray-100">4.3.1.01.</td>
                                                     <td className="px-3 py-2 align-top text-gray-900 dark:text-gray-100">BOS Reguler</td>
                                                     <td className="px-3 py-2 text-right align-top text-gray-900 dark:text-gray-100">{formatCurrency(anggaran.pagu_anggaran)}</td>
-                                                 </tr>
-                                                 <tr className="font-bold border-t-2 border-gray-900 dark:border-gray-500 divide-x divide-gray-900 dark:divide-gray-600">
+                                                </tr>
+                                                <tr className="font-bold border-t-2 border-gray-900 dark:border-gray-500 divide-x divide-gray-900 dark:divide-gray-600">
                                                     <td className="px-3 py-2 text-gray-900 dark:text-gray-100">Total Penerimaan</td>
-                                                     <td className="px-3 py-2 text-gray-900 dark:text-gray-100"></td>
+                                                    <td className="px-3 py-2 text-gray-900 dark:text-gray-100"></td>
                                                     <td className="px-3 py-2 text-right text-gray-900 dark:text-gray-100">{formatCurrency(anggaran.pagu_anggaran)}</td>
-                                                 </tr>
+                                                </tr>
                                             </tbody>
                                         </table>
                                     </div>
@@ -762,12 +1111,12 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                                                     <th className="px-3 py-2 text-center text-gray-900 dark:text-gray-100 w-48 font-bold">Jumlah (Rp)</th>
                                                 </tr>
                                             </thead>
-                                             <tbody className="divide-y divide-gray-900 dark:divide-gray-600">
+                                            <tbody className="divide-y divide-gray-900 dark:divide-gray-600">
                                                 {rekapData && rekapData.map((item: any, idx: number) => (
                                                     <tr key={idx} className={`divide-x divide-gray-900 dark:divide-gray-600 ${item.kode_rekening.length <= 1 || item.uraian.includes('JUMLAH') || item.uraian.includes('DEFISIT') ? 'font-bold' : ''}`}>
-                                                         <td className="px-3 py-2 text-gray-900 dark:text-gray-100">{item.kode_rekening}</td>
-                                                         <td className="px-3 py-2 text-gray-900 dark:text-gray-100 uppercase">{item.uraian}</td>
-                                                         <td className="px-3 py-2 text-right text-gray-900 dark:text-gray-100">{formatCurrency(item.jumlah)}</td>
+                                                        <td className="px-3 py-2 text-gray-900 dark:text-gray-100">{item.kode_rekening}</td>
+                                                        <td className="px-3 py-2 text-gray-900 dark:text-gray-100 uppercase">{item.uraian}</td>
+                                                        <td className="px-3 py-2 text-right text-gray-900 dark:text-gray-100">{formatCurrency(item.jumlah)}</td>
                                                     </tr>
                                                 ))}
                                             </tbody>
@@ -780,10 +1129,10 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                                         <table className="w-full">
                                             <thead className="bg-gray-50 dark:bg-gray-700 border-b border-gray-900 dark:border-gray-600 divide-x divide-gray-900 dark:divide-gray-600">
                                                 <tr>
-                                                   <th rowSpan={2} className="px-3 py-2 text-center border-b border-gray-900 dark:border-gray-600 w-16 font-bold text-gray-900 dark:text-gray-100">No</th>
-                                                   <th rowSpan={2} className="px-3 py-2 text-center border-b border-gray-900 dark:border-gray-600 font-bold text-gray-900 dark:text-gray-100">Uraian</th>
-                                                   <th colSpan={2} className="px-3 py-2 text-center border-b border-gray-900 dark:border-gray-600 font-bold text-gray-900 dark:text-gray-100">Tahap</th>
-                                                   <th rowSpan={2} className="px-3 py-2 text-center border-b border-gray-900 dark:border-gray-600 w-48 font-bold text-gray-900 dark:text-gray-100">Jumlah</th>
+                                                    <th rowSpan={2} className="px-3 py-2 text-center border-b border-gray-900 dark:border-gray-600 w-16 font-bold text-gray-900 dark:text-gray-100">No</th>
+                                                    <th rowSpan={2} className="px-3 py-2 text-center border-b border-gray-900 dark:border-gray-600 font-bold text-gray-900 dark:text-gray-100">Uraian</th>
+                                                    <th colSpan={2} className="px-3 py-2 text-center border-b border-gray-900 dark:border-gray-600 font-bold text-gray-900 dark:text-gray-100">Tahap</th>
+                                                    <th rowSpan={2} className="px-3 py-2 text-center border-b border-gray-900 dark:border-gray-600 w-48 font-bold text-gray-900 dark:text-gray-100">Jumlah</th>
                                                 </tr>
                                                 <tr>
                                                     <th className="px-3 py-2 text-center w-48 font-bold text-gray-900 dark:text-gray-100">I</th>
@@ -804,7 +1153,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                                         </table>
                                     </div>
 
-                                     {/* Footers */}
+                                    {/* Footers */}
                                     <div className="flex justify-end text-sm text-gray-900 dark:text-gray-100 px-4 text-center">
                                         <div>
                                             <p className="mb-1">{anggaran.sekolah?.kecamatan}, {anggaran.tanggal_perubahan ? format(new Date(anggaran.tanggal_perubahan), 'd MMMM yyyy', { locale: id }) : '8 Desember 2025'}</p>
@@ -820,7 +1169,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                         {activeTab === 'Lembar Kerja 221' && (
                             <div className="space-y-8 animate-fade-in-up">
                                 <div className="flex justify-end mb-4">
-                                    <button 
+                                    <button
                                         onClick={() => {
                                             setPrintTarget('lembar');
                                             setShowPrintModal(true);
@@ -943,7 +1292,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                                             <p className="mb-1">{anggaran.sekolah?.kecamatan}, {anggaran.tanggal_perubahan ? format(new Date(anggaran.tanggal_perubahan), 'd MMMM yyyy', { locale: id }) : '8 Desember 2025'}</p>
                                             <p className="mb-20">Kepala Sekolah</p>
                                             <p className="font-bold underline uppercase">{anggaran.kepala_sekolah || '....................'}</p>
-                                            <p className="uppercase">{ anggaran.nip_kepala_sekolah ||'-'}</p>
+                                            <p className="uppercase">{anggaran.nip_kepala_sekolah || '-'}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -969,7 +1318,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                                         {isLoading && <span className="text-sm text-gray-500 animate-pulse">Memuat data...</span>}
                                     </div>
 
-                                    <button 
+                                    <button
                                         onClick={() => {
                                             setPrintTarget('bulanan');
                                             setShowPrintModal(true);
@@ -1070,13 +1419,13 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                                                     </thead>
                                                     <tbody className="divide-y divide-gray-900 dark:divide-gray-600">
                                                         {rkaBulananData && Object.entries(rkaBulananData).map(([progCode, program]: [string, any], pIndex) => {
-                                                            const programMonthTotal = Object.values(program.sub_programs || {}).reduce((subTotal: number, sub: any) => 
-                                                                subTotal + Object.values(sub.uraian_programs || {}).reduce((urTotal: number, ur: any) => 
+                                                            const programMonthTotal = Object.values(program.sub_programs || {}).reduce((subTotal: number, sub: any) =>
+                                                                subTotal + Object.values(sub.uraian_programs || {}).reduce((urTotal: number, ur: any) =>
                                                                     urTotal + (ur.items || []).reduce((itemTotal: number, item: any) => itemTotal + (item.bulanan?.[selectedMonth]?.total || 0), 0)
-                                                                , 0)
-                                                            , 0);
+                                                                    , 0)
+                                                                , 0);
 
-                                                      return (
+                                                            return (
                                                                 <Fragment key={`mon-prog-${pIndex}`}>
                                                                     {/* Program Row */}
                                                                     <tr className="bg-orange-200 dark:bg-orange-900/40 divide-x divide-gray-900 dark:divide-gray-600">
@@ -1092,9 +1441,9 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
 
                                                                     {/* Sub Programs (Kegiatan) */}
                                                                     {program.sub_programs && Object.entries(program.sub_programs).map(([subCode, subProgram]: [string, any], sIndex) => {
-                                                                        const subTotal = Object.values(subProgram.uraian_programs || {}).reduce((urTotal: number, ur: any) => 
-                                                                             urTotal + (ur.items || []).reduce((itemTotal: number, item: any) => itemTotal + (item.bulanan?.[selectedMonth]?.total || 0), 0)
-                                                                        , 0);
+                                                                        const subTotal = Object.values(subProgram.uraian_programs || {}).reduce((urTotal: number, ur: any) =>
+                                                                            urTotal + (ur.items || []).reduce((itemTotal: number, item: any) => itemTotal + (item.bulanan?.[selectedMonth]?.total || 0), 0)
+                                                                            , 0);
 
                                                                         return (
                                                                             <Fragment key={`mon-sub-${pIndex}-${sIndex}`}>
@@ -1111,9 +1460,9 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
 
                                                                                 {/* Uraian Programs (Sub Kegiatan) */}
                                                                                 {subProgram.uraian_programs && Object.entries(subProgram.uraian_programs).map(([urCode, urProgram]: [string, any], uIndex) => {
-                                                                                     const urTotal = (urProgram.items || []).reduce((itemTotal: number, item: any) => itemTotal + (item.bulanan?.[selectedMonth]?.total || 0), 0);
-                                                                                    
-                                                                                     return (
+                                                                                    const urTotal = (urProgram.items || []).reduce((itemTotal: number, item: any) => itemTotal + (item.bulanan?.[selectedMonth]?.total || 0), 0);
+
+                                                                                    return (
                                                                                         <Fragment key={`mon-ur-${pIndex}-${sIndex}-${uIndex}`}>
                                                                                             <tr className="bg-teal-200 dark:bg-teal-900/40 divide-x divide-gray-900 dark:divide-gray-600">
                                                                                                 <td className="px-2 py-2 text-center font-medium text-gray-900 dark:text-gray-100">{pIndex + 1}.{sIndex + 1}.{uIndex + 1}</td>
@@ -1152,7 +1501,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                                                                                                 );
                                                                                             })}
                                                                                         </Fragment>
-                                                                                     )
+                                                                                    )
                                                                                 })}
                                                                             </Fragment>
                                                                         )
@@ -1167,9 +1516,9 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                                                                     acc + Object.values(prog.sub_programs || {}).reduce((sAcc: number, sub: any) =>
                                                                         sAcc + Object.values(sub.uraian_programs || {}).reduce((uAcc: number, ur: any) =>
                                                                             uAcc + (ur.items || []).reduce((iAcc: number, item: any) => iAcc + (item.bulanan?.[selectedMonth]?.total || 0), 0)
+                                                                            , 0)
                                                                         , 0)
-                                                                    , 0)
-                                                                , 0))}
+                                                                    , 0))}
                                                             </td>
                                                         </tr>
                                                     </tbody>
