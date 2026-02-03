@@ -79,7 +79,7 @@ export default function UpdatePasswordForm({
                                 setData('current_password', e.target.value)
                             }
                             type="password"
-                            className="block w-full pl-10"
+                            className="block w-full pl-10 text-black dark:text-black"
                             autoComplete="current-password"
                             placeholder="Kata sandi saat ini"
                         />
@@ -102,7 +102,7 @@ export default function UpdatePasswordForm({
                             value={data.password}
                             onChange={(e) => setData('password', e.target.value)}
                             type="password"
-                            className="block w-full pl-10"
+                            className="block w-full pl-10 text-black dark:text-black"
                             autoComplete="new-password"
                             placeholder="Kata sandi baru"
                         />
@@ -126,7 +126,7 @@ export default function UpdatePasswordForm({
                                 setData('password_confirmation', e.target.value)
                             }
                             type="password"
-                            className="block w-full pl-10"
+                            className="block w-full pl-10 text-black dark:text-black"
                             autoComplete="new-password"
                             placeholder="Ulangi kata sandi baru"
                         />
@@ -138,7 +138,7 @@ export default function UpdatePasswordForm({
                 </div>
 
                 <div className="flex items-center gap-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-                    <PrimaryButton disabled={processing} className="min-w-[120px] justify-center">
+                    <PrimaryButton disabled={processing} className="min-w-[120px] justify-center bg-purple-600 hover:bg-purple-700 dark:bg-purple-500 dark:hover:bg-purple-600">
                         Simpan
                     </PrimaryButton>
 

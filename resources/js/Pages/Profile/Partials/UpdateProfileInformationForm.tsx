@@ -53,7 +53,7 @@ export default function UpdateProfileInformation({
                             </div>
                             <TextInput
                                 id="name"
-                                className="block w-full pl-10"
+                                className="block w-full pl-10 text-black dark:text-black"
                                 value={data.name}
                                 onChange={(e) => setData('name', e.target.value)}
                                 required
@@ -73,7 +73,7 @@ export default function UpdateProfileInformation({
                             </div>
                             <TextInput
                                 id="username"
-                                className="block w-full pl-10"
+                                className="block w-full pl-10 text-black dark:text-black"
                                 value={data.username}
                                 onChange={(e) => setData('username', e.target.value)}
                                 required
@@ -94,7 +94,7 @@ export default function UpdateProfileInformation({
                         <TextInput
                             id="email"
                             type="email"
-                            className="block w-full pl-10"
+                            className="block w-full pl-10 text-black dark:text-black"
                             value={data.email}
                             onChange={(e) => setData('email', e.target.value)}
                             required
@@ -131,7 +131,7 @@ export default function UpdateProfileInformation({
                 )}
 
                 <div className="flex items-center gap-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-                    <PrimaryButton disabled={processing} className="min-w-[120px] justify-center">
+                    <PrimaryButton disabled={processing} className="min-w-[120px] justify-center bg-purple-600 hover:bg-purple-700 dark:bg-purple-500 dark:hover:bg-purple-600">
                         Simpan
                     </PrimaryButton>
 

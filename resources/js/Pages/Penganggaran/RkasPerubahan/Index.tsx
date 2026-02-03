@@ -464,12 +464,12 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                                 Perubahan (Aktif)
                             </button>
 
-                            <button className="text-gray-500 hover:text-gray-700 flex items-center gap-1 text-sm font-medium px-3 py-2">
+                            {/* <button className="text-gray-500 hover:text-gray-700 flex items-center gap-1 text-sm font-medium px-3 py-2">
                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                                 </svg>
                                 Pergeseran
-                            </button>
+                            </button> */}
 
                             {/* Tombol Record / Rekaman Perubahan */}
                             <button
