@@ -50,6 +50,24 @@
                 vertical-align: top;
             }
 
+            /* Excel specific styles */
+            .strict-border {
+                border-collapse: collapse;
+            }
+            .strict-border,
+            .strict-border th,
+            .strict-border td {
+                border: 1px solid #000;
+            }
+            .accounting {
+                mso-number-format: "\#\,\#\#0";
+                text-align: right;
+                white-space: nowrap;
+            }
+            .text-string {
+                mso-number-format: "\@";
+            }
+
             thead th {
                 background-color: #f0f0f0;
             }
@@ -150,23 +168,31 @@
         <div style="margin-bottom: 20px;">
             <div class="font-bold uppercase" style="margin-bottom: 5px;">A. PENERIMAAN</div>
             <div style="margin-bottom: 5px; font-style: italic;">Sumber Dana :</div>
-            <table>
+            <table class="strict-border">
                 <thead>
                     <tr>
-                        <th style="width: 120px;" class="text-center">No Kode</th>
+                        <th style="width: 15%;" class="text-center">No Kode</th>
                         <th class="text-center">Penerimaan</th>
-                        <th style="width: 150px;" class="text-center">Jumlah</th>
+                        <th style="width: 20%;" class="text-center">Jumlah</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr>
-                        <td>4.3.1.01.</td>
+                        <td class="text-center text-string">4.3.1.01.</td>
                         <td>BOS Reguler</td>
-                        <td class="text-right">Rp. {{ number_format($anggaran['pagu_anggaran'], 0, ',', '.') }}</td>
+                        @if ($is_excel ?? false)
+                            <td class="accounting">{{ number_format($anggaran['pagu_anggaran'], 0, '.', ',') }}</td>
+                        @else
+                            <td class="text-right">Rp. {{ number_format($anggaran['pagu_anggaran'], 0, ',', '.') }}</td>
+                        @endif
                     </tr>
                     <tr class="bg-grey font-bold">
                         <td colspan="2" class="text-center">Total Penerimaan</td>
-                        <td class="text-right">Rp. {{ number_format($anggaran['pagu_anggaran'], 0, ',', '.') }}</td>
+                        @if ($is_excel ?? false)
+                            <td class="accounting">{{ number_format($anggaran['pagu_anggaran'], 0, '.', ',') }}</td>
+                        @else
+                            <td class="text-right">Rp. {{ number_format($anggaran['pagu_anggaran'], 0, ',', '.') }}</td>
+                        @endif
                     </tr>
                 </tbody>
             </table>
@@ -175,32 +201,36 @@
         <!-- B. Belanja -->
         <div>
             <div class="font-bold uppercase" style="margin-bottom: 5px;">B. BELANJA</div>
-            <table>
+            <table class="strict-border">
                 <thead>
                     <tr>
-                        <th rowspan="2" class="text-center" style="width: 30px;">No.</th>
-                        <th rowspan="2" class="text-center" style="width: 80px;">Kode Rekening</th>
-                        <th rowspan="2" class="text-center" style="width: 60px;">Kode Prog</th>
-                        <th rowspan="2" class="text-center">Uraian</th>
+                        <th rowspan="3" class="text-center" style="width: 3%; vertical-align: middle;">No.</th>
+                        <th rowspan="3" class="text-center" style="width: 8%; vertical-align: middle;">Kode Rekening</th>
+                        <th rowspan="3" class="text-center" style="width: 6%; vertical-align: middle;">Kode Program</th>
+                        <th rowspan="3" class="text-center" style="vertical-align: middle;">Uraian</th>
                         <th colspan="4" class="text-center">Rincian Perhitungan Sebelum Perubahan</th>
                         <th colspan="4" class="text-center">Rincian Perhitungan Sesudah Perubahan</th>
-                        <th rowspan="2" class="text-center" style="width: 60px;">Bertambah</th>
-                        <th rowspan="2" class="text-center" style="width: 60px;">Berkurang</th>
+                        <th colspan="2" class="text-center">Perubahan</th>
                         <th colspan="2" class="text-center">Tahap</th>
                     </tr>
                     <tr>
-                        <th class="text-center" style="width: 30px;">Vol</th>
-                        <th class="text-center" style="width: 40px;">Sat</th>
-                        <th class="text-center" style="width: 60px;">Tarif</th>
-                        <th class="text-center" style="width: 70px;">Jumlah</th>
+                        <th colspan="4" class="text-center">Sebelum Perubahan</th>
+                        <th colspan="4" class="text-center">Sesudah Perubahan</th>
+                        <th rowspan="2" class="text-center" style="width: 6%; vertical-align: middle;">Bertambah</th>
+                        <th rowspan="2" class="text-center" style="width: 6%; vertical-align: middle;">Berkurang</th>
+                        <th rowspan="2" class="text-center" style="width: 6%; vertical-align: middle;">Tahap 1</th>
+                        <th rowspan="2" class="text-center" style="width: 6%; vertical-align: middle;">Tahap 2</th>
+                    </tr>
+                    <tr>
+                        <th class="text-center" style="width: 3%;">Volume</th>
+                        <th class="text-center" style="width: 4%;">Satuan</th>
+                        <th class="text-center" style="width: 6%;">Tarif</th>
+                        <th class="text-center" style="width: 7%;">Jumlah</th>
 
-                        <th class="text-center" style="width: 30px;">Vol</th>
-                        <th class="text-center" style="width: 40px;">Sat</th>
-                        <th class="text-center" style="width: 60px;">Tarif</th>
-                        <th class="text-center" style="width: 70px;">Jumlah</th>
-
-                        <th class="text-center" style="width: 60px;">1</th>
-                        <th class="text-center" style="width: 60px;">2</th>
+                        <th class="text-center" style="width: 3%;">Volume</th>
+                        <th class="text-center" style="width: 4%;">Satuan</th>
+                        <th class="text-center" style="width: 6%;">Tarif</th>
+                        <th class="text-center" style="width: 7%;">Jumlah</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -208,109 +238,164 @@
                     @foreach ($tahapanData as $programKode => $program)
                         <!-- Program Row -->
                         <tr class="bg-orange">
-                            <td class="text-center font-bold">{{ $no++ }}</td>
+                            <td class="text-center font-bold" style="text-align: center; vertical-align: middle;">{{ $no++ }}</td>
                             <td></td>
-                            <td class="text-center font-bold">{{ $programKode }}</td>
+                            <td class="text-center font-bold text-string" style="text-align: center; vertical-align: middle;">{{ $programKode }}</td>
                             <td class="font-bold">{{ $program['uraian'] }}</td>
                             <!-- Sebelum -->
                             <td class="text-center">-</td>
                             <td class="text-center">-</td>
                             <td class="text-center">-</td>
-                            <td class="text-right font-bold">
-                                {{ number_format($program['jumlah_murni'] ?? 0, 0, ',', '.') }}</td>
+                            @if ($is_excel ?? false)
+                                <td class="accounting font-bold">{{ number_format($program['jumlah_murni'] ?? 0, 0, '.', ',') }}</td>
+                            @else
+                                <td class="text-right font-bold">{{ number_format($program['jumlah_murni'] ?? 0, 0, ',', '.') }}</td>
+                            @endif
                             <!-- Sesudah -->
                             <td class="text-center">-</td>
                             <td class="text-center">-</td>
                             <td class="text-center">-</td>
-                            <td class="text-right font-bold">{{ number_format($program['jumlah'], 0, ',', '.') }}</td>
+                            @if ($is_excel ?? false)
+                                <td class="accounting font-bold">{{ number_format($program['jumlah'], 0, '.', ',') }}</td>
+                            @else
+                                <td class="text-right font-bold">{{ number_format($program['jumlah'], 0, ',', '.') }}</td>
+                            @endif
                             <!-- Diff -->
-                            <td class="text-right font-bold">
-                                {{ $program['jumlah'] > ($program['jumlah_murni'] ?? 0) ? number_format($program['jumlah'] - ($program['jumlah_murni'] ?? 0), 0, ',', '.') : '-' }}
-                            </td>
-                            <td class="text-right font-bold">
-                                {{ ($program['jumlah_murni'] ?? 0) > $program['jumlah'] ? number_format(($program['jumlah_murni'] ?? 0) - $program['jumlah'], 0, ',', '.') : '-' }}
-                            </td>
-
-                            <td class="text-right font-bold">{{ number_format($program['tahap1'], 0, ',', '.') }}</td>
-                            <td class="text-right font-bold">{{ number_format($program['tahap2'], 0, ',', '.') }}</td>
+                            @if ($is_excel ?? false)
+                                <td class="accounting font-bold">
+                                    {{ $program['jumlah'] > ($program['jumlah_murni'] ?? 0) ? number_format($program['jumlah'] - ($program['jumlah_murni'] ?? 0), 0, '.', ',') : '-' }}
+                                </td>
+                                <td class="accounting font-bold">
+                                    {{ ($program['jumlah_murni'] ?? 0) > $program['jumlah'] ? number_format(($program['jumlah_murni'] ?? 0) - $program['jumlah'], 0, '.', ',') : '-' }}
+                                </td>
+                                <td class="accounting font-bold">{{ number_format($program['tahap1'], 0, '.', ',') }}</td>
+                                <td class="accounting font-bold">{{ number_format($program['tahap2'], 0, '.', ',') }}</td>
+                            @else
+                                <td class="text-right font-bold">
+                                    {{ $program['jumlah'] > ($program['jumlah_murni'] ?? 0) ? number_format($program['jumlah'] - ($program['jumlah_murni'] ?? 0), 0, ',', '.') : '-' }}
+                                </td>
+                                <td class="text-right font-bold">
+                                    {{ ($program['jumlah_murni'] ?? 0) > $program['jumlah'] ? number_format(($program['jumlah_murni'] ?? 0) - $program['jumlah'], 0, ',', '.') : '-' }}
+                                </td>
+                                <td class="text-right font-bold">{{ number_format($program['tahap1'], 0, ',', '.') }}</td>
+                                <td class="text-right font-bold">{{ number_format($program['tahap2'], 0, ',', '.') }}</td>
+                            @endif
                         </tr>
 
                         <!-- SubPrograms (Kegiatan) -->
                         @if (!empty($program['sub_programs']))
                             @foreach ($program['sub_programs'] as $subProgramKode => $subProgram)
                                 <tr class="bg-green">
-                                    <td class="text-center font-bold">{{ $no++ }}</td>
+                                    <td class="text-center font-bold" style="text-align: center; vertical-align: middle;">{{ $no++ }}</td>
                                     <td></td>
-                                    <td class="text-center font-bold">{{ $subProgramKode }}</td>
+                                    <td class="text-center font-bold text-string" style="text-align: center; vertical-align: middle;">{{ $subProgramKode }}</td>
                                     <td class="font-bold">{{ $subProgram['uraian'] }}</td>
                                     <!-- Sebelum -->
                                     <td class="text-center">-</td>
                                     <td class="text-center">-</td>
                                     <td class="text-center">-</td>
-                                    <td class="text-right font-bold">
-                                        {{ number_format($subProgram['jumlah_murni'] ?? 0, 0, ',', '.') }}</td>
+                                    @if ($is_excel ?? false)
+                                        <td class="accounting font-bold">{{ number_format($subProgram['jumlah_murni'] ?? 0, 0, '.', ',') }}</td>
+                                    @else
+                                        <td class="text-right font-bold">{{ number_format($subProgram['jumlah_murni'] ?? 0, 0, ',', '.') }}</td>
+                                    @endif
                                     <!-- Sesudah -->
                                     <td class="text-center">-</td>
                                     <td class="text-center">-</td>
                                     <td class="text-center">-</td>
-                                    <td class="text-right font-bold">
-                                        {{ number_format($subProgram['jumlah'], 0, ',', '.') }}</td>
+                                    @if ($is_excel ?? false)
+                                        <td class="accounting font-bold">{{ number_format($subProgram['jumlah'], 0, '.', ',') }}</td>
+                                    @else
+                                        <td class="text-right font-bold">{{ number_format($subProgram['jumlah'], 0, ',', '.') }}</td>
+                                    @endif
                                     <!-- Diff -->
-                                    <td class="text-right font-bold">
-                                        {{ $subProgram['jumlah'] > ($subProgram['jumlah_murni'] ?? 0) ? number_format($subProgram['jumlah'] - ($subProgram['jumlah_murni'] ?? 0), 0, ',', '.') : '-' }}
-                                    </td>
-                                    <td class="text-right font-bold">
-                                        {{ ($subProgram['jumlah_murni'] ?? 0) > $subProgram['jumlah'] ? number_format(($subProgram['jumlah_murni'] ?? 0) - $subProgram['jumlah'], 0, ',', '.') : '-' }}
-                                    </td>
-
-                                    <td class="text-right font-bold">
-                                        {{ number_format($subProgram['tahap1'], 0, ',', '.') }}</td>
-                                    <td class="text-right font-bold">
-                                        {{ number_format($subProgram['tahap2'], 0, ',', '.') }}</td>
+                                    @if ($is_excel ?? false)
+                                        <td class="accounting font-bold">
+                                            {{ $subProgram['jumlah'] > ($subProgram['jumlah_murni'] ?? 0) ? number_format($subProgram['jumlah'] - ($subProgram['jumlah_murni'] ?? 0), 0, '.', ',') : '-' }}
+                                        </td>
+                                        <td class="accounting font-bold">
+                                            {{ ($subProgram['jumlah_murni'] ?? 0) > $subProgram['jumlah'] ? number_format(($subProgram['jumlah_murni'] ?? 0) - $subProgram['jumlah'], 0, '.', ',') : '-' }}
+                                        </td>
+                                        <td class="accounting font-bold">
+                                            {{ number_format($subProgram['tahap1'], 0, '.', ',') }}</td>
+                                        <td class="accounting font-bold">
+                                            {{ number_format($subProgram['tahap2'], 0, '.', ',') }}</td>
+                                    @else
+                                        <td class="text-right font-bold">
+                                            {{ $subProgram['jumlah'] > ($subProgram['jumlah_murni'] ?? 0) ? number_format($subProgram['jumlah'] - ($subProgram['jumlah_murni'] ?? 0), 0, ',', '.') : '-' }}
+                                        </td>
+                                        <td class="text-right font-bold">
+                                            {{ ($subProgram['jumlah_murni'] ?? 0) > $subProgram['jumlah'] ? number_format(($subProgram['jumlah_murni'] ?? 0) - $subProgram['jumlah'], 0, ',', '.') : '-' }}
+                                        </td>
+                                        <td class="text-right font-bold">
+                                            {{ number_format($subProgram['tahap1'], 0, ',', '.') }}</td>
+                                        <td class="text-right font-bold">
+                                            {{ number_format($subProgram['tahap2'], 0, ',', '.') }}</td>
+                                    @endif
                                 </tr>
 
                                 <!-- UraianPrograms (Sub Kegiatan) -->
                                 @if (!empty($subProgram['uraian_programs']))
                                     @foreach ($subProgram['uraian_programs'] as $uraianKode => $uraianProgram)
                                         <tr class="bg-teal">
-                                            <td class="text-center font-bold">{{ $no++ }}</td>
+                                            <td class="text-center font-bold" style="text-align: center; vertical-align: middle;">{{ $no++ }}</td>
                                             <td></td>
-                                            <td class="text-center font-bold">{{ $uraianKode }}</td>
+                                            <td class="text-center font-bold text-string" style="text-align: center; vertical-align: middle;">{{ $uraianKode }}</td>
                                             <td class="font-bold">{{ $uraianProgram['uraian'] }}</td>
                                             <!-- Sebelum -->
                                             <td class="text-center">-</td>
                                             <td class="text-center">-</td>
                                             <td class="text-center">-</td>
-                                            <td class="text-right font-bold">
-                                                {{ number_format($uraianProgram['jumlah_murni'] ?? 0, 0, ',', '.') }}
-                                            </td>
+                                            @if ($is_excel ?? false)
+                                                <td class="accounting font-bold">{{ number_format($uraianProgram['jumlah_murni'] ?? 0, 0, '.', ',') }}</td>
+                                            @else
+                                                <td class="text-right font-bold">
+                                                    {{ number_format($uraianProgram['jumlah_murni'] ?? 0, 0, ',', '.') }}
+                                                </td>
+                                            @endif
                                             <!-- Sesudah -->
                                             <td class="text-center">-</td>
                                             <td class="text-center">-</td>
                                             <td class="text-center">-</td>
-                                            <td class="text-right font-bold">
-                                                {{ number_format($uraianProgram['jumlah'], 0, ',', '.') }}</td>
+                                            @if ($is_excel ?? false)
+                                                <td class="accounting font-bold">{{ number_format($uraianProgram['jumlah'], 0, '.', ',') }}</td>
+                                            @else
+                                                <td class="text-right font-bold">
+                                                    {{ number_format($uraianProgram['jumlah'], 0, ',', '.') }}</td>
+                                            @endif
                                             <!-- Diff -->
-                                            <td class="text-right font-bold">
-                                                {{ $uraianProgram['jumlah'] > ($uraianProgram['jumlah_murni'] ?? 0) ? number_format($uraianProgram['jumlah'] - ($uraianProgram['jumlah_murni'] ?? 0), 0, ',', '.') : '-' }}
-                                            </td>
-                                            <td class="text-right font-bold">
-                                                {{ ($uraianProgram['jumlah_murni'] ?? 0) > $uraianProgram['jumlah'] ? number_format(($uraianProgram['jumlah_murni'] ?? 0) - $uraianProgram['jumlah'], 0, ',', '.') : '-' }}
-                                            </td>
-
-                                            <td class="text-right font-bold">
-                                                {{ number_format($uraianProgram['tahap1'], 0, ',', '.') }}</td>
-                                            <td class="text-right font-bold">
-                                                {{ number_format($uraianProgram['tahap2'], 0, ',', '.') }}</td>
+                                            @if ($is_excel ?? false)
+                                                <td class="accounting font-bold">
+                                                    {{ $uraianProgram['jumlah'] > ($uraianProgram['jumlah_murni'] ?? 0) ? number_format($uraianProgram['jumlah'] - ($uraianProgram['jumlah_murni'] ?? 0), 0, '.', ',') : '-' }}
+                                                </td>
+                                                <td class="accounting font-bold">
+                                                    {{ ($uraianProgram['jumlah_murni'] ?? 0) > $uraianProgram['jumlah'] ? number_format(($uraianProgram['jumlah_murni'] ?? 0) - $uraianProgram['jumlah'], 0, '.', ',') : '-' }}
+                                                </td>
+                                                <td class="accounting font-bold">
+                                                    {{ number_format($uraianProgram['tahap1'], 0, '.', ',') }}</td>
+                                                <td class="accounting font-bold">
+                                                    {{ number_format($uraianProgram['tahap2'], 0, '.', ',') }}</td>
+                                            @else
+                                                <td class="text-right font-bold">
+                                                    {{ $uraianProgram['jumlah'] > ($uraianProgram['jumlah_murni'] ?? 0) ? number_format($uraianProgram['jumlah'] - ($uraianProgram['jumlah_murni'] ?? 0), 0, ',', '.') : '-' }}
+                                                </td>
+                                                <td class="text-right font-bold">
+                                                    {{ ($uraianProgram['jumlah_murni'] ?? 0) > $uraianProgram['jumlah'] ? number_format(($uraianProgram['jumlah_murni'] ?? 0) - $uraianProgram['jumlah'], 0, ',', '.') : '-' }}
+                                                </td>
+                                                <td class="text-right font-bold">
+                                                    {{ number_format($uraianProgram['tahap1'], 0, ',', '.') }}</td>
+                                                <td class="text-right font-bold">
+                                                    {{ number_format($uraianProgram['tahap2'], 0, ',', '.') }}</td>
+                                            @endif
                                         </tr>
 
                                         <!-- Items -->
                                         @if (!empty($uraianProgram['items']))
                                             @foreach ($uraianProgram['items'] as $item)
                                                 <tr>
-                                                    <td class="text-center">{{ $no++ }}</td>
-                                                    <td class="text-center">{{ $item['kode_rekening'] }}</td>
-                                                    <td class="text-center">{{ $item['program_code'] ?? '-' }}</td>
+                                                    <td class="text-center" style="text-align: center; vertical-align: middle;">{{ $no++ }}</td>
+                                                    <td class="text-center text-string" style="text-align: center; vertical-align: middle;">{{ $item['kode_rekening'] }}</td>
+                                                    <td class="text-center text-string" style="text-align: center; vertical-align: middle;">{{ $item['program_code'] ?? '-' }}</td>
                                                     <td>{{ $item['uraian'] }}</td>
 
                                                     <!-- Sebelum -->
@@ -320,39 +405,71 @@
                                                     <td class="text-center">
                                                         {{ ($item['volume_murni'] ?? 0) > 0 ? $item['satuan'] : '-' }}
                                                     </td>
-                                                    <td class="text-right">
-                                                        {{ ($item['volume_murni'] ?? 0) > 0 ? number_format($item['tarif'], 0, ',', '.') : '-' }}
-                                                    </td>
-                                                    <td class="text-right">
-                                                        {{ ($item['jumlah_murni'] ?? 0) > 0 ? number_format($item['jumlah_murni'] ?? 0, 0, ',', '.') : '-' }}
-                                                    </td>
+                                                    @if ($is_excel ?? false)
+                                                        <td class="accounting">
+                                                            {{ ($item['volume_murni'] ?? 0) > 0 ? number_format($item['tarif'], 0, '.', ',') : '-' }}
+                                                        </td>
+                                                        <td class="accounting">
+                                                            {{ ($item['jumlah_murni'] ?? 0) > 0 ? number_format($item['jumlah_murni'] ?? 0, 0, '.', ',') : '-' }}
+                                                        </td>
+                                                    @else
+                                                        <td class="text-right">
+                                                            {{ ($item['volume_murni'] ?? 0) > 0 ? number_format($item['tarif'], 0, ',', '.') : '-' }}
+                                                        </td>
+                                                        <td class="text-right">
+                                                            {{ ($item['jumlah_murni'] ?? 0) > 0 ? number_format($item['jumlah_murni'] ?? 0, 0, ',', '.') : '-' }}
+                                                        </td>
+                                                    @endif
 
                                                     <!-- Sesudah -->
                                                     <td class="text-center">
                                                         {{ ($item['volume'] ?? 0) > 0 ? $item['volume'] : '-' }}</td>
                                                     <td class="text-center">
                                                         {{ ($item['volume'] ?? 0) > 0 ? $item['satuan'] : '-' }}</td>
-                                                    <td class="text-right">
-                                                        {{ ($item['volume'] ?? 0) > 0 ? number_format($item['tarif'], 0, ',', '.') : '-' }}
-                                                    </td>
-                                                    <td class="text-right font-bold">
-                                                        {{ ($item['jumlah'] ?? 0) > 0 ? number_format($item['jumlah'], 0, ',', '.') : '-' }}
-                                                    </td>
+                                                    @if ($is_excel ?? false)
+                                                        <td class="accounting">
+                                                            {{ ($item['volume'] ?? 0) > 0 ? number_format($item['tarif'], 0, '.', ',') : '-' }}
+                                                        </td>
+                                                        <td class="accounting font-bold">
+                                                            {{ ($item['jumlah'] ?? 0) > 0 ? number_format($item['jumlah'], 0, '.', ',') : '-' }}
+                                                        </td>
+                                                    @else
+                                                        <td class="text-right">
+                                                            {{ ($item['volume'] ?? 0) > 0 ? number_format($item['tarif'], 0, ',', '.') : '-' }}
+                                                        </td>
+                                                        <td class="text-right font-bold">
+                                                            {{ ($item['jumlah'] ?? 0) > 0 ? number_format($item['jumlah'], 0, ',', '.') : '-' }}
+                                                        </td>
+                                                    @endif
 
                                                     <!-- Diff -->
-                                                    <td class="text-right font-bold">
-                                                        {{ $item['jumlah'] > ($item['jumlah_murni'] ?? 0) ? number_format($item['jumlah'] - ($item['jumlah_murni'] ?? 0), 0, ',', '.') : '-' }}
-                                                    </td>
-                                                    <td class="text-right font-bold">
-                                                        {{ ($item['jumlah_murni'] ?? 0) > $item['jumlah'] ? number_format(($item['jumlah_murni'] ?? 0) - $item['jumlah'], 0, ',', '.') : '-' }}
-                                                    </td>
-
-                                                    <td class="text-right">
-                                                        {{ $item['tahap1'] > 0 ? number_format($item['tahap1'], 0, ',', '.') : '0' }}
-                                                    </td>
-                                                    <td class="text-right">
-                                                        {{ $item['tahap2'] > 0 ? number_format($item['tahap2'], 0, ',', '.') : '0' }}
-                                                    </td>
+                                                    @if ($is_excel ?? false)
+                                                        <td class="accounting font-bold">
+                                                            {{ $item['jumlah'] > ($item['jumlah_murni'] ?? 0) ? number_format($item['jumlah'] - ($item['jumlah_murni'] ?? 0), 0, '.', ',') : '0' }}
+                                                        </td>
+                                                        <td class="accounting font-bold">
+                                                            {{ ($item['jumlah_murni'] ?? 0) > $item['jumlah'] ? number_format(($item['jumlah_murni'] ?? 0) - $item['jumlah'], 0, '.', ',') : '0' }}
+                                                        </td>
+                                                        <td class="accounting">
+                                                            {{ $item['tahap1'] > 0 ? number_format($item['tahap1'], 0, '.', ',') : '0' }}
+                                                        </td>
+                                                        <td class="accounting">
+                                                            {{ $item['tahap2'] > 0 ? number_format($item['tahap2'], 0, '.', ',') : '0' }}
+                                                        </td>
+                                                    @else
+                                                        <td class="text-right font-bold">
+                                                            {{ $item['jumlah'] > ($item['jumlah_murni'] ?? 0) ? number_format($item['jumlah'] - ($item['jumlah_murni'] ?? 0), 0, ',', '.') : '0' }}
+                                                        </td>
+                                                        <td class="text-right font-bold">
+                                                            {{ ($item['jumlah_murni'] ?? 0) > $item['jumlah'] ? number_format(($item['jumlah_murni'] ?? 0) - $item['jumlah'], 0, ',', '.') : '0' }}
+                                                        </td>
+                                                        <td class="text-right">
+                                                            {{ $item['tahap1'] > 0 ? number_format($item['tahap1'], 0, ',', '.') : '0' }}
+                                                        </td>
+                                                        <td class="text-right">
+                                                            {{ $item['tahap2'] > 0 ? number_format($item['tahap2'], 0, ',', '.') : '0' }}
+                                                        </td>
+                                                    @endif
                                                 </tr>
                                             @endforeach
                                         @endif
@@ -364,65 +481,76 @@
 
                     <!-- Grand Total -->
                     <tr class="bg-grey font-bold" style="border-top: 2px solid black;">
-                        <td colspan="11" class="text-center uppercase">Jumlah Total</td>
-                        <td class="text-right">
-                            @php
-                                $totalSesudah = 0;
-                                $totalBertambah = 0;
-                                $totalBerkurang = 0;
-                                $totalTahap1 = 0;
-                                $totalTahap2 = 0;
+                        <td colspan="7" class="text-center uppercase" style="vertical-align: middle;">Jumlah Total</td>
+                        @php
+                            $totalSebelum = 0;
+                            $totalSesudah = 0;
+                            $totalBertambah = 0;
+                            $totalBerkurang = 0;
+                            $totalTahap1 = 0;
+                            $totalTahap2 = 0;
 
-                                foreach ($tahapanData as $prog) {
-                                    $totalSesudah += $prog['jumlah'];
-                                    $totalBertambah += max(0, $prog['jumlah'] - ($prog['jumlah_murni'] ?? 0));
-                                    $totalBerkurang += max(0, ($prog['jumlah_murni'] ?? 0) - $prog['jumlah']);
-                                    $totalTahap1 += $prog['tahap1'];
-                                    $totalTahap2 += $prog['tahap2'];
-                                }
-                            @endphp
-                            {{ number_format($totalSesudah, 0, ',', '.') }}
-                        </td>
-                        <td class="text-right">{{ number_format($totalBertambah, 0, ',', '.') }}</td>
-                        <td class="text-right">{{ number_format($totalBerkurang, 0, ',', '.') }}</td>
-
-                        <td class="text-right">{{ number_format($totalTahap1, 0, ',', '.') }}</td>
-                        <td class="text-right">{{ number_format($totalTahap2, 0, ',', '.') }}</td>
+                            foreach ($tahapanData as $prog) {
+                                $totalSebelum += $prog['jumlah_murni'] ?? 0;
+                                $totalSesudah += $prog['jumlah'];
+                                $totalBertambah += max(0, $prog['jumlah'] - ($prog['jumlah_murni'] ?? 0));
+                                $totalBerkurang += max(0, ($prog['jumlah_murni'] ?? 0) - $prog['jumlah']);
+                                $totalTahap1 += $prog['tahap1'];
+                                $totalTahap2 += $prog['tahap2'];
+                            }
+                        @endphp
+                        @if ($is_excel ?? false)
+                            <td class="accounting">{{ number_format($totalSebelum, 0, '.', ',') }}</td>
+                            <td colspan="3"></td>
+                            <td class="accounting">{{ number_format($totalSesudah, 0, '.', ',') }}</td>
+                            <td class="accounting">{{ number_format($totalBertambah, 0, '.', ',') }}</td>
+                            <td class="accounting">{{ number_format($totalBerkurang, 0, '.', ',') }}</td>
+                            <td class="accounting">{{ number_format($totalTahap1, 0, '.', ',') }}</td>
+                            <td class="accounting">{{ number_format($totalTahap2, 0, '.', ',') }}</td>
+                        @else
+                            <td class="text-right">{{ number_format($totalSebelum, 0, ',', '.') }}</td>
+                            <td colspan="3"></td>
+                            <td class="text-right">{{ number_format($totalSesudah, 0, ',', '.') }}</td>
+                            <td class="text-right">{{ number_format($totalBertambah, 0, ',', '.') }}</td>
+                            <td class="text-right">{{ number_format($totalBerkurang, 0, ',', '.') }}</td>
+                            <td class="text-right">{{ number_format($totalTahap1, 0, ',', '.') }}</td>
+                            <td class="text-right">{{ number_format($totalTahap2, 0, ',', '.') }}</td>
+                        @endif
                     </tr>
                 </tbody>
             </table>
         </div>
 
         <!-- Signatures -->
-        <div class="signature-section">
-            <div class="signature-box">
-                <p>Mengetahui,</p>
-                <p>Komite Sekolah,</p>
-                <div class="signature-space"></div>
-                <p class="font-bold" style="text-decoration: underline;">
-                    {{ $anggaran['komite'] ?? '....................' }}</p>
-            </div>
-
-            <div class="signature-box">
-                <p>Mengetahui,</p>
-                <p>Kepala Sekolah,</p>
-                <div class="signature-space"></div>
-                <p class="font-bold" style="text-decoration: underline;">
-                    {{ $anggaran['kepala_sekolah'] ?? '....................' }}</p>
-                <p>NIP. {{ $anggaran['nip_kepala_sekolah'] ?? '-' }}</p>
-            </div>
-
-            <div class="signature-box">
-                <p>Kec. {{ $anggaran['sekolah']['kecamatan'] ?? '...' }},
-                    {{ isset($anggaran['tanggal_perubahan']) ? \Carbon\Carbon::parse($anggaran['tanggal_perubahan'])->locale('id')->translatedFormat('d F Y') : '....................' }}
-                </p>
-                <p>Bendahara,</p>
-                <div class="signature-space"></div>
-                <p class="font-bold" style="text-decoration: underline;">
-                    {{ $anggaran['bendahara'] ?? '....................' }}</p>
-                <p>NIP. {{ $anggaran['nip_bendahara'] ?? '-' }}</p>
-            </div>
-        </div>
+        <table class="no-border_table" style="width: 100%; margin-top: 30px; page-break-inside: avoid;">
+            <tr>
+                <td style="width: 33%; text-align: center; vertical-align: top;">
+                    <p>Mengetahui,</p>
+                    <p>Komite Sekolah,</p>
+                    <div class="signature-space"></div>
+                    <p class="font-bold" style="text-decoration: underline;">
+                        {{ $anggaran['komite'] ?? '....................' }}</p>
+                </td>
+                <td style="width: 33%; text-align: center; vertical-align: top;">
+                    <p>Mengetahui,</p>
+                    <p>Kepala Sekolah,</p>
+                    <div class="signature-space"></div>
+                    <p class="font-bold" style="text-decoration: underline;">
+                        {{ $anggaran['kepala_sekolah'] ?? '....................' }}</p>
+                    <p>NIP. {{ $anggaran['nip_kepala_sekolah'] ?? '-' }}</p>
+                </td>
+                <td style="width: 33%; text-align: center; vertical-align: top;">
+                    <p>Kec. {{ $anggaran['sekolah']['kecamatan'] ?? '...' }},
+                        {{ isset($anggaran['tanggal_perubahan']) ? \Carbon\Carbon::parse($anggaran['tanggal_perubahan'])->locale('id')->translatedFormat('d F Y') : '....................' }}
+                    </p>
+                    <p>Bendahara,</p>
+                    <div class="signature-space"></div>
+                    <p class="font-bold" style="text-decoration: underline;">
+                        {{ $anggaran['bendahara'] ?? '....................' }}</p>
+                    <p>NIP. {{ $anggaran['nip_bendahara'] ?? '-' }}</p>
+                </td>
+            </tr>
+        </table>
 
     </body>
 

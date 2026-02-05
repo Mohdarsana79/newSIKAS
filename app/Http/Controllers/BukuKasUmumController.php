@@ -20,6 +20,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Services\BukuKasService;
 use Inertia\Inertia;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\BkpUmumExport;
 
 class BukuKasUmumController extends Controller
 {
@@ -2011,6 +2013,71 @@ class BukuKasUmumController extends Controller
         }
     }
 
+    /**
+     * Generate Excel BKP Umum
+     */
+    public function generateBkpUmumExcelAction(Request $request, $tahun, $bulan)
+    {
+        try {
+            Carbon::setLocale('id');
+
+            // List of months to process
+            $monthsToProcess = [];
+            
+            if ($bulan === 'Tahap 1') {
+                $monthsToProcess = ['januari', 'februari', 'maret', 'april', 'mei', 'juni'];
+            } elseif ($bulan === 'Tahap 2') {
+                $monthsToProcess = ['juli', 'agustus', 'september', 'oktober', 'november', 'desember'];
+            } elseif ($bulan === 'Tahunan') {
+                $monthsToProcess = [
+                    'januari', 'februari', 'maret', 'april', 'mei', 'juni',
+                    'juli', 'agustus', 'september', 'oktober', 'november', 'desember'
+                ];
+            } else {
+                $monthsToProcess = [$bulan];
+            }
+
+            $reportData = [];
+
+            foreach ($monthsToProcess as $m) {
+                $data = $this->dataBkpUmumInternal($tahun, $m);
+                
+                if ($data) {
+                    $bulanAngka = $this->convertBulanToNumber($m);
+                    $bulanAngkaStr = str_pad($bulanAngka, 2, '0', STR_PAD_LEFT);
+                    
+                     // Format dates for footer
+                    $akhirBulanDate = Carbon::create($tahun, $bulanAngka, 1)->endOfMonth();
+                    $formatAkhirBulanLengkapHari = $akhirBulanDate->locale('id')->translatedFormat('l, j F Y');
+                    $formatTanggalAkhirBulanLengkap = $akhirBulanDate->locale('id')->translatedFormat('j F Y');
+
+                    $reportData[] = [
+                        'tahun' => $tahun,
+                        'bulan' => $m,
+                        'bulanAngkaStr' => $bulanAngkaStr,
+                        'items' => $data['items'],
+                        'data' => $data['data'],
+                        'sekolah' => $data['sekolah'],
+                        'kepala_sekolah' => $data['kepala_sekolah'],
+                        'bendahara' => $data['bendahara'],
+                        'formatAkhirBulanLengkapHari' => $formatAkhirBulanLengkapHari,
+                        'formatTanggalAkhirBulanLengkap' => $formatTanggalAkhirBulanLengkap,
+                    ];
+                }
+            }
+
+            if (empty($reportData)) {
+                return response('Data tidak ditemukan', 404);
+            }
+
+            return Excel::download(new BkpUmumExport($reportData), "BKP_Umum_{$bulan}_{$tahun}.xlsx");
+
+        } catch (\Exception $e) {
+            Log::error('Error generating BKP Umum Excel: ' . $e->getMessage());
+            return response('Gagal generate Excel: ' . $e->getMessage(), 500);
+        }
+    }
+
     private function dataBkpUmumInternal($tahun, $bulan)
     {
         $penganggaran = Penganggaran::where('tahun_anggaran', $tahun)->first();
@@ -2278,16 +2345,22 @@ class BukuKasUmumController extends Controller
 
         if ($penganggaran) {
              return response()->json([
-                'is_trk_saldo_awal' => $penganggaran->is_trk_saldo_awal,
-                'tanggal_trk_saldo_awal' => $penganggaran->tanggal_trk_saldo_awal,
-                'jumlah_trk_saldo_awal' => $penganggaran->jumlah_trk_saldo_awal,
+                'success' => true,
+                'data' => [
+                    'is_trk_saldo_awal' => (bool)$penganggaran->is_trk_saldo_awal,
+                    'tanggal_trk_saldo_awal' => $penganggaran->tanggal_trk_saldo_awal,
+                    'jumlah_trk_saldo_awal' => $penganggaran->jumlah_trk_saldo_awal,
+                ]
             ]);
         }
     
         return response()->json([
-            'is_trk_saldo_awal' => false,
-            'tanggal_trk_saldo_awal' => null,
-            'jumlah_trk_saldo_awal' => 0,
+            'success' => true,
+            'data' => [
+                'is_trk_saldo_awal' => false,
+                'tanggal_trk_saldo_awal' => null,
+                'jumlah_trk_saldo_awal' => 0,
+            ]
         ]);
     }
 

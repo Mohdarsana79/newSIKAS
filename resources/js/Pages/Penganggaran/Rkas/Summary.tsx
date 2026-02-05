@@ -366,7 +366,17 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                         {activeTab === 'Rka Tahapan' && (
                             <div className="space-y-8 animate-fade-in-up">
                                 {/* Action Button */}
-                                <div className="flex justify-end mb-4">
+                                <div className="flex justify-end mb-4 gap-2">
+                                    <a
+                                        href={route('rkas.export-tahapan-excel', anggaran.id)}
+                                        target="_blank"
+                                        className="bg-green-600 text-white hover:bg-green-700 px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 shadow-sm transition-colors"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                        Export Excel
+                                    </a>
                                     <button
                                         onClick={() => {
                                             setPrintTarget('tahapan');
@@ -603,6 +613,16 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                             <div className="space-y-8 animate-fade-in-up">
                                 {/* Action Button */}
                                 <div className="flex justify-end mb-4">
+                                    <a
+                                        href={route('rkas.export-tahapan-v1-excel', anggaran.id)}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="bg-green-600 text-white hover:bg-green-700 px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 shadow-sm transition-colors me-2">
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                        Export Excel
+                                    </a>
                                     <button
                                         onClick={() => {
                                             setPrintTarget('tahapan_v1');

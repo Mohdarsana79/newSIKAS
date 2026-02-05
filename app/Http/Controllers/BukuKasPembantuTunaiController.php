@@ -12,6 +12,8 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\BkpPembantuTunaiExport;
 
 class BukuKasPembantuTunaiController extends Controller
 {
@@ -178,6 +180,69 @@ class BukuKasPembantuTunaiController extends Controller
     }
 
     /**
+     * Generate Excel BKP Pembantu Tunai
+     */
+    public function generateBkuPembantuTunaiExcel(Request $request)
+    {
+        try {
+            $tahun = $request->query('tahun');
+            $bulan = $request->query('bulan');
+
+            Carbon::setLocale('id');
+
+             // List of months to process
+            $monthsToProcess = [];
+            
+            if ($bulan === 'Tahap 1') {
+                $monthsToProcess = ['januari', 'februari', 'maret', 'april', 'mei', 'juni'];
+            } elseif ($bulan === 'Tahap 2') {
+                $monthsToProcess = ['juli', 'agustus', 'september', 'oktober', 'november', 'desember'];
+            } elseif ($bulan === 'Tahunan') {
+                $monthsToProcess = [
+                    'januari', 'februari', 'maret', 'april', 'mei', 'juni',
+                    'juli', 'agustus', 'september', 'oktober', 'november', 'desember'
+                ];
+            } else {
+                $monthsToProcess = [$bulan];
+            }
+
+            $reportData = [];
+
+            foreach ($monthsToProcess as $m) {
+                $data = $this->getBkpPembantuDataInternal($tahun, $m);
+                
+                if ($data) {
+                    $bulanAngka = $this->convertBulanToNumber($m);
+                    $bulanAngkaStr = str_pad($bulanAngka, 2, '0', STR_PAD_LEFT);
+
+                    $reportData[] = [
+                        'tahun' => $tahun,
+                        'bulan' => $m,
+                        'bulanAngkaStr' => $bulanAngkaStr,
+                        'items' => $data['items'],
+                        'data' => $data['data'],
+                        'sekolah' => $data['sekolah'],
+                        'kepala_sekolah' => $data['kepala_sekolah'],
+                        'bendahara' => $data['bendahara'],
+                        'formatAkhirBulanLengkapHari' => $this->formatAkhirBulanLengkapHari($tahun, $m),
+                        'formatTanggalAkhirBulanLengkap' => $this->formatTanggalAkhirBulanLengkap($tahun, $m),
+                    ];
+                }
+            }
+
+            if (empty($reportData)) {
+                 return response('Data tidak ditemukan', 404);
+            }
+
+            return Excel::download(new BkpPembantuTunaiExport($reportData), "BKP_Pembantu_Tunai_{$bulan}_{$tahun}.xlsx");
+
+        } catch (\Exception $e) {
+            Log::error('Error generating BKP Pembantu Tunai Excel: ' . $e->getMessage());
+            return response('Gagal generate Excel: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
      * Internal helper specific for logic extraction
      */
     public function getBkpPembantuDataInternal($tahun, $bulan) 
@@ -270,7 +335,7 @@ class BukuKasPembantuTunaiController extends Controller
             if ($bku->total_pajak > 0) {
                  $items[] = [
                      'tanggal' => $bku->tanggal_transaksi,
-                     'uraian' => 'Terima Pajak ' . $bku->pajak . ' ' . $bku->persen_pajak . '%',
+                     'uraian' => 'Terima Pajak ' . $bku->pajak . ' ' . $bku->persen_pajak . '%' . ' ' . $bku->uraian_opsional,
                      'no_bukti' => $bku->kode_masa_pajak,
                      'kode_rekening' => '-',
                      'penerimaan' => $bku->total_pajak,
@@ -279,7 +344,7 @@ class BukuKasPembantuTunaiController extends Controller
                  if (!empty($bku->ntpn)) {
                      $items[] = [
                          'tanggal' => $bku->tanggal_transaksi,
-                         'uraian' => 'Setor Pajak ' . $bku->pajak . ' ' . $bku->persen_pajak . '%',
+                         'uraian' => 'Setor Pajak ' . $bku->pajak . ' ' . $bku->persen_pajak . '%' . ' ' . $bku->uraian_opsional,
                          'no_bukti' => $bku->kode_masa_pajak, // Changed to correct mapping if needed
                          'kode_rekening' => '-',
                          'penerimaan' => 0,
@@ -290,7 +355,7 @@ class BukuKasPembantuTunaiController extends Controller
             if ($bku->total_pajak_daerah > 0) {
                  $items[] = [
                      'tanggal' => $bku->tanggal_transaksi,
-                     'uraian' => 'Terima Pajak ' . $bku->pajak_daerah . ' ' . $bku->persen_pajak_daerah . '%',
+                     'uraian' => 'Terima Pajak ' . $bku->pajak_daerah . ' ' . $bku->persen_pajak_daerah . '%' . ' ' . $bku->uraian_opsional,
                      'no_bukti' => $bku->kode_masa_pajak,
                      'kode_rekening' => '-',
                      'penerimaan' => $bku->total_pajak_daerah,
@@ -299,7 +364,7 @@ class BukuKasPembantuTunaiController extends Controller
                  if (!empty($bku->ntpn)) {
                      $items[] = [
                          'tanggal' => $bku->tanggal_transaksi,
-                         'uraian' => 'Setor Pajak ' . $bku->pajak_daerah . ' ' . $bku->persen_pajak_daerah . '%',
+                         'uraian' => 'Setor Pajak ' . $bku->pajak_daerah . ' ' . $bku->persen_pajak_daerah . '%' . ' ' . $bku->uraian_opsional,
                          'no_bukti' => $bku->kode_masa_pajak,
                          'kode_rekening' => '-',
                          'penerimaan' => 0,

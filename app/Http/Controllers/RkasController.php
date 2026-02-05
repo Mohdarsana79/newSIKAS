@@ -1493,4 +1493,70 @@ class RkasController extends Controller
             ], 500);
         }
     }
+
+    public function exportExcelTahapan(Request $request, $id)
+    {
+        $penganggaran = Penganggaran::with('sekolah')->findOrFail($id);
+
+        $rkasData = Rkas::with(['kodeKegiatan', 'rekeningBelanja'])
+            ->where('penganggaran_id', $id)
+            ->orderBy('kode_id')
+            ->get()
+            ->groupBy(function ($item) {
+                return optional($item->kodeKegiatan)->kode;
+            })
+            ->filter(fn($group, $key) => !is_null($key));
+
+        $tahapanData = $this->kelolaDataRkas($rkasData);
+        $totalTahap1 = $this->calculateTotalTahap1($id);
+        $totalTahap2 = $this->calculateTotalTahap2($id);
+
+        $html = view('rka_tahapan_pdf', [
+            'anggaran' => $penganggaran->toArray(),
+            'tahapanData' => $tahapanData,
+            'totalTahap1' => $totalTahap1,
+            'totalTahap2' => $totalTahap2,
+            'paper_size' => 'A4',
+            'orientation' => 'portrait',
+            'font_size' => '11pt',
+            'is_excel' => true // Flag to indicate Excel export
+        ])->render();
+
+        return response($html)
+            ->header('Content-Type', 'application/vnd.ms-excel')
+            ->header('Content-Disposition', 'attachment; filename="rka_tahapan_' . $penganggaran->tahun_anggaran . '.xls"');
+    }
+
+    public function exportExcelTahapanV1(Request $request, $id)
+    {
+        $penganggaran = Penganggaran::with('sekolah')->findOrFail($id);
+        
+        $rkasData = Rkas::with(['kodeKegiatan', 'rekeningBelanja'])
+            ->where('penganggaran_id', $id)
+            ->orderBy('kode_id')
+            ->get()
+            ->groupBy(function ($item) {
+                return optional($item->kodeKegiatan)->kode;
+            })
+            ->filter(fn($group, $key) => !is_null($key));
+            
+        $tahapanData = $this->kelolaDataRkas($rkasData);
+        $totalTahap1 = $this->calculateTotalTahap1($id);
+        $totalTahap2 = $this->calculateTotalTahap2($id);
+
+        $html = view('laporan.rka_tahapan_v_1_pdf', [
+            'anggaran' => $penganggaran->toArray(),
+            'tahapanData' => $tahapanData,
+            'totalTahap1' => $totalTahap1,
+            'totalTahap2' => $totalTahap2,
+            'paper_size' => 'A4',
+            'orientation' => 'portrait',
+            'font_size' => '11pt',
+            'is_excel' => true
+        ])->render();
+
+        return response($html)
+            ->header('Content-Type', 'application/vnd.ms-excel')
+            ->header('Content-Disposition', 'attachment; filename="rka_tahapan_v1_' . $penganggaran->tahun_anggaran . '.xls"');
+    }
 }

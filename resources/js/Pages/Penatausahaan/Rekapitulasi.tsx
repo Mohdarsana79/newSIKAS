@@ -221,6 +221,14 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
         { id: 'realisasi', label: 'Realisasi' }
     ];
 
+    const handleExportExcelBkpBank = () => {
+        const url = route('bkp-bank.excel', {
+            tahun,
+            bulan: bulanBank
+        });
+        window.open(url, '_blank');
+    };
+
     const handlePrintBkpBank = (settings: PrintSettings) => {
         const url = route('bkp-bank.cetak', {
             tahun,
@@ -228,6 +236,14 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
             paperSize: settings.paperSize,
             orientation: settings.orientation,
             fontSize: settings.fontSize
+        });
+        window.open(url, '_blank');
+    };
+
+    const handleExportExcelBkpTunai = () => {
+        const url = route('bkp-pembantu.excel', {
+            tahun: tahun,
+            bulan: bulanPembantu
         });
         window.open(url, '_blank');
     };
@@ -243,6 +259,14 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
         window.open(url, '_blank');
     };
 
+    const handleExportExcelBkpUmum = () => {
+        const url = route('bkp-umum.excel', {
+            tahun: tahun,
+            bulan: bulanUmum
+        });
+        window.open(url, '_blank');
+    };
+
     const handlePrintBkpUmum = (settings: PrintSettings) => {
         const url = route('bkp-umum.cetak', {
             tahun,
@@ -250,6 +274,14 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
             paperSize: settings.paperSize,
             orientation: settings.orientation,
             fontSize: settings.fontSize
+        });
+        window.open(url, '_blank');
+    };
+
+    const handleExportExcelBkpPajak = () => {
+        const url = route('bkp-pajak.excel', {
+            tahun: tahun,
+            bulan: bulanPajak
         });
         window.open(url, '_blank');
     };
@@ -377,7 +409,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                             <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                             </svg>
-                                            Check Saldo Awal
+                                            {bkpBankData?.data?.is_trk_saldo_awal_year ? 'Update Check Saldo Awal' : 'Check Saldo Awal'}
                                         </button>
 
                                         <button
@@ -387,7 +419,17 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                             <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                             </svg>
-                                            Check STS
+                                            {bkpBankData?.data?.has_sts_year ? 'Update Check STS' : 'Check STS'}
+                                        </button>
+
+                                        <button
+                                            onClick={handleExportExcelBkpBank}
+                                            className="inline-flex items-center px-4 py-2 bg-green-800 dark:bg-green-200 border border-transparent rounded-md font-semibold text-xs text-white dark:text-green-800 uppercase tracking-widest hover:bg-green-700 dark:hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition ease-in-out duration-150"
+                                        >
+                                            <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                            </svg>
+                                            Export Excel
                                         </button>
 
                                         <button
@@ -721,6 +763,15 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                     </div>
                                     <div className="mt-4 md:mt-0">
                                         <button
+                                            onClick={handleExportExcelBkpUmum}
+                                            className="inline-flex items-center px-4 py-2 bg-green-800 dark:bg-green-200 border border-transparent rounded-md font-semibold text-xs text-white dark:text-green-800 uppercase tracking-widest hover:bg-green-700 dark:hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition ease-in-out duration-150 mr-2"
+                                        >
+                                            <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                            </svg>
+                                            Export Excel
+                                        </button>
+                                        <button
                                             onClick={() => setShowPrintBkpUmumModal(true)}
                                             className="inline-flex items-center px-4 py-2 bg-gray-800 dark:bg-gray-200 border border-transparent rounded-md font-semibold text-xs text-white dark:text-gray-800 uppercase tracking-widest hover:bg-gray-700 dark:hover:bg-white focus:bg-gray-700 dark:focus:bg-white active:bg-gray-900 dark:active:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150"
                                         >
@@ -995,6 +1046,15 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                         </select>
                                     </div>
                                     <div className="mt-4 md:mt-0">
+                                        <button
+                                            onClick={handleExportExcelBkpPajak}
+                                            className="inline-flex items-center px-4 py-2 bg-green-800 dark:bg-green-200 border border-transparent rounded-md font-semibold text-xs text-white dark:text-green-800 uppercase tracking-widest hover:bg-green-700 dark:hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition ease-in-out duration-150 mr-2"
+                                        >
+                                            <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                            </svg>
+                                            Export Excel
+                                        </button>
                                         <button
                                             onClick={() => setShowPrintBkpPajakModal(true)}
                                             className="inline-flex items-center px-4 py-2 bg-gray-800 dark:bg-gray-200 border border-transparent rounded-md font-semibold text-xs text-white dark:text-gray-800 uppercase tracking-widest hover:bg-gray-700 dark:hover:bg-white focus:bg-gray-700 dark:focus:bg-white active:bg-gray-900 dark:active:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150"
@@ -1901,6 +1961,15 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                         </select>
                                     </div>
                                     <div className="mt-4 md:mt-0">
+                                        <button
+                                            onClick={handleExportExcelBkpTunai}
+                                            className="inline-flex items-center px-4 py-2 bg-green-800 dark:bg-green-200 border border-transparent rounded-md font-semibold text-xs text-white dark:text-green-800 uppercase tracking-widest hover:bg-green-700 dark:hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition ease-in-out duration-150 mr-2"
+                                        >
+                                            <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                            </svg>
+                                            Export Excel
+                                        </button>
                                         <button
                                             onClick={() => setShowPrintBkpTunaiModal(true)}
                                             className="inline-flex items-center px-4 py-2 bg-gray-800 dark:bg-gray-200 border border-transparent rounded-md font-semibold text-xs text-white dark:text-gray-800 uppercase tracking-widest hover:bg-gray-700 dark:hover:bg-white focus:bg-gray-700 dark:focus:bg-white active:bg-gray-900 dark:active:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150"

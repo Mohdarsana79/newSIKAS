@@ -311,7 +311,7 @@ class RkasPerubahanController extends Controller
         }
     }
 
-    public function destroyByPenganggaran($id)
+    public function destroyPenganggaran($id)
     {
         // $id is penganggaran_id
         RkasPerubahan::where('penganggaran_id', $id)->delete();
@@ -1038,6 +1038,49 @@ class RkasPerubahanController extends Controller
         ]);
 
         return $pdf->setPaper($paperSize, $orientation)->stream('rkas_perubahan_tahapan.pdf');
+    }
+
+    public function generateTahapanExcel($id, Request $request)
+    {
+        $penganggaran = Penganggaran::with('sekolah')->findOrFail($id);
+        $rkasData = RkasPerubahan::with(['kodeKegiatan', 'rekeningBelanja'])
+            ->where('penganggaran_id', $id)
+            ->get();
+
+        $rkasMurniData = Rkas::with(['kodeKegiatan', 'rekeningBelanja'])
+            ->where('penganggaran_id', $id)
+            ->get();
+
+        $groupedRkas = $rkasData->groupBy(function ($item) {
+            return optional($item->kodeKegiatan)->kode;
+        })->filter(fn($group, $key) => !is_null($key));
+
+        $groupedMurni = $rkasMurniData->groupBy(function ($item) {
+            return optional($item->kodeKegiatan)->kode;
+        })->filter(fn($group, $key) => !is_null($key));
+
+        $tahapanData = $this->kelolaDataRkas($groupedRkas, $groupedMurni);
+
+        // Calculate Totals for Footer
+        $totalTahap1 = $rkasData->whereIn('bulan', ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni'])
+            ->sum(fn($i) => $i->jumlah * $i->harga_satuan);
+        $totalTahap2 = $rkasData->whereIn('bulan', ['Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'])
+            ->sum(fn($i) => $i->jumlah * $i->harga_satuan);
+
+        $html = view('rkas_perubahan_tahapan_pdf', [
+            'anggaran' => $penganggaran,
+            'tahapanData' => $tahapanData,
+            'totalTahap1' => $totalTahap1,
+            'totalTahap2' => $totalTahap2,
+            'paper_size' => 'A4',
+            'orientation' => 'landscape', // Excel usually better in landscape implicitly
+            'font_size' => '11pt',
+            'is_excel' => true
+        ])->render();
+
+        return response($html)
+            ->header('Content-Type', 'application/vnd.ms-excel')
+            ->header('Content-Disposition', 'attachment; filename="rkas_perubahan_tahapan_' . $penganggaran->tahun_anggaran . '.xls"');
     }
 
     public function generatePdfRkaRekap($id, Request $request)

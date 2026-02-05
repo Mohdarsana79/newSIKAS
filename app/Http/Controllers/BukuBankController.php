@@ -12,6 +12,8 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\BkpBankExport;
 
 class BukuBankController extends Controller
 {
@@ -124,6 +126,74 @@ class BukuBankController extends Controller
         } catch (\Exception $e) {
             Log::error('Error generating PDF BKP Bank: ' . $e->getMessage());
             return response('Error generating PDF: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Generate Excel for BKP Bank
+     */
+    public function generateBkpBankExcel(Request $request)
+    {
+        try {
+            $tahun = $request->query('tahun');
+            $bulan = $request->query('bulan');
+
+            Carbon::setLocale('id');
+
+            // List of months to process
+            $monthsToProcess = [];
+            
+            if ($bulan === 'Tahap 1') {
+                $monthsToProcess = ['januari', 'februari', 'maret', 'april', 'mei', 'juni'];
+            } elseif ($bulan === 'Tahap 2') {
+                $monthsToProcess = ['juli', 'agustus', 'september', 'oktober', 'november', 'desember'];
+            } elseif ($bulan === 'Tahunan') {
+                $monthsToProcess = [
+                    'januari', 'februari', 'maret', 'april', 'mei', 'juni',
+                    'juli', 'agustus', 'september', 'oktober', 'november', 'desember'
+                ];
+            } else {
+                $monthsToProcess = [$bulan];
+            }
+
+            $reportData = [];
+
+            foreach ($monthsToProcess as $m) {
+                // Call Internal with SINGLE month
+                $data = $this->getBkpBankDataInternal($tahun, $m);
+                
+                if ($data) {
+                    $bulanAngka = $this->convertBulanToNumber($m);
+                    $endOfMonth = Carbon::createFromDate($tahun, $bulanAngka, 1)->endOfMonth();
+                    
+                    $tanggalCetakDOB = $endOfMonth->locale('id')->isoFormat('D MMMM Y');
+                    $tanggalCetakFormatted = $endOfMonth->locale('id')->isoFormat('dddd, D MMMM Y');
+                    $bulanAngkaStr = str_pad($bulanAngka, 2, '0', STR_PAD_LEFT);
+
+                    $reportData[] = [
+                        'tahun' => $tahun,
+                        'bulan' => $m,
+                        'bulanAngkaStr' => $bulanAngkaStr,
+                        'items' => $data['items'],
+                        'data' => $data['data'],
+                        'sekolah' => $data['sekolah'],
+                        'kepala_sekolah' => $data['kepala_sekolah'],
+                        'bendahara' => $data['bendahara'],
+                        'tanggalCetakDOB' => $tanggalCetakDOB,
+                        'tanggalCetakFormatted' => $tanggalCetakFormatted,
+                    ];
+                }
+            }
+
+            if (empty($reportData)) {
+                return response('Data tidak ditemukan', 404);
+            }
+
+            return Excel::download(new BkpBankExport($reportData), 'BKP_Bank_' . $bulan . '_' . $tahun . '.xlsx');
+
+        } catch (\Exception $e) {
+            Log::error('Error generating Excel BKP Bank: ' . $e->getMessage());
+            return response('Error generating Excel: ' . $e->getMessage(), 500);
         }
     }
     
@@ -415,7 +485,9 @@ class BukuBankController extends Controller
                 'saldo_akhir' => $saldoAkhir,
                 'total_penerimaan' => $totalPenerimaan,
                 'total_pengeluaran' => $totalPengeluaran,
-                'has_saldo_awal_tahun_lalu' => $hasSaldoAwalTahunLalu
+                'has_saldo_awal_tahun_lalu' => $hasSaldoAwalTahunLalu,
+                'is_trk_saldo_awal_year' => (bool)$penganggaran->is_trk_saldo_awal,
+                'has_sts_year' => Sts::where('penganggaran_id', $penganggaran->id)->exists()
             ],
             'sekolah' => [
                 'nama_sekolah' => $penganggaran->sekolah->nama_sekolah,

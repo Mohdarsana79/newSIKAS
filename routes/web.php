@@ -65,21 +65,25 @@ Route::middleware('auth')->group(function () {
     Route::patch('/penganggaran/{id}/update-tanggal-perubahan', [PenganggaranController::class, 'updateTanggalPerubahan'])->name('penganggaran.update-tanggal-perubahan');
 
     // RKAS
+    // Place specific routes BEFORE wildcard routes to prevent conflicts
+    Route::post('/rkas/update-group', [RkasController::class, 'updateGroup'])->name('rkas.updateGroup');
+    Route::post('/rkas/check-previous-perubahan', [RkasController::class, 'checkPreviousYearPerubahan'])->name('rkas.check-previous-perubahan');
+    Route::post('/rkas/copy-previous-perubahan', [RkasController::class, 'copyPreviousYearPerubahan'])->name('rkas.copy-previous-perubahan');
+    Route::delete('/rkas/delete-group', [RkasController::class, 'destroyGroup'])->name('rkas.destroyGroup');
+
     Route::get('/rkas/{id}', [RkasController::class, 'index'])->name('rkas.index');
     Route::post('/rkas/{id}', [RkasController::class, 'store'])->name('rkas.store');
-    Route::post('/rkas/update-group', [RkasController::class, 'updateGroup'])->name('rkas.updateGroup');
     Route::get('/rkas/{id}/edit-data', [RkasController::class, 'getEditData'])->name('rkas.getEditData');
     Route::put('/rkas/{id}', [RkasController::class, 'update'])->name('rkas.update');
-    Route::delete('/rkas/delete-group', [RkasController::class, 'destroyGroup'])->name('rkas.destroyGroup');
     Route::delete('/rkas/{id}', [RkasController::class, 'destroy'])->name('rkas.destroy');
     Route::get('/rkas/{id}/summary', [RkasController::class, 'summary'])->name('rkas.summary');
     Route::get('/rkas/{id}/export-pdf', [RkasController::class, 'exportPdf'])->name('rkas.export-pdf');
     Route::get('/rkas/{id}/export-tahapan-v1-pdf', [RkasController::class, 'exportTahapanV1Pdf'])->name('rkas.export-tahapan-v1-pdf');
+    Route::get('/rkas/{id}/export-tahapan-v1-excel', [RkasController::class, 'exportExcelTahapanV1'])->name('rkas.export-tahapan-v1-excel');
+    Route::get('/rkas/{id}/export-tahapan-excel', [RkasController::class, 'exportExcelTahapan'])->name('rkas.export-tahapan-excel');
     Route::get('/rkas/{id}/export-rekap-pdf', [RkasController::class, 'exportRekapPdf'])->name('rkas.export-rekap-pdf');
     Route::get('/rkas/{id}/export-lembar-kerja-pdf', [RkasController::class, 'exportLembarKerjaPdf'])->name('rkas.export-lembar-kerja-pdf');
     Route::get('/rkas/{id}/export-bulanan-pdf', [RkasController::class, 'exportBulananPdf'])->name('rkas.export-bulanan-pdf');
-    Route::post('/rkas/check-previous-perubahan', [RkasController::class, 'checkPreviousYearPerubahan'])->name('rkas.check-previous-perubahan');
-    Route::post('/rkas/copy-previous-perubahan', [RkasController::class, 'copyPreviousYearPerubahan'])->name('rkas.copy-previous-perubahan');
 
     // RKAS Perubahan
     Route::get('/rkas-perubahan/{id}', [RkasPerubahanController::class, 'index'])->name('rkas-perubahan.index');
@@ -94,6 +98,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/rkas-perubahan/{id}/summary', [RkasPerubahanController::class, 'summary'])->name('rkas-perubahan.summary');
     Route::get('/rkas-perubahan/{id}/logs', [RkasPerubahanController::class, 'getLogs'])->name('rkas-perubahan.logs');
     Route::get('/rkas-perubahan/{id}/export-pdf', [RkasPerubahanController::class, 'generateTahapanPdf'])->name('rkas-perubahan.export-pdf');
+    Route::get('/rkas-perubahan/{id}/export-tahapan-excel', [RkasPerubahanController::class, 'generateTahapanExcel'])->name('rkas-perubahan.export-tahapan-excel');
     Route::get('/rkas-perubahan/{id}/export-tahapan-v1-pdf', [RkasPerubahanController::class, 'exportTahapanV1Pdf'])->name('rkas-perubahan.export-tahapan-v1-pdf');
     Route::get('/rkas-perubahan/{id}/export-rekap-pdf', [RkasPerubahanController::class, 'generatePdfRkaRekap'])->name('rkas-perubahan.export-rekap-pdf');
     Route::get('/rkas-perubahan/{id}/export-lembar-kerja-pdf', [RkasPerubahanController::class, 'generateRkaDuaSatuPdf'])->name('rkas-perubahan.export-lembar-kerja-pdf');
@@ -254,9 +259,13 @@ Route::middleware('auth')->group(function () {
 
     // Printing Routes
     Route::get('/bkp-bank/cetak', [BukuBankController::class, 'generateBkpBankPdf'])->name('bkp-bank.cetak');
+    Route::get('/bkp-bank/excel', [BukuBankController::class, 'generateBkpBankExcel'])->name('bkp-bank.excel');
     Route::get('/bkp-pembantu/cetak', [BukuKasPembantuTunaiController::class, 'generateBkuPembantuTunaiPdf'])->name('bkp-pembantu.cetak');
+    Route::get('/bkp-pembantu/excel', [BukuKasPembantuTunaiController::class, 'generateBkuPembantuTunaiExcel'])->name('bkp-pembantu.excel');
     Route::get('/bkp-umum/cetak/{tahun}/{bulan}', [BukuKasUmumController::class, 'generateBkpUmumPdfAction'])->name('bkp-umum.cetak');
+    Route::get('/bkp-umum/excel/{tahun}/{bulan}', [BukuKasUmumController::class, 'generateBkpUmumExcelAction'])->name('bkp-umum.excel');
     Route::get('/bkp-pajak/cetak', [BukuPajakController::class, 'generateBkpPajakPdf'])->name('bkp-pajak.cetak');
+    Route::get('/bkp-pajak/excel', [BukuPajakController::class, 'generateBkpPajakExcel'])->name('bkp-pajak.excel');
     Route::get('/bkp-rob/cetak', [BukuRobController::class, 'generateBkpRobPdf'])->name('bkp-rob.cetak');
     Route::get('/bkp-reg/cetak', [RegistrasiPenutupanKasController::class, 'generateBkpRegPdf'])->name('bkp-reg.cetak');
     Route::get('/ba/cetak', [BeritaAcaraPenutupanController::class, 'generateBeritaAcaraPdf'])->name('ba.cetak');
