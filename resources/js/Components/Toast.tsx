@@ -20,6 +20,19 @@ export default function Toast() {
             setShow(true);
             setTimeout(() => setShow(false), 3000);
         }
+
+        const handleExposeToast = (event: CustomEvent) => {
+            setMessage(event.detail.message);
+            setType(event.detail.type || 'success');
+            setShow(true);
+            setTimeout(() => setShow(false), 3000);
+        };
+
+        window.addEventListener('toast-notification' as any, handleExposeToast);
+
+        return () => {
+            window.removeEventListener('toast-notification' as any, handleExposeToast);
+        };
     }, [flash]);
 
     return (

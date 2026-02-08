@@ -17,7 +17,8 @@ interface RekeningBelanja {
 }
 
 export default function Index({ auth, rekening_belanja }: PageProps<{ rekening_belanja: RekeningBelanja[] }>) {
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [search, setSearch] = useState('');
@@ -58,21 +59,24 @@ export default function Index({ auth, rekening_belanja }: PageProps<{ rekening_b
         setCurrentPage(1);
     }, [search]);
 
-    const submit = (e: React.FormEvent) => {
+    const submitAdd = (e: React.FormEvent) => {
+        e.preventDefault();
+        post(route('rekening-belanja.store'), {
+            onSuccess: () => {
+                setIsAddModalOpen(false);
+                reset();
+            },
+        });
+    };
+
+    const submitEdit = (e: React.FormEvent) => {
         e.preventDefault();
         if (editingId) {
             put(route('rekening-belanja.update', editingId), {
                 onSuccess: () => {
-                    setIsModalOpen(false);
+                    setIsEditModalOpen(false);
                     reset();
                     setEditingId(null);
-                },
-            });
-        } else {
-            post(route('rekening-belanja.store'), {
-                onSuccess: () => {
-                    setIsModalOpen(false);
-                    reset();
                 },
             });
         }
@@ -85,7 +89,7 @@ export default function Index({ auth, rekening_belanja }: PageProps<{ rekening_b
             rincian_objek: item.rincian_objek,
             kategori: item.kategori,
         });
-        setIsModalOpen(true);
+        setIsEditModalOpen(true);
     };
 
     const handleDelete = (id: number) => {
@@ -124,7 +128,7 @@ export default function Index({ auth, rekening_belanja }: PageProps<{ rekening_b
                         </div>
                         <div className="flex gap-2">
                             <SecondaryButton onClick={() => setIsImportModalOpen(true)}>Import Excel</SecondaryButton>
-                            <PrimaryButton onClick={() => setIsModalOpen(true)}>Tambah Data</PrimaryButton>
+                            <PrimaryButton onClick={() => { reset(); setIsAddModalOpen(true); }}>Tambah Data</PrimaryButton>
                         </div>
                     </div>
 
@@ -211,35 +215,29 @@ export default function Index({ auth, rekening_belanja }: PageProps<{ rekening_b
                 </div>
             </div>
 
-            {/* Modal Tambah/Edit */}
-            <Modal show={isModalOpen} onClose={() => setIsModalOpen(false)}>
+            {/* Modal Tambah */}
+            <Modal show={isAddModalOpen} onClose={() => setIsAddModalOpen(false)}>
                 <div className="flex flex-col bg-white dark:bg-gray-800 rounded-lg overflow-hidden">
                     <div className="px-6 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 border-b border-gray-100 dark:border-gray-700">
                         <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                            {editingId ? (
-                                <svg className="w-6 h-6 text-white/90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                </svg>
-                            ) : (
-                                <svg className="w-6 h-6 text-white/90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                            )}
-                            {editingId ? 'Edit Rekening Belanja' : 'Input Rekening Belanja'}
+                            <svg className="w-6 h-6 text-white/90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Input Rekening Belanja
                         </h2>
                         <p className="text-indigo-100 text-sm mt-1">
-                            {editingId ? 'Perbarui informasi rekening belanja.' : 'Tambahkan rekening belanja baru ke dalam sistem.'}
+                            Tambahkan rekening belanja baru ke dalam sistem.
                         </p>
                     </div>
 
-                    <form onSubmit={submit} className="p-6 space-y-6">
+                    <form onSubmit={submitAdd} className="p-6 space-y-6">
                         <div>
                             <InputLabel htmlFor="kode_rekening" value="Kode Rekening" />
                             <TextInput
                                 id="kode_rekening"
                                 value={data.kode_rekening}
                                 onChange={(e) => setData('kode_rekening', e.target.value)}
-                                className="mt-1 block w-full"
+                                className="mt-1 block w-full text-gray-900 dark:text-gray-900"
                                 placeholder="Contoh: 5.1.02..."
                                 required
                             />
@@ -251,7 +249,7 @@ export default function Index({ auth, rekening_belanja }: PageProps<{ rekening_b
                                 id="rincian_objek"
                                 value={data.rincian_objek}
                                 onChange={(e) => setData('rincian_objek', e.target.value)}
-                                className="mt-1 block w-full"
+                                className="mt-1 block w-full text-gray-900 dark:text-gray-900"
                                 placeholder="Nama Rincian Objek"
                                 required
                             />
@@ -274,7 +272,7 @@ export default function Index({ auth, rekening_belanja }: PageProps<{ rekening_b
                         </div>
                         <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
                             <SecondaryButton
-                                onClick={() => setIsModalOpen(false)}
+                                onClick={() => setIsAddModalOpen(false)}
                                 type="button"
                             >
                                 Batal
@@ -290,6 +288,86 @@ export default function Index({ auth, rekening_belanja }: PageProps<{ rekening_b
                                     </>
                                 ) : (
                                     'Simpan Data'
+                                )}
+                            </PrimaryButton>
+                        </div>
+                    </form>
+                </div>
+            </Modal>
+
+            {/* Modal Edit */}
+            <Modal show={isEditModalOpen} onClose={() => setIsEditModalOpen(false)}>
+                <div className="flex flex-col bg-white dark:bg-gray-800 rounded-lg overflow-hidden">
+                    <div className="px-6 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 border-b border-gray-100 dark:border-gray-700">
+                        <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                            <svg className="w-6 h-6 text-white/90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                            Edit Rekening Belanja
+                        </h2>
+                        <p className="text-indigo-100 text-sm mt-1">
+                            Perbarui informasi rekening belanja.
+                        </p>
+                    </div>
+
+                    <form onSubmit={submitEdit} className="p-6 space-y-6">
+                        <div>
+                            <InputLabel htmlFor="kode_rekening" value="Kode Rekening" />
+                            <TextInput
+                                id="kode_rekening"
+                                value={data.kode_rekening}
+                                onChange={(e) => setData('kode_rekening', e.target.value)}
+                                className="mt-1 block w-full text-gray-900 dark:text-gray-900"
+                                placeholder="Contoh: 5.1.02..."
+                                required
+                            />
+                            <InputError message={errors.kode_rekening} className="mt-2" />
+                        </div>
+                        <div>
+                            <InputLabel htmlFor="rincian_objek" value="Rincian Objek" />
+                            <TextInput
+                                id="rincian_objek"
+                                value={data.rincian_objek}
+                                onChange={(e) => setData('rincian_objek', e.target.value)}
+                                className="mt-1 block w-full text-gray-900 dark:text-gray-900"
+                                placeholder="Nama Rincian Objek"
+                                required
+                            />
+                            <InputError message={errors.rincian_objek} className="mt-2" />
+                        </div>
+                        <div>
+                            <InputLabel htmlFor="kategori" value="Kategori" />
+                            <select
+                                id="kategori"
+                                value={data.kategori}
+                                onChange={(e) => setData('kategori', e.target.value)}
+                                className="mt-1 block w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm"
+                                required
+                            >
+                                <option value="">Pilih Kategori</option>
+                                <option value="Operasi">Operasi</option>
+                                <option value="Modal">Modal</option>
+                            </select>
+                            <InputError message={errors.kategori} className="mt-2" />
+                        </div>
+                        <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
+                            <SecondaryButton
+                                onClick={() => setIsEditModalOpen(false)}
+                                type="button"
+                            >
+                                Batal
+                            </SecondaryButton>
+                            <PrimaryButton disabled={processing} className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 border-0">
+                                {processing ? (
+                                    <>
+                                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        Menyimpan...
+                                    </>
+                                ) : (
+                                    'Simpan Perubahan'
                                 )}
                             </PrimaryButton>
                         </div>

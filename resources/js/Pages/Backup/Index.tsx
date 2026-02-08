@@ -269,7 +269,7 @@ export default function BackupIndex({ auth, backupFiles, stats, flash }: PagePro
                                     ref={fileInputRef}
                                     onChange={handleFileSelect}
                                     className="hidden"
-                                    accept=".rsv,.btb,.sql"
+                                    accept=".rsv"
                                 />
                                 <SecondaryButton
                                     onClick={() => fileInputRef.current?.click()}
@@ -280,7 +280,7 @@ export default function BackupIndex({ auth, backupFiles, stats, flash }: PagePro
                                     </svg>
                                     Restore Database
                                 </SecondaryButton>
-                                <p className="text-xs text-center text-gray-500 mt-1">Upload file .rsv / .btb</p>
+                                <p className="text-xs text-center text-gray-500 mt-1">Upload file .rsv</p>
                             </div>
 
                             <hr className="border-gray-200 dark:border-gray-700" />

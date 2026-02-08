@@ -49,11 +49,11 @@
             <div class="separator"></div>
         @endif
         
-        <div class="title">SURAT PERTANGGUNG JAWABAN MUTLAK</div>
+        <div class="title">SURAT PERNYATAAN TANGGUNG JAWAB MUTLAK</div>
     </div>
     
     <p style="text-align: justify; margin-top: 10px;">
-        Saya yang bertanda tangan dibawah ini menyatakan bahwa bertanggung jawab secara formal dan materil atas kebenaran realisasi penerimaan dan pengeluaran Dana BOS serta kebenaran perhitungan setoran pajak yang telah dipungut atas penggunaan Dana BOS Tahap {{ $sptj->tahap }} tahun anggaran {{ $sptj->penganggaran->tahun_anggaran ?? now()->year }}
+        Saya yang bertanda tangan dibawah ini menyatakan bahwa bertanggung jawab secara formal dan material atas kebenaran realisasi penerimaan dan pengeluaran Dana BOSP Reguler serta kebenaran perhitungan dan setoran pajak yang telah dipungut atas penggunaan Dana BOSP Reguler pada Semester {{ $sptj->tahap }} tahun anggaran {{ $sptj->penganggaran->tahun_anggaran }} dengan rincian sebagai berikut:
     </p>
     <p style="text-align: center;">Nomor : {{ $sptj->nomor_sptj }}</p>
 
@@ -143,22 +143,14 @@
         <tr>
             <td></td>
             <td style="text-align: right;">1</td>
-            <td>Jenis Belanja Pegawai</td>
+            <td>Jenis Belanja Operasi</td>
             <td>:</td>
             <td>Rp</td>
-            <td class="amount-col">{{ number_format($sptj->jenis_belanja_pegawai, 0, ',', '.') }}</td>
+            <td class="amount-col">{{ number_format($sptj->jenis_belanja_pegawai + $sptj->jenis_belanja_barang_jasa, 0, ',', '.') }}</td>
         </tr>
         <tr>
             <td></td>
             <td style="text-align: right;">2</td>
-            <td>Jenis Belanja Barang dan Jasa</td>
-            <td>:</td>
-            <td>Rp</td>
-            <td class="amount-col">{{ number_format($sptj->jenis_belanja_barang_jasa, 0, ',', '.') }}</td>
-        </tr>
-        <tr>
-            <td></td>
-            <td style="text-align: right;">3</td>
             <td>Jenis Belanja Modal</td>
             <td>:</td>
             <td>Rp</td>

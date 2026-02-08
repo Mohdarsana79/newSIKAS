@@ -192,6 +192,7 @@ class SptjController extends Controller
             return response()->json([
                 'tahap_satu' => $tahapSatu,
                 'tahap_dua' => $tahapDua,
+                'jenis_belanja_operasi' => $p_pegawai + $p_barang,
                 'jenis_belanja_pegawai' => $p_pegawai,
                 'jenis_belanja_barang_jasa' => $p_barang,
                 'jenis_belanja_modal' => $p_modal,

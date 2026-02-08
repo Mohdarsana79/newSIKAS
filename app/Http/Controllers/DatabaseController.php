@@ -322,7 +322,7 @@ class DatabaseController extends Controller
     {
         $request->validate([
             // Allow .rsv and .btb extensions
-            'backup_file' => 'required|file|extensions:rsv,btb,sql|max:102400' 
+            'backup_file' => 'required|file|extensions:rsv|max:102400' 
         ]);
 
         try {

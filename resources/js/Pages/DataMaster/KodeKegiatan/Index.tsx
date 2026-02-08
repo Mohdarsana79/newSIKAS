@@ -18,7 +18,8 @@ interface KodeKegiatan {
 }
 
 export default function Index({ auth, kode_kegiatan }: PageProps<{ kode_kegiatan: KodeKegiatan[] }>) {
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [search, setSearch] = useState('');
@@ -66,19 +67,22 @@ export default function Index({ auth, kode_kegiatan }: PageProps<{ kode_kegiatan
         setEditingId(null);
     };
 
-    const submit = (e: React.FormEvent) => {
+    const submitAdd = (e: React.FormEvent) => {
+        e.preventDefault();
+        post(route('kode-kegiatan.store'), {
+            onSuccess: () => {
+                setIsAddModalOpen(false);
+                resetForm();
+            },
+        });
+    };
+
+    const submitEdit = (e: React.FormEvent) => {
         e.preventDefault();
         if (editingId) {
             put(route('kode-kegiatan.update', editingId), {
                 onSuccess: () => {
-                    setIsModalOpen(false);
-                    resetForm();
-                },
-            });
-        } else {
-            post(route('kode-kegiatan.store'), {
-                onSuccess: () => {
-                    setIsModalOpen(false);
+                    setIsEditModalOpen(false);
                     resetForm();
                 },
             });
@@ -93,7 +97,7 @@ export default function Index({ auth, kode_kegiatan }: PageProps<{ kode_kegiatan
             sub_program: item.sub_program,
             uraian: item.uraian,
         });
-        setIsModalOpen(true);
+        setIsEditModalOpen(true);
     };
 
     const handleDelete = (id: number) => {
@@ -132,7 +136,7 @@ export default function Index({ auth, kode_kegiatan }: PageProps<{ kode_kegiatan
                         </div>
                         <div className="flex gap-2">
                             <SecondaryButton onClick={() => setIsImportModalOpen(true)}>Import Excel</SecondaryButton>
-                            <PrimaryButton onClick={() => { resetForm(); setIsModalOpen(true); }}>Tambah Data</PrimaryButton>
+                            <PrimaryButton onClick={() => { resetForm(); setIsAddModalOpen(true); }}>Tambah Data</PrimaryButton>
                         </div>
                     </div>
 
@@ -221,28 +225,22 @@ export default function Index({ auth, kode_kegiatan }: PageProps<{ kode_kegiatan
                 </div>
             </div>
 
-            {/* Modal Tambah/Edit */}
-            <Modal show={isModalOpen} onClose={() => setIsModalOpen(false)}>
+            {/* Modal Tambah */}
+            <Modal show={isAddModalOpen} onClose={() => setIsAddModalOpen(false)}>
                 <div className="flex flex-col bg-white dark:bg-gray-800 rounded-lg overflow-hidden">
                     <div className="px-6 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 border-b border-gray-100 dark:border-gray-700">
                         <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                            {editingId ? (
-                                <svg className="w-6 h-6 text-white/90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                </svg>
-                            ) : (
-                                <svg className="w-6 h-6 text-white/90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                            )}
-                            {editingId ? 'Edit Kode Kegiatan' : 'Input Kode Kegiatan'}
+                            <svg className="w-6 h-6 text-white/90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Input Kode Kegiatan
                         </h2>
                         <p className="text-purple-100 text-sm mt-1">
-                            {editingId ? 'Perbarui informasi kode kegiatan.' : 'Tambahkan kode kegiatan baru ke dalam sistem.'}
+                            Tambahkan kode kegiatan baru ke dalam sistem.
                         </p>
                     </div>
 
-                    <form onSubmit={submit} className="p-6 space-y-6">
+                    <form onSubmit={submitAdd} className="p-6 space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="md:col-span-2">
                                 <InputLabel htmlFor="kode" value="Kode Kegiatan" />
@@ -250,7 +248,7 @@ export default function Index({ auth, kode_kegiatan }: PageProps<{ kode_kegiatan
                                     id="kode"
                                     value={data.kode}
                                     onChange={(e) => setData('kode', e.target.value)}
-                                    className="mt-1 block w-full"
+                                    className="mt-1 block w-full text-gray-900 dark:text-gray-900"
                                     placeholder="Contoh: 1.01.01"
                                     required
                                 />
@@ -263,7 +261,7 @@ export default function Index({ auth, kode_kegiatan }: PageProps<{ kode_kegiatan
                                     id="program"
                                     value={data.program}
                                     onChange={(e) => setData('program', e.target.value)}
-                                    className="mt-1 block w-full"
+                                    className="mt-1 block w-full text-gray-900 dark:text-gray-900"
                                     placeholder="Nama Program"
                                     required
                                 />
@@ -276,7 +274,7 @@ export default function Index({ auth, kode_kegiatan }: PageProps<{ kode_kegiatan
                                     id="sub_program"
                                     value={data.sub_program}
                                     onChange={(e) => setData('sub_program', e.target.value)}
-                                    className="mt-1 block w-full"
+                                    className="mt-1 block w-full text-gray-900 dark:text-gray-900"
                                     placeholder="Nama Sub Program"
                                     required
                                 />
@@ -300,7 +298,7 @@ export default function Index({ auth, kode_kegiatan }: PageProps<{ kode_kegiatan
 
                         <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
                             <SecondaryButton
-                                onClick={() => setIsModalOpen(false)}
+                                onClick={() => setIsAddModalOpen(false)}
                                 type="button"
                             >
                                 Batal
@@ -316,6 +314,102 @@ export default function Index({ auth, kode_kegiatan }: PageProps<{ kode_kegiatan
                                     </>
                                 ) : (
                                     'Simpan Data'
+                                )}
+                            </PrimaryButton>
+                        </div>
+                    </form>
+                </div>
+            </Modal>
+
+            {/* Modal Edit */}
+            <Modal show={isEditModalOpen} onClose={() => setIsEditModalOpen(false)}>
+                <div className="flex flex-col bg-white dark:bg-gray-800 rounded-lg overflow-hidden">
+                    <div className="px-6 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 border-b border-gray-100 dark:border-gray-700">
+                        <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                            <svg className="w-6 h-6 text-white/90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                            Edit Kode Kegiatan
+                        </h2>
+                        <p className="text-purple-100 text-sm mt-1">
+                            Perbarui informasi kode kegiatan.
+                        </p>
+                    </div>
+
+                    <form onSubmit={submitEdit} className="p-6 space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="md:col-span-2">
+                                <InputLabel htmlFor="kode" value="Kode Kegiatan" />
+                                <TextInput
+                                    id="kode"
+                                    value={data.kode}
+                                    onChange={(e) => setData('kode', e.target.value)}
+                                    className="mt-1 block w-full text-gray-900 dark:text-gray-900"
+                                    placeholder="Contoh: 1.01.01"
+                                    required
+                                />
+                                <InputError message={errors.kode} className="mt-2" />
+                            </div>
+
+                            <div>
+                                <InputLabel htmlFor="program" value="Program" />
+                                <TextInput
+                                    id="program"
+                                    value={data.program}
+                                    onChange={(e) => setData('program', e.target.value)}
+                                    className="mt-1 block w-full text-gray-900 dark:text-gray-900"
+                                    placeholder="Nama Program"
+                                    required
+                                />
+                                <InputError message={errors.program} className="mt-2" />
+                            </div>
+
+                            <div>
+                                <InputLabel htmlFor="sub_program" value="Sub Program" />
+                                <TextInput
+                                    id="sub_program"
+                                    value={data.sub_program}
+                                    onChange={(e) => setData('sub_program', e.target.value)}
+                                    className="mt-1 block w-full text-gray-900 dark:text-gray-900"
+                                    placeholder="Nama Sub Program"
+                                    required
+                                />
+                                <InputError message={errors.sub_program} className="mt-2" />
+                            </div>
+
+                            <div className="md:col-span-2">
+                                <InputLabel htmlFor="uraian" value="Uraian" />
+                                <textarea
+                                    id="uraian"
+                                    value={data.uraian}
+                                    onChange={(e) => setData('uraian', e.target.value)}
+                                    className="mt-1 block w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm"
+                                    rows={4}
+                                    placeholder="Deskripsi uraian kegiatan..."
+                                    required
+                                />
+                                <InputError message={errors.uraian} className="mt-2" />
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
+                            <SecondaryButton
+                                onClick={() => setIsEditModalOpen(false)}
+                                type="button"
+                            >
+                                Batal
+                            </SecondaryButton>
+                            <PrimaryButton disabled={processing} className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 border-0">
+                                {processing ? (
+                                    <>
+                                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        Menyimpan...
+                                    </>
+                                ) : (
+                                    'Simpan Perubahan'
                                 )}
                             </PrimaryButton>
                         </div>

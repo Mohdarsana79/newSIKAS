@@ -44,6 +44,9 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
     const [periodeRealisasi, setPeriodeRealisasi] = useState(bulan);
     const [jenisLaporanRealisasi, setJenisLaporanRealisasi] = useState('bulanan');
 
+    const [rekRealisasiData, setRekRealisasiData] = useState<any>(null);
+    const [showPrintRekRealisasiModal, setShowPrintRekRealisasiModal] = useState(false);
+
     const [showPrintModal, setShowPrintModal] = useState(false);
     const [showPrintBkpTunaiModal, setShowPrintBkpTunaiModal] = useState(false);
     const [showPrintBkpUmumModal, setShowPrintBkpUmumModal] = useState(false);
@@ -78,6 +81,8 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
         } else if (activeTab === 'realisasi' && tahun) {
             // Re-fetch only if relevant params change.
             fetchRealisasiData();
+        } else if (activeTab === 'rek_realisasi' && tahun) {
+            fetchRekRealisasiData();
         }
     }, [activeTab, tahun, bulanBank, bulanPembantu, bulanUmum, bulanPajak, bulanRob, bulanReg, bulanBa, periodeRealisasi, jenisLaporanRealisasi]);
 
@@ -94,6 +99,20 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
             }
         } catch (error) {
             console.error("Error fetching Realisasi data:", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const fetchRekRealisasiData = async () => {
+        setIsLoading(true);
+        try {
+            const response = await axios.get(route('api.realisasi.rekening', { tahun }));
+            if (response.data.success) {
+                setRekRealisasiData(response.data.data);
+            }
+        } catch (error) {
+            console.error("Error fetching Rek Realisasi data:", error);
         } finally {
             setIsLoading(false);
         }
@@ -218,7 +237,8 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
         { id: 'rob', label: 'ROB' },
         { id: 'reg', label: 'REG' },
         { id: 'ba', label: 'Berita Acara' },
-        { id: 'realisasi', label: 'Realisasi' }
+        { id: 'realisasi', label: 'Realisasi' },
+        { id: 'rek_realisasi', label: 'Rek. Realisasi' }
     ];
 
     const handleExportExcelBkpBank = () => {
@@ -274,6 +294,13 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
             paperSize: settings.paperSize,
             orientation: settings.orientation,
             fontSize: settings.fontSize
+        });
+        window.open(url, '_blank');
+    };
+
+    const handlePrintRekRealisasi = () => {
+        const url = route('rek-realisasi.cetak', {
+            tahun: tahun
         });
         window.open(url, '_blank');
     };
@@ -1941,6 +1968,133 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                             </div>
                         )}
 
+                        {activeTab === 'rek_realisasi' && (
+                            <div className="mt-6 flex flex-col gap-6 animate-fade-in-up">
+                                {/* Header Controls */}
+                                <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                                    <div className="flex items-center gap-4">
+                                        {/* No controls needed for now as per design */}
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={handlePrintRekRealisasi}
+                                            className="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 focus:bg-indigo-700 active:bg-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150"
+                                        >
+                                            CETAK REK. REALISASI
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Report Content */}
+                                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-x-auto">
+                                    {isLoading ? (
+                                        <div className="text-center py-10 text-gray-500">Memuat data...</div>
+                                    ) : (
+                                        <div className="min-w-[1200px]">
+                                            <div className="text-center mb-6">
+                                                <h2 className="text-lg font-bold uppercase">{rekRealisasiData?.sekolah?.nama_unit}</h2>
+                                                <h3 className="text-lg font-bold uppercase">REKAPITULASI REALISASI LK 2 - TAHUN {tahun}</h3>
+                                            </div>
+
+                                            {/* Metadata */}
+                                            <div className="grid grid-cols-[150px_10px_1fr] gap-y-1 mb-6 text-sm text-gray-800 dark:text-gray-200">
+                                                <div className="font-semibold">Wilayah</div>
+                                                <div>:</div>
+                                                <div>{rekRealisasiData?.sekolah?.kecamatan}</div>
+                                                <div className="font-semibold">Status Sekolah</div>
+                                                <div>:</div>
+                                                <div>Swasta</div>
+                                                <div className="font-semibold">Bentuk Pendidikan</div>
+                                                <div>:</div>
+                                                <div>SMP</div>
+                                                <div className="font-semibold">Sumber Dana</div>
+                                                <div>:</div>
+                                                <div>BOS Reguler</div>
+                                            </div>
+
+                                            {/* Table */}
+                                            <table className="w-full border-collapse border border-gray-800 dark:border-gray-500 text-xs sm:text-sm">
+                                                <thead>
+                                                    <tr className="bg-gray-100 dark:bg-gray-700 font-bold text-center">
+                                                        <th rowSpan={3} className="border border-gray-600 p-2 w-12">No</th>
+                                                        <th rowSpan={3} className="border border-gray-600 p-2 w-32">NPSN</th>
+                                                        <th rowSpan={3} className="border border-gray-600 p-2">Nama Unit</th>
+                                                        <th rowSpan={3} className="border border-gray-600 p-2 w-32">Kecamatan</th>
+                                                        <th colSpan={5} className="border border-gray-600 p-2">REALISASI BELANJA</th>
+                                                    </tr>
+                                                    <tr className="bg-gray-100 dark:bg-gray-700 font-bold text-center">
+                                                        <th colSpan={2} className="border border-gray-600 p-2">OPERASI</th>
+                                                        <th colSpan={2} className="border border-gray-600 p-2">MODAL</th>
+                                                        <th rowSpan={2} className="border border-gray-600 p-2 w-32">Jumlah</th>
+                                                    </tr>
+                                                    <tr className="bg-gray-100 dark:bg-gray-700 font-bold text-center">
+                                                        <th className="border border-gray-600 p-2 w-32">PAKAI HABIS</th>
+                                                        <th className="border border-gray-600 p-2 w-32">BARANG & JASA</th>
+                                                        <th className="border border-gray-600 p-2 w-32">PERALATAN & MESIN</th>
+                                                        <th className="border border-gray-600 p-2 w-32">ASET TETAP LAINNYA</th>
+                                                    </tr>
+                                                    <tr className="bg-gray-50 dark:bg-gray-600 text-center text-xs">
+                                                        <td className="border border-gray-600 p-1">1</td>
+                                                        <td className="border border-gray-600 p-1">2</td>
+                                                        <td className="border border-gray-600 p-1">3</td>
+                                                        <td className="border border-gray-600 p-1">4</td>
+                                                        <td className="border border-gray-600 p-1">6</td>
+                                                        <td className="border border-gray-600 p-1">7</td>
+                                                        <td className="border border-gray-600 p-1">8</td>
+                                                        <td className="border border-gray-600 p-1">9</td>
+                                                        <td className="border border-gray-600 p-1">10</td>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="text-gray-900 dark:text-gray-100">
+                                                    {rekRealisasiData && (
+                                                        <tr className="text-center hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                                            <td className="border border-gray-600 p-2">1</td>
+                                                            <td className="border border-gray-600 p-2">{rekRealisasiData.sekolah.npsn}</td>
+                                                            <td className="border border-gray-600 p-2 text-left">{rekRealisasiData.sekolah.nama_unit}</td>
+                                                            <td className="border border-gray-600 p-2">{rekRealisasiData.sekolah.kecamatan}</td>
+                                                            <td className="border border-gray-600 p-2 text-right">{formatCurrency(rekRealisasiData.realisasi.pakai_habis).replace('Rp', '')}</td>
+                                                            <td className="border border-gray-600 p-2 text-right">{formatCurrency(rekRealisasiData.realisasi.barang_jasa).replace('Rp', '')}</td>
+                                                            <td className="border border-gray-600 p-2 text-right">{formatCurrency(rekRealisasiData.realisasi.modal_peralatan).replace('Rp', '')}</td>
+                                                            <td className="border border-gray-600 p-2 text-right">{formatCurrency(rekRealisasiData.realisasi.modal_aset_lain).replace('Rp', '')}</td>
+                                                            <td className="border border-gray-600 p-2 text-right font-bold">{formatCurrency(rekRealisasiData.realisasi.total).replace('Rp', '')}</td>
+                                                        </tr>
+                                                    )}
+                                                    <tr className="bg-gray-100 dark:bg-gray-700 font-bold">
+                                                        <td colSpan={4} className="border border-gray-600 p-2 text-center uppercase">Jumlah</td>
+                                                        <td className="border border-gray-600 p-2 text-right">{formatCurrency(rekRealisasiData?.realisasi?.pakai_habis || 0).replace('Rp', '')}</td>
+                                                        <td className="border border-gray-600 p-2 text-right">{formatCurrency(rekRealisasiData?.realisasi?.barang_jasa || 0).replace('Rp', '')}</td>
+                                                        <td className="border border-gray-600 p-2 text-right">{formatCurrency(rekRealisasiData?.realisasi?.modal_peralatan || 0).replace('Rp', '')}</td>
+                                                        <td className="border border-gray-600 p-2 text-right">{formatCurrency(rekRealisasiData?.realisasi?.modal_aset_lain || 0).replace('Rp', '')}</td>
+                                                        <td className="border border-gray-600 p-2 text-right">{formatCurrency(rekRealisasiData?.realisasi?.total || 0).replace('Rp', '')}</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+
+                                            {/* Signatures */}
+                                            <div className="mt-16 flex justify-between px-8 text-center text-sm text-gray-900 dark:text-gray-100">
+                                                <div>
+                                                    <p className="mb-24">Menyetujui<br />Kepala Sekolah,</p>
+                                                    <p className="font-bold underline uppercase underline-offset-2">
+                                                        {rekRealisasiData?.penanggung_jawab?.kepala_sekolah}
+                                                    </p>
+                                                    <p>NIP. {rekRealisasiData?.penanggung_jawab?.nip_kepala_sekolah}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="mb-24">
+                                                        {rekRealisasiData?.sekolah?.kecamatan || '................'}, {format(new Date(), 'd MMMM yyyy', { locale: id })}
+                                                        <br />Bendahara,
+                                                    </p>
+                                                    <p className="font-bold underline uppercase underline-offset-2">
+                                                        {rekRealisasiData?.penanggung_jawab?.bendahara}
+                                                    </p>
+                                                    <p>NIP. {rekRealisasiData?.penanggung_jawab?.nip_bendahara}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                         {activeTab === 'bkp_pembantu' && (
                             <div className="space-y-8 animate-fade-in-up">
                                 {/* Control Bar */}
@@ -2210,7 +2364,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                             </div>
                         )}
 
-                        {activeTab !== 'bkp_bank' && activeTab !== 'bkp_pembantu' && activeTab !== 'bkp_umum' && activeTab !== 'bkp_pajak' && activeTab !== 'rob' && activeTab !== 'reg' && activeTab !== 'ba' && activeTab !== 'realisasi' && (
+                        {activeTab !== 'bkp_bank' && activeTab !== 'bkp_pembantu' && activeTab !== 'bkp_umum' && activeTab !== 'bkp_pajak' && activeTab !== 'rob' && activeTab !== 'reg' && activeTab !== 'ba' && activeTab !== 'realisasi' && activeTab !== 'rek_realisasi' && (
                             <div className="text-center py-12 text-gray-500 dark:text-gray-400">
                                 <svg className="w-12 h-12 mx-auto mb-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />

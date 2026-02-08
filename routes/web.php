@@ -29,6 +29,7 @@ use App\Http\Controllers\BukuKasPembantuTunaiController;
 use App\Http\Controllers\BukuPajakController;
 use App\Http\Controllers\BukuRobController;
 use App\Http\Controllers\BeritaAcaraPenutupanController;
+use App\Http\Controllers\LphController;
 
 /*
 |--------------------------------------------------------------------------
@@ -63,6 +64,7 @@ Route::middleware('auth')->group(function () {
     // Penganggaran
     Route::resource('penganggaran', PenganggaranController::class);
     Route::patch('/penganggaran/{id}/update-tanggal-perubahan', [PenganggaranController::class, 'updateTanggalPerubahan'])->name('penganggaran.update-tanggal-perubahan');
+    Route::patch('/penganggaran/{id}/update-tanggal-cetak', [PenganggaranController::class, 'updateTanggalCetak'])->name('penganggaran.update-tanggal-cetak');
 
     // RKAS
     // Place specific routes BEFORE wildcard routes to prevent conflicts
@@ -199,6 +201,14 @@ Route::middleware('auth')->group(function () {
         Route::delete('/api/sptj/{id}', [SptjController::class, 'destroy'])->name('api.sptj.destroy');
         Route::get('/api/sptj/calculate', [SptjController::class, 'calculate'])->name('api.sptj.calculate');
         Route::get('/api/sptj/tahun', [SptjController::class, 'getTahunAnggaran'])->name('api.sptj.tahun');
+
+        // LPH API
+        Route::get('/api/lph', [LphController::class, 'index'])->name('api.lph.index');
+        Route::post('/api/lph', [LphController::class, 'store'])->name('api.lph.store');
+        Route::put('/api/lph/{id}', [LphController::class, 'update'])->name('api.lph.update');
+        Route::delete('/api/lph/{id}', [LphController::class, 'destroy'])->name('api.lph.destroy');
+        Route::get('/api/lph/calculate', [LphController::class, 'calculate'])->name('api.lph.calculate');
+        Route::get('/api/lph/tahun', [LphController::class, 'getTahunAnggaran'])->name('api.lph.tahun');
     });
 
     // Kwitansi API & Routes
@@ -243,6 +253,7 @@ Route::middleware('auth')->group(function () {
     // Laporan PDF Routes
     Route::get('/laporan/spmth/{id}/pdf', [SpmthController::class, 'generatePdf'])->name('laporan.spmth.pdf');
     Route::get('/laporan/sptj/{id}/pdf', [SptjController::class, 'generatePdf'])->name('laporan.sptj.pdf');
+    Route::get('/laporan/lph/{id}/pdf', [LphController::class, 'generatePdf'])->name('laporan.lph.pdf');
     
     // Tanda Terima PDF (Previously defined, now consolidated above. Removing duplicate)
     // Route::get('/tanda-terima/pdf', [TandaTerimaController::class, 'generatePdf'])->name('tanda_terima.pdf'); // Replaced by {id}/pdf above to be more standard
@@ -256,6 +267,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/api/bkp-reg/data', [RegistrasiPenutupanKasController::class, 'getBkpRegData'])->name('api.bkp-reg.data');
     Route::get('/api/ba/data', [BeritaAcaraPenutupanController::class, 'getBeritaAcaraData'])->name('api.ba.data');
     Route::get('/api/realisasi/data', [RekapitulasiRealisasiController::class, 'getRealisasiData'])->name('api.realisasi.data');
+    Route::get('/api/realisasi/rekening', [RekapitulasiRealisasiController::class, 'getRekapRealisasiPerRekeningData'])->name('api.realisasi.rekening');
 
     // Printing Routes
     Route::get('/bkp-bank/cetak', [BukuBankController::class, 'generateBkpBankPdf'])->name('bkp-bank.cetak');
@@ -270,6 +282,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/bkp-reg/cetak', [RegistrasiPenutupanKasController::class, 'generateBkpRegPdf'])->name('bkp-reg.cetak');
     Route::get('/ba/cetak', [BeritaAcaraPenutupanController::class, 'generateBeritaAcaraPdf'])->name('ba.cetak');
     Route::get('/realisasi/cetak', [RekapitulasiRealisasiController::class, 'generatePdf'])->name('realisasi.cetak');
+    Route::get('/rek-realisasi/cetak', [RekapitulasiRealisasiController::class, 'generateRekapRealisasiPerRekeningPdf'])->name('rek-realisasi.cetak');
 });
 
 require __DIR__.'/auth.php';

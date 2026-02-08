@@ -14,6 +14,139 @@ use Illuminate\Support\Facades\Log;
 class RekapitulasiRealisasiController extends Controller
 {
     /**
+     * Get realisasi data per rekening belanja for specific columns
+     */
+    /**
+     * Get realisasi data per rekening belanja - Internal Helper
+     */
+    private function getRekapRealisasiPerRekeningInternal($tahun)
+    {
+        if (!$tahun) {
+            $penganggaranAktif = Penganggaran::orderBy('tahun_anggaran', 'desc')->first();
+            $tahun = $penganggaranAktif ? $penganggaranAktif->tahun_anggaran : date('Y');
+        }
+
+        $penganggaran = Penganggaran::where('tahun_anggaran', $tahun)->first();
+        if (!$penganggaran) {
+            return null;
+        }
+
+        $penganggaranId = $penganggaran->id;
+
+        // Fetch BKU transactions with Account Codes
+        $transaksi = BukuKasUmum::where('penganggaran_id', $penganggaranId)
+            ->whereYear('tanggal_transaksi', $tahun)
+            ->where('is_bunga_record', false)
+            ->whereHas('rekeningBelanja') // Ensure it has a related account code
+            ->with('rekeningBelanja')
+            ->get();
+
+        // Initialize sums
+        $pakaiHabis = 0;
+        $barangJasa = 0;
+        $modalPeralatan = 0;
+        $modalAsetLain = 0;
+
+        foreach ($transaksi as $trx) {
+            $kode = $trx->rekeningBelanja->kode_rekening;
+            $jumlah = $trx->total_transaksi_kotor;
+
+            // 1. Pakai Habis: 5.1.02.01
+            if (strpos($kode, '5.1.02.01') === 0) {
+                $pakaiHabis += $jumlah;
+            }
+            // 2. Barang & Jasa: 5.1.02.02 dan 5.1.02.04
+            elseif (strpos($kode, '5.1.02.02') === 0 || strpos($kode, '5.1.02.04') === 0) {
+                $barangJasa += $jumlah;
+            }
+            // 3. Peralatan dan Mesin: 5.2.02
+            elseif (strpos($kode, '5.2.02') === 0) {
+                $modalPeralatan += $jumlah;
+            }
+            // 4. Aset Tetap Lainnya: 5.2.05
+            elseif (strpos($kode, '5.2.05') === 0) {
+                $modalAsetLain += $jumlah;
+            }
+        }
+
+        return [
+            'sekolah' => [
+                'npsn' => $penganggaran->sekolah->npsn,
+                'nama_unit' => $penganggaran->sekolah->nama_sekolah,
+                'kecamatan' => $penganggaran->sekolah->kecamatan,
+            ],
+            'penanggung_jawab' => [
+                'kepala_sekolah' => $penganggaran->kepala_sekolah,
+                'nip_kepala_sekolah' => $penganggaran->nip_kepala_sekolah,
+                'bendahara' => $penganggaran->bendahara,
+                'nip_bendahara' => $penganggaran->nip_bendahara,
+            ],
+            'realisasi' => [
+                'pakai_habis' => $pakaiHabis,
+                'barang_jasa' => $barangJasa,
+                'modal_peralatan' => $modalPeralatan,
+                'modal_aset_lain' => $modalAsetLain,
+                'total' => $pakaiHabis + $barangJasa + $modalPeralatan + $modalAsetLain
+            ]
+        ];
+    }
+
+    /**
+     * Get realisasi data per rekening belanja for specific columns - API
+     */
+    public function getRekapRealisasiPerRekeningData(Request $request)
+    {
+        try {
+            $tahun = $request->get('tahun');
+            $data = $this->getRekapRealisasiPerRekeningInternal($tahun);
+
+            if (!$data) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Data penganggaran tidak ditemukan'
+                ], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => $data
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error fetching Rekap Realisasi Per Rekening: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Internal Server Error'
+            ], 500);
+        }
+    }
+
+    /**
+     * Generate PDF for Rekap Realisasi Per Rekening
+     */
+    public function generateRekapRealisasiPerRekeningPdf(Request $request)
+    {
+        try {
+            $tahun = $request->get('tahun');
+            $data = $this->getRekapRealisasiPerRekeningInternal($tahun);
+
+            if (!$data) {
+               return redirect()->back()->with('error', 'Data tahun ' . $tahun . ' tidak ditemukan.');
+            }
+
+            $pdf = Pdf::loadView('laporan.rek_realisasi_pdf', [
+                'data' => $data,
+                'tahun' => $tahun,
+            ])->setPaper('legal', 'landscape');
+
+            return $pdf->stream('Rekap_Realisasi_Rekening_Tahun_' . $tahun . '.pdf');
+
+        } catch (\Exception $e) {
+            Log::error('Error generating PDF Rekap Realisasi Per Rekening: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Gagal mencetak PDF: ' . $e->getMessage());
+        }
+    }
+    /**
      * Hitung realisasi dengan mapping kode - VERSI PUBLIC untuk dashboard
      */
     public function hitungRealisasiUntukDashboard($penganggaranId, $tahun, $bulanTarget, $jenisLaporan)

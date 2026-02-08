@@ -72,6 +72,7 @@ export default function SptjTab() {
         tahap_dua: 0,
         jenis_belanja_pegawai: 0,
         jenis_belanja_barang_jasa: 0,
+        jenis_belanja_operasi: 0,
         jenis_belanja_modal: 0,
         sisa_kas_tunai: 0,
         sisa_dana_di_bank: 0,
@@ -105,8 +106,9 @@ export default function SptjTab() {
                 ...prev,
                 tahap_satu: response.data.tahap_satu,
                 tahap_dua: response.data.tahap_dua,
-                jenis_belanja_pegawai: response.data.jenis_belanja_pegawai,
-                jenis_belanja_barang_jasa: response.data.jenis_belanja_barang_jasa,
+                jenis_belanja_operasi: response.data.jenis_belanja_operasi,
+                jenis_belanja_pegawai: 0, // Reset detailed, use operasi
+                jenis_belanja_barang_jasa: response.data.jenis_belanja_operasi, // Map to barang jasa for storage
                 jenis_belanja_modal: response.data.jenis_belanja_modal,
                 sisa_kas_tunai: response.data.sisa_kas_tunai,
                 sisa_dana_di_bank: response.data.sisa_dana_di_bank,
@@ -162,10 +164,17 @@ export default function SptjTab() {
         e.preventDefault();
         setIsSaving(true);
         try {
+            // Map operasi to barang_jasa for storage, pegwai 0
+            const payload = {
+                ...formData,
+                jenis_belanja_pegawai: 0,
+                jenis_belanja_barang_jasa: formData.jenis_belanja_operasi,
+            };
+
             if (formData.id) {
-                await axios.put(`/fitur-pelengkap/api/sptj/${formData.id}`, formData);
+                await axios.put(`/fitur-pelengkap/api/sptj/${formData.id}`, payload);
             } else {
-                await axios.post('/fitur-pelengkap/api/sptj', formData);
+                await axios.post('/fitur-pelengkap/api/sptj', payload);
             }
             setIsAddModalOpen(false);
             fetchData();
@@ -211,6 +220,7 @@ export default function SptjTab() {
             tahap_dua: Number(item.tahap_dua),
             jenis_belanja_pegawai: Number(item.jenis_belanja_pegawai),
             jenis_belanja_barang_jasa: Number(item.jenis_belanja_barang_jasa),
+            jenis_belanja_operasi: Number(item.jenis_belanja_pegawai) + Number(item.jenis_belanja_barang_jasa),
             jenis_belanja_modal: Number(item.jenis_belanja_modal),
             sisa_kas_tunai: Number(item.sisa_kas_tunai),
             sisa_dana_di_bank: Number(item.sisa_dana_di_bank),
@@ -229,6 +239,7 @@ export default function SptjTab() {
             tahap_dua: 0,
             jenis_belanja_pegawai: 0,
             jenis_belanja_barang_jasa: 0,
+            jenis_belanja_operasi: 0,
             jenis_belanja_modal: 0,
             sisa_kas_tunai: 0,
             sisa_dana_di_bank: 0,
@@ -421,7 +432,15 @@ export default function SptjTab() {
                                             id="tahun_anggaran"
                                             className="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-purple-500 focus:ring-purple-500 rounded-lg shadow-sm"
                                             value={formData.tahun_anggaran}
-                                            onChange={(e) => setFormData({ ...formData, tahun_anggaran: e.target.value })}
+                                            onChange={(e) => {
+                                                const selectedYear = e.target.value;
+                                                const selectedBudget = availableYears.find(y => String(y.tahun_anggaran) === selectedYear);
+                                                setFormData({
+                                                    ...formData,
+                                                    tahun_anggaran: selectedYear,
+                                                    penganggaran_id: selectedBudget ? selectedBudget.id : formData.penganggaran_id
+                                                });
+                                            }}
                                             required
                                         >
                                             {availableYears.map(year => (
@@ -512,30 +531,17 @@ export default function SptjTab() {
                                     <span className="bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 text-xs px-2 py-1 rounded">OUT</span>
                                     Pengeluaran Dana
                                 </h3>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
-                                        <InputLabel htmlFor="jenis_belanja_pegawai" value="Belanja Pegawai" className="text-gray-600 dark:text-gray-400 font-medium" />
+                                        <InputLabel htmlFor="jenis_belanja_operasi" value="Belanja Operasi" className="text-gray-600 dark:text-gray-400 font-medium" />
                                         <input
-                                            id="jenis_belanja_pegawai"
+                                            id="jenis_belanja_operasi"
                                             type="text"
                                             className="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-red-500 focus:ring-red-500 rounded-lg shadow-sm"
-                                            value={formatCurrency(formData.jenis_belanja_pegawai)}
+                                            value={formatCurrency(formData.jenis_belanja_operasi)}
                                             onChange={(e) => {
                                                 const value = e.target.value.replace(/\D/g, '');
-                                                setFormData({ ...formData, jenis_belanja_pegawai: Number(value) });
-                                            }}
-                                        />
-                                    </div>
-                                    <div>
-                                        <InputLabel htmlFor="jenis_belanja_barang_jasa" value="Belanja Barang & Jasa" className="text-gray-600 dark:text-gray-400 font-medium" />
-                                        <input
-                                            id="jenis_belanja_barang_jasa"
-                                            type="text"
-                                            className="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-red-500 focus:ring-red-500 rounded-lg shadow-sm"
-                                            value={formatCurrency(formData.jenis_belanja_barang_jasa)}
-                                            onChange={(e) => {
-                                                const value = e.target.value.replace(/\D/g, '');
-                                                setFormData({ ...formData, jenis_belanja_barang_jasa: Number(value) });
+                                                setFormData({ ...formData, jenis_belanja_operasi: Number(value) });
                                             }}
                                         />
                                     </div>
