@@ -9,6 +9,9 @@ use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use App\Models\Rkas;
 use App\Models\RkasPerubahan;
+use App\Models\SekolahProfile;
+use App\Models\KodeKegiatan;
+use App\Models\RekeningBelanja;
 
 class PenganggaranController extends Controller
 {
@@ -58,9 +61,12 @@ class PenganggaranController extends Controller
             }
         }
 
+        $canCreate = SekolahProfile::exists() && KodeKegiatan::exists() && RekeningBelanja::exists();
+
         return Inertia::render('Penganggaran/Index', [
              'items' => $items,
-             'anggarans' => $anggarans // passing raw data too if needed
+             'anggarans' => $anggarans, // passing raw data too if needed
+             'can_create' => $canCreate
         ]);
     }
 

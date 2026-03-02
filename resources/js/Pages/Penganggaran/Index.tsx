@@ -38,9 +38,10 @@ interface Anggaran {
     updated_at: string;
 }
 
-export default function Index({ auth, items, anggarans }: PageProps<{ items: PenganggaranItem[], anggarans: Anggaran[] }>) {
+export default function Index({ auth, items, anggarans, can_create }: PageProps<{ items: PenganggaranItem[], anggarans: Anggaran[], can_create: boolean }>) {
     const tabs = ['BOSP Reguler', 'BOSP Daerah', 'BOSP Kinerja', 'SiLPA BOSP Kinerja', 'Lainnya'];
     const [activeTab, setActiveTab] = useState('BOSP Reguler');
+    const [isRestrictionModalOpen, setIsRestrictionModalOpen] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editMode, setEditMode] = useState(false);
     const [editId, setEditId] = useState<number | null>(null);
@@ -87,6 +88,10 @@ export default function Index({ auth, items, anggarans }: PageProps<{ items: Pen
     };
 
     const handleCreate = () => {
+        if (!can_create) {
+            setIsRestrictionModalOpen(true);
+            return;
+        }
         setEditMode(false);
         setEditId(null);
         reset();
@@ -164,7 +169,7 @@ export default function Index({ auth, items, anggarans }: PageProps<{ items: Pen
                         </div>
                         <PrimaryButton
                             onClick={handleCreate}
-                            className="bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500 shadow-lg shadow-indigo-500/30 transition-all hover:scale-105"
+                            className={`bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500 shadow-lg shadow-indigo-500/30 transition-all ${can_create ? 'hover:scale-105' : 'opacity-80'}`}
                         >
                             <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -550,6 +555,35 @@ export default function Index({ auth, items, anggarans }: PageProps<{ items: Pen
 
             </Modal>
 
+            {/* Modal Restriksi / Peringatan Prasyarat */}
+            <Modal show={isRestrictionModalOpen} onClose={() => setIsRestrictionModalOpen(false)} maxWidth="sm">
+                <div className="p-6">
+                    <div className="flex items-center justify-center mb-4">
+                        <div className="bg-red-100 dark:bg-red-900/30 p-3 rounded-full">
+                            <svg className="w-8 h-8 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                        </div>
+                    </div>
+                    <h2 className="text-lg font-bold text-center text-gray-900 dark:text-white mb-2">
+                        Perhatian
+                    </h2>
+                    <p className="text-center text-sm text-gray-600 dark:text-gray-400">
+                        Mohon Maaf Lengkapi Profile Sekolah, Kode Kegiatan, dan Rekening Belanja Terlebih Dahulu
+                    </p>
+                    <div className="mt-6 flex justify-center flex-col w-full px-4 gap-2">
+                        <PrimaryButton className="w-full justify-center" onClick={() => setIsRestrictionModalOpen(false)}>
+                            Mengerti
+                        </PrimaryButton>
+                        <SecondaryButton className="w-full justify-center" onClick={() => {
+                            setIsRestrictionModalOpen(false);
+                            router.visit(route('sekolah-profile.index'));
+                        }}>
+                            Pergi ke Profil Sekolah
+                        </SecondaryButton>
+                    </div>
+                </div>
+            </Modal>
 
         </AuthenticatedLayout>
     );

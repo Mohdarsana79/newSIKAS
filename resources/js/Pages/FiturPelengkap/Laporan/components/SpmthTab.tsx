@@ -348,7 +348,7 @@ export default function SpmthTab() {
                                     <TextInput
                                         id="nomor_surat"
                                         type="text"
-                                        className="mt-1 block w-full border-gray-300 dark:border-gray-600 focus:border-purple-500 focus:ring-purple-500 rounded-lg shadow-sm"
+                                        className="mt-1 block w-full border-gray-300 dark:border-gray-600 focus:border-purple-500 focus:ring-purple-500 rounded-lg shadow-sm text-gray-900"
                                         value={formData.nomor_surat}
                                         onChange={(e) => setFormData({ ...formData, nomor_surat: e.target.value })}
                                         required

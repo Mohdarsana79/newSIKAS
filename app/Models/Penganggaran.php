@@ -12,6 +12,22 @@ class Penganggaran extends Model
 
     protected $table = 'penganggarans';
 
+    protected static function booted()
+    {
+        static::retrieved(function ($penganggaran) {
+            if (empty($penganggaran->sekolah_id)) {
+                $sekolah = SekolahProfile::first();
+                if ($sekolah) {
+                    $penganggaran->sekolah_id = $sekolah->id;
+                    \Illuminate\Support\Facades\DB::table('penganggarans')
+                        ->where('id', $penganggaran->id)
+                        ->update(['sekolah_id' => $sekolah->id]);
+                    $penganggaran->setRelation('sekolah', $sekolah);
+                }
+            }
+        });
+    }
+
     protected $fillable = [
         'pagu_anggaran',
         'tahun_anggaran',

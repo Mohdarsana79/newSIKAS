@@ -179,15 +179,14 @@ class SptjController extends Controller
             }
 
             // 3. Sisa Kas & Bank (Balances)
-            // Get the very last BKU record up to the end date of the period
-            $lastBku = \App\Models\BukuKasUmum::where('penganggaran_id', $penganggaran->id)
-                ->whereDate('tanggal_transaksi', '<=', $endDate)
-                ->orderBy('tanggal_transaksi', 'desc')
-                ->orderBy('created_at', 'desc')
-                ->first();
-                
-            $sisaTunai = $lastBku ? ($lastBku->saldo_tunai ?? 0) : 0;
-            $sisaBank = $lastBku ? ($lastBku->saldo_bank ?? 0) : 0;
+            $bukuKasService = app(\App\Services\BukuKasService::class);
+            // Tahap 1 ends in June (6), Tahap 2 ends in December (12)
+            $endMonth = $request->tahap == '1' ? 6 : 12;
+
+            // hitungSaldoTunaiSebelumBulan gets balance *before* the given month. 
+            // So we pass endMonth + 1 to get the balance up to the end of endMonth.
+            $sisaTunai = $bukuKasService->hitungSaldoTunaiSebelumBulan($penganggaran->id, $endMonth + 1);
+            $sisaBank = $bukuKasService->hitungSaldoBankSebelumBulan($penganggaran->id, $endMonth + 1);
 
             return response()->json([
                 'tahap_satu' => $tahapSatu,

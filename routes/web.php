@@ -86,6 +86,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/rkas/{id}/export-rekap-pdf', [RkasController::class, 'exportRekapPdf'])->name('rkas.export-rekap-pdf');
     Route::get('/rkas/{id}/export-lembar-kerja-pdf', [RkasController::class, 'exportLembarKerjaPdf'])->name('rkas.export-lembar-kerja-pdf');
     Route::get('/rkas/{id}/export-bulanan-pdf', [RkasController::class, 'exportBulananPdf'])->name('rkas.export-bulanan-pdf');
+    Route::get('/rkas/{id}/export-rincian-pdf', [RkasController::class, 'exportRincianPdf'])->name('rkas.export-rincian-pdf');
+    Route::get('/rkas/{id}/export-rincian-excel', [RkasController::class, 'exportRincianExcel'])->name('rkas.export-rincian-excel');
 
     // RKAS Perubahan
     Route::get('/rkas-perubahan/{id}', [RkasPerubahanController::class, 'index'])->name('rkas-perubahan.index');
@@ -105,6 +107,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/rkas-perubahan/{id}/export-rekap-pdf', [RkasPerubahanController::class, 'generatePdfRkaRekap'])->name('rkas-perubahan.export-rekap-pdf');
     Route::get('/rkas-perubahan/{id}/export-lembar-kerja-pdf', [RkasPerubahanController::class, 'generateRkaDuaSatuPdf'])->name('rkas-perubahan.export-lembar-kerja-pdf');
     Route::get('/rkas-perubahan/{id}/export-bulanan-pdf', [RkasPerubahanController::class, 'generatePdfBulanan'])->name('rkas-perubahan.export-bulanan-pdf');
+    Route::get('/rkas-perubahan/{id}/export-rincian-pdf', [RkasPerubahanController::class, 'exportRincianPdf'])->name('rkas-perubahan.export-rincian-pdf');
+    Route::get('/rkas-perubahan/{id}/export-rincian-excel', [RkasPerubahanController::class, 'exportRincianExcel'])->name('rkas-perubahan.export-rincian-excel');
 
 
     // Penatausahaan
@@ -121,6 +125,7 @@ Route::middleware('auth')->group(function () {
 
     // Penerimaan Dana
     Route::post('/penerimaan-dana', [PenerimaanDanaController::class, 'store'])->name('penerimaan-dana.store');
+    Route::delete('/penerimaan-dana/{id}', [PenerimaanDanaController::class, 'destroy'])->name('penerimaan-dana.destroy');
 
     // STS
     Route::post('sts/{id}/bayar', [StsController::class, 'bayar'])->name('sts.bayar');

@@ -76,12 +76,34 @@ class BukuKasService
 
             Log::info('Total Belanja Non-Tunai sampai bulan sebelumnya:', ['total' => $totalBelanjaNonTunaiSampaiBulanSebelumnya]);
 
+            // PERBAIKAN: Hitung total STS (Buku Bank) sampai bulan sebelumnya
+            $totalStsSampaiBulanSebelumnya = \App\Models\Sts::where('penganggaran_id', $penganggaran_id)
+                ->where('is_bkp', true)
+                ->whereRaw('EXTRACT(MONTH FROM tanggal_bayar) < ?', [$bulanTarget])
+                ->sum('jumlah_bayar');
+
+            Log::info('Total STS sampai bulan sebelumnya:', ['total' => $totalStsSampaiBulanSebelumnya]);
+
+            // PERBAIKAN: Hitung TRK Saldo Awal sampai bulan sebelumnya
+            $totalTrkSampaiBulanSebelumnya = 0;
+            $penganggaran = \App\Models\Penganggaran::find($penganggaran_id);
+            if ($penganggaran && $penganggaran->is_trk_saldo_awal && $penganggaran->tanggal_trk_saldo_awal) {
+                $bulanTrk = \Carbon\Carbon::parse($penganggaran->tanggal_trk_saldo_awal)->month;
+                if ($bulanTrk < $bulanTarget) {
+                    $totalTrkSampaiBulanSebelumnya = $penganggaran->jumlah_trk_saldo_awal;
+                }
+            }
+
+            Log::info('Total TRK sampai bulan sebelumnya:', ['total' => $totalTrkSampaiBulanSebelumnya]);
+
             // PERBAIKAN: Rumus saldo bank yang benar
             $saldoBank = $totalPenerimaan
                 - $totalPenarikanSampaiBulanSebelumnya
                 + $totalBungaSampaiBulanSebelumnya
                 - $totalPajakBungaSampaiBulanSebelumnya
-                - $totalBelanjaNonTunaiSampaiBulanSebelumnya;
+                - $totalBelanjaNonTunaiSampaiBulanSebelumnya
+                - $totalStsSampaiBulanSebelumnya
+                - $totalTrkSampaiBulanSebelumnya;
 
             Log::info('Perhitungan Saldo Bank Sebelum Bulan - VERSI DIPERBAIKI', [
                 'penganggaran_id' => $penganggaran_id,

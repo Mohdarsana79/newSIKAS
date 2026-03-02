@@ -17,7 +17,6 @@ return new class extends Migration
             $table->foreignId('penganggaran_id')->constrained();
             $table->enum('semester', ['1', '2']);
             $table->date('tanggal_lph')->nullable();
-            $table->date('tanggal_lph')->nullable();
             
             // Penerimaan
             $table->decimal('penerimaan_anggaran', 15, 2)->default(0);

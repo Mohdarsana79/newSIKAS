@@ -6,7 +6,7 @@ import GuestLayout from '@/Layouts/GuestLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { FormEventHandler, useState } from 'react';
 
-export default function Register() {
+export default function Register({ isLocked = false }: { isLocked?: boolean }) {
     const { data, setData, post, processing, errors, reset } = useForm({
         name: '',
         username: '',
@@ -24,6 +24,38 @@ export default function Register() {
             onFinish: () => reset('password', 'password_confirmation'),
         });
     };
+
+    if (isLocked) {
+        return (
+            <GuestLayout>
+                <Head title="Registrasi Terkunci" />
+                <div className="flex min-h-[400px] flex-col items-center justify-center text-center px-4">
+                    <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30 mb-6 shadow-sm border border-red-200 dark:border-red-800">
+                        <svg className="h-10 w-10 text-red-600 dark:text-red-500" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" aria-hidden="true">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                        </svg>
+                    </div>
+                    <h2 className="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white mb-4">
+                        Akses Registrasi Terkunci
+                    </h2>
+                    <p className="mt-2 text-base text-gray-600 dark:text-gray-400 max-w-sm mx-auto leading-relaxed">
+                        Sistem mendeteksi bahwa sudah ada pengguna yang terdaftar. Pendaftaran tambahan saat ini ditutup demi keamanan sistem.
+                    </p>
+                    <div className="mt-8">
+                        <Link
+                            href={route('login')}
+                            className="inline-flex items-center justify-center rounded-full bg-indigo-600 px-8 py-3 text-sm font-semibold text-white shadow-md hover:bg-indigo-500 hover:shadow-lg hover:-translate-y-0.5 transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                        >
+                            <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                            </svg>
+                            Kembali ke Halaman Masuk
+                        </Link>
+                    </div>
+                </div>
+            </GuestLayout>
+        );
+    }
 
     return (
         <GuestLayout>
@@ -127,14 +159,14 @@ export default function Register() {
                             <div className="h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
                                 <div
                                     className={`h-full transition-all duration-300 ${data.password.length < 8 ? 'bg-red-500 w-1/3' :
-                                            !/(?=.*[a-z])(?=.*[A-Z])(?=.*[\W_])/.test(data.password) ? 'bg-yellow-500 w-2/3' :
-                                                'bg-green-500 w-full'
+                                        !/(?=.*[a-z])(?=.*[A-Z])(?=.*[\W_])/.test(data.password) ? 'bg-yellow-500 w-2/3' :
+                                            'bg-green-500 w-full'
                                         }`}
                                 ></div>
                             </div>
                             <p className={`text-xs mt-1 ${data.password.length < 8 ? 'text-red-500' :
-                                    !/(?=.*[a-z])(?=.*[A-Z])(?=.*[\W_])/.test(data.password) ? 'text-yellow-600' :
-                                        'text-green-600'
+                                !/(?=.*[a-z])(?=.*[A-Z])(?=.*[\W_])/.test(data.password) ? 'text-yellow-600' :
+                                    'text-green-600'
                                 }`}>
                                 {data.password.length < 8 ? 'Lemah (Minimal 8 karakter)' :
                                     !/(?=.*[a-z])(?=.*[A-Z])(?=.*[\W_])/.test(data.password) ? 'Sedang (Gunakan huruf besar & simbol)' :

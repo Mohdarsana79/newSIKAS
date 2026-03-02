@@ -30,7 +30,10 @@ export default function Guest({ children }: PropsWithChildren) {
                 </div>
 
                 <div className="relative z-10 text-sm text-indigo-200">
-                    &copy; 2025 SIKAS Team. Created By Moh Gian Darsana, S.Pd.,Gr
+                    &copy; 2025 SIKAS Team. Created By <a href="https://www.youtube.com/@giandarsana5772"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm font-semibold text-white-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-white">Moh Gian Darsana Darsana, S.Pd.,Gr</a>
                 </div>
             </div>
 

@@ -60,31 +60,38 @@ class LphController extends Controller
     {
         $tahun = $penganggaran->tahun_anggaran;
 
-        // 1. Penerimaan
-        $penerimaanAnggaran = $penganggaran->pagu_anggaran;
-
+        // 1. Penerimaan Dana (Anggaran pada row Penerimaan)
         $penerimaanRealisasiQuery = PenerimaanDana::where('penganggaran_id', $penganggaran->id);
 
         if ($semester == '1') {
              $penerimaanRealisasiQuery->where(function($q) {
                 $q->where('sumber_dana', 'like', "%Tahap 1%")
-                  ->orWhere('sumber_dana', 'like', "%Tahap I%"); // Cover explicit Tahap I case if distinct from 1
+                  ->orWhere('sumber_dana', 'like', "%Tahap I%"); 
+            });
+        } else {
+             $penerimaanRealisasiQuery->where(function($q) {
+                $q->where('sumber_dana', 'like', "%Tahap 2%")
+                  ->orWhere('sumber_dana', 'like', "%Tahap II%"); 
             });
         }
-        // If semester 2, we want cumulative (Tahap 1 + Tahap 2), so we take all receipts for this budget.
-
-        $penerimaanRealisasi = $penerimaanRealisasiQuery->sum('jumlah_dana');
+        // Total Dana Masuk (Penerimaan Anggaran)
+        $totalPenerimaanDana = $penerimaanRealisasiQuery->sum('jumlah_dana');
 
         // 2. Pengeluaran Anggaran
-        // Check if RkasPerubahan exists
         $hasPerubahan = RkasPerubahan::where('penganggaran_id', $penganggaran->id)->exists();
+
+        $months = $semester == '1' 
+            ? ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni'] 
+            : ['Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 
         if ($hasPerubahan) {
             $rkasItems = RkasPerubahan::where('penganggaran_id', $penganggaran->id)
+                ->whereIn('bulan', $months)
                 ->with('rekeningBelanja')
                 ->get();
         } else {
             $rkasItems = Rkas::where('penganggaran_id', $penganggaran->id)
+                ->whereIn('bulan', $months)
                 ->with('rekeningBelanja')
                 ->get();
         }
@@ -103,10 +110,7 @@ class LphController extends Controller
         )->sum(fn($i) => $i->jumlah * $i->harga_satuan);
 
         // 3. Pengeluaran Realisasi (From BKU)
-        // Cumulative Calculation:
-        // Semester 1: Jan 1 - Jun 30
-        // Semester 2: Jan 1 - Dec 31 (Accumulated)
-        $startDate = "$tahun-01-01"; 
+        $startDate = $semester == '1' ? "$tahun-01-01" : "$tahun-07-01"; 
         $endDate = $semester == '1' ? "$tahun-06-30" : "$tahun-12-31";
 
         $bkuEntries = BukuKasUmum::where('penganggaran_id', $penganggaran->id)
@@ -128,6 +132,10 @@ class LphController extends Controller
             str_starts_with($b->rekeningBelanja->kode_rekening ?? '', '5.2') &&
             !str_starts_with($b->rekeningBelanja->kode_rekening ?? '', '5.2.02')
         )->sum('total_transaksi_kotor');
+
+        // NEW LOGIC: Penerimaan row should reflect Dana Diterima vs Total Belanja
+        $penerimaanAnggaran = $totalPenerimaanDana;
+        $penerimaanRealisasi = $belanjaOperasiRealisasi + $belanjaModalPeralatanRealisasi + $belanjaModalAsetRealisasi;
 
         return [
             'penerimaan_anggaran' => $penerimaanAnggaran,

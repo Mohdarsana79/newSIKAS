@@ -409,6 +409,9 @@ class RkasPerubahanController extends Controller
         })->filter(fn($group, $key) => !is_null($key));
 
         $tahapanData = $this->kelolaDataRkas($groupedRkas, $groupedMurni);
+        
+        // Data for "Rincian" Tab
+        $rincianData = $this->kelolaDataRincian($rkasData);
 
         // 3. Lembar Kerja 221 Data
         $hierarchyNames = [
@@ -551,8 +554,32 @@ class RkasPerubahanController extends Controller
             'rekapData' => $rekapData,
             'perTahapData' => $perTahapData,
             'lembarData' => $lembarData,
+            'rincianData' => $rincianData,
             'grafikData' => $grafikDataResponse
         ]);
+    }
+
+    private function kelolaDataRincian($rkasData)
+    {
+        return $rkasData->groupBy(function ($item) {
+            return optional($item->kodeKegiatan)->sub_program ?? 'Lainnya';
+        })->map(function ($group) {
+            $subProgram = optional($group->first()->kodeKegiatan)->sub_program ?? 'Lainnya';
+            $total = $group->sum(function ($item) { return $item->jumlah * $item->harga_satuan; });
+            
+            $items = $group->groupBy('uraian')->map(function ($uraianGroup) {
+                return [
+                    'uraian' => $uraianGroup->first()->uraian,
+                    'jumlah' => $uraianGroup->sum(function ($item) { return $item->jumlah * $item->harga_satuan; })
+                ];
+            })->values();
+
+            return [
+                'sub_program' => $subProgram,
+                'items' => $items,
+                'total' => $total,
+            ];
+        })->values();
     }
 
     public function getLogs($id)
@@ -1312,5 +1339,50 @@ class RkasPerubahanController extends Controller
         ]);
 
         return $pdf->setPaper($paperSize, $orientation)->stream('rkas_perubahan_bulanan.pdf');
+    }
+
+    public function exportRincianPdf(Request $request, $id)
+    {
+        $penganggaran = Penganggaran::with('sekolah')->findOrFail($id);
+        
+        $rkasData = RkasPerubahan::with(['kodeKegiatan', 'rekeningBelanja'])
+            ->where('penganggaran_id', $id)
+            ->get();
+
+        $rincianData = $this->kelolaDataRincian($rkasData);
+
+        $pdf = Pdf::loadView('laporan.rka_rincian_pdf', [
+            'anggaran' => $penganggaran->toArray(),
+            'rincianData' => $rincianData,
+            'paper_size' => $request->paper_size ?? 'A4',
+            'orientation' => $request->orientation ?? 'portrait',
+            'font_size' => $request->font_size ?? '12pt'
+        ]);
+
+        return $pdf->stream('rka_rincian_perubahan.pdf');
+    }
+
+    public function exportRincianExcel(Request $request, $id)
+    {
+        $penganggaran = Penganggaran::with('sekolah')->findOrFail($id);
+
+        $rkasData = RkasPerubahan::with(['kodeKegiatan', 'rekeningBelanja'])
+            ->where('penganggaran_id', $id)
+            ->get();
+
+        $rincianData = $this->kelolaDataRincian($rkasData);
+
+        $html = view('laporan.rka_rincian_exel', [
+            'anggaran' => $penganggaran->toArray(),
+            'rincianData' => $rincianData,
+            'paper_size' => 'A4',
+            'orientation' => 'portrait',
+            'font_size' => '11pt',
+            'is_excel' => true,
+        ])->render();
+
+        return response($html)
+            ->header('Content-Type', 'application/vnd.ms-excel')
+            ->header('Content-Disposition', 'attachment; filename="rka_rincian_perubahan_' . $penganggaran->tahun_anggaran . '.xls"');
     }
 }

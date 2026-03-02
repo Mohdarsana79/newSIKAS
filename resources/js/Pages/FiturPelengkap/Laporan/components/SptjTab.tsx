@@ -392,7 +392,7 @@ export default function SptjTab() {
                                         <TextInput
                                             id="nomor_sptj"
                                             type="text"
-                                            className="mt-1 block w-full border-gray-300 dark:border-gray-600 focus:border-purple-500 focus:ring-purple-500 rounded-lg shadow-sm"
+                                            className="mt-1 block w-full border-gray-300 dark:border-gray-600 focus:border-purple-500 focus:ring-purple-500 rounded-lg shadow-sm text-gray-900"
                                             value={formData.nomor_sptj}
                                             onChange={(e) => setFormData({ ...formData, nomor_sptj: e.target.value })}
                                             required

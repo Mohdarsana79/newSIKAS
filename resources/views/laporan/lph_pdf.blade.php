@@ -222,9 +222,14 @@
              <tr>
                 <td></td>
                 <td class="text-right text-bold">Jumlah</td>
-                <td class="amount-col">{{ number_format($lph->penerimaan_anggaran, 0, ',', '.') }}</td>
-                <td class="amount-col">{{ number_format($lph->penerimaan_realisasi, 0, ',', '.') }}</td>
-                <td class="amount-col">{{ number_format($lph->penerimaan_selisih, 0, ',', '.') }}</td>
+                @php
+                    $totalPengeluaranAnggaran = $lph->belanja_operasi_anggaran + $lph->belanja_modal_peralatan_anggaran + $lph->belanja_modal_aset_anggaran;
+                    $totalPengeluaranRealisasi = $lph->belanja_operasi_realisasi + $lph->belanja_modal_peralatan_realisasi + $lph->belanja_modal_aset_realisasi;
+                    $totalPengeluaranSelisih = $lph->belanja_operasi_selisih + $lph->belanja_modal_peralatan_selisih + $lph->belanja_modal_aset_selisih;
+                @endphp
+                <td class="amount-col">{{ number_format($totalPengeluaranAnggaran, 0, ',', '.') }}</td>
+                <td class="amount-col">{{ number_format($totalPengeluaranRealisasi, 0, ',', '.') }}</td>
+                <td class="amount-col">{{ number_format($totalPengeluaranSelisih, 0, ',', '.') }}</td>
             </tr>
         </tbody>
     </table>

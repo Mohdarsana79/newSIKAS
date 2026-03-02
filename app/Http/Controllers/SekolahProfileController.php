@@ -40,7 +40,10 @@ class SekolahProfileController extends Controller
         ]);
 
         // Create
-        SekolahProfile::create($request->all());
+        $sekolah = SekolahProfile::create($request->all());
+
+        // Fill missing foreign keys for penganggarans
+        \App\Models\Penganggaran::whereNull('sekolah_id')->update(['sekolah_id' => $sekolah->id]);
 
         return redirect()->back()->with('success', 'Data Sekolah berhasil disimpan.');
     }
@@ -65,6 +68,9 @@ class SekolahProfileController extends Controller
         ]);
 
         $sekolah->update($request->all());
+
+        // Also fix any penganggarans that might have null sekola_id
+        \App\Models\Penganggaran::whereNull('sekolah_id')->update(['sekolah_id' => $sekolah->id]);
 
         return redirect()->back()->with('success', 'Data Sekolah berhasil diperbarui.');
     }

@@ -22,6 +22,14 @@ export default function Welcome({
                     <span className="text-xl font-bold tracking-tight text-indigo-700 dark:text-indigo-400">SIKAS</span>
                 </div>
                 <div className="flex items-center gap-4">
+                    <a
+                        href="https://www.youtube.com/@giandarsana5772"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm font-semibold text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-white"
+                    >
+                        Panduan
+                    </a>
                     {auth.user ? (
                         <Link
                             href={route('dashboard')}
@@ -167,10 +175,13 @@ export default function Welcome({
             </div>
 
             {/* Footer */}
-            <footer className="mt-auto bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 py-12">
+            <footer className="mt-auto bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 py-12 text-sm">
                 <div className="mx-auto max-w-7xl px-6 lg:px-8 flex flex-col items-center">
                     <p className="text-center text-xs leading-5 text-gray-500">
-                        &copy; 2025 SIKAS Team. Created By Moh Gian Darsana, S.Pd.,Gr
+                        &copy; 2025 SIKAS Team. Created By <a href="https://www.youtube.com/@giandarsana5772"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm font-semibold text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-white">Moh Gian Darsana Darsana, S.Pd.,Gr</a>
                     </p>
                 </div>
             </footer>

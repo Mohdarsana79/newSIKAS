@@ -1260,7 +1260,7 @@ export default function Bku({
 
     const renderStep3 = () => (
         <div className="space-y-2">
-            <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg flex items-start gap-3">
+            {/* <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg flex items-start gap-3">
                 <input
                     type="checkbox"
                     checked={data.bebas_pajak}
@@ -1268,7 +1268,7 @@ export default function Bku({
                     className="mt-1 rounded border-gray-300 text-blue-600 shadow-sm focus:ring-blue-500"
                 />
                 <span className="text-gray-900 dark:text-gray-100 font-medium text-[10pt]">Centang jika belanja dari SIPLah untuk bebas lapor pajak secara otomatis</span>
-            </div>
+            </div> */}
 
             {/* Dynamic Activity Cards */}
             {(() => {
@@ -1537,7 +1537,7 @@ export default function Bku({
                             {!is_closed && (
                                 <button
                                     onClick={() => setIsModalOpen(true)}
-                                    className="inline-flex items-center px-4 py-2 bg-primary dark:bg-primary-800 border border-gray-300 dark:border-gray-600 rounded-md font-semibold text-[10pt] text-gray-900 dark:text-gray-300 uppercase tracking-widest shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none transition ease-in-out duration-150"
+                                    className="inline-flex items-center px-4 py-2 bg-primary dark:bg-primary-800 border border-gray-300 dark:border-gray-600 rounded-md font-semibold text-[10pt] text-gray-300 dark:text-gray-300 uppercase tracking-widest shadow-sm hover:bg-gray-50 hover:text-gray-900 dark:hover:bg-gray-700 focus:outline-none transition ease-in-out duration-150"
                                 >
                                     <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -1941,78 +1941,92 @@ export default function Bku({
 
             {/* Modal Tambah Pembelanjaan */}
             <Modal show={isModalOpen} onClose={closeModal} maxWidth="4xl">
-                {/* ... existing modal content ... */}
-                <div className="p-4">
-                    <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                        Isi Detail Pembelanjaan
-                    </h2>
-                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-400 mb-6">
-                        Isi detail barang atau jasa yang Anda belanjakan yang terdapat dalam 1 nota.
-                    </p>
-
-                    {/* Stepper Header */}
-                    <div className="flex items-center justify-between mb-4 relative">
-                        {/* ... */}
-                        <div className="absolute top-1/2 left-0 w-full h-0.5 bg-gray-200 dark:bg-gray-700 -z-10" />
-                        {steps.map((step) => (
-                            <div key={step.number} className="flex flex-row items-center gap-2 bg-white dark:bg-gray-800 px-2 group">
-                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-colors
-                                    ${currentStep >= step.number
-                                        ? 'bg-blue-900 text-white border-blue-900'
-                                        : 'bg-white text-gray-400 border-gray-300 dark:bg-gray-700 dark:border-gray-600'
-                                    }`}
-                                >
-                                    {currentStep > step.number ? (
-                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                        </svg>
-                                    ) : step.number}
-                                </div>
-                                <span className={`text-sm font-medium ${currentStep >= step.number ? 'text-blue-900 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}`}>
-                                    {step.title}
-                                </span>
+                <div className="relative bg-white dark:bg-gray-800 rounded-lg">
+                    {/* Beautiful Header Background */}
+                    <div className="bg-gradient-to-r from-cyan-600 to-blue-600 p-6 rounded-t-lg shadow-sm">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-white/20 rounded-lg">
+                                <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                                </svg>
                             </div>
-                        ))}
+                            <div>
+                                <h2 className="text-xl font-bold text-white">
+                                    Isi Detail Pembelanjaan
+                                </h2>
+                                <p className="text-cyan-100 text-[10pt] mt-1">
+                                    Isi detail barang atau jasa yang Anda belanjakan yang terdapat dalam 1 nota.
+                                </p>
+                            </div>
+                        </div>
                     </div>
 
-                    {/* Dynamic Form Content */}
-                    <div className="mt-4 max-h-[60vh] overflow-y-auto pr-2">
-                        {currentStep === 1 && renderStep1()}
-                        {currentStep === 2 && renderStep2()}
-                        {currentStep === 3 && renderStep3()}
-                    </div>
+                    <div className="p-6">
 
-                    {/* Footer Actions */}
-                    <div className="mt-8 flex justify-end gap-3 pt-6 border-t border-gray-100 dark:border-gray-700">
-                        {currentStep === 1 ? (
-                            <SecondaryButton onClick={closeModal}>Batal</SecondaryButton>
-                        ) : (
-                            <SecondaryButton onClick={prevStep}>Kembali</SecondaryButton>
-                        )}
+                        {/* Stepper Header */}
+                        <div className="flex items-center justify-between mb-4 relative">
+                            {/* ... */}
+                            <div className="absolute top-1/2 left-0 w-full h-0.5 bg-gray-200 dark:bg-gray-700 -z-10" />
+                            {steps.map((step) => (
+                                <div key={step.number} className="flex flex-row items-center gap-2 bg-white dark:bg-gray-800 px-2 group">
+                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-colors shadow-sm
+                                    ${currentStep >= step.number
+                                            ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white border-transparent'
+                                            : 'bg-white text-gray-400 border-gray-300 dark:bg-gray-800 dark:border-gray-600'
+                                        }`}
+                                    >
+                                        {currentStep > step.number ? (
+                                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                            </svg>
+                                        ) : step.number}
+                                    </div>
+                                    <span className={`text-sm ${currentStep >= step.number ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-gray-400 dark:text-gray-500 font-medium'}`}>
+                                        {step.title}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
 
-                        {currentStep < 3 ? (
-                            <PrimaryButton
-                                onClick={nextStep}
-                                disabled={currentStep === 2 && (hasVolumeError || data.items.length === 0)}
-                                className={(currentStep === 2 && (hasVolumeError || data.items.length === 0)) ? 'opacity-50 cursor-not-allowed' : ''}
-                            >
-                                Lanjut
-                            </PrimaryButton>
-                        ) : (
-                            <PrimaryButton
-                                className={`bg-blue-900 hover:bg-blue-800 ${processing ? 'opacity-75 cursor-wait' : ''}`}
-                                onClick={submitBku}
-                                disabled={processing}
-                            >
-                                {processing ? 'Menyimpan...' : 'Simpan'}
-                            </PrimaryButton>
-                        )}
+                        {/* Dynamic Form Content */}
+                        <div className="mt-4 max-h-[60vh] overflow-y-auto pr-2">
+                            {currentStep === 1 && renderStep1()}
+                            {currentStep === 2 && renderStep2()}
+                            {currentStep === 3 && renderStep3()}
+                        </div>
+
+                        {/* Footer Actions */}
+                        <div className="mt-8 flex justify-end gap-3 pt-6 border-t border-gray-100 dark:border-gray-700">
+                            {currentStep === 1 ? (
+                                <SecondaryButton onClick={closeModal}>Batal</SecondaryButton>
+                            ) : (
+                                <SecondaryButton onClick={prevStep}>Kembali</SecondaryButton>
+                            )}
+
+                            {currentStep < 3 ? (
+                                <PrimaryButton
+                                    onClick={nextStep}
+                                    disabled={currentStep === 2 && (hasVolumeError || data.items.length === 0)}
+                                    className={(currentStep === 2 && (hasVolumeError || data.items.length === 0)) ? 'opacity-50 cursor-not-allowed' : ''}
+                                >
+                                    Lanjut
+                                </PrimaryButton>
+                            ) : (
+                                <PrimaryButton
+                                    className={`bg-blue-600 hover:bg-blue-700 text-white ${processing ? 'opacity-75 cursor-wait' : ''}`}
+                                    onClick={submitBku}
+                                    disabled={processing}
+                                >
+                                    {processing ? 'Menyimpan...' : 'Simpan'}
+                                </PrimaryButton>
+                            )}
+                        </div>
                     </div>
                 </div>
             </Modal>
 
             {/* Modal Tarik Tunai */}
-            <Modal show={isTarikTunaiOpen} onClose={() => setIsTarikTunaiOpen(false)} maxWidth="2xl">
+            <Modal show={isTarikTunaiOpen} onClose={() => setIsTarikTunaiOpen(false)} maxWidth="5xl">
                 <div className="relative bg-white dark:bg-gray-800 rounded-lg">
                     {/* Unique Header Background */}
                     <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-6 rounded-t-lg">
@@ -2079,7 +2093,7 @@ export default function Bku({
 
             {/* Modal Setor Tunai */}
             < Modal show={isSetorTunaiOpen} onClose={() => setIsSetorTunaiOpen(false)
-            } maxWidth="2xl" >
+            } maxWidth="5xl" >
                 <div className="relative bg-white dark:bg-gray-800 rounded-lg">
                     {/* Unique Header Background */}
                     <div className="bg-gradient-to-r from-blue-500 to-indigo-600 p-6 rounded-t-lg">
