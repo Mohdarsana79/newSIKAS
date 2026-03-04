@@ -7,15 +7,19 @@ import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
+import DangerButton from '@/Components/DangerButton';
 import InputError from '@/Components/InputError';
 import DatePicker from '@/Components/DatePicker';
 import { format } from 'date-fns';
 import { Transition } from '@headlessui/react';
+import Select from 'react-select';
 
 export default function Index({ stsList, penganggaranList }: any) {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [itemToDelete, setItemToDelete] = useState<number | null>(null);
 
     // For Edit/Pay
     const [selectedSts, setSelectedSts]: any = useState(null);
@@ -165,10 +169,19 @@ export default function Index({ stsList, penganggaranList }: any) {
     };
 
     // --- DELETE ---
-    const handleDelete = (id: number) => {
-        if (window.confirm("Apakah Anda yakin ingin menghapus data ini? Data yang dihapus tidak dapat dikembalikan!")) {
-            createForm.delete(route('sts.destroy', id));
-        }
+    const handleDeleteClick = (id: number) => {
+        setItemToDelete(id);
+        setIsDeleteModalOpen(true);
+    };
+
+    const confirmDelete = () => {
+        if (!itemToDelete) return;
+        createForm.delete(route('sts.destroy', itemToDelete), {
+            onSuccess: () => {
+                setIsDeleteModalOpen(false);
+                setItemToDelete(null);
+            }
+        });
     };
 
     return (
@@ -287,7 +300,7 @@ export default function Index({ stsList, penganggaranList }: any) {
 
                                                         {/* Delete */}
                                                         <button
-                                                            onClick={() => handleDelete(item.id)}
+                                                            onClick={() => handleDeleteClick(item.id)}
                                                             className="p-1.5 bg-red-100 text-red-600 rounded-md hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 transition-colors"
                                                             title="Hapus"
                                                         >
@@ -320,17 +333,57 @@ export default function Index({ stsList, penganggaranList }: any) {
                     <form onSubmit={submitCreate} className="space-y-4">
                         <div>
                             <InputLabel htmlFor="penganggaran_id" value="Tahun Anggaran" />
-                            <select
+                            <Select
                                 id="penganggaran_id"
-                                className="mt-1 block w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm"
-                                value={createForm.data.penganggaran_id}
-                                onChange={(e) => createForm.setData('penganggaran_id', e.target.value)}
+                                className="mt-1"
+                                classNamePrefix="react-select"
+                                options={penganggaranList.map((p: any) => ({ value: p.id, label: p.tahun_anggaran }))}
+                                value={penganggaranList
+                                    .filter((p: any) => p.id == createForm.data.penganggaran_id)
+                                    .map((p: any) => ({ value: p.id, label: p.tahun_anggaran }))[0] || null
+                                }
+                                onChange={(val: any) => createForm.setData('penganggaran_id', val ? val.value : '')}
+                                placeholder="Pilih Tahun Anggaran..."
+                                isSearchable
+                                isClearable
                                 required
-                            >
-                                {penganggaranList.map((p: any) => (
-                                    <option key={p.id} value={p.id}>{p.tahun_anggaran}</option>
-                                ))}
-                            </select>
+                                styles={{
+                                    control: (baseStyles, state) => ({
+                                        ...baseStyles,
+                                        borderColor: state.isFocused ? '#6366f1' : '#d1d5db',
+                                        boxShadow: state.isFocused ? '0 0 0 1px #6366f1' : 'none',
+                                        '&:hover': { borderColor: state.isFocused ? '#6366f1' : '#9ca3af' },
+                                        borderRadius: '0.375rem',
+                                        padding: '0.125rem',
+                                    }),
+                                    singleValue: (base) => ({
+                                        ...base,
+                                        color: '#111827', // text-gray-900
+                                    }),
+                                    input: (base) => ({
+                                        ...base,
+                                        color: '#111827', // text-gray-900
+                                        'input': {
+                                            boxShadow: 'none !important',
+                                            border: 'none !important',
+                                            outline: 'none !important',
+                                        },
+                                        'input:focus': {
+                                            boxShadow: 'none !important',
+                                            border: 'none !important',
+                                        }
+                                    }),
+                                    option: (base, state) => ({
+                                        ...base,
+                                        color: '#111827',
+                                        backgroundColor: state.isSelected ? '#e5e7eb' : state.isFocused ? '#f3f4f6' : 'transparent',
+                                    }),
+                                    menu: (baseStyles) => ({
+                                        ...baseStyles,
+                                        zIndex: 9999,
+                                    })
+                                }}
+                            />
                             <InputError message={createForm.errors.penganggaran_id} className="mt-2" />
                         </div>
                         <div>
@@ -459,6 +512,24 @@ export default function Index({ stsList, penganggaranList }: any) {
                             <PrimaryButton disabled={paymentForm.processing}>{paymentForm.processing ? 'Menyimpan...' : 'Simpan Pembayaran'}</PrimaryButton>
                         </div>
                     </form>
+                </div>
+            </Modal>
+
+            {/* Delete Confirmation Modal */}
+            <Modal show={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} maxWidth="sm">
+                <div className="p-6">
+                    <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">
+                        Hapus Data STS
+                    </h2>
+                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                        Apakah Anda yakin ingin menghapus data STS ini? Tindakan ini tidak dapat dibatalkan.
+                    </p>
+                    <div className="mt-6 flex justify-end gap-3">
+                        <SecondaryButton onClick={() => setIsDeleteModalOpen(false)}>Batal</SecondaryButton>
+                        <DangerButton onClick={confirmDelete} disabled={createForm.processing}>
+                            {createForm.processing ? 'Menghapus...' : 'Hapus'}
+                        </DangerButton>
+                    </div>
                 </div>
             </Modal>
 

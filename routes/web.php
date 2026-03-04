@@ -16,6 +16,7 @@ use App\Http\Controllers\TandaTerimaController;
 use App\Http\Controllers\DatabaseController;
 use App\Http\Controllers\SpmthController;
 use App\Http\Controllers\SptjController;
+use App\Http\Controllers\Sp2bController;
 use App\Http\Controllers\BukuKasUmumController;
 use App\Http\Controllers\RekapitulasiController;
 use App\Http\Controllers\RekapitulasiRealisasiController;
@@ -207,6 +208,13 @@ Route::middleware('auth')->group(function () {
         Route::get('/api/sptj/calculate', [SptjController::class, 'calculate'])->name('api.sptj.calculate');
         Route::get('/api/sptj/tahun', [SptjController::class, 'getTahunAnggaran'])->name('api.sptj.tahun');
 
+        Route::get('/api/sp2b', [Sp2bController::class, 'index'])->name('api.sp2b.index');
+        Route::post('/api/sp2b', [Sp2bController::class, 'store'])->name('api.sp2b.store');
+        Route::put('/api/sp2b/{id}', [Sp2bController::class, 'update'])->name('api.sp2b.update');
+        Route::delete('/api/sp2b/{id}', [Sp2bController::class, 'destroy'])->name('api.sp2b.destroy');
+        Route::get('/api/sp2b/calculate', [Sp2bController::class, 'calculate'])->name('api.sp2b.calculate');
+        Route::get('/api/sp2b/tahun', [Sp2bController::class, 'getTahunAnggaran'])->name('api.sp2b.tahun');
+
         // LPH API
         Route::get('/api/lph', [LphController::class, 'index'])->name('api.lph.index');
         Route::post('/api/lph', [LphController::class, 'store'])->name('api.lph.store');
@@ -258,6 +266,7 @@ Route::middleware('auth')->group(function () {
     // Laporan PDF Routes
     Route::get('/laporan/spmth/{id}/pdf', [SpmthController::class, 'generatePdf'])->name('laporan.spmth.pdf');
     Route::get('/laporan/sptj/{id}/pdf', [SptjController::class, 'generatePdf'])->name('laporan.sptj.pdf');
+    Route::get('/laporan/sp2b/{id}/pdf', [Sp2bController::class, 'generatePdf'])->name('laporan.sp2b.pdf');
     Route::get('/laporan/lph/{id}/pdf', [LphController::class, 'generatePdf'])->name('laporan.lph.pdf');
     
     // Tanda Terima PDF (Previously defined, now consolidated above. Removing duplicate)

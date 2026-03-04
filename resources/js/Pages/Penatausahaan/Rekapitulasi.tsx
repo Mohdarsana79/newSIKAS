@@ -45,6 +45,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
     const [jenisLaporanRealisasi, setJenisLaporanRealisasi] = useState('bulanan');
 
     const [rekRealisasiData, setRekRealisasiData] = useState<any>(null);
+    const [faseRekRealisasi, setFaseRekRealisasi] = useState('Tahunan');
     const [showPrintRekRealisasiModal, setShowPrintRekRealisasiModal] = useState(false);
 
     const [showPrintModal, setShowPrintModal] = useState(false);
@@ -84,7 +85,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
         } else if (activeTab === 'rek_realisasi' && tahun) {
             fetchRekRealisasiData();
         }
-    }, [activeTab, tahun, bulanBank, bulanPembantu, bulanUmum, bulanPajak, bulanRob, bulanReg, bulanBa, periodeRealisasi, jenisLaporanRealisasi]);
+    }, [activeTab, tahun, bulanBank, bulanPembantu, bulanUmum, bulanPajak, bulanRob, bulanReg, bulanBa, periodeRealisasi, jenisLaporanRealisasi, faseRekRealisasi]);
 
     const fetchRealisasiData = async () => {
         setIsLoading(true);
@@ -107,7 +108,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
     const fetchRekRealisasiData = async () => {
         setIsLoading(true);
         try {
-            const response = await axios.get(route('api.realisasi.rekening', { tahun }));
+            const response = await axios.get(route('api.realisasi.rekening', { tahun, fase: faseRekRealisasi }));
             if (response.data.success) {
                 setRekRealisasiData(response.data.data);
             }
@@ -300,7 +301,8 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
 
     const handlePrintRekRealisasi = () => {
         const url = route('rek-realisasi.cetak', {
-            tahun: tahun
+            tahun: tahun,
+            fase: faseRekRealisasi
         });
         window.open(url, '_blank');
     };
@@ -1975,7 +1977,20 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                     <div className="flex items-center gap-4">
                                         {/* No controls needed for now as per design */}
                                     </div>
-                                    <div className="flex gap-2">
+                                    <div className="flex items-center gap-4">
+                                        <div className="flex items-center gap-2">
+                                            <label htmlFor="faseRekRealisasi" className="text-sm font-medium text-gray-700 dark:text-gray-300">Pilih:</label>
+                                            <select
+                                                id="faseRekRealisasi"
+                                                value={faseRekRealisasi}
+                                                onChange={(e) => setFaseRekRealisasi(e.target.value)}
+                                                className="block w-40 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                            >
+                                                <option value="Tahap 1">Tahap 1</option>
+                                                <option value="Tahap 2">Tahap 2</option>
+                                                <option value="Tahunan">Tahunan</option>
+                                            </select>
+                                        </div>
                                         <button
                                             onClick={handlePrintRekRealisasi}
                                             className="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 focus:bg-indigo-700 active:bg-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150"
@@ -1993,7 +2008,9 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                         <div className="min-w-[1200px]">
                                             <div className="text-center mb-6">
                                                 <h2 className="text-lg font-bold uppercase">{rekRealisasiData?.sekolah?.nama_unit}</h2>
-                                                <h3 className="text-lg font-bold uppercase">REKAPITULASI REALISASI LK 2 - TAHUN {tahun}</h3>
+                                                <h3 className="text-lg font-bold uppercase">
+                                                    REKAPITULASI REALISASI LK 2 - {faseRekRealisasi.toUpperCase()} {tahun}
+                                                </h3>
                                             </div>
 
                                             {/* Metadata */}

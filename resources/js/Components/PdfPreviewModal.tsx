@@ -17,13 +17,12 @@ export default function PdfPreviewModal({ show, onClose, pdfUrl, title = 'Previe
         }
     }, [show, pdfUrl]);
 
-    // Construct preview URL with parameters to disable embedded viewer toolbar if possible
-    // Note: PDF toolbar control depends heavily on browser implementation
-    const viewerUrl = `${pdfUrl}#toolbar=0&navpanes=0&scrollbar=0`;
+    // Use raw URL to show native browser PDF toolbar (like Google's)
+    const viewerUrl = pdfUrl;
 
     return (
         <Modal show={show} onClose={onClose} maxWidth="7xl">
-            <div className="bg-white dark:bg-gray-800 rounded-lg overflow-hidden shadow-xl transform transition-all h-[90vh] flex flex-col">
+            <div id="pdf-preview-modal-container" className="bg-white dark:bg-gray-800 rounded-lg overflow-hidden shadow-xl transform transition-all h-[90vh] flex flex-col">
                 {/* Header */}
                 <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-indigo-600">
                     <div className="flex items-center gap-3">
@@ -34,11 +33,22 @@ export default function PdfPreviewModal({ show, onClose, pdfUrl, title = 'Previe
                     </div>
                     <div className="flex items-center gap-2">
                         <button
-                            onClick={() => window.open(pdfUrl, '_blank')}
+                            onClick={() => {
+                                const elem = document.getElementById('pdf-preview-modal-container');
+                                if (elem) {
+                                    if (!document.fullscreenElement) {
+                                        elem.requestFullscreen().catch(err => console.error(err));
+                                    } else {
+                                        document.exitFullscreen();
+                                    }
+                                }
+                            }}
                             className="p-1 hover:bg-indigo-500 rounded text-white transition-colors"
-                            title="Buka di Tab Baru"
+                            title="Fullscreen"
                         >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                            </svg>
                         </button>
                         <button
                             onClick={onClose}
@@ -46,28 +56,6 @@ export default function PdfPreviewModal({ show, onClose, pdfUrl, title = 'Previe
                         >
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                         </button>
-                    </div>
-                </div>
-
-                {/* Toolbar Mockup (Optional - pure visual to match requested image) */}
-                <div className="bg-gray-800 text-white px-4 py-2 flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-4">
-                        <button className="hover:text-gray-300"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h7"></path></svg></button>
-                        <span>Kwitansi Pembayaran</span>
-                    </div>
-                    <div className="flex items-center gap-4">
-                        <div className="flex items-center bg-gray-700 rounded px-2">
-                            <span>1 / 1</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <span>-</span>
-                            <span>80%</span>
-                            <span>+</span>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
                     </div>
                 </div>
 

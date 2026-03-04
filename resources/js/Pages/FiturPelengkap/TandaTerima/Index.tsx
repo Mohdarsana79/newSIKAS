@@ -13,6 +13,7 @@ import PrintSettingsModal, { PrintSettings } from '@/Components/PrintSettingsMod
 import PdfPreviewModal from '@/Components/PdfPreviewModal';
 import DatePicker from '@/Components/DatePicker';
 import { format } from 'date-fns';
+import Select from 'react-select';
 
 // Check if route is defined globally (Ziggy)
 declare const route: (name: string, params?: any, absolute?: boolean) => string;
@@ -607,19 +608,56 @@ export default function TandaTerimaIndex({ auth }: { auth: any }) {
 
                     <div className="mt-4 mb-4">
                         <InputLabel htmlFor="generate_year" value="Tahun Anggaran" />
-                        <select
+                        <Select
                             id="generate_year"
-                            value={generateYear}
-                            onChange={(e) => setGenerateYear(e.target.value)}
-                            className="mt-1 block w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm"
-                            disabled={processing}
-                        >
-                            {availableYears.map((year) => (
-                                <option key={year.id} value={year.id}>
-                                    {year.tahun}
-                                </option>
-                            ))}
-                        </select>
+                            className="mt-1"
+                            classNamePrefix="react-select"
+                            options={availableYears.map((year) => ({ value: year.id.toString(), label: year.tahun }))}
+                            value={availableYears
+                                .filter((year) => year.id.toString() === generateYear)
+                                .map((year) => ({ value: year.id.toString(), label: year.tahun }))[0] || null
+                            }
+                            onChange={(val: any) => setGenerateYear(val ? val.value : '')}
+                            placeholder="Pilih Tahun Anggaran..."
+                            isDisabled={processing}
+                            isSearchable
+                            styles={{
+                                control: (baseStyles, state) => ({
+                                    ...baseStyles,
+                                    borderColor: state.isFocused ? '#6366f1' : '#d1d5db',
+                                    boxShadow: state.isFocused ? '0 0 0 1px #6366f1' : 'none',
+                                    '&:hover': { borderColor: state.isFocused ? '#6366f1' : '#9ca3af' },
+                                    borderRadius: '0.375rem',
+                                    padding: '0.125rem',
+                                }),
+                                singleValue: (base) => ({
+                                    ...base,
+                                    color: '#111827', // text-gray-900
+                                }),
+                                input: (base) => ({
+                                    ...base,
+                                    color: '#111827', // text-gray-900
+                                    'input': {
+                                        boxShadow: 'none !important',
+                                        border: 'none !important',
+                                        outline: 'none !important',
+                                    },
+                                    'input:focus': {
+                                        boxShadow: 'none !important',
+                                        border: 'none !important',
+                                    }
+                                }),
+                                option: (base, state) => ({
+                                    ...base,
+                                    color: '#111827',
+                                    backgroundColor: state.isSelected ? '#e5e7eb' : state.isFocused ? '#f3f4f6' : 'transparent',
+                                }),
+                                menu: (baseStyles) => ({
+                                    ...baseStyles,
+                                    zIndex: 9999,
+                                })
+                            }}
+                        />
                     </div>
 
                     <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">

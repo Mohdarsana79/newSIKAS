@@ -162,7 +162,7 @@ export default function Index({ auth, penganggarans }: Props) {
 
             <div className="py-12">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                    <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6">
+                    <div className="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6">
 
                         {/* Filters */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">

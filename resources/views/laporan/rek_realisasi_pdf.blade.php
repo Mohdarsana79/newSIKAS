@@ -66,7 +66,7 @@
 <body>
     <div class="header">
         <span style="font-size: 1.2em;">{{ $data['sekolah']['nama_unit'] ?? 'DINAS PENDIDIKAN DAN KEBUDAYAAN KABUPATEN TOLITOLI' }}</span><br>
-        <span style="font-size: 1.1em;">REKAPITULASI REALISASI LK 2 - TAHUN {{ $tahun }}</span>
+        <span style="font-size: 1.1em;">REKAPITULASI REALISASI LK 2 {{ isset($fase) && strtoupper($fase) != 'TAHUNAN' ? '- ' . strtoupper($fase) : '' }} - TAHUN {{ $tahun }}</span>
     </div>
 
     <table class="meta-table">

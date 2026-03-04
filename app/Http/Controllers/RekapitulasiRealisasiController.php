@@ -19,7 +19,7 @@ class RekapitulasiRealisasiController extends Controller
     /**
      * Get realisasi data per rekening belanja - Internal Helper
      */
-    private function getRekapRealisasiPerRekeningInternal($tahun)
+    private function getRekapRealisasiPerRekeningInternal($tahun, $faseTarget = 'Tahunan')
     {
         if (!$tahun) {
             $penganggaranAktif = Penganggaran::orderBy('tahun_anggaran', 'desc')->first();
@@ -33,9 +33,17 @@ class RekapitulasiRealisasiController extends Controller
 
         $penganggaranId = $penganggaran->id;
 
+        $bulanTarget = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+        if ($faseTarget === 'Tahap 1') {
+            $bulanTarget = [1, 2, 3, 4, 5, 6];
+        } elseif ($faseTarget === 'Tahap 2') {
+            $bulanTarget = [7, 8, 9, 10, 11, 12];
+        }
+
         // Fetch BKU transactions with Account Codes
         $transaksi = BukuKasUmum::where('penganggaran_id', $penganggaranId)
             ->whereYear('tanggal_transaksi', $tahun)
+            ->whereIn(DB::raw('EXTRACT(MONTH FROM tanggal_transaksi)'), $bulanTarget)
             ->where('is_bunga_record', false)
             ->whereHas('rekeningBelanja') // Ensure it has a related account code
             ->with('rekeningBelanja')
@@ -98,7 +106,8 @@ class RekapitulasiRealisasiController extends Controller
     {
         try {
             $tahun = $request->get('tahun');
-            $data = $this->getRekapRealisasiPerRekeningInternal($tahun);
+            $faseTarget = $request->get('fase', 'Tahunan');
+            $data = $this->getRekapRealisasiPerRekeningInternal($tahun, $faseTarget);
 
             if (!$data) {
                 return response()->json([
@@ -128,7 +137,8 @@ class RekapitulasiRealisasiController extends Controller
     {
         try {
             $tahun = $request->get('tahun');
-            $data = $this->getRekapRealisasiPerRekeningInternal($tahun);
+            $faseTarget = $request->get('fase', 'Tahunan');
+            $data = $this->getRekapRealisasiPerRekeningInternal($tahun, $faseTarget);
 
             if (!$data) {
                return redirect()->back()->with('error', 'Data tahun ' . $tahun . ' tidak ditemukan.');
@@ -137,6 +147,7 @@ class RekapitulasiRealisasiController extends Controller
             $pdf = Pdf::loadView('laporan.rek_realisasi_pdf', [
                 'data' => $data,
                 'tahun' => $tahun,
+                'fase' => $faseTarget,
             ])->setPaper('legal', 'landscape');
 
             return $pdf->stream('Rekap_Realisasi_Rekening_Tahun_' . $tahun . '.pdf');

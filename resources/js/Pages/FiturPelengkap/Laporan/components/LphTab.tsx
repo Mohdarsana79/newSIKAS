@@ -4,6 +4,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import { registerLocale } from "react-datepicker";
 import { id } from 'date-fns/locale/id';
 import axios from 'axios';
+import Select from 'react-select';
 import Modal from '@/Components/Modal';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
@@ -403,12 +404,17 @@ export default function LphTab() {
                                     <div>
                                         <InputLabel htmlFor="tahun_anggaran" value="Tahun Anggaran" className="text-gray-700 dark:text-gray-900 font-medium mb-1.5" />
                                         <div className="relative">
-                                            <select
+                                            <Select
                                                 id="tahun_anggaran"
-                                                className="block w-full pl-3 pr-10 py-2.5 text-base border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm rounded-lg shadow-sm"
-                                                value={formData.tahun_anggaran}
-                                                onChange={(e) => {
-                                                    const selectedYear = e.target.value;
+                                                className="mt-1"
+                                                classNamePrefix="react-select"
+                                                options={availableYears.map(year => ({ value: year.tahun_anggaran.toString(), label: year.tahun_anggaran.toString() }))}
+                                                value={availableYears
+                                                    .filter(year => String(year.tahun_anggaran) === String(formData.tahun_anggaran))
+                                                    .map(year => ({ value: year.tahun_anggaran.toString(), label: year.tahun_anggaran.toString() }))[0] || null
+                                                }
+                                                onChange={(val: any) => {
+                                                    const selectedYear = val ? val.value : '';
                                                     const selectedBudget = availableYears.find(y => String(y.tahun_anggaran) === selectedYear);
                                                     setFormData({
                                                         ...formData,
@@ -416,12 +422,46 @@ export default function LphTab() {
                                                         penganggaran_id: selectedBudget ? selectedBudget.id : formData.penganggaran_id
                                                     });
                                                 }}
+                                                placeholder="Pilih Tahun Anggaran..."
+                                                isSearchable
                                                 required
-                                            >
-                                                {availableYears.map(year => (
-                                                    <option key={year.id} value={year.tahun_anggaran}>{year.tahun_anggaran}</option>
-                                                ))}
-                                            </select>
+                                                styles={{
+                                                    control: (baseStyles, state) => ({
+                                                        ...baseStyles,
+                                                        borderColor: state.isFocused ? '#6366f1' : '#d1d5db',
+                                                        boxShadow: state.isFocused ? '0 0 0 1px #6366f1' : 'none',
+                                                        '&:hover': { borderColor: state.isFocused ? '#6366f1' : '#9ca3af' },
+                                                        borderRadius: '0.375rem',
+                                                        padding: '0.125rem',
+                                                    }),
+                                                    singleValue: (base) => ({
+                                                        ...base,
+                                                        color: '#111827', // text-gray-900
+                                                    }),
+                                                    input: (base) => ({
+                                                        ...base,
+                                                        color: '#111827', // text-gray-900
+                                                        'input': {
+                                                            boxShadow: 'none !important',
+                                                            border: 'none !important',
+                                                            outline: 'none !important',
+                                                        },
+                                                        'input:focus': {
+                                                            boxShadow: 'none !important',
+                                                            border: 'none !important',
+                                                        }
+                                                    }),
+                                                    option: (base, state) => ({
+                                                        ...base,
+                                                        color: '#111827',
+                                                        backgroundColor: state.isSelected ? '#e5e7eb' : state.isFocused ? '#f3f4f6' : 'transparent',
+                                                    }),
+                                                    menu: (baseStyles) => ({
+                                                        ...baseStyles,
+                                                        zIndex: 9999,
+                                                    })
+                                                }}
+                                            />
                                         </div>
                                     </div>
 
@@ -619,7 +659,7 @@ export default function LphTab() {
 
             {/* Preview Modal */}
             <Modal show={isPreviewModalOpen} onClose={() => setIsPreviewModalOpen(false)} maxWidth="5xl">
-                <div className="flex flex-col h-[85vh] bg-gray-900 rounded-lg overflow-hidden relative">
+                <div id="lph-pdf-preview" className="flex flex-col h-[85vh] bg-gray-900 rounded-lg overflow-hidden relative">
                     {/* Header */}
                     <div className="bg-indigo-600 px-4 py-3 flex justify-between items-center shadow-md z-10">
                         <div className="flex items-center gap-3 text-white">
@@ -627,8 +667,23 @@ export default function LphTab() {
                             <span className="font-medium text-sm">Preview LPH</span>
                         </div>
                         <div className="flex items-center gap-2">
-                            <button onClick={() => window.open(selectedPdfUrl, '_blank')} className="text-white/80 hover:text-white p-1 rounded hover:bg-white/10" title="Open in New Tab">
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                            <button
+                                onClick={() => {
+                                    const elem = document.getElementById('lph-pdf-preview');
+                                    if (elem) {
+                                        if (!document.fullscreenElement) {
+                                            elem.requestFullscreen().catch(err => console.error(err));
+                                        } else {
+                                            document.exitFullscreen();
+                                        }
+                                    }
+                                }}
+                                className="text-white/80 hover:text-white p-1 rounded hover:bg-white/10"
+                                title="Fullscreen"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                                </svg>
                             </button>
                             <button onClick={() => setIsPreviewModalOpen(false)} className="text-white/80 hover:text-white p-1 rounded hover:bg-white/10" title="Close">
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>

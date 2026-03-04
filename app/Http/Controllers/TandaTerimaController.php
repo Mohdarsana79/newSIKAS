@@ -583,9 +583,77 @@ class TandaTerimaController extends Controller
 
     private function formatJumlahUang($amount)
     {
-        $formatter = new \NumberFormatter('id_ID', \NumberFormatter::SPELLOUT);
-        $words = $formatter->format($amount);
-        return ucfirst($words).' Rupiah';
+        if (class_exists('NumberFormatter')) {
+            $formatter = new \NumberFormatter('id_ID', \NumberFormatter::SPELLOUT);
+            $words = $formatter->format($amount);
+            return ucfirst($words).' Rupiah';
+        }
+
+        return $this->fallbackFormatJumlahUang($amount);
+    }
+
+    private function fallbackFormatJumlahUang($number)
+    {
+        $number = (int) $number;
+        $units = ['', 'ribu', 'juta', 'miliar', 'triliun'];
+        $words = [];
+
+        if ($number == 0) {
+            return 'Nol Rupiah';
+        }
+
+        $unitIndex = 0;
+        while ($number > 0) {
+            $chunk = $number % 1000;
+            if ($chunk != 0) {
+                $chunkWords = $this->convertChunk($chunk);
+                if ($unitIndex > 0) {
+                    if ($unitIndex == 1 && $chunkWords == 'satu') {
+                        $chunkWords = 'seribu';
+                    } else {
+                        $chunkWords .= ' ' . $units[$unitIndex];
+                    }
+                }
+                array_unshift($words, $chunkWords);
+            }
+            $number = floor($number / 1000);
+            $unitIndex++;
+        }
+
+        $result = implode(' ', $words) . ' Rupiah';
+        return ucfirst(strtolower($result));
+    }
+
+    private function convertChunk($number)
+    {
+        $ones = ['', 'satu', 'dua', 'tiga', 'empat', 'lima', 'enam', 'tujuh', 'delapan', 'sembilan'];
+        $tens = ['', '', 'dua puluh', 'tiga puluh', 'empat puluh', 'lima puluh', 'enam puluh', 'tujuh puluh', 'delapan puluh', 'sembilan puluh'];
+        $teens = ['sepuluh', 'sebelas', 'dua belas', 'tiga belas', 'empat belas', 'lima belas', 'enam belas', 'tujuh belas', 'delapan belas', 'sembilan belas'];
+
+        $words = [];
+        $hundreds = floor($number / 100);
+        if ($hundreds > 0) {
+            if ($hundreds == 1) {
+                $words[] = 'seratus';
+            } else {
+                $words[] = $ones[$hundreds] . ' ratus';
+            }
+            $number %= 100;
+        }
+
+        if ($number >= 10 && $number <= 19) {
+            $words[] = $teens[$number - 10];
+        } else {
+            $tensDigit = floor($number / 10);
+            $onesDigit = $number % 10;
+            if ($tensDigit > 0) {
+                $words[] = $tens[$tensDigit];
+            }
+            if ($onesDigit > 0) {
+                $words[] = $ones[$onesDigit];
+            }
+        }
+        return implode(' ', $words);
     }
 
     private function formatTanggalLunas($tanggal)
