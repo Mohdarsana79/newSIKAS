@@ -48,11 +48,7 @@ export default function Dashboard({
 
     // Fetch data when year changes
     const fetchDashboardData = async (selectedYear: string) => {
-        if (selectedYear === tahunAktif && !loading) return; // Avoid refetching initial data unneccesarily if logic permits, but here we can just fetch to be safe or use initial data for first render
-
-        // Actually, on mount we have initial data. We only fetch if year changes from initial, OR if we want to support switching back.
-        // Simplest: only fetch if selectedYear different from current logic context.
-        // But since we are client-side switching, we fetch.
+        if (loading) return;
 
         try {
             setLoading(true);
