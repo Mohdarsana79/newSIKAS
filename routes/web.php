@@ -236,8 +236,11 @@ Route::middleware('auth')->group(function () {
     Route::delete('/api/kwitansi/delete-all', [KwitansiController::class, 'deleteAll'])->name('kwitansi.delete-all');
     
     Route::get('/kwitansi/{id}/preview', [KwitansiController::class, 'previewPdf'])->name('kwitansi.preview');
+    Route::get('/kwitansi/{id}/preview2', [KwitansiController::class, 'previewPdf2'])->name('kwitansi.preview2');
     Route::get('/kwitansi/{id}/pdf', [KwitansiController::class, 'generatePdf'])->name('kwitansi.pdf');
+    Route::get('/kwitansi/{id}/pdf2', [KwitansiController::class, 'generatePdf2'])->name('kwitansi.pdf2');
     Route::get('/kwitansi/download-all', [KwitansiController::class, 'downloadAll'])->name('kwitansi.download-all');
+    Route::get('/kwitansi/download-all2', [KwitansiController::class, 'downloadAll2'])->name('kwitansi.download-all2');
     
     // Resource route MUST come after specific routes to avoid 'download-all' being treated as an ID
     Route::resource('kwitansi', KwitansiController::class);
@@ -301,3 +304,4 @@ Route::middleware('auth')->group(function () {
 });
 
 require __DIR__.'/auth.php';
+

@@ -26,7 +26,9 @@ interface KwitansiData {
     tanggal: string;
     jumlah: string;
     preview_url: string;
+    preview_url_2: string;
     pdf_url: string;
+    pdf_url_2: string;
     delete_data: {
         id: number;
         uraian: string;
@@ -81,6 +83,7 @@ export default function KwitansiIndex({ auth }: { auth: any }) {
     // Print Settings Modal State
     const [showPrintSettings, setShowPrintSettings] = useState(false);
     const [selectedKwitansiId, setSelectedKwitansiId] = useState<number | null>(null);
+    const [selectedKwitansiType, setSelectedKwitansiType] = useState<1 | 2>(1);
 
     // PDF Preview Modal State
     const [showPreviewModal, setShowPreviewModal] = useState(false);
@@ -324,7 +327,7 @@ export default function KwitansiIndex({ auth }: { auth: any }) {
         setConfirmingDownload(true);
     };
 
-    const processDownloadAll = (mode: 'current' | 'year') => {
+    const processDownloadAll = (mode: 'current' | 'year', type: 1 | 2) => {
         const params = new URLSearchParams();
 
         if (mode === 'current') {
@@ -338,24 +341,26 @@ export default function KwitansiIndex({ auth }: { auth: any }) {
         params.append('paper_size', downloadSettings.paperSize);
         params.append('font_size', downloadSettings.fontSize);
 
-        window.open(`${route('kwitansi.download-all')}?${params.toString()}`, '_blank');
+        const targetUrl = type === 1 ? route('kwitansi.download-all') : route('kwitansi.download-all2');
+        window.open(`${targetUrl}?${params.toString()}`, '_blank');
         setConfirmingDownload(false);
     };
 
-    const handlePrintClick = (id: number) => {
+    const handlePrintClick = (id: number, type: 1 | 2) => {
         setSelectedKwitansiId(id);
+        setSelectedKwitansiType(type);
         setShowPrintSettings(true);
     };
 
     const processPrint = (settings: PrintSettings) => {
         if (selectedKwitansiId) {
-            const url = route('kwitansi.pdf', selectedKwitansiId);
+            const baseUrl = selectedKwitansiType === 1 ? route('kwitansi.pdf', selectedKwitansiId) : route('kwitansi.pdf2', selectedKwitansiId);
             const params = new URLSearchParams({
                 paper_size: settings.paperSize,
                 font_size: settings.fontSize,
                 orientation: settings.orientation
             });
-            window.open(`${url}?${params.toString()}`, '_blank');
+            window.open(`${baseUrl}?${params.toString()}`, '_blank');
         }
     };
 
@@ -510,20 +515,44 @@ export default function KwitansiIndex({ auth }: { auth: any }) {
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                                     <div className="flex justify-center items-center gap-2">
-                                                        <button
-                                                            onClick={() => handlePrintClick(item.id)}
-                                                            className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
-                                                            title="Cetak PDF"
-                                                        >
-                                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
-                                                        </button>
-                                                        <button
-                                                            onClick={(e) => { e.preventDefault(); handlePreviewClick(item.preview_url); }}
-                                                            className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
-                                                            title="Preview"
-                                                        >
-                                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
-                                                        </button>
+                                                        <div className="flex flex-col gap-1 items-center border-r pr-2 border-gray-300 dark:border-gray-600">
+                                                            <span className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">Format 1</span>
+                                                            <div className="flex gap-2">
+                                                                <button
+                                                                    onClick={() => handlePrintClick(item.id, 1)}
+                                                                    className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
+                                                                    title="Cetak PDF 1"
+                                                                >
+                                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                                                                </button>
+                                                                <button
+                                                                    onClick={(e) => { e.preventDefault(); handlePreviewClick(item.preview_url); }}
+                                                                    className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
+                                                                    title="Preview 1"
+                                                                >
+                                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex flex-col gap-1 items-center pl-1">
+                                                            <span className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">Format 2</span>
+                                                            <div className="flex gap-2">
+                                                                <button
+                                                                    onClick={() => handlePrintClick(item.id, 2)}
+                                                                    className="text-emerald-600 hover:text-emerald-900 dark:text-emerald-400 dark:hover:text-emerald-300"
+                                                                    title="Cetak PDF 2"
+                                                                >
+                                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                                                                </button>
+                                                                <button
+                                                                    onClick={(e) => { e.preventDefault(); handlePreviewClick(item.preview_url_2); }}
+                                                                    className="text-teal-600 hover:text-teal-900 dark:text-teal-400 dark:hover:text-teal-300"
+                                                                    title="Preview 2"
+                                                                >
+                                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                                                                </button>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </td>
                                             </tr>
@@ -755,14 +784,24 @@ export default function KwitansiIndex({ auth }: { auth: any }) {
                             </SecondaryButton>
                         </div>
 
-                        <div className="grid grid-cols-1 gap-4 mt-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
                             <button
-                                onClick={() => processDownloadAll('current')}
+                                onClick={() => processDownloadAll('current', 1)}
                                 className="flex flex-col items-center justify-center p-4 border-2 border-indigo-100 dark:border-indigo-900 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors group"
                             >
-                                <span className="font-semibold text-indigo-600 dark:text-indigo-400 mb-1 group-hover:underline">Filter Saat Ini</span>
+                                <span className="font-semibold text-indigo-600 dark:text-indigo-400 mb-1 group-hover:underline">Download Format 1</span>
                                 <span className="text-xs text-center text-gray-500 dark:text-gray-400">
-                                    Download data sesuai pencarian & filter bulan/tahun yang aktif
+                                    Unduh PDF menggunakan template kwitansi standar
+                                </span>
+                            </button>
+                            
+                            <button
+                                onClick={() => processDownloadAll('current', 2)}
+                                className="flex flex-col items-center justify-center p-4 border-2 border-emerald-100 dark:border-emerald-900 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-colors group"
+                            >
+                                <span className="font-semibold text-emerald-600 dark:text-emerald-400 mb-1 group-hover:underline">Download Format 2</span>
+                                <span className="text-xs text-center text-gray-500 dark:text-gray-400">
+                                    Unduh PDF menggunakan template kwitansi baru
                                 </span>
                             </button>
                         </div>

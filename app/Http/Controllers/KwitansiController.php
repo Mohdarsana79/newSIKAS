@@ -111,7 +111,9 @@ class KwitansiController extends Controller
                     'tanggal' => \Carbon\Carbon::parse($kwitansi->bukuKasUmum->tanggal_transaksi)->format('d/m/Y'),
                     'jumlah' => 'Rp ' . number_format($kwitansi->bukuKasUmum->total_transaksi_kotor, 0, ',', '.'),
                     'preview_url' => route('kwitansi.preview', $kwitansi->id),
+                    'preview_url_2' => route('kwitansi.preview2', $kwitansi->id),
                     'pdf_url' => route('kwitansi.pdf', $kwitansi->id),
+                    'pdf_url_2' => route('kwitansi.pdf2', $kwitansi->id),
                     'delete_data' => [
                         'id' => $kwitansi->id,
                         'uraian' => $kwitansi->bukuKasUmum->uraian_opsional ?? $kwitansi->bukuKasUmum->uraian
@@ -556,6 +558,225 @@ class KwitansiController extends Controller
             ];
 
             $pdf = PDF::loadView('pelengkap.kwitansi_pdf', $data);
+            $pdf->setPaper($paperSize, $orientation);
+
+            return $pdf->stream('Kwitansi_Preview_' . $kwitansi->id . '.pdf', [
+                'Content-Type' => 'application/pdf',
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error generating preview PDF for ID ' . $id . ': ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal generate preview PDF: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function generatePdf2($id)
+    {
+        try {
+            $kwitansi = Kwitansi::with([
+                'sekolah',
+                'penganggaran',
+                'kodeKegiatan',
+                'rekeningBelanja',
+                'penerimaanDana',
+                'bukuKasUmum' => function ($query) {
+                    $query->with(['uraianDetails']);
+                },
+                'bkuUraianDetail',
+            ])->findOrFail($id);
+
+            $parsedKode = $this->parseKodeKegiatan($kwitansi->kodeKegiatan);
+
+            $totalAmount = $this->calculateTotalFromUraianDetails($kwitansi->bukuKasUmum);
+            $jumlahUang = $this->convertToText($totalAmount);
+
+            $pajakData = $this->klasifikasiPajak($kwitansi->bukuKasUmum);
+
+            // Calculate Tahap Roman
+            $bulan = \Carbon\Carbon::parse($kwitansi->bukuKasUmum->tanggal_transaksi)->month;
+            $tahapRoman = $bulan <= 6 ? 'THP-I' : 'THP-II';
+
+            // Get Request Parameters (Need to use global request() helper or inject Request)
+            $paperSize = request()->input('paper_size', 'Folio');
+            $fontSize = request()->input('font_size', '11pt');
+            $orientation = request()->input('orientation', 'portrait');
+
+            $data = [
+                'kwitansi' => $kwitansi,
+                'parsedKode' => $parsedKode,
+                'jumlahUangText' => $jumlahUang,
+                'totalAmount' => $totalAmount, 
+                'tanggalLunas' => $this->formatTanggalLunas($kwitansi->bukuKasUmum->tanggal_transaksi),
+                'pajakData' => $pajakData,
+                'tahapRoman' => $tahapRoman,
+                'fontSize' => $fontSize,
+            ];
+
+            $pdf = PDF::loadView('pelengkap.kwitansi_dua_pdf', $data);
+            $pdf->setPaper($paperSize, $orientation);
+
+            $filename = "Kwitansi_{$kwitansi->bukuKasUmum->uraian_opsional}.pdf";
+
+            return $pdf->stream($filename);
+        } catch (\Exception $e) {
+            Log::error('Error generating kwitansi PDF: ' . $e->getMessage());
+
+            return redirect()->route('kwitansi.index')->with('error', 'Gagal generate PDF: ' . $e->getMessage());
+        }
+    }
+
+    public function downloadAll2(Request $request)
+    {
+        try {
+            $search = $request->input('search', '');
+            $tahun = $request->input('tahun', '');
+            $startDate = $request->input('start_date', '');
+            $endDate = $request->input('end_date', '');
+
+            $query = Kwitansi::with([
+                'sekolah',
+                'penganggaran',
+                'kodeKegiatan',
+                'rekeningBelanja',
+                'penerimaanDana',
+                'bukuKasUmum' => function ($query) {
+                    $query->with(['uraianDetails']);
+                },
+                'bkuUraianDetail',
+            ]);
+
+            if ($tahun) {
+                $query->where('penganggaran_id', $tahun);
+            }
+
+            if ($startDate) {
+                $query->whereHas('bukuKasUmum', function ($q) use ($startDate) {
+                    $q->whereDate('tanggal_transaksi', '>=', $startDate);
+                });
+            }
+
+            if ($endDate) {
+                $query->whereHas('bukuKasUmum', function ($q) use ($endDate) {
+                    $q->whereDate('tanggal_transaksi', '<=', $endDate);
+                });
+            }
+
+            if ($search) {
+                $query->where(function ($query) use ($search) {
+                    $query->whereHas('bukuKasUmum', function ($q) use ($search) {
+                        $q->where('uraian', 'ILIKE', "%{$search}%")
+                            ->orWhere('uraian_opsional', 'ILIKE', "%{$search}%");
+                    })
+                        ->orWhereHas('rekeningBelanja', function ($q) use ($search) {
+                            $q->where('kode_rekening', 'ILIKE', "%{$search}%");
+                        });
+                });
+            }
+
+            $kwitansis = $query->latest()->get();
+
+            if ($kwitansis->isEmpty()) {
+                return redirect()->route('kwitansi.index')
+                    ->with('error', 'Tidak ada data kwitansi untuk diunduh dengan filter yang dipilih');
+            }
+
+            $kwitansiData = [];
+            foreach ($kwitansis as $kwitansi) {
+                $parsedKode = $this->parseKodeKegiatan($kwitansi->kodeKegiatan);
+                $totalAmount = $this->calculateTotalFromUraianDetails($kwitansi->bukuKasUmum);
+                $jumlahUang = $this->convertToText($totalAmount);
+                $pajakData = $this->klasifikasiPajak($kwitansi->bukuKasUmum);
+
+                // Calculate Tahap Roman for each
+                $bulan = \Carbon\Carbon::parse($kwitansi->bukuKasUmum->tanggal_transaksi)->month;
+                $tahap = $bulan <= 6 ? 'THP-I' : 'THP-II';
+
+                $kwitansiData[] = [
+                    'kwitansi' => $kwitansi,
+                    'parsedKode' => $parsedKode,
+                    'jumlahUangText' => $jumlahUang,
+                    'totalAmount' => $totalAmount,
+                    'tanggalLunas' => $this->formatTanggalLunas($kwitansi->bukuKasUmum->tanggal_transaksi),
+                    'pajakData' => $pajakData,
+                    'tahapRoman' => $tahap,
+                ];
+            }
+
+            $paperSize = request()->input('paper_size', 'Folio');
+            $fontSize = request()->input('font_size', '11pt');
+            $orientation = request()->input('orientation', 'portrait');
+
+            $data = [
+                'kwitansis' => $kwitansiData,
+                'totalKwitansi' => $kwitansis->count(),
+                'tanggalDownload' => now()->format('d/m/Y H:i'),
+                'fontSize' => $fontSize,
+                'filterInfo' => [
+                    'search' => $search,
+                    'tahun' => $tahun,
+                    'start_date' => $startDate,
+                    'end_date' => $endDate,
+                    'has_filter' => $search || $tahun || $startDate || $endDate
+                ]
+            ];
+
+            $pdf = PDF::loadView('pelengkap.download_all_dua_pdf', $data);
+            $pdf->setPaper($paperSize, $orientation);
+
+            $filename = $this->generateDownloadFilename($search, $tahun, $startDate, $endDate, $kwitansis->count());
+
+            return $pdf->stream($filename);
+        } catch (\Exception $e) {
+            Log::error('Error downloading all kwitansi: ' . $e->getMessage());
+            return redirect()->route('kwitansi.index')
+                ->with('error', 'Gagal mengunduh semua kwitansi: ' . $e->getMessage());
+        }
+    }
+
+    public function previewPdf2($id)
+    {
+        try {
+            $kwitansi = Kwitansi::with([
+                'sekolah',
+                'penganggaran',
+                'kodeKegiatan',
+                'rekeningBelanja',
+                'penerimaanDana',
+                'bukuKasUmum' => function ($query) {
+                    $query->with(['uraianDetails']);
+                },
+                'bkuUraianDetail',
+            ])->findOrFail($id);
+
+            $parsedKode = $this->parseKodeKegiatan($kwitansi->kodeKegiatan);
+            $totalAmount = $this->calculateTotalFromUraianDetails($kwitansi->bukuKasUmum);
+            $jumlahUang = $this->convertToText($totalAmount);
+            $pajakData = $this->klasifikasiPajak($kwitansi->bukuKasUmum);
+
+            // Calculate Tahap Roman
+            $bulan = \Carbon\Carbon::parse($kwitansi->bukuKasUmum->tanggal_transaksi)->month;
+            $tahapRoman = $bulan <= 6 ? 'THP-I' : 'THP-II';
+
+            // Get Request Parameters
+            $paperSize = request()->input('paper_size', 'Folio');
+            $fontSize = request()->input('font_size', '11pt');
+            $orientation = request()->input('orientation', 'portrait');
+
+            $data = [
+                'kwitansi' => $kwitansi,
+                'parsedKode' => $parsedKode,
+                'jumlahUangText' => $jumlahUang,
+                'totalAmount' => $totalAmount,
+                'tanggalLunas' => $this->formatTanggalLunas($kwitansi->bukuKasUmum->tanggal_transaksi),
+                'pajakData' => $pajakData,
+                'sekolah' => $kwitansi->sekolah,
+                'tahapRoman' => $tahapRoman,
+                'fontSize' => $fontSize,
+            ];
+
+            $pdf = PDF::loadView('pelengkap.kwitansi_dua_pdf', $data);
             $pdf->setPaper($paperSize, $orientation);
 
             return $pdf->stream('Kwitansi_Preview_' . $kwitansi->id . '.pdf', [
