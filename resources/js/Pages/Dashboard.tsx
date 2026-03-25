@@ -74,6 +74,24 @@ export default function Dashboard({
     };
 
     const chartTheme = { mode: isDarkMode ? 'dark' : 'light' } as const;
+    
+    // Helper format currency singkat (T / M / JT)
+    const formatShortCurrency = (value: number | undefined | null) => {
+        if (value === undefined || value === null) return 'Rp 0';
+        
+        if (value >= 1000000000000) {
+            return 'Rp ' + (value / 1000000000000).toLocaleString('id-ID', { maximumFractionDigits: 1 }) + ' T';
+        } else if (value >= 1000000000) {
+            return 'Rp ' + (value / 1000000000).toLocaleString('id-ID', { maximumFractionDigits: 1 }) + ' M';
+        } else if (value >= 1000000) {
+            return 'Rp ' + (value / 1000000).toLocaleString('id-ID', { maximumFractionDigits: 1 }) + ' JT';
+        }
+        return 'Rp ' + value.toLocaleString('id-ID');
+    };
+
+    const formatFullCurrency = (value: number | undefined | null) => {
+        return 'Rp ' + (value || 0).toLocaleString('id-ID');
+    };
 
     // 1. Chart Realisasi Bulanan
     const monthlyRealizationSeries = [{
@@ -88,10 +106,10 @@ export default function Dashboard({
         dataLabels: { enabled: false },
         xaxis: { categories: grafikTahunan?.categories || [] },
         yaxis: {
-            labels: { formatter: (val) => val.toLocaleString('id-ID') }
+            labels: { formatter: (val: number) => formatShortCurrency(val) }
         },
         title: { text: `Realisasi Perbulan Tahun ${year}`, align: 'left', style: { fontSize: '16px', fontWeight: 600 } },
-        tooltip: { y: { formatter: (val) => `Rp ${(val * 1000).toLocaleString('id-ID')}` } }
+        tooltip: { y: { formatter: (val) => formatFullCurrency(val * 1000) } }
     };
 
     // 2. Chart Perbandingan 5 Tahun
@@ -107,9 +125,9 @@ export default function Dashboard({
         dataLabels: { enabled: false },
         stroke: { curve: 'smooth', width: 2 },
         xaxis: { categories: perbandingan?.map((item: any) => item.tahun) || [] },
-        yaxis: { labels: { formatter: (val) => `Rp ${(val / 1000000).toFixed(0)} Jt` } },
+        yaxis: { labels: { formatter: (val: number) => formatShortCurrency(val) } },
         title: { text: 'Realisasi 5 Tahun Terakhir', align: 'left', style: { fontSize: '16px', fontWeight: 600 } },
-        tooltip: { y: { formatter: (val) => `Rp ${val.toLocaleString('id-ID')}` } }
+        tooltip: { y: { formatter: (val) => formatFullCurrency(val) } }
     };
 
     // 3. Chart Pie Pemanfaatan Anggaran
@@ -165,13 +183,15 @@ export default function Dashboard({
                     <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8">
                         <StatCard
                             title="Pagu Anggaran"
-                            value={`Rp ${statistik?.pagu_anggaran_display || '0'}`}
+                            value={formatShortCurrency(statistik?.pagu_anggaran)}
+                            tooltip={formatFullCurrency(statistik?.pagu_anggaran)}
                             color="bg-blue-50"
                             icon={<svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>}
                         />
                         <StatCard
                             title="Total Realisasi"
-                            value={`Rp ${statistik?.total_realisasi_display || '0'}`}
+                            value={formatShortCurrency(statistik?.total_realisasi)}
+                            tooltip={formatFullCurrency(statistik?.total_realisasi)}
                             color="bg-green-50"
                             icon={<svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>}
                         />
@@ -183,16 +203,33 @@ export default function Dashboard({
                         />
                         <StatCard
                             title="Sisa Anggaran"
-                            value={`Rp ${statistik?.sisa_anggaran_display || '0'}`}
+                            value={formatShortCurrency(statistik?.sisa_anggaran)}
+                            tooltip={formatFullCurrency(statistik?.sisa_anggaran)}
                             color="bg-red-50"
                             icon={<svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>}
                         />
 
                         {/* Additional Stats Row */}
-                        <StatCard title="Total Penerimaan" value={`Rp ${statistik?.total_penerimaan_display || '0'}`} />
-                        <StatCard title="Total Belanja" value={`Rp ${statistik?.total_belanja_display || '0'}`} />
-                        <StatCard title="Surplus/Defisit" value={`Rp ${statistik?.defisit_display || '0'}`} description="Pagu - Realisasi" />
-                        <StatCard title="Efisiensi Anggaran" value={`${statistik?.efisiensi_anggaran ? statistik.efisiensi_anggaran.toFixed(1) : '0'}%`} />
+                        <StatCard
+                            title="Total Penerimaan"
+                            value={formatShortCurrency(statistik?.total_penerimaan)}
+                            tooltip={formatFullCurrency(statistik?.total_penerimaan)}
+                        />
+                        <StatCard
+                            title="Total Belanja"
+                            value={formatShortCurrency(statistik?.total_belanja)}
+                            tooltip={formatFullCurrency(statistik?.total_belanja)}
+                        />
+                        <StatCard
+                            title="Surplus/Defisit"
+                            value={formatShortCurrency(Math.abs(statistik?.defisit || 0))}
+                            tooltip={formatFullCurrency(statistik?.defisit)}
+                            description="Pagu - Realisasi"
+                        />
+                        <StatCard
+                            title="Efisiensi Anggaran"
+                            value={`${statistik?.efisiensi_anggaran ? statistik.efisiensi_anggaran.toFixed(1) : '0'}%`}
+                        />
                     </div>
 
                     {/* Charts Grid - Top Row */}
@@ -223,7 +260,9 @@ export default function Dashboard({
                                             <div key={idx}>
                                                 <div className="flex justify-between text-sm text-gray-600 dark:text-gray-300 mb-1">
                                                     <span className="truncate pr-2">{program.nama_program}</span>
-                                                    <span className="font-semibold whitespace-nowrap">Rp {program.total.toLocaleString('id-ID')}</span>
+                                                    <span className="font-semibold whitespace-nowrap" title={formatFullCurrency(program.total)}>
+                                                        {formatShortCurrency(program.total)}
+                                                    </span>
                                                 </div>
                                                 <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                                                     <div

@@ -2447,11 +2447,15 @@ export default function Bku({
                                     </div>
                                     <div className="flex justify-between border-b border-gray-100 dark:border-gray-700 pb-1">
                                         <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">Nama Penyedia / Penerima</p>
-                                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{selectedDetailItem.nama_toko || selectedDetailItem.nama_penerima_pembayaran || '-'}</p>
+                                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{selectedDetailItem.nama_toko || selectedDetailItem.nama_penyedia || selectedDetailItem.nama_penyedia_barang_jasa || selectedDetailItem.nama_penerima_pembayaran || selectedDetailItem.nama_penerima || '-'}</p>
                                     </div>
                                     <div className="flex justify-between border-b border-gray-100 dark:border-gray-700 pb-1">
                                         <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">NPWP</p>
                                         <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{selectedDetailItem.npwp || '-'}</p>
+                                    </div>
+                                    <div className="flex justify-between border-b border-gray-100 dark:border-gray-700 pb-1">
+                                        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">Alamat</p>
+                                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{selectedDetailItem.alamat_toko || selectedDetailItem.alamat || '-'}</p>
                                     </div>
                                 </div>
                             </div>
