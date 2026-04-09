@@ -317,7 +317,8 @@
                     <td class="separator">:</td>
                     <td class="info-content">
                         <span class="bordered-content">
-                             No : {{ str_pad($kwitansi->id, 3, '0', STR_PAD_LEFT) }}/BOS/{{ $tahapRoman ?? 'THP-I' }}/{{ $kwitansi->penganggaran->tahun_anggaran ?? date('Y') }}
+                             No : {{ $kwitansi->bukuKasUmum->id_transaksi ?? 'KW-'.$kwitansi->id
+                            }}
                         </span>
                     </td>
                 </tr>

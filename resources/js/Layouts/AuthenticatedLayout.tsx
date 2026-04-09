@@ -12,7 +12,7 @@ export default function Authenticated({
 
     // Close sidebar on mobile on initial load
     useState(() => {
-        if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+        if (typeof window !== 'undefined' && window.innerWidth < 768) {
             setSidebarOpen(false);
         }
     });
@@ -27,7 +27,7 @@ export default function Authenticated({
             />
 
             {/* Main Content Wrapper */}
-            <div className={`flex-1 flex flex-col transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} ml-0`}>
+            <div className={`flex-1 flex flex-col transition-all duration-300 ${sidebarOpen ? 'md:ml-64' : 'md:ml-20'} ml-0`}>
                 {/* Navbar */}
                 <Navbar
                     header={header}
