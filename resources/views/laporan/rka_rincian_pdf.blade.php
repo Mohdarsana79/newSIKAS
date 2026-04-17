@@ -106,7 +106,11 @@
     <body>
         <div class="header">
             <h3 class="uppercase font-bold">KERTAS KERJA RENCANA KEGIATAN DAN ANGGARAN SEKOLAH (RKAS) RINCIAN</h3>
-            <h4 class="uppercase font-bold">TAHUN ANGGARAN : {{ $anggaran['tahun_anggaran'] }}</h4>
+            <h4 class="uppercase font-bold">TAHUN ANGGARAN : {{ $anggaran['tahun_anggaran'] }}
+                @if(isset($tahap) && $tahap !== 'tahunan')
+                    - TAHAP {{ $tahap }}
+                @endif
+            </h4>
         </div>
 
         <!-- School Profile -->

@@ -162,6 +162,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
 
     const [showPrintModal, setShowPrintModal] = useState(false);
     const [printTarget, setPrintTarget] = useState<'tahapan' | 'tahapan_v1' | 'rekap' | 'lembar' | 'bulanan' | 'rincian'>('tahapan');
+    const [printTahap, setPrintTahap] = useState<'1' | '2' | 'tahunan'>('tahunan');
     const [printSettings, setPrintSettings] = useState({
         paperSize: 'A4',
         orientation: 'portrait',
@@ -180,7 +181,10 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
         if (printTarget === 'rekap') routeName = 'rkas.export-rekap-pdf';
         if (printTarget === 'lembar') routeName = 'rkas.export-lembar-kerja-pdf';
         if (printTarget === 'tahapan_v1') routeName = 'rkas.export-tahapan-v1-pdf';
-        if (printTarget === 'rincian') routeName = 'rkas.export-rincian-pdf';
+        if (printTarget === 'rincian') {
+            routeName = 'rkas.export-rincian-pdf';
+            params.tahap = printTahap;
+        }
         if (printTarget === 'bulanan') {
             routeName = 'rkas.export-bulanan-pdf';
             params.month = monthOverride || selectedMonth;
@@ -194,10 +198,18 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
     const handleExportExcel = (target?: string) => {
         const targetToUse = target || printTarget;
         let routeName = 'rkas.export-tahapan-excel';
-        const params: any = { id: anggaran.id };
+        const params: any = {
+            id: anggaran.id,
+            paper_size: printSettings.paperSize,
+            orientation: printSettings.orientation,
+            font_size: printSettings.fontSize
+        };
 
         if (targetToUse === 'tahapan_v1') routeName = 'rkas.export-tahapan-v1-excel';
-        if (targetToUse === 'rincian') routeName = 'rkas.export-rincian-excel';
+        if (targetToUse === 'rincian') {
+            routeName = 'rkas.export-rincian-excel';
+            params.tahap = printTahap;
+        }
 
         const url = route(routeName, params);
         window.open(url, '_blank');
@@ -298,6 +310,21 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                                     <option value="12pt">Normal (12pt)</option>
                                 </select>
                             </div>
+
+                            {printTarget === 'rincian' && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tahap Cetak</label>
+                                    <select
+                                        value={printTahap}
+                                        onChange={(e) => setPrintTahap(e.target.value as any)}
+                                        className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                    >
+                                        <option value="tahunan">Tahunan</option>
+                                        <option value="1">Tahap 1</option>
+                                        <option value="2">Tahap 2</option>
+                                    </select>
+                                </div>
+                            )}
                         </div>
 
                         <div className="mt-6 flex justify-end gap-3">
@@ -313,6 +340,14 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                                     className="bg-green-600 text-white hover:bg-green-700 px-4 py-2 rounded-md text-sm font-medium shadow-sm transition-colors"
                                 >
                                     Cetak Semua Bulan
+                                </button>
+                            )}
+                            {['rincian', 'tahapan', 'tahapan_v1'].includes(printTarget) && (
+                                <button
+                                    onClick={() => handleExportExcel()}
+                                    className="bg-green-600 text-white hover:bg-green-700 px-4 py-2 rounded-md text-sm font-medium shadow-sm transition-colors"
+                                >
+                                    Export Excel
                                 </button>
                             )}
                             <button
@@ -1440,7 +1475,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                                         <button
                                             onClick={() => {
                                                 setPrintTarget('rincian');
-                                                handleExportExcel('rincian');
+                                                setShowPrintModal(true);
                                             }}
                                             className="bg-green-600 dark:bg-green-700 text-white px-4 py-2 rounded-md hover:bg-green-700 dark:hover:bg-green-800 flex items-center justify-center gap-2 shadow-sm transition-colors text-sm font-medium focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
                                         >

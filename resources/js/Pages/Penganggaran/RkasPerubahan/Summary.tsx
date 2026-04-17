@@ -185,6 +185,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
         orientation: 'portrait',
         fontSize: '12pt'
     });
+    const [printTahap, setPrintTahap] = useState<'1' | '2' | 'tahunan'>('tahunan');
 
     const handlePrint = (monthOverride?: string) => {
         let routeName = 'rkas-perubahan.export-pdf';
@@ -192,7 +193,8 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
             id: anggaran.id,
             paper_size: printSettings.paperSize,
             orientation: printSettings.orientation,
-            font_size: printSettings.fontSize
+            font_size: printSettings.fontSize,
+            tahap: printTahap
         };
 
         if (printTarget === 'rekap') routeName = 'rkas-perubahan.export-rekap-pdf';
@@ -213,7 +215,13 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
     const handleExportExcel = (target?: string) => {
         const targetToUse = target || printTarget;
         let routeName = 'rkas-perubahan.export-tahapan-excel';
-        const params: any = { id: anggaran.id };
+        const params: any = {
+            id: anggaran.id,
+            tahap: printTahap,
+            paper_size: printSettings.paperSize,
+            orientation: printSettings.orientation,
+            font_size: printSettings.fontSize,
+        };
 
         if (targetToUse === 'tahapan_v1') routeName = 'rkas-perubahan.export-tahapan-v1-excel';
         if (targetToUse === 'rincian') routeName = 'rkas-perubahan.export-rincian-excel';
@@ -277,6 +285,21 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                         </div>
 
                         <div className="space-y-4">
+                            {printTarget === 'rincian' && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tahap Cetak</label>
+                                    <select
+                                        value={printTahap}
+                                        onChange={(e) => setPrintTahap(e.target.value as any)}
+                                        className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                    >
+                                        <option value="tahunan">Tahunan (Januari - Desember)</option>
+                                        <option value="1">Tahap 1 (Januari - Juni)</option>
+                                        <option value="2">Tahap 2 (Juli - Desember)</option>
+                                    </select>
+                                </div>
+                            )}
+
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Ukuran Kertas</label>
                                 <select
@@ -332,6 +355,17 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                                     className="bg-green-600 text-white hover:bg-green-700 px-4 py-2 rounded-md text-sm font-medium shadow-sm transition-colors"
                                 >
                                     Cetak Semua Bulan
+                                </button>
+                            )}
+                            {printTarget === 'rincian' && (
+                                <button
+                                    onClick={() => handleExportExcel()}
+                                    className="bg-green-600 text-white hover:bg-green-700 px-4 py-2 rounded-md text-sm font-medium shadow-sm transition-colors flex items-center gap-2"
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    Export Excel
                                 </button>
                             )}
                             <button
@@ -1272,7 +1306,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                                         <button
                                             onClick={() => {
                                                 setPrintTarget('rincian');
-                                                handleExportExcel('rincian');
+                                                setShowPrintModal(true);
                                             }}
                                             className="bg-green-600 dark:bg-green-700 text-white px-4 py-2 rounded-md hover:bg-green-700 dark:hover:bg-green-800 flex items-center justify-center gap-2 shadow-sm transition-colors text-sm font-medium focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
                                         >

@@ -123,7 +123,7 @@
                 <td style="width: 180px; text-align: right; padding-right: 10px;">No</td>
                 <td>
                     <div style="border-top: 1px solid #000; border-bottom: 1px solid #000; padding: 2px 0; display: inline-block;">
-                        : {{ str_pad($kwitansi->id, 3, '0', STR_PAD_LEFT) }}/BOSP/{{ $tahapRoman ?? 'THP-I' }}/{{ $kwitansi->penganggaran->tahun_anggaran ?? date('Y') }}
+                        : {{ $kwitansi->bukuKasUmum->id_transaksi ?? 'KW-'.$kwitansi->id }}
                     </div>
                 </td>
             </tr>

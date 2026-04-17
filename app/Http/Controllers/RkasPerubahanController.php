@@ -1344,16 +1344,25 @@ class RkasPerubahanController extends Controller
     public function exportRincianPdf(Request $request, $id)
     {
         $penganggaran = Penganggaran::with('sekolah')->findOrFail($id);
+        $tahap = $request->input('tahap', 'tahunan');
         
-        $rkasData = RkasPerubahan::with(['kodeKegiatan', 'rekeningBelanja'])
-            ->where('penganggaran_id', $id)
-            ->get();
+        $query = RkasPerubahan::with(['kodeKegiatan', 'rekeningBelanja'])
+            ->where('penganggaran_id', $id);
+
+        if ($tahap === '1') {
+            $query->whereIn('bulan', ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni']);
+        } elseif ($tahap === '2') {
+            $query->whereIn('bulan', ['Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']);
+        }
+
+        $rkasData = $query->get();
 
         $rincianData = $this->kelolaDataRincian($rkasData);
 
         $pdf = Pdf::loadView('laporan.rka_rincian_pdf', [
             'anggaran' => $penganggaran->toArray(),
             'rincianData' => $rincianData,
+            'tahap' => $tahap,
             'paper_size' => $request->paper_size ?? 'A4',
             'orientation' => $request->orientation ?? 'portrait',
             'font_size' => $request->font_size ?? '12pt'
@@ -1365,19 +1374,28 @@ class RkasPerubahanController extends Controller
     public function exportRincianExcel(Request $request, $id)
     {
         $penganggaran = Penganggaran::with('sekolah')->findOrFail($id);
+        $tahap = $request->input('tahap', 'tahunan');
 
-        $rkasData = RkasPerubahan::with(['kodeKegiatan', 'rekeningBelanja'])
-            ->where('penganggaran_id', $id)
-            ->get();
+        $query = RkasPerubahan::with(['kodeKegiatan', 'rekeningBelanja'])
+            ->where('penganggaran_id', $id);
+
+        if ($tahap === '1') {
+            $query->whereIn('bulan', ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni']);
+        } elseif ($tahap === '2') {
+            $query->whereIn('bulan', ['Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']);
+        }
+
+        $rkasData = $query->get();
 
         $rincianData = $this->kelolaDataRincian($rkasData);
 
         $html = view('laporan.rka_rincian_exel', [
             'anggaran' => $penganggaran->toArray(),
             'rincianData' => $rincianData,
-            'paper_size' => 'A4',
-            'orientation' => 'portrait',
-            'font_size' => '11pt',
+            'tahap' => $tahap,
+            'paper_size' => $request->paper_size ?? 'A4',
+            'orientation' => $request->orientation ?? 'portrait',
+            'font_size' => $request->font_size ?? '11pt',
             'is_excel' => true,
         ])->render();
 
