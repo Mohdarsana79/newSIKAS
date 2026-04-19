@@ -77,16 +77,16 @@ export default function Dashboard({
     
     // Helper format currency singkat (T / M / JT)
     const formatShortCurrency = (value: number | undefined | null) => {
-        if (value === undefined || value === null) return 'Rp 0';
+        if (value === undefined || value === null) return 'Rp. 0';
         
         if (value >= 1000000000000) {
-            return 'Rp ' + (value / 1000000000000).toLocaleString('id-ID', { maximumFractionDigits: 1 }) + ' T';
+            return 'Rp. ' + (value / 1000000000000).toLocaleString('id-ID', { maximumFractionDigits: 1 }) + ' T';
         } else if (value >= 1000000000) {
-            return 'Rp ' + (value / 1000000000).toLocaleString('id-ID', { maximumFractionDigits: 1 }) + ' M';
+            return 'Rp. ' + (value / 1000000000).toLocaleString('id-ID', { maximumFractionDigits: 1 }) + ' M';
         } else if (value >= 1000000) {
-            return 'Rp ' + (value / 1000000).toLocaleString('id-ID', { maximumFractionDigits: 1 }) + ' JT';
+            return 'Rp. ' + (value / 1000000).toLocaleString('id-ID', { maximumFractionDigits: 1 }) + ' JT';
         }
-        return 'Rp ' + value.toLocaleString('id-ID');
+        return 'Rp. ' + value.toLocaleString('id-ID');
     };
 
     const formatFullCurrency = (value: number | undefined | null) => {
@@ -95,7 +95,7 @@ export default function Dashboard({
 
     // 1. Chart Realisasi Bulanan
     const monthlyRealizationSeries = [{
-        name: 'Realisasi (Ribuan)',
+        name: 'Realisasi',
         data: grafikTahunan?.realisasi_data || []
     }];
     const monthlyRealizationOptions: ApexOptions = {
@@ -109,7 +109,7 @@ export default function Dashboard({
             labels: { formatter: (val: number) => formatShortCurrency(val) }
         },
         title: { text: `Realisasi Perbulan Tahun ${year}`, align: 'left', style: { fontSize: '16px', fontWeight: 600 } },
-        tooltip: { y: { formatter: (val) => formatFullCurrency(val * 1000) } }
+        tooltip: { y: { formatter: (val) => formatFullCurrency(val) } }
     };
 
     // 2. Chart Perbandingan 5 Tahun

@@ -844,11 +844,11 @@ class RkasPerubahanController extends Controller
             $honorPercentage = $totalPagu > 0 ? ($honorAnggaran / $totalPagu) * 100 : 0;
             Log::info('💰 [GRAFIK_DEBUG] Honor percentage dari 100% pagu: ' . number_format($honorPercentage, 2) . '%');
 
-            // 3. Hitung anggaran SARPRAS - HANYA DARI KODE KEGIATAN 05.08
+            // 3. Hitung anggaran SARPRAS - BERDASARKAN KODE KEGIATAN (05.08.01.)
             $sarprasAnggaran = RkasPerubahan::where('penganggaran_id', $penganggaranId)
                 ->whereHas('kodeKegiatan', function ($query) {
-                    // HANYA kode kegiatan 05.08 - Pemeliharaan Sarana dan Prasarana Sekolah
-                    $query->where('kode', 'like', '05.08.%');
+                    // Kode kegiatan Pemeliharaan Prasarana Lahan, Bangunan dan Ruang
+                    $query->where('kode', 'like', '05.08.01%');
                 })
                 ->get()
                 ->sum(function ($item) {

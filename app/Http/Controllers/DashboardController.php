@@ -93,6 +93,25 @@ class DashboardController extends Controller
     }
 
     /**
+     * Format mata uang singkat (T, M, JT)
+     */
+    private function formatMataUangSingkat($amount)
+    {
+        if ($amount >= 1000000000000) {
+            $val = $amount / 1000000000000;
+            return (floor($val) == $val ? number_format($val, 0) : number_format($val, 1, ',', '.')) . ' T';
+        } elseif ($amount >= 1000000000) {
+            $val = $amount / 1000000000;
+            return (floor($val) == $val ? number_format($val, 0) : number_format($val, 1, ',', '.')) . ' M';
+        } elseif ($amount >= 1000000) {
+            $val = $amount / 1000000;
+            return (floor($val) == $val ? number_format($val, 0) : number_format($val, 1, ',', '.')) . ' JT';
+        }
+        
+        return number_format($amount, 0, ',', '.');
+    }
+
+    /**
      * Hitung statistik utama untuk dashboard
      */
     private function hitungStatistikDashboard($penganggaranId, $tahun)
@@ -191,8 +210,8 @@ class DashboardController extends Controller
                     ->where('is_bunga_record', false)
                     ->sum('total_transaksi_kotor');
 
-                // Konversi ke format ribuan untuk chart: 31320000 -> 31320
-                $realisasiData[] = (float) ($realisasiBulan / 1000);
+                // Konversi ke format angka murni untuk chart
+                $realisasiData[] = (float) $realisasiBulan;
             }
 
             return [
