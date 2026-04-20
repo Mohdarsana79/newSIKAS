@@ -273,6 +273,8 @@ class BukuKasPembantuTunaiController extends Controller
             ->where('jenis_transaksi', 'tunai')
             ->with(['kodeKegiatan', 'rekeningBelanja'])
             ->orderBy('tanggal_transaksi', 'asc')
+            ->orderBy('id_transaksi', 'asc')
+            ->orderBy('id', 'asc')
             ->get();
 
         $saldoAwalTunai = $this->hitungSaldoTunaiSebelumBulan($penganggaran->id, $bulanAngka);
@@ -310,8 +312,8 @@ class BukuKasPembantuTunaiController extends Controller
         // Hitung total penarikan tunai
         $totalPenarikanTunai = $penarikanTunais->sum('jumlah_penarikan');
 
-        // Penarikan Tunai - Skip adding to items, handled via summary
-        // foreach ($penarikanTunais as $p) { ... }
+        $blockCounter = 100;
+
         foreach ($setorTunais as $s) {
             $items[] = [
                 'tanggal' => $s->tanggal_setor,
@@ -320,9 +322,13 @@ class BukuKasPembantuTunaiController extends Controller
                 'kode_rekening' => '-',
                 'penerimaan' => 0,
                 'pengeluaran' => $s->jumlah_setor,
+                'sort_order' => 5,
+                'group_id' => 0
             ];
         }
+
         foreach ($bkuDataTunai as $bku) {
+            $blockCounter++;
             $items[] = [
                 'tanggal' => $bku->tanggal_transaksi,
                 'uraian' => $bku->uraian_opsional ? $bku->uraian_opsional : $bku->uraian,
@@ -330,6 +336,8 @@ class BukuKasPembantuTunaiController extends Controller
                 'kode_rekening' => $bku->rekeningBelanja ? $bku->rekeningBelanja->kode_rekening : '-',
                 'penerimaan' => 0,
                 'pengeluaran' => $bku->total_transaksi_kotor,
+                'sort_order' => 10,
+                'group_id' => $blockCounter
             ];
             
             if ($bku->total_pajak > 0) {
@@ -340,15 +348,19 @@ class BukuKasPembantuTunaiController extends Controller
                      'kode_rekening' => '-',
                      'penerimaan' => $bku->total_pajak,
                      'pengeluaran' => 0,
+                     'sort_order' => 11,
+                     'group_id' => $blockCounter
                  ];
                  if (!empty($bku->ntpn)) {
                      $items[] = [
                          'tanggal' => $bku->tanggal_transaksi,
                          'uraian' => 'Setor Pajak ' . $bku->pajak . ' ' . $bku->persen_pajak . '%' . ' ' . $bku->uraian_opsional,
-                         'no_bukti' => $bku->kode_masa_pajak, // Changed to correct mapping if needed
+                         'no_bukti' => $bku->kode_masa_pajak, 
                          'kode_rekening' => '-',
                          'penerimaan' => 0,
                          'pengeluaran' => $bku->total_pajak,
+                         'sort_order' => 12,
+                         'group_id' => $blockCounter
                      ];
                  }
             }
@@ -356,26 +368,36 @@ class BukuKasPembantuTunaiController extends Controller
                  $items[] = [
                      'tanggal' => $bku->tanggal_transaksi,
                      'uraian' => 'Terima Pajak ' . $bku->pajak_daerah . ' ' . $bku->persen_pajak_daerah . '%' . ' ' . $bku->uraian_opsional,
-                     'no_bukti' => $bku->kode_masa_pajak,
+                     'no_bukti' => '-',
                      'kode_rekening' => '-',
                      'penerimaan' => $bku->total_pajak_daerah,
                      'pengeluaran' => 0,
+                     'sort_order' => 11,
+                     'group_id' => $blockCounter
                  ];
                  if (!empty($bku->ntpn)) {
                      $items[] = [
                          'tanggal' => $bku->tanggal_transaksi,
                          'uraian' => 'Setor Pajak ' . $bku->pajak_daerah . ' ' . $bku->persen_pajak_daerah . '%' . ' ' . $bku->uraian_opsional,
-                         'no_bukti' => $bku->kode_masa_pajak,
+                         'no_bukti' => '-',
                          'kode_rekening' => '-',
                          'penerimaan' => 0,
                          'pengeluaran' => $bku->total_pajak_daerah,
+                         'sort_order' => 12,
+                         'group_id' => $blockCounter
                      ];
                  }
             }
         }
         
         usort($items, function($a, $b) {
-            return strtotime($a['tanggal']) - strtotime($b['tanggal']);
+            if ($a['tanggal'] !== $b['tanggal']) {
+                return strtotime($a['tanggal']) - strtotime($b['tanggal']);
+            }
+            if ($a['group_id'] !== $b['group_id']) {
+                return $a['group_id'] - $b['group_id'];
+            }
+            return $a['sort_order'] - $b['sort_order'];
         });
 
         return [

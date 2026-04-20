@@ -1354,6 +1354,8 @@ class BukuKasUmumController extends Controller
                 ->where('is_bunga_record', false)
                 ->with(['kodeKegiatan', 'rekeningBelanja'])
                 ->orderBy('tanggal_transaksi', 'asc')
+                ->orderBy('id_transaksi', 'asc')
+                ->orderBy('id', 'asc')
                 ->get();
 
             $bungaRecord = BukuKasUmum::where('penganggaran_id', $penganggaran->id)
@@ -1414,10 +1416,11 @@ class BukuKasUmumController extends Controller
                 $trkSaldoAwal
             );
 
-            // Sort rows to ensure order matches Frontend (Saldo Awal first, etc.)
+            // Sort rows to ensure order matches Frontend (Tanggal first, then Group, then Sort Order)
             $rowsData = collect($rowsData)->sortBy([
-                ['sort_order', 'asc'],
-                ['tanggal', 'asc']
+                ['tanggal', 'asc'],
+                ['group_id', 'asc'],
+                ['sort_order', 'asc']
             ])->values()->all();
 
             // Hitung total akhir
@@ -1502,7 +1505,8 @@ class BukuKasUmumController extends Controller
             'penerimaan' => $totalSaldoAwal,
             'pengeluaran' => 0,
             'is_saldo_awal' => true,
-            'sort_order' => 1
+            'sort_order' => 1,
+            'group_id' => 0
         ];
 
         /* 
@@ -1521,7 +1525,8 @@ class BukuKasUmumController extends Controller
                 'uraian' => 'Penarikan Saldo Awal',
                 'penerimaan' => 0,
                 'pengeluaran' => $trkSaldoAwal['jumlah'],
-                'sort_order' => 2
+                'sort_order' => 2,
+                'group_id' => 0
             ];
         }
 
@@ -1544,7 +1549,8 @@ class BukuKasUmumController extends Controller
                     'uraian' => 'Terima Dana ' . $penerimaan->sumber_dana . ' T.A ' . $tahun,
                     'penerimaan' => $penerimaan->jumlah_dana,
                     'pengeluaran' => 0,
-                    'sort_order' => 5
+                    'sort_order' => 5,
+                    'group_id' => 0
                 ];
             }
         }
@@ -1558,7 +1564,8 @@ class BukuKasUmumController extends Controller
                 'uraian' => 'Pembayaran STS ' . ($sts->keterangan ?? ''),
                 'penerimaan' => 0,
                 'pengeluaran' => $sts->jumlah_bayar,
-                'sort_order' => 6
+                'sort_order' => 6,
+                'group_id' => 0
             ];
         }
 
@@ -1573,7 +1580,8 @@ class BukuKasUmumController extends Controller
                 'uraian' => 'Penarikan Tunai ' . $sumberDana . ' T.A ' . $tahun,
                 'penerimaan' => 0,
                 'pengeluaran' => $penarikan->jumlah_penarikan,
-                 'sort_order' => 5
+                'sort_order' => 5,
+                'group_id' => 0
             ];
         }
 
@@ -1588,7 +1596,8 @@ class BukuKasUmumController extends Controller
                 'uraian' => 'Terima Tunai ' . $sumberDana . ' T.A ' . $tahun,
                 'penerimaan' => $terima->jumlah_penarikan,
                 'pengeluaran' => 0,
-                 'sort_order' => 5
+                'sort_order' => 5,
+                'group_id' => 0
             ];
         }
 
@@ -1601,26 +1610,20 @@ class BukuKasUmumController extends Controller
                 'uraian' => 'Setor Tunai',
                 'penerimaan' => 0,
                 'pengeluaran' => $setor->jumlah_setor,
-                 'sort_order' => 5
+                'sort_order' => 5,
+                'group_id' => 0
             ];
         }
 
         // DATA TRANSAKSI BKU
-        // DATA TRANSAKSI BKU
+        $blockCounter = 100; // Start high to avoid collision with early items
         foreach ($bkuData as $transaksi) {
-            // Baris transaksi utama - Menampilkan Pengeluaran (Belanja)
-            // Pastikan menampilkan baris ini jika merupakan transaksi belanja (tunai/non-tunai) yang bukan pajak/bunga
-            // Logika: Jika total_transaksi_kotor > 0, atau jika ini adalah record belanja
+            $blockCounter++;
             
             $uraianText = $transaksi->uraian_opsional ?: $transaksi->uraian;
             if (empty($uraianText)) {
                 $uraianText = 'Transaksi Tanpa Uraian'; // Fallback
             }
-
-            // Only add if it's a spending transaction (usually indicated by total_transaksi_kotor > 0)
-            // OR if we want to show it even if 0 (e.g. dummy record). 
-            // For now, assume > 0 is the filter, or checks logic.
-            // User says "uraian bku nya tidak tampil", meaning these rows are missing.
             
             $rowsData[] = [
                 'tanggal' => $transaksi->tanggal_transaksi,
@@ -1629,7 +1632,8 @@ class BukuKasUmumController extends Controller
                 'uraian' => $uraianText,
                 'penerimaan' => 0,
                 'pengeluaran' => $transaksi->total_transaksi_kotor,
-                'sort_order' => 10
+                'sort_order' => 10,
+                'group_id' => $blockCounter
             ];
 
             // Baris Pajak Pusat
@@ -1637,9 +1641,6 @@ class BukuKasUmumController extends Controller
                  $uraianPajak = (empty($transaksi->ntpn) ? 'Terima Pajak ' : 'Setor Pajak ') .
                                 ($transaksi->pajak ?? '') . ' ' . ($transaksi->persen_pajak ?? '') . '%';
                  
-                 // Jika Terima Pajak (Belum NTPN) -> Penerimaan
-                 // Jika Setor Pajak (NTPN Ada) -> Penerimaan DAN Pengeluaran (Record Ganda/Split?)
-                 // Based on Prompt Logic:
                  if (empty($transaksi->ntpn)) {
                     $rowsData[] = [
                         'tanggal' => $transaksi->tanggal_transaksi,
@@ -1648,10 +1649,10 @@ class BukuKasUmumController extends Controller
                         'uraian' => $uraianPajak . ' ' . ($transaksi->uraian_opsional ?: $transaksi->uraian),
                         'penerimaan' => $transaksi->total_pajak,
                         'pengeluaran' => 0,
-                         'sort_order' => 11
+                         'sort_order' => 11,
+                         'group_id' => $blockCounter
                     ];
                  } else {
-                     // Setor Pajak: Tampil di KEDUA kolom (Penerimaan & Pengeluaran) creates WASH effect?
                      $rowsData[] = [
                         'tanggal' => $transaksi->tanggal_transaksi,
                         'kode_rekening' => '-',
@@ -1659,7 +1660,8 @@ class BukuKasUmumController extends Controller
                         'uraian' => $uraianPajak . ' ' . ($transaksi->uraian_opsional ?: $transaksi->uraian),
                         'penerimaan' => $transaksi->total_pajak,
                         'pengeluaran' => $transaksi->total_pajak,
-                         'sort_order' => 11
+                         'sort_order' => 11,
+                         'group_id' => $blockCounter
                     ];
                  }
             }
@@ -1677,7 +1679,8 @@ class BukuKasUmumController extends Controller
                         'uraian' => $uraianPajak . ' ' . ($transaksi->uraian_opsional ?: $transaksi->uraian),
                         'penerimaan' => $transaksi->total_pajak_daerah,
                         'pengeluaran' => 0,
-                         'sort_order' => 11
+                         'sort_order' => 11,
+                         'group_id' => $blockCounter
                     ];
                  } else {
                      $rowsData[] = [
@@ -1687,7 +1690,8 @@ class BukuKasUmumController extends Controller
                         'uraian' => $uraianPajak . ' ' . ($transaksi->uraian_opsional ?: $transaksi->uraian),
                         'penerimaan' => $transaksi->total_pajak_daerah,
                         'pengeluaran' => $transaksi->total_pajak_daerah,
-                         'sort_order' => 11
+                         'sort_order' => 11,
+                         'group_id' => $blockCounter
                     ];
                  }
             }
@@ -1703,7 +1707,8 @@ class BukuKasUmumController extends Controller
                     'uraian' => 'Bunga Bank',
                     'penerimaan' => $bungaRecord->bunga_bank,
                     'pengeluaran' => 0,
-                    'sort_order' => 20
+                    'sort_order' => 20,
+                    'group_id' => 999
                 ];
              }
              if ($bungaRecord->pajak_bunga_bank > 0) {
@@ -1714,7 +1719,8 @@ class BukuKasUmumController extends Controller
                     'uraian' => 'Pajak Bunga Bank',
                     'penerimaan' => 0,
                     'pengeluaran' => $bungaRecord->pajak_bunga_bank,
-                    'sort_order' => 21
+                    'sort_order' => 21,
+                    'group_id' => 999
                 ];
              }
         }
@@ -1790,6 +1796,8 @@ class BukuKasUmumController extends Controller
                 })
                 ->with(['kodeKegiatan', 'rekeningBelanja'])
                 ->orderBy('tanggal_transaksi', 'asc')
+                ->orderBy('id_transaksi', 'asc')
+                ->orderBy('id', 'asc')
                 ->get();
             
             Log::info('Counts Found:', [
@@ -1835,6 +1843,9 @@ class BukuKasUmumController extends Controller
                 $tA = strtotime($a['tanggal'] instanceof Carbon ? $a['tanggal']->toDateTimeString() : $a['tanggal']);
                 $tB = strtotime($b['tanggal'] instanceof Carbon ? $b['tanggal']->toDateTimeString() : $b['tanggal']);
                 if ($tA == $tB) {
+                    if ($a['group_id'] != $b['group_id']) {
+                        return $a['group_id'] - $b['group_id'];
+                    }
                     return $a['sort_order'] - $b['sort_order'];
                 }
                 return $tA - $tB;
@@ -2121,7 +2132,9 @@ class BukuKasUmumController extends Controller
                     $query->where('is_bunga_record', false)->orWhereNull('is_bunga_record');
                 })
                 ->with(['kodeKegiatan', 'rekeningBelanja'])
-                ->orderBy('tanggal_transaksi', 'asc')->get();
+                ->orderBy('tanggal_transaksi', 'asc')
+                ->orderBy('id_transaksi', 'asc')
+                ->get();
         $bungaRecord = BukuKasUmum::where('penganggaran_id', $penganggaran->id)
                 ->whereMonth('tanggal_transaksi', $bulanAngka)->whereYear('tanggal_transaksi', $tahun)
                 ->where('is_bunga_record', true)
@@ -2153,7 +2166,12 @@ class BukuKasUmumController extends Controller
         usort($items, function ($a, $b) {
             $tA = strtotime($a['tanggal'] instanceof Carbon ? $a['tanggal']->toDateTimeString() : $a['tanggal']);
             $tB = strtotime($b['tanggal'] instanceof Carbon ? $b['tanggal']->toDateTimeString() : $b['tanggal']);
-            if ($tA == $tB) return ($a['sort_order'] ?? 0) - ($b['sort_order'] ?? 0);
+            if ($tA == $tB) {
+                if (($a['group_id'] ?? 0) != ($b['group_id'] ?? 0)) {
+                    return ($a['group_id'] ?? 0) - ($b['group_id'] ?? 0);
+                }
+                return ($a['sort_order'] ?? 0) - ($b['sort_order'] ?? 0);
+            }
             return $tA - $tB;
         });
 
