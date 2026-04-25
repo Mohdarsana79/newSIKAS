@@ -121,6 +121,16 @@ class Sp2bController extends Controller
             $sisaBankSebelum = $bukuKasService->hitungSaldoBankSebelumBulan($penganggaran->id, $startMonth);
             $saldoAwal = $sisaTunaiSebelum + $sisaBankSebelum;
 
+            // Tambahkan Saldo Awal (Luncuran) jika Tahap 1
+            if ($tahap == '1') {
+                $penerimaanAwal = PenerimaanDana::where('penganggaran_id', $penganggaran->id)
+                    ->where('sumber_dana', 'Bosp Reguler Tahap 1')
+                    ->first();
+                if ($penerimaanAwal && $penerimaanAwal->saldo_awal) {
+                    $saldoAwal += $penerimaanAwal->saldo_awal;
+                }
+            }
+
             // Pendapatan during this Tahap
             // To be safe, we use PenerimaanDana matching the tahap.
             $pendapatan = PenerimaanDana::where('penganggaran_id', $penganggaran->id)
