@@ -1,5 +1,6 @@
 import Dropdown from '@/Components/Dropdown';
 import DarkModeSwitcher from '@/Components/DarkModeSwitcher';
+import FullscreenSwitcher from '@/Components/FullscreenSwitcher';
 import { usePage } from '@inertiajs/react';
 
 interface NavbarProps {
@@ -35,6 +36,9 @@ export default function Navbar({ header, sidebarOpen, setSidebarOpen }: NavbarPr
 
                 {/* Right Side Actions */}
                 <div className="flex items-center gap-3 2xsm:gap-7">
+                    {/* Fullscreen Toggler */}
+                    <FullscreenSwitcher />
+
                     {/* Dark Mode Toggler */}
                     <DarkModeSwitcher />
 
