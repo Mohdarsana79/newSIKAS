@@ -168,6 +168,16 @@ Route::middleware('auth')->group(function () {
         Route::post('/reset', [DatabaseController::class, 'reset'])->name('reset');
     });
 
+    // Integrasi
+    Route::prefix('integrasi')->name('integrasi.')->group(function () {
+        Route::get('/api', [\App\Http\Controllers\IntegrasiController::class, 'apiIndex'])->name('api.index');
+        Route::put('/api', [\App\Http\Controllers\IntegrasiController::class, 'apiUpdate'])->name('api.update');
+        Route::post('/api/test-connection', [\App\Http\Controllers\IntegrasiController::class, 'testConnection'])->name('api.test-connection');
+        Route::get('/sync', [\App\Http\Controllers\IntegrasiController::class, 'syncIndex'])->name('sync.index');
+        Route::get('/sync/preview', [\App\Http\Controllers\IntegrasiController::class, 'previewSyncData'])->name('sync.preview');
+        Route::post('/sync', [\App\Http\Controllers\IntegrasiController::class, 'syncStore'])->name('sync.store');
+    });
+
     // Penbarikan / Setor Routes
     Route::post('/penarikan-tunai', [BukuKasUmumController::class, 'storePenarikan'])->name('penarikan-tunai.store');
     Route::delete('/penarikan-tunai/{id}', [BukuKasUmumController::class, 'destroyPenarikan'])->name('penarikan-tunai.destroy');

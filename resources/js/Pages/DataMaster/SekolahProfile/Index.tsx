@@ -22,6 +22,8 @@ interface Sekolah {
     provinsi: string;
     alamat: string;
     kop_surat?: string;
+    website_sync_url?: string;
+    website_sync_token?: string;
 }
 
 export default function Index({ auth, sekolah }: PageProps<{ sekolah?: Sekolah }>) {
@@ -420,6 +422,8 @@ export default function Index({ auth, sekolah }: PageProps<{ sekolah?: Sekolah }
                             />
                             <InputError message={errors.alamat} className="mt-2" />
                         </div>
+
+
 
                     </div>
                     <div className="p-6 border-t border-gray-100 dark:border-gray-700 flex-none flex justify-end gap-3 bg-gray-50 dark:bg-gray-900 rounded-b-lg">

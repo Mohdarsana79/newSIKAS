@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import StatCard from '@/Components/StatCard';
-import { Head, usePage } from '@inertiajs/react';
+import { Head, usePage, router } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
 import Chart from 'react-apexcharts';
 import { ApexOptions } from 'apexcharts';
@@ -30,6 +30,7 @@ export default function Dashboard({
     const [year, setYear] = useState(tahunAktif || new Date().getFullYear().toString());
     const [isDarkMode, setIsDarkMode] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [isSyncing, setIsSyncing] = useState(false);
 
     // State for dashboard data
     const [statistik, setStatistik] = useState(initialStatistik);
@@ -151,16 +152,17 @@ export default function Dashboard({
     return (
         <AuthenticatedLayout
             header={
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <h2 className="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
                         Dashboard SIKAS
                     </h2>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-3">
                         {loading && <span className="text-sm text-gray-500 animate-pulse">Memuat data...</span>}
+                        
                         <select
                             value={year}
                             onChange={handleYearChange}
-                            className="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 h-10 py-1"
+                            className="rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 h-10 px-4 py-1 font-bold"
                         >
                             {availableYears && availableYears.length > 0 ? (
                                 availableYears.map((y: any) => (

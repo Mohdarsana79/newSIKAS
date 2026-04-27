@@ -34,6 +34,7 @@ export default function Sidebar({ className = '', isOpen = true, setIsOpen }: { 
     const { url } = usePage();
     const [isDataMasterOpen, setIsDataMasterOpen] = useState(true);
     const [isFiturPelengkapOpen, setIsFiturPelengkapOpen] = useState(true);
+    const [isIntegrasiOpen, setIsIntegrasiOpen] = useState(true);
 
     // Auto-close submenus when sidebar is closed (mini mode)
     useEffect(() => {
@@ -168,6 +169,25 @@ export default function Sidebar({ className = '', isOpen = true, setIsOpen }: { 
                             </div>
                         </div>
 
+                        {/* Integrasi Group */}
+                        <div className="pt-4">
+                            <GroupHeader
+                                label="Integrasi"
+                                isOpen={isIntegrasiOpen}
+                                isSidebarOpen={isOpen}
+                                onClick={() => setIsIntegrasiOpen(!isIntegrasiOpen)}
+                            />
+
+                            <div className={`space-y-1 overflow-hidden transition-all duration-300 ${isIntegrasiOpen || !isOpen ? 'max-h-[500px] opacity-100 mt-1' : 'max-h-0 opacity-0'}`}>
+                                <NavLink href={route('integrasi.api.index')} active={route().current('integrasi.api.*')} isSidebarOpen={isOpen} icon={<IconApi />}>
+                                    API
+                                </NavLink>
+                                <NavLink href={route('integrasi.sync.index')} active={route().current('integrasi.sync.*')} isSidebarOpen={isOpen} icon={<IconSync />}>
+                                    Singkron
+                                </NavLink>
+                            </div>
+                        </div>
+
                         {/* Systems */}
                         <div className="pt-6">
                             <SectionTitle isVisible={isOpen}>Systems</SectionTitle>
@@ -289,6 +309,18 @@ const IconLaporan = () => (
     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
+    </svg>
+);
+
+const IconApi = () => (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.826a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+    </svg>
+);
+
+const IconSync = () => (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
     </svg>
 );
 

@@ -22,5 +22,7 @@ class SekolahProfile extends Model
         'provinsi',
         'alamat',
         'kop_surat',
+        'website_sync_url',
+        'website_sync_token',
     ];
 }
