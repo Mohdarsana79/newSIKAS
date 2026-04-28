@@ -39,11 +39,25 @@ export default function Sync({ auth, sekolah, availableYears, syncLogs }: PagePr
     const itemsPerPage = 10;
     const totalLogs = syncLogs?.length || 0;
     const totalPages = Math.ceil(totalLogs / itemsPerPage);
-    
     const paginatedLogs = (syncLogs || []).slice(
         (currentPage - 1) * itemsPerPage,
         currentPage * itemsPerPage
     );
+
+    const [isOnline, setIsOnline] = useState(typeof window !== 'undefined' ? window.navigator.onLine : true);
+
+    useEffect(() => {
+        const handleOnline = () => setIsOnline(true);
+        const handleOffline = () => setIsOnline(false);
+
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+
+        return () => {
+            window.removeEventListener('online', handleOnline);
+            window.removeEventListener('offline', handleOffline);
+        };
+    }, []);
 
     const { data, setData, post, processing, errors } = useForm({
         tahun: defaultYear,
@@ -131,9 +145,9 @@ export default function Sync({ auth, sekolah, availableYears, syncLogs }: PagePr
                         <div className="p-8 md:p-12">
                             <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
                                 <div className="max-w-2xl">
-                                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 font-bold uppercase tracking-wider mb-6" style={{ fontSize: '9pt' }}>
-                                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                                        Status Koneksi: Terhubung
+                                    <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full ${isOnline ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400' : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'} font-bold uppercase tracking-wider mb-6`} style={{ fontSize: '9pt' }}>
+                                        <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
+                                        Status jaringan: {isOnline ? 'Online' : 'Offline'}
                                     </div>
                                     <h3 className="text-2xl font-outfit font-black text-gray-900 dark:text-gray-100">
                                         Kirim Data ke Website

@@ -117,7 +117,7 @@
                 <td class="text-center">-</td>
                 <td class="text-center">-</td>
                 <td>Saldo Kas Tunai</td>
-                <td class="text-right">{{ $totalPenarikan > 0 ? number_format($totalPenarikan, 0, '.', ',') : '0' }}</td>
+                <td class="text-right">{{ number_format($saldoWithPenarikan, 0, '.', ',') }}</td>
                 <td class="text-right">-</td>
                 <td class="text-right">{{ number_format($saldoWithPenarikan, 0, '.', ',') }}</td>
             </tr>

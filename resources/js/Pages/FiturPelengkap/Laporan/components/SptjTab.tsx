@@ -51,10 +51,18 @@ export default function SptjTab() {
     const [itemToDelete, setItemToDelete] = useState<number | null>(null);
     const [selectedPdfUrl, setSelectedPdfUrl] = useState('');
     const [isPrintSettingsModalOpen, setIsPrintSettingsModalOpen] = useState(false);
+    const [isValidationModalOpen, setIsValidationModalOpen] = useState(false);
+    const [validationMessage, setValidationMessage] = useState('');
     const [printSettings, setPrintSettings] = useState({
         paperSize: 'A4',
-        fontSize: '11pt'
+        fontSize: '12pt'
     });
+
+    const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+        window.dispatchEvent(new CustomEvent('toast-notification', {
+            detail: { message, type }
+        }));
+    };
 
     const handlePrint = () => {
         const url = `${selectedPdfUrl}?paper_size=${printSettings.paperSize}&font_size=${printSettings.fontSize}`;
@@ -114,8 +122,9 @@ export default function SptjTab() {
                 sisa_kas_tunai: response.data.sisa_kas_tunai,
                 sisa_dana_di_bank: response.data.sisa_dana_di_bank,
             }));
+            showToast('Data berhasil dihitung.', 'success');
         } catch (error: any) {
-            alert(error.response?.data?.error || 'Gagal menghitung data');
+            showToast(error.response?.data?.error || 'Gagal menghitung data', 'error');
         } finally {
             setIsCalculating(false);
         }
@@ -174,15 +183,27 @@ export default function SptjTab() {
 
             if (formData.id) {
                 await axios.put(`/fitur-pelengkap/api/sptj/${formData.id}`, payload);
+                showToast('Data SPTJ berhasil diperbarui.', 'success');
             } else {
                 await axios.post('/fitur-pelengkap/api/sptj', payload);
+                showToast('Data SPTJ berhasil disimpan.', 'success');
             }
             setIsAddModalOpen(false);
             fetchData();
             resetForm();
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            alert('Gagal menyimpan data');
+            if (error.response && error.response.status === 422) {
+                const errors = error.response.data.errors;
+                if (errors.nomor_sptj) {
+                    setValidationMessage(errors.nomor_sptj[0]);
+                    setIsValidationModalOpen(true);
+                } else {
+                    showToast('Data tidak valid. Silakan periksa kembali.', 'error');
+                }
+            } else {
+                showToast('Gagal menyimpan data SPTJ.', 'error');
+            }
         } finally {
             setIsSaving(false);
         }
@@ -200,9 +221,10 @@ export default function SptjTab() {
             fetchData();
             setIsDeleteModalOpen(false);
             setItemToDelete(null);
+            showToast('Data SPTJ berhasil dihapus.', 'success');
         } catch (error) {
             console.error(error);
-            alert('Gagal menghapus data');
+            showToast('Gagal menghapus data.', 'error');
         }
     };
 
@@ -774,6 +796,43 @@ export default function SptjTab() {
                     <div className="mt-6 flex justify-end gap-3">
                         <SecondaryButton onClick={() => setIsPrintSettingsModalOpen(false)}>Batal</SecondaryButton>
                         <PrimaryButton onClick={handlePrint}>Cetak PDF</PrimaryButton>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Validation Modal */}
+            <Modal show={isValidationModalOpen} onClose={() => setIsValidationModalOpen(false)} maxWidth="md">
+                <div className="p-0 overflow-hidden rounded-lg shadow-2xl bg-white dark:bg-gray-800 animate-scale-in">
+                    <div className="bg-gradient-to-r from-red-500 to-pink-600 p-6 flex items-center justify-center">
+                        <div className="bg-white/20 p-4 rounded-full backdrop-blur-sm animate-pulse">
+                            <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                        </div>
+                    </div>
+                    
+                    <div className="p-8 text-center">
+                        <h3 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-3">
+                            Data Duplikat Terdeteksi
+                        </h3>
+                        <div className="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 p-4 mb-6 rounded-r-lg">
+                            <p className="text-red-700 dark:text-red-400 font-medium">
+                                {validationMessage}
+                            </p>
+                        </div>
+                        <p className="text-gray-600 dark:text-gray-400 mb-8">
+                            Nomor SPTJ untuk tahap dan tahun anggaran ini sudah terdaftar dalam sistem. Mohon gunakan nomor yang berbeda atau periksa data yang sudah ada.
+                        </p>
+                        
+                        <button
+                            onClick={() => setIsValidationModalOpen(false)}
+                            className="w-full py-4 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold rounded-xl hover:bg-gray-800 dark:hover:bg-gray-100 transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-lg flex items-center justify-center gap-2 group"
+                        >
+                            <span>Saya Mengerti</span>
+                            <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                            </svg>
+                        </button>
                     </div>
                 </div>
             </Modal>

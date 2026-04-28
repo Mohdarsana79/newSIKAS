@@ -184,15 +184,15 @@
                     <br>
                     Yang diperiksa,
                     <div class="signature-space"></div>
-                    <span class="text-bold uppercase">{{ $report['namaKepalaSekolah'] ?? '.........................' }}</span><br>
-                    NIP. {{ $report['nipKepalaSekolah'] ?? '.........................' }}
+                    <span class="text-bold uppercase">{{ $report['namaBendahara'] ?? '.........................' }}</span><br>
+                    NIP. {{ $report['nipBendahara'] ?? '.........................' }}
                 </td>
                 <td width="50%">
                     <span class="text-bold">{{ $report['kecamatan'] ?? '.............' }}, {{ $report['tanggal_cetak_format'] ?? $report['tanggalPenutupan'] }}</span><br>
                     Yang Memeriksa,
                     <div class="signature-space"></div>
-                    <span class="text-bold uppercase">{{ $report['namaBendahara'] ?? '.........................' }}</span><br>
-                    NIP. {{ $report['nipBendahara'] ?? '.........................' }}
+                    <span class="text-bold uppercase">{{ $report['namaKepalaSekolah'] ?? '.........................' }}</span><br>
+                    NIP. {{ $report['nipKepalaSekolah'] ?? '.........................' }}
                 </td>
             </tr>
         </table>

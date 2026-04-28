@@ -14,9 +14,16 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\BkpPembantuTunaiExport;
+use App\Services\BukuKasService;
 
 class BukuKasPembantuTunaiController extends Controller
 {
+    protected $bukuKasService;
+
+    public function __construct(BukuKasService $bukuKasService)
+    {
+        $this->bukuKasService = $bukuKasService;
+    }
     /**
      * Get tanggal penarikan tunai terakhir untuk penganggaran tertentu
      */
@@ -277,7 +284,7 @@ class BukuKasPembantuTunaiController extends Controller
             ->orderBy('id', 'asc')
             ->get();
 
-        $saldoAwalTunai = $this->hitungSaldoTunaiSebelumBulan($penganggaran->id, $bulanAngka);
+        $saldoAwalTunai = $this->bukuKasService->hitungSaldoTunaiSebelumBulan($penganggaran->id, $bulanAngka);
         $totalPenerimaan = $saldoAwalTunai + $penarikanTunais->sum('jumlah_penarikan');
 
         $pajakPenerimaan = 0;
@@ -429,81 +436,6 @@ class BukuKasPembantuTunaiController extends Controller
         ];
     }
 
-    /**
-     * Hitung saldo tunai sebelum bulan tertentu - DIPERBAIKI
-     */
-    private function hitungSaldoTunaiSebelumBulan($penganggaran_id, $bulanTarget)
-    {
-        try {
-            // Jika bulan target adalah Januari (1), maka saldo awal adalah 0
-            if ($bulanTarget == 1) {
-                return 0;
-            }
-
-            // Hitung total penarikan tunai sampai bulan sebelumnya
-            $totalPenarikanSampaiBulanSebelumnya = PenarikanTunai::where('penganggaran_id', $penganggaran_id)
-                ->whereRaw('EXTRACT(MONTH FROM tanggal_penarikan) < ?', [$bulanTarget])
-                ->sum('jumlah_penarikan');
-
-            // Hitung total setor tunai sampai bulan sebelumnya
-            $totalSetorSampaiBulanSebelumnya = SetorTunai::where('penganggaran_id', $penganggaran_id)
-                ->whereRaw('EXTRACT(MONTH FROM tanggal_setor) < ?', [$bulanTarget])
-                ->sum('jumlah_setor');
-
-            // Hitung total belanja tunai sampai bulan sebelumnya
-            $belanjaTunaiSampaiBulanSebelumnya = BukuKasUmum::where('penganggaran_id', $penganggaran_id)
-                ->where('jenis_transaksi', 'tunai')
-                ->whereRaw('EXTRACT(MONTH FROM tanggal_transaksi) < ?', [$bulanTarget])
-                ->sum('total_transaksi_kotor');
-
-            // Pajak Logic for Previous Months (Important!)
-            // Currently controller's logic: Tunai = (Penarikan - Setor) - Belanja.
-            // Does it include Taxes?
-            // Usually Tax Pungut adds to cash, Tax Setor reduces it.
-            // If they cancel out, net is 0. But if outstanding tax, it might affect balance.
-            
-            // Re-checking calculation formula:
-            // $saldoTunai = ($totalPenarikanSampaiBulanSebelumnya - $totalSetorSampaiBulanSebelumnya) - $belanjaTunaiSampaiBulanSebelumnya;
-            // It seems simple.
-            
-            // Let's check taxes for previous balance
-            // Pungut Pajak (+), Setor Pajak (-)
-            // $pajakTerima = BKU::... sum(total_pajak + total_pajak_daerah)
-            // $pajakSetor = BKU::... where not null ntpn ... sum(total_pajak + total_pajak_daerah)
-            
-             $bkuPrev = BukuKasUmum::where('penganggaran_id', $penganggaran_id)
-                ->where('jenis_transaksi', 'tunai')
-                ->whereRaw('EXTRACT(MONTH FROM tanggal_transaksi) < ?', [$bulanTarget])
-                ->get();
-            
-            $pajakNet = 0;
-            foreach($bkuPrev as $b) {
-                // Pungut (+)
-                $pajakNet += ($b->total_pajak + $b->total_pajak_daerah);
-                // Setor (-)
-                if (!empty($b->ntpn)) {
-                    $pajakNet -= ($b->total_pajak + $b->total_pajak_daerah);
-                }
-            }
-
-            $saldoTunai = ($totalPenarikanSampaiBulanSebelumnya - $totalSetorSampaiBulanSebelumnya) - $belanjaTunaiSampaiBulanSebelumnya + $pajakNet;
-
-            Log::info('Perhitungan Saldo Tunai Sebelum Bulan - DIPERBAIKI', [
-                'penganggaran_id' => $penganggaran_id,
-                'bulan_target' => $bulanTarget,
-                'total_penarikan' => $totalPenarikanSampaiBulanSebelumnya,
-                'total_setor' => $totalSetorSampaiBulanSebelumnya,
-                'belanja_tunai' => $belanjaTunaiSampaiBulanSebelumnya,
-                'pajak_net' => $pajakNet,
-                'saldo_tunai' => $saldoTunai
-            ]);
-
-            return max(0, $saldoTunai);
-        } catch (\Exception $e) {
-            Log::error('Error hitungSaldoTunaiSebelumBulan: ' . $e->getMessage());
-            return 0;
-        }
-    }
 
     // Helper methods
     private function convertBulanToNumber($bulan)

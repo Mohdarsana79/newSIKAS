@@ -2020,10 +2020,10 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                                 <div>{rekRealisasiData?.sekolah?.kecamatan}</div>
                                                 <div className="font-semibold">Status Sekolah</div>
                                                 <div>:</div>
-                                                <div>Swasta</div>
+                                                <div className="capitalize">{rekRealisasiData?.sekolah?.status_sekolah || '-'}</div>
                                                 <div className="font-semibold">Bentuk Pendidikan</div>
                                                 <div>:</div>
-                                                <div>SMP</div>
+                                                <div className="uppercase">{rekRealisasiData?.sekolah?.jenjang_sekolah || '-'}</div>
                                                 <div className="font-semibold">Sumber Dana</div>
                                                 <div>:</div>
                                                 <div>BOS Reguler</div>
@@ -2235,8 +2235,9 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                                     </td>
                                                     <td className="border border-gray-600 p-2 text-right">
                                                         {(() => {
+                                                            const saldoAwal = Number(bkpPembantuData?.data?.saldoAwalTunai || 0);
                                                             const totalPenarikan = Number(bkpPembantuData?.data?.totalPenarikan || 0);
-                                                            return totalPenarikan > 0 ? formatCurrency(totalPenarikan) : '0';
+                                                            return formatCurrency(saldoAwal + totalPenarikan);
                                                         })()}
                                                     </td>
                                                     <td className="border border-gray-600 p-2 text-right">-</td>

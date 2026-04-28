@@ -8,6 +8,8 @@ use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 
+use Illuminate\Validation\Rule;
+
 class SptjController extends Controller
 {
     public function index(Request $request)
@@ -29,7 +31,14 @@ class SptjController extends Controller
             'penganggaran_id' => 'required|exists:penganggarans,id',
             'penerimaan_dana_id' => 'nullable|exists:penerimaan_danas,id',
             'buku_kas_umum_id' => 'nullable|exists:buku_kas_umums,id',
-            'nomor_sptj' => 'required|string|unique:sptjs,nomor_sptj',
+            'nomor_sptj' => [
+                'required',
+                'string',
+                Rule::unique('sptjs')->where(function ($query) use ($request) {
+                    return $query->where('tahap', $request->tahap)
+                                 ->where('penganggaran_id', $request->penganggaran_id);
+                })
+            ],
             'tanggal_sptj' => 'required|date',
             'tahap' => 'required|in:1,2',
             'tahap_satu' => 'required|numeric',
@@ -39,6 +48,8 @@ class SptjController extends Controller
             'jenis_belanja_modal' => 'required|numeric',
             'sisa_kas_tunai' => 'required|numeric',
             'sisa_dana_di_bank' => 'required|numeric',
+        ], [
+            'nomor_sptj.unique' => 'SPTJ Tahap Tersebut Sudah Ada',
         ]);
 
         Sptj::create($validated);
@@ -54,7 +65,14 @@ class SptjController extends Controller
             'penganggaran_id' => 'required|exists:penganggarans,id',
             'penerimaan_dana_id' => 'nullable|exists:penerimaan_danas,id',
             'buku_kas_umum_id' => 'nullable|exists:buku_kas_umums,id',
-            'nomor_sptj' => 'required|string|unique:sptjs,nomor_sptj,' . $id,
+            'nomor_sptj' => [
+                'required',
+                'string',
+                Rule::unique('sptjs')->ignore($id)->where(function ($query) use ($request) {
+                    return $query->where('tahap', $request->tahap)
+                                 ->where('penganggaran_id', $request->penganggaran_id);
+                })
+            ],
             'tanggal_sptj' => 'required|date',
             'tahap' => 'required|in:1,2',
             'tahap_satu' => 'required|numeric',
@@ -64,6 +82,8 @@ class SptjController extends Controller
             'jenis_belanja_modal' => 'required|numeric',
             'sisa_kas_tunai' => 'required|numeric',
             'sisa_dana_di_bank' => 'required|numeric',
+        ], [
+            'nomor_sptj.unique' => 'SPTJ Tahap Tersebut Sudah Ada',
         ]);
 
         $sptj->update($validated);

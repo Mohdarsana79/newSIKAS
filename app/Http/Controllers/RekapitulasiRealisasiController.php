@@ -82,6 +82,8 @@ class RekapitulasiRealisasiController extends Controller
                 'npsn' => $penganggaran->sekolah->npsn,
                 'nama_unit' => $penganggaran->sekolah->nama_sekolah,
                 'kecamatan' => $penganggaran->sekolah->kecamatan,
+                'status_sekolah' => $penganggaran->sekolah->status_sekolah,
+                'jenjang_sekolah' => $penganggaran->sekolah->jenjang_sekolah,
             ],
             'penanggung_jawab' => [
                 'kepala_sekolah' => $penganggaran->kepala_sekolah,

@@ -11,6 +11,8 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
+use Illuminate\Validation\Rule;
+
 class Sp2bController extends Controller
 {
     public function index(Request $request)
@@ -30,7 +32,14 @@ class Sp2bController extends Controller
     {
         $validated = $request->validate([
             'penganggaran_id' => 'required|exists:penganggarans,id',
-            'nomor_sp2b' => 'required|string|unique:sp2bs,nomor_sp2b',
+            'nomor_sp2b' => [
+                'required',
+                'string',
+                Rule::unique('sp2bs')->where(function ($query) use ($request) {
+                    return $query->where('tahap', $request->tahap)
+                                 ->where('penganggaran_id', $request->penganggaran_id);
+                })
+            ],
             'tanggal_sp2b' => 'required|date',
             'tahap' => 'required|in:1,2',
             'saldo_awal' => 'required|numeric',
@@ -43,6 +52,8 @@ class Sp2bController extends Controller
             'belanja_modal_aset_tetap_lainnya' => 'required|numeric',
             'belanja_modal_tanah_bangunan' => 'required|numeric',
             'saldo_akhir' => 'required|numeric',
+        ], [
+            'nomor_sp2b.unique' => 'SP2B Tahap Tersebut Sudah Ada',
         ]);
 
         Sp2b::create($validated);
@@ -56,7 +67,14 @@ class Sp2bController extends Controller
         
         $validated = $request->validate([
             'penganggaran_id' => 'required|exists:penganggarans,id',
-            'nomor_sp2b' => 'required|string|unique:sp2bs,nomor_sp2b,' . $id,
+            'nomor_sp2b' => [
+                'required',
+                'string',
+                Rule::unique('sp2bs')->ignore($id)->where(function ($query) use ($request) {
+                    return $query->where('tahap', $request->tahap)
+                                 ->where('penganggaran_id', $request->penganggaran_id);
+                })
+            ],
             'tanggal_sp2b' => 'required|date',
             'tahap' => 'required|in:1,2',
             'saldo_awal' => 'required|numeric',
@@ -69,6 +87,8 @@ class Sp2bController extends Controller
             'belanja_modal_aset_tetap_lainnya' => 'required|numeric',
             'belanja_modal_tanah_bangunan' => 'required|numeric',
             'saldo_akhir' => 'required|numeric',
+        ], [
+            'nomor_sp2b.unique' => 'SP2B Tahap Tersebut Sudah Ada',
         ]);
 
         $sp2b->update($validated);

@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 
+use Illuminate\Validation\Rule;
+
 class LphController extends Controller
 {
     public function index(Request $request)
@@ -137,6 +139,18 @@ class LphController extends Controller
         $penerimaanAnggaran = $totalPenerimaanDana;
         $penerimaanRealisasi = $belanjaOperasiRealisasi + $belanjaModalPeralatanRealisasi + $belanjaModalAsetRealisasi;
 
+        // 4. Breakdown per Account (For the detailed table)
+        $rekapPerRekening = $bkuEntries->groupBy('rekening_belanja_id')
+            ->map(function($items) {
+                $first = $items->first();
+                return [
+                    'kode_rekening' => $first->rekeningBelanja->kode_rekening ?? '',
+                    'nama_rekening' => $first->rekeningBelanja->nama_rekening ?? '',
+                    'uraian' => $first->uraian ?? $first->rekeningBelanja->nama_rekening ?? '',
+                    'total_realisasi' => $items->sum('total_transaksi_kotor')
+                ];
+            })->values();
+
         return [
             'penerimaan_anggaran' => $penerimaanAnggaran,
             'penerimaan_realisasi' => $penerimaanRealisasi,
@@ -149,13 +163,21 @@ class LphController extends Controller
             
             'belanja_modal_aset_anggaran' => $belanjaModalAsetAnggaran,
             'belanja_modal_aset_realisasi' => $belanjaModalAsetRealisasi,
+            
+            'rekap_per_rekening' => $rekapPerRekening,
         ];
     }
 
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'semester' => 'required|in:1,2',
+            'semester' => [
+                'required',
+                'in:1,2',
+                Rule::unique('lphs')->where(function ($query) use ($request) {
+                    return $query->where('penganggaran_id', $request->penganggaran_id);
+                })
+            ],
             'penganggaran_id' => 'required|exists:penganggarans,id',
             'tanggal_lph' => 'nullable|date',
             
@@ -167,6 +189,8 @@ class LphController extends Controller
             'belanja_modal_peralatan_realisasi' => 'required|numeric',
             'belanja_modal_aset_anggaran' => 'required|numeric',
             'belanja_modal_aset_realisasi' => 'required|numeric',
+        ], [
+            'semester.unique' => 'LPH Semester Tersebut Sudah Ada',
         ]);
 
         $validated['sekolah_id'] = auth()->user()->sekolah_id ?? 1;
@@ -186,7 +210,13 @@ class LphController extends Controller
     {
         $lph = Lph::findOrFail($id);
         $validated = $request->validate([
-            'semester' => 'required|in:1,2',
+            'semester' => [
+                'required',
+                'in:1,2',
+                Rule::unique('lphs')->ignore($id)->where(function ($query) use ($request) {
+                    return $query->where('penganggaran_id', $request->penganggaran_id);
+                })
+            ],
             'penganggaran_id' => 'required|exists:penganggarans,id',
             'tanggal_lph' => 'nullable|date',
             
@@ -198,7 +228,11 @@ class LphController extends Controller
             'belanja_modal_peralatan_realisasi' => 'required|numeric',
             'belanja_modal_aset_anggaran' => 'required|numeric',
             'belanja_modal_aset_realisasi' => 'required|numeric',
+        ], [
+            'semester.unique' => 'LPH Semester Tersebut Sudah Ada',
         ]);
+
+        $validated['sekolah_id'] = auth()->user()->sekolah_id ?? 1;
 
         // Calculate selisih
         $validated['penerimaan_selisih'] = $validated['penerimaan_anggaran'] - $validated['penerimaan_realisasi'];
@@ -207,6 +241,7 @@ class LphController extends Controller
         $validated['belanja_modal_aset_selisih'] = $validated['belanja_modal_aset_anggaran'] - $validated['belanja_modal_aset_realisasi'];
 
         $lph->update($validated);
+
         return response()->json(['success' => true]);
     }
 
@@ -263,6 +298,7 @@ class LphController extends Controller
         $data = [
             'lph' => $lph,
             'sekolah' => $lph->sekolah,
+            'rekap_per_rekening' => $newData['rekap_per_rekening'] ?? [],
             'kepala_sekolah' => (object) [
                 'nama' => $lph->penganggaran->kepala_sekolah,
                 'nip' => $lph->penganggaran->nip_kepala_sekolah

@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 
+use Illuminate\Validation\Rule;
+
 class SpmthController extends Controller
 {
     public function index(Request $request) {
@@ -80,11 +82,6 @@ class SpmthController extends Controller
                     ->sum('total_transaksi_kotor');
 
             $sisa = $pagu - ($realisasiLalu + $realisasiIni); // Usually Sisa is (Pagu - Total Usage)
-
-            // Adjust calculation based on user image: Pagu 32m, Lalu 0, Ini 15m, Sisa 15m.
-            // Wait, 32 - 15 = 17. The user image had 15m sisa. 
-            // Maybe "Pagu" in the image is cumulative? Or "Sisa" is carried over? 
-            // I'll stick to standard math: Sisa = Pagu - Total Realisasi.
             
             return response()->json([
                 'penganggaran_id' => $penganggaran->id,
@@ -101,13 +98,22 @@ class SpmthController extends Controller
 
     public function store(Request $request) {
         $validated = $request->validate([
-            'nomor_surat' => 'required|string',
+            'nomor_surat' => [
+                'required',
+                'string',
+                Rule::unique('spmths')->where(function ($query) use ($request) {
+                    return $query->where('tahap', $request->tahap)
+                                 ->where('penganggaran_id', $request->penganggaran_id);
+                })
+            ],
             'tahap' => 'required|in:1,2',
             'penganggaran_id' => 'required|exists:penganggarans,id',
             'realisasi_lalu' => 'required|numeric',
             'realisasi_ini' => 'required|numeric',
             'sisa' => 'required|numeric',
             'tanggal_spmth' => 'nullable|date',
+        ], [
+            'nomor_surat.unique' => 'SPMTH Tahap Tersebut Sudah Ada',
         ]);
 
         $validated['sekolah_id'] = auth()->user()->sekolah_id ?? 1;
@@ -120,13 +126,22 @@ class SpmthController extends Controller
     public function update(Request $request, $id) {
          $spmth = \App\Models\Spmth::findOrFail($id);
          $validated = $request->validate([
-            'nomor_surat' => 'required|string',
+            'nomor_surat' => [
+                'required',
+                'string',
+                Rule::unique('spmths')->ignore($id)->where(function ($query) use ($request) {
+                    return $query->where('tahap', $request->tahap)
+                                 ->where('penganggaran_id', $request->penganggaran_id);
+                })
+            ],
             'tahap' => 'required|in:1,2',
             'penganggaran_id' => 'required|exists:penganggarans,id',
             'realisasi_lalu' => 'required|numeric',
             'realisasi_ini' => 'required|numeric',
             'sisa' => 'required|numeric',
             'tanggal_spmth' => 'nullable|date',
+        ], [
+            'nomor_surat.unique' => 'SPMTH Tahap Tersebut Sudah Ada',
         ]);
         
         $spmth->update($validated);

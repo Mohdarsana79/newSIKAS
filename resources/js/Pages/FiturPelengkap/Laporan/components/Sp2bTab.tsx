@@ -51,6 +51,8 @@ export default function Sp2bTab() {
     const [itemToDelete, setItemToDelete] = useState<number | null>(null);
     const [selectedPdfUrl, setSelectedPdfUrl] = useState('');
     const [isPrintSettingsModalOpen, setIsPrintSettingsModalOpen] = useState(false);
+    const [isValidationModalOpen, setIsValidationModalOpen] = useState(false);
+    const [validationMessage, setValidationMessage] = useState('');
     const [printSettings, setPrintSettings] = useState({
         paperSize: 'A4',
         fontSize: '8pt'
@@ -172,9 +174,16 @@ export default function Sp2bTab() {
             setIsAddModalOpen(false);
             fetchData();
             resetForm();
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            alert('Gagal menyimpan data. Pastikan semua field sudah diisi termasuk memencet tombol hitung otomatis.');
+            let msg = 'Gagal menyimpan data. Pastikan semua field sudah diisi termasuk memencet tombol hitung otomatis.';
+            if (error.response?.data?.errors?.nomor_sp2b) {
+                msg = error.response.data.errors.nomor_sp2b[0];
+            } else if (error.response?.data?.message) {
+                msg = error.response.data.message;
+            }
+            setValidationMessage(msg);
+            setIsValidationModalOpen(true);
         } finally {
             setIsSaving(false);
         }
@@ -694,6 +703,29 @@ export default function Sp2bTab() {
                     <div className="mt-6 flex justify-end gap-3">
                         <SecondaryButton onClick={() => setIsPrintSettingsModalOpen(false)}>Batal</SecondaryButton>
                         <PrimaryButton onClick={handlePrint}>Cetak PDF</PrimaryButton>
+                    </div>
+                </div>
+            </Modal>
+            
+            {/* Validation Modal */}
+            <Modal show={isValidationModalOpen} onClose={() => setIsValidationModalOpen(false)} maxWidth="md">
+                <div className="p-6 text-center">
+                    <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg className="w-8 h-8 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                    </div>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Peringatan Validasi</h3>
+                    <p className="text-gray-600 dark:text-gray-400 mb-6">
+                        {validationMessage}
+                    </p>
+                    <div className="flex justify-center">
+                        <PrimaryButton 
+                            onClick={() => setIsValidationModalOpen(false)}
+                            className="bg-red-600 hover:bg-red-700"
+                        >
+                            Tutup
+                        </PrimaryButton>
                     </div>
                 </div>
             </Modal>

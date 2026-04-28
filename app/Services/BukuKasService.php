@@ -9,6 +9,7 @@ use App\Models\BukuKasUmum;
 use App\Models\Penganggaran;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 class BukuKasService
 {
@@ -96,6 +97,24 @@ class BukuKasService
 
             Log::info('Total TRK sampai bulan sebelumnya:', ['total' => $totalTrkSampaiBulanSebelumnya]);
 
+            // PERBAIKAN: Hitung total pajak (Diterima - Disetor) sampai bulan sebelumnya untuk Non-Tunai
+            $pajakDiterimaNonTunai = BukuKasUmum::where('penganggaran_id', $penganggaran_id)
+                ->where('jenis_transaksi', 'non-tunai')
+                ->where('is_bunga_record', false)
+                ->whereRaw('EXTRACT(MONTH FROM tanggal_transaksi) < ?', [$bulanTarget])
+                ->sum(DB::raw('COALESCE(total_pajak, 0) + COALESCE(total_pajak_daerah, 0)'));
+
+            $pajakDisetorNonTunai = BukuKasUmum::where('penganggaran_id', $penganggaran_id)
+                ->where('jenis_transaksi', 'non-tunai')
+                ->where('is_bunga_record', false)
+                ->whereRaw('EXTRACT(MONTH FROM tanggal_transaksi) < ?', [$bulanTarget])
+                ->whereNotNull('ntpn')
+                ->sum(DB::raw('COALESCE(total_pajak, 0) + COALESCE(total_pajak_daerah, 0)'));
+            
+            $saldoPajakNonTunai = $pajakDiterimaNonTunai - $pajakDisetorNonTunai;
+
+            Log::info('Total Saldo Pajak Non-Tunai sampai bulan sebelumnya:', ['total' => $saldoPajakNonTunai]);
+
             // PERBAIKAN: Rumus saldo bank yang benar
             $saldoBank = $totalPenerimaan
                 - $totalPenarikanSampaiBulanSebelumnya
@@ -103,7 +122,8 @@ class BukuKasService
                 - $totalPajakBungaSampaiBulanSebelumnya
                 - $totalBelanjaNonTunaiSampaiBulanSebelumnya
                 - $totalStsSampaiBulanSebelumnya
-                - $totalTrkSampaiBulanSebelumnya;
+                - $totalTrkSampaiBulanSebelumnya
+                + $saldoPajakNonTunai;
 
             Log::info('Perhitungan Saldo Bank Sebelum Bulan - VERSI DIPERBAIKI', [
                 'penganggaran_id' => $penganggaran_id,
@@ -150,7 +170,23 @@ class BukuKasService
                 ->whereRaw('EXTRACT(MONTH FROM tanggal_transaksi) <= ?', [$bulanTarget - 1])
                 ->sum('total_transaksi_kotor');
 
-            $saldoTunai = ($totalPenarikanSampaiBulanSebelumnya - $totalSetorSampaiBulanSebelumnya) - $belanjaTunaiSampaiBulanSebelumnya;
+            // PERBAIKAN: Hitung total pajak (Diterima - Disetor) sampai bulan sebelumnya untuk Tunai
+            $pajakDiterimaTunai = BukuKasUmum::where('penganggaran_id', $penganggaran_id)
+                ->where('jenis_transaksi', 'tunai')
+                ->where('is_bunga_record', false)
+                ->whereRaw('EXTRACT(MONTH FROM tanggal_transaksi) <= ?', [$bulanTarget - 1])
+                ->sum(DB::raw('COALESCE(total_pajak, 0) + COALESCE(total_pajak_daerah, 0)'));
+
+            $pajakDisetorTunai = BukuKasUmum::where('penganggaran_id', $penganggaran_id)
+                ->where('jenis_transaksi', 'tunai')
+                ->where('is_bunga_record', false)
+                ->whereRaw('EXTRACT(MONTH FROM tanggal_transaksi) <= ?', [$bulanTarget - 1])
+                ->whereNotNull('ntpn')
+                ->sum(DB::raw('COALESCE(total_pajak, 0) + COALESCE(total_pajak_daerah, 0)'));
+
+            $saldoPajakTunai = $pajakDiterimaTunai - $pajakDisetorTunai;
+
+            $saldoTunai = ($totalPenarikanSampaiBulanSebelumnya - $totalSetorSampaiBulanSebelumnya) - $belanjaTunaiSampaiBulanSebelumnya + $saldoPajakTunai;
 
             Log::info('Perhitungan Saldo Tunai Sebelum Bulan - DIPERBAIKI', [
                 'penganggaran_id' => $penganggaran_id,
@@ -516,8 +552,26 @@ class BukuKasService
                 ]);
             }
 
-            // Rumus: Saldo Awal + Bunga - Penarikan - Pajak Bunga - STS - TRK
-            $saldoAkhir = $saldoAwalBank + $totalBunga - $totalPenarikan - $totalPajakBunga - $totalSts - $totalTrk;
+            // --- HITUNG SALDO PAJAK BULAN INI ---
+            $pajakDiterimaBulanIni = BukuKasUmum::where('penganggaran_id', $penganggaran_id)
+                ->where('jenis_transaksi', 'non-tunai')
+                ->where('is_bunga_record', false)
+                ->whereYear('tanggal_transaksi', $tahun)
+                ->whereMonth('tanggal_transaksi', $bulanAngka)
+                ->sum(DB::raw('COALESCE(total_pajak, 0) + COALESCE(total_pajak_daerah, 0)'));
+
+            $pajakDisetorBulanIni = BukuKasUmum::where('penganggaran_id', $penganggaran_id)
+                ->where('jenis_transaksi', 'non-tunai')
+                ->where('is_bunga_record', false)
+                ->whereYear('tanggal_transaksi', $tahun)
+                ->whereMonth('tanggal_transaksi', $bulanAngka)
+                ->whereNotNull('ntpn')
+                ->sum(DB::raw('COALESCE(total_pajak, 0) + COALESCE(total_pajak_daerah, 0)'));
+            
+            $saldoPajakBulanIni = $pajakDiterimaBulanIni - $pajakDisetorBulanIni;
+
+            // Rumus: Saldo Awal + Bunga - Penarikan - Pajak Bunga - STS - TRK + Saldo Pajak (Penerimaan - Pengeluaran)
+            $saldoAkhir = $saldoAwalBank + $totalBunga - $totalPenarikan - $totalPajakBunga - $totalSts - $totalTrk + $saldoPajakBulanIni;
 
             Log::info('Perhitungan Saldo Akhir BKP Bank - DIPERBAIKI:', [
                 'penganggaran_id' => $penganggaran_id,
