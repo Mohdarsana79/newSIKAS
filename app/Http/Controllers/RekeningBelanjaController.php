@@ -34,6 +34,11 @@ class RekeningBelanjaController extends Controller
             'kode_rekening' => 'required|string|unique:rekening_belanjas,kode_rekening',
             'rincian_objek' => 'required|string',
             'kategori' => 'required|string',
+            'is_ppn' => 'boolean',
+            'is_pph21' => 'boolean',
+            'is_pph22' => 'boolean',
+            'is_pph23' => 'boolean',
+            'is_pph4' => 'boolean',
         ]);
 
         RekeningBelanja::create($request->all());
@@ -51,6 +56,11 @@ class RekeningBelanjaController extends Controller
             'kode_rekening' => 'required|string|unique:rekening_belanjas,kode_rekening,' . $id,
             'rincian_objek' => 'required|string',
             'kategori' => 'required|string',
+            'is_ppn' => 'boolean',
+            'is_pph21' => 'boolean',
+            'is_pph22' => 'boolean',
+            'is_pph23' => 'boolean',
+            'is_pph4' => 'boolean',
         ]);
 
         $rekeningBelanja->update($request->all());
@@ -76,7 +86,7 @@ class RekeningBelanjaController extends Controller
     {
         $path = 'templates/template_rekening_belanja.xlsx';
         if (Storage::disk('public')->exists($path)) {
-            return Storage::disk('public')->download($path);
+            return response()->download(storage_path('app/public/' . $path));
         }
         return redirect()->back()->with('error', 'File template tidak ditemukan.');
     }

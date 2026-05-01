@@ -15,5 +15,10 @@ class RekeningBelanja extends Model
         'kode_rekening',
         'rincian_objek',
         'kategori',
+        'is_ppn',
+        'is_pph21',
+        'is_pph22',
+        'is_pph23',
+        'is_pph4',
     ];
 }

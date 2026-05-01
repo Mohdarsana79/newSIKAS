@@ -151,14 +151,14 @@
                 Mengetahui<br>
                 Kepala Sekolah
                 <br/><br/><br/><br/>
-                <span style="font-weight: bold; text-transform: uppercase;">{{ $report['kepala_sekolah']['nama'] ?? '...................' }}</span><br>
+                <span style="font-weight: bold;">{{ $report['kepala_sekolah']['nama'] ?? '...................' }}</span><br>
                 NIP. {{ $report['kepala_sekolah']['nip'] ?? '...................' }}
             </td>
             <td colspan="6" class="text-center">
-                {{ $report['sekolah']['kecamatan'] }}, {{ $report['formatAkhirBulanLengkapHari'] }}<br>
+                Kec. {{ $report['sekolah']['kecamatan'] }}, {{ $report['formatAkhirBulanLengkapHari'] }}<br>
                 Bendahara
                 <br/><br/><br/><br/>
-                <span style="font-weight: bold; text-transform: uppercase;">{{ $report['bendahara']['nama'] ?? '...................' }}</span><br>
+                <span style="font-weight: bold;">{{ $report['bendahara']['nama'] ?? '...................' }}</span><br>
                 NIP. {{ $report['bendahara']['nip'] ?? '...................' }}
             </td>
         </tr>

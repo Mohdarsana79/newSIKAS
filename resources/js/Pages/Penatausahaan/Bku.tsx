@@ -2377,10 +2377,8 @@ export default function Bku({
                                         className="mt-1 block w-full text-gray-900 !text-[10pt]"
                                         placeholder="Pilih tanggal"
                                         startMonth={startOfActiveMonth}
-                                        endMonth={endOfActiveMonth}
                                         disabled={[
-                                            { before: startOfActiveMonth },
-                                            { after: endOfActiveMonth }
+                                            { before: startOfActiveMonth }
                                         ]}
                                     />
                                 </div>

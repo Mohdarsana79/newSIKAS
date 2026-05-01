@@ -31,7 +31,8 @@ use App\Http\Controllers\BukuPajakController;
 use App\Http\Controllers\BukuRobController;
 use App\Http\Controllers\BeritaAcaraPenutupanController;
 use App\Http\Controllers\LphController;
-
+use App\Http\Controllers\ArkasToolController;
+use App\Http\Controllers\ReferensiKodeController;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -151,6 +152,15 @@ Route::middleware('auth')->group(function () {
     // Fitur Pelengkap (Root level resources for Kwitansi/TandaTerima to match Sidebar names)
     // Route::resource('kwitansi', KwitansiController::class); // Moved below to avoid conflict
     // Route::resource('tanda-terima', TandaTerimaController::class); // Moved below to avoid conflict
+
+    // Arkas Tools
+    Route::get('/arkas-tools', [ArkasToolController::class, 'index'])->name('arkas-tools.index');
+    Route::get('/arkas-tools/search', [ArkasToolController::class, 'search'])->name('arkas-tools.search');
+    
+    // Referensi Kode Routes
+    Route::get('/referensi-kode', [ReferensiKodeController::class, 'index'])->name('referensi-kode.index');
+    Route::get('/referensi-kode/fetch', [ReferensiKodeController::class, 'fetch'])->name('referensi-kode.fetch');
+    Route::post('/referensi-kode/sync', [ReferensiKodeController::class, 'sync'])->name('referensi-kode.sync');
 
     // Laporan (Root level to match Sidebar 'laporan.index')
     Route::get('/laporan', function () {

@@ -188,7 +188,7 @@
                     NIP. {{ $report['nipBendahara'] ?? '.........................' }}
                 </td>
                 <td width="50%">
-                    <span class="text-bold">{{ $report['kecamatan'] ?? '.............' }}, {{ $report['tanggal_cetak_format'] ?? $report['tanggalPenutupan'] }}</span><br>
+                    <span class="text-bold">Kec. {{ $report['kecamatan'] ?? '.............' }}, {{ $report['tanggal_cetak_format'] ?? $report['tanggalPenutupan'] }}</span><br>
                     Yang Memeriksa,
                     <div class="signature-space"></div>
                     <span class="text-bold uppercase">{{ $report['namaKepalaSekolah'] ?? '.........................' }}</span><br>

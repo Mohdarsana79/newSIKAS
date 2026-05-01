@@ -563,6 +563,7 @@ export default function SptjTab() {
                                         <input
                                             id="tahap_satu"
                                             type="text"
+                                            readOnly
                                             className="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-green-500 focus:ring-green-500 rounded-lg shadow-sm"
                                             value={formatCurrency(formData.tahap_satu)}
                                             onChange={(e) => {
@@ -576,6 +577,7 @@ export default function SptjTab() {
                                         <input
                                             id="tahap_dua"
                                             type="text"
+                                            readOnly
                                             className="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-green-500 focus:ring-green-500 rounded-lg shadow-sm"
                                             value={formatCurrency(formData.tahap_dua)}
                                             onChange={(e) => {
@@ -599,6 +601,7 @@ export default function SptjTab() {
                                         <input
                                             id="jenis_belanja_operasi"
                                             type="text"
+                                            readOnly
                                             className="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-red-500 focus:ring-red-500 rounded-lg shadow-sm"
                                             value={formatCurrency(formData.jenis_belanja_operasi)}
                                             onChange={(e) => {
@@ -612,6 +615,7 @@ export default function SptjTab() {
                                         <input
                                             id="jenis_belanja_modal"
                                             type="text"
+                                            readOnly
                                             className="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-red-500 focus:ring-red-500 rounded-lg shadow-sm"
                                             value={formatCurrency(formData.jenis_belanja_modal)}
                                             onChange={(e) => {
@@ -635,6 +639,7 @@ export default function SptjTab() {
                                         <input
                                             id="sisa_kas_tunai"
                                             type="text"
+                                            readOnly
                                             className="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-blue-500 focus:ring-blue-500 rounded-lg shadow-sm font-semibold"
                                             value={formatCurrency(formData.sisa_kas_tunai)}
                                             onChange={(e) => {
@@ -648,6 +653,7 @@ export default function SptjTab() {
                                         <input
                                             id="sisa_dana_di_bank"
                                             type="text"
+                                            readOnly
                                             className="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-blue-500 focus:ring-blue-500 rounded-lg shadow-sm font-semibold"
                                             value={formatCurrency(formData.sisa_dana_di_bank)}
                                             onChange={(e) => {

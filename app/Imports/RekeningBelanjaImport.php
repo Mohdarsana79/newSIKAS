@@ -11,6 +11,7 @@ use Maatwebsite\Excel\Concerns\WithStartRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
 use Maatwebsite\Excel\Concerns\SkipsOnFailure;
 use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
+use Illuminate\Validation\Rule;
 
 class RekeningBelanjaImport implements
     ToModel,
@@ -21,8 +22,8 @@ class RekeningBelanjaImport implements
 {
     use \Maatwebsite\Excel\Concerns\SkipsFailures;
 
-    private $rowCount = 0;
-    private $duplicates = [];
+    private int $rowCount = 0;
+    private array $duplicates = [];
 
     public function startRow(): int
     {
@@ -40,8 +41,19 @@ class RekeningBelanjaImport implements
         $rincianObjek = Str::trim($row[1]);
         $kategori = Str::trim($row[2]);
 
+        $parseTax = function($val) {
+            $val = strtoupper(trim(strval($val ?? '')));
+            return in_array($val, ['TRUE', '1', 'YA', 'Y']);
+        };
+
+        $is_ppn = isset($row[3]) ? $parseTax($row[3]) : false;
+        $is_pph21 = isset($row[4]) ? $parseTax($row[4]) : false;
+        $is_pph22 = isset($row[5]) ? $parseTax($row[5]) : false;
+        $is_pph23 = isset($row[6]) ? $parseTax($row[6]) : false;
+        $is_pph4 = isset($row[7]) ? $parseTax($row[7]) : false;
+
         // Cek duplikasi kode
-        if (RekeningBelanja::where('kode_rekening', $kode)->exists()) {
+        if (RekeningBelanja::query()->where('kode_rekening', $kode)->exists()) {
             $this->duplicates[] = [
                 'row' => $this->rowCount + $this->startRow(),
                 'kode_rekening' => $kode,
@@ -57,6 +69,11 @@ class RekeningBelanjaImport implements
             'kode_rekening' => $kode,
             'rincian_objek' => $rincianObjek,
             'kategori' => $kategori,
+            'is_ppn' => $is_ppn,
+            'is_pph21' => $is_pph21,
+            'is_pph22' => $is_pph22,
+            'is_pph23' => $is_pph23,
+            'is_pph4' => $is_pph4,
         ]);
     }
 
@@ -65,7 +82,7 @@ class RekeningBelanjaImport implements
         return [
             '0' => 'required|string|max:20|unique:rekening_belanjas,kode_rekening',
             '1' => 'required|string|max:255',
-            '2' => 'required|string|in:Modal,Operasi',
+            '2' => ['required', 'string', Rule::in(['Operasi', 'Modal Peralatan dan Mesin', 'Modal Jalan, Jaringan, dan Irigasi', 'Modal Aset Tetap Lainnya'])],
         ];
     }
 

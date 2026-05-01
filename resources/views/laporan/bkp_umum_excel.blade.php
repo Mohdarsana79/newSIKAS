@@ -170,15 +170,15 @@
                 Menyetujui,<br>
                 Kepala Sekolah
                 <br/><br/><br/><br/>
-                <span style="text-decoration: underline; font-weight: bold; text-transform: uppercase;">{{ $report['kepala_sekolah']['nama'] ?? '...................' }}</span><br>
+                <span style="text-decoration: underline; font-weight: bold;">{{ $report['kepala_sekolah']['nama'] ?? '...................' }}</span><br>
                 NIP. {{ $report['kepala_sekolah']['nip'] ?? '...................' }}
             </td>
             <td></td>
             <td colspan="3" class="text-center">
-                {{ $report['sekolah']['kecamatan'] }}, {{ $report['formatTanggalAkhirBulanLengkap'] }}<br>
+                Kec. {{ $report['sekolah']['kecamatan'] }}, {{ $report['formatTanggalAkhirBulanLengkap'] }}<br>
                 Bendahara,
                 <br/><br/><br/><br/>
-                <span style="text-decoration: underline; font-weight: bold; text-transform: uppercase;">{{ $report['bendahara']['nama'] ?? '...................' }}</span><br>
+                <span style="text-decoration: underline; font-weight: bold;">{{ $report['bendahara']['nama'] ?? '...................' }}</span><br>
                 NIP. {{ $report['bendahara']['nip'] ?? '...................' }}
             </td>
         </tr>

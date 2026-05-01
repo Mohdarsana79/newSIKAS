@@ -14,6 +14,11 @@ interface RekeningBelanja {
     kode_rekening: string;
     rincian_objek: string;
     kategori: string;
+    is_ppn: boolean;
+    is_pph21: boolean;
+    is_pph22: boolean;
+    is_pph23: boolean;
+    is_pph4: boolean;
 }
 
 export default function Index({ auth, rekening_belanja }: PageProps<{ rekening_belanja: RekeningBelanja[] }>) {
@@ -31,6 +36,11 @@ export default function Index({ auth, rekening_belanja }: PageProps<{ rekening_b
         kode_rekening: '',
         rincian_objek: '',
         kategori: '',
+        is_ppn: false,
+        is_pph21: false,
+        is_pph22: false,
+        is_pph23: false,
+        is_pph4: false,
     });
 
     const { data: importData, setData: setImportData, post: postImport, progress: importProgress, processing: importProcessing, errors: importErrors, reset: resetImport, clearErrors: clearImportErrors } = useForm<{ file: File | null }>({
@@ -88,6 +98,11 @@ export default function Index({ auth, rekening_belanja }: PageProps<{ rekening_b
             kode_rekening: item.kode_rekening,
             rincian_objek: item.rincian_objek,
             kategori: item.kategori,
+            is_ppn: !!item.is_ppn,
+            is_pph21: !!item.is_pph21,
+            is_pph22: !!item.is_pph22,
+            is_pph23: !!item.is_pph23,
+            is_pph4: !!item.is_pph4,
         });
         setIsEditModalOpen(true);
     };
@@ -107,6 +122,12 @@ export default function Index({ auth, rekening_belanja }: PageProps<{ rekening_b
             });
         }
     };
+
+    const renderTaxBadge = (isTaxed: boolean) => (
+        isTaxed ? 
+        <span className="inline-flex py-0.5 px-2 rounded-md bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-bold shadow-sm">TRUE</span> : 
+        <span className="inline-flex py-0.5 px-2 rounded-md bg-gray-50 text-gray-400 border border-gray-200 text-[10px] shadow-sm">FALSE</span>
+    );
 
     return (
         <AuthenticatedLayout
@@ -140,6 +161,11 @@ export default function Index({ auth, rekening_belanja }: PageProps<{ rekening_b
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Kode Rekening</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Rincian Objek</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Kategori</th>
+                                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">PPN</th>
+                                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">PPh 21</th>
+                                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">PPh 22</th>
+                                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">PPh 23</th>
+                                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">PPh 4(2)</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Aksi</th>
                                 </tr>
                             </thead>
@@ -150,6 +176,11 @@ export default function Index({ auth, rekening_belanja }: PageProps<{ rekening_b
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200 font-medium">{item.kode_rekening}</td>
                                             <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">{item.rincian_objek}</td>
                                             <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">{item.kategori}</td>
+                                            <td className="px-2 py-4 text-center">{renderTaxBadge(item.is_ppn)}</td>
+                                            <td className="px-2 py-4 text-center">{renderTaxBadge(item.is_pph21)}</td>
+                                            <td className="px-2 py-4 text-center">{renderTaxBadge(item.is_pph22)}</td>
+                                            <td className="px-2 py-4 text-center">{renderTaxBadge(item.is_pph23)}</td>
+                                            <td className="px-2 py-4 text-center">{renderTaxBadge(item.is_pph4)}</td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                                 <div className="flex gap-2">
                                                     <button onClick={() => handleEdit(item)} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">
@@ -168,7 +199,7 @@ export default function Index({ auth, rekening_belanja }: PageProps<{ rekening_b
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan={4} className="px-6 py-4 text-center text-gray-500">
+                                        <td colSpan={9} className="px-6 py-4 text-center text-gray-500">
                                             {search ? 'Data tidak ditemukan untuk pencarian tersebut.' : 'Tidak ada data ditemukan.'}
                                         </td>
                                     </tr>
@@ -266,9 +297,36 @@ export default function Index({ auth, rekening_belanja }: PageProps<{ rekening_b
                             >
                                 <option value="">Pilih Kategori</option>
                                 <option value="Operasi">Operasi</option>
-                                <option value="Modal">Modal</option>
+                                <option value="Modal Peralatan dan Mesin">Modal Peralatan dan Mesin</option>
+                                <option value="Modal Jalan, Jaringan, dan Irigasi">Modal Jalan, Jaringan, dan Irigasi</option>
+                                <option value="Modal Aset Tetap Lainnya">Modal Aset Tetap Lainnya</option>
                             </select>
                             <InputError message={errors.kategori} className="mt-2" />
+                        </div>
+                        <div className="pt-2">
+                            <InputLabel value="Pengaturan Pajak" className="mb-3" />
+                            <div className="flex flex-wrap gap-4">
+                                <label className="flex items-center cursor-pointer">
+                                    <input type="checkbox" checked={data.is_ppn} onChange={(e) => setData('is_ppn', e.target.checked)} className="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" />
+                                    <span className="ml-2 text-sm text-gray-700 dark:text-gray-300 font-medium">PPN</span>
+                                </label>
+                                <label className="flex items-center cursor-pointer">
+                                    <input type="checkbox" checked={data.is_pph21} onChange={(e) => setData('is_pph21', e.target.checked)} className="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" />
+                                    <span className="ml-2 text-sm text-gray-700 dark:text-gray-300 font-medium">PPh 21</span>
+                                </label>
+                                <label className="flex items-center cursor-pointer">
+                                    <input type="checkbox" checked={data.is_pph22} onChange={(e) => setData('is_pph22', e.target.checked)} className="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" />
+                                    <span className="ml-2 text-sm text-gray-700 dark:text-gray-300 font-medium">PPh 22</span>
+                                </label>
+                                <label className="flex items-center cursor-pointer">
+                                    <input type="checkbox" checked={data.is_pph23} onChange={(e) => setData('is_pph23', e.target.checked)} className="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" />
+                                    <span className="ml-2 text-sm text-gray-700 dark:text-gray-300 font-medium">PPh 23</span>
+                                </label>
+                                <label className="flex items-center cursor-pointer">
+                                    <input type="checkbox" checked={data.is_pph4} onChange={(e) => setData('is_pph4', e.target.checked)} className="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" />
+                                    <span className="ml-2 text-sm text-gray-700 dark:text-gray-300 font-medium">PPh 4(2)</span>
+                                </label>
+                            </div>
                         </div>
                         <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
                             <SecondaryButton
@@ -346,9 +404,36 @@ export default function Index({ auth, rekening_belanja }: PageProps<{ rekening_b
                             >
                                 <option value="">Pilih Kategori</option>
                                 <option value="Operasi">Operasi</option>
-                                <option value="Modal">Modal</option>
+                                <option value="Modal Peralatan dan Mesin">Modal Peralatan dan Mesin</option>
+                                <option value="Modal Jalan, Jaringan, dan Irigasi">Modal Jalan, Jaringan, dan Irigasi</option>
+                                <option value="Modal Aset Tetap Lainnya">Modal Aset Tetap Lainnya</option>
                             </select>
                             <InputError message={errors.kategori} className="mt-2" />
+                        </div>
+                        <div className="pt-2">
+                            <InputLabel value="Pengaturan Pajak" className="mb-3" />
+                            <div className="flex flex-wrap gap-4">
+                                <label className="flex items-center cursor-pointer">
+                                    <input type="checkbox" checked={data.is_ppn} onChange={(e) => setData('is_ppn', e.target.checked)} className="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" />
+                                    <span className="ml-2 text-sm text-gray-700 dark:text-gray-300 font-medium">PPN</span>
+                                </label>
+                                <label className="flex items-center cursor-pointer">
+                                    <input type="checkbox" checked={data.is_pph21} onChange={(e) => setData('is_pph21', e.target.checked)} className="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" />
+                                    <span className="ml-2 text-sm text-gray-700 dark:text-gray-300 font-medium">PPh 21</span>
+                                </label>
+                                <label className="flex items-center cursor-pointer">
+                                    <input type="checkbox" checked={data.is_pph22} onChange={(e) => setData('is_pph22', e.target.checked)} className="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" />
+                                    <span className="ml-2 text-sm text-gray-700 dark:text-gray-300 font-medium">PPh 22</span>
+                                </label>
+                                <label className="flex items-center cursor-pointer">
+                                    <input type="checkbox" checked={data.is_pph23} onChange={(e) => setData('is_pph23', e.target.checked)} className="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" />
+                                    <span className="ml-2 text-sm text-gray-700 dark:text-gray-300 font-medium">PPh 23</span>
+                                </label>
+                                <label className="flex items-center cursor-pointer">
+                                    <input type="checkbox" checked={data.is_pph4} onChange={(e) => setData('is_pph4', e.target.checked)} className="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" />
+                                    <span className="ml-2 text-sm text-gray-700 dark:text-gray-300 font-medium">PPh 4(2)</span>
+                                </label>
+                            </div>
                         </div>
                         <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
                             <SecondaryButton
@@ -417,7 +502,7 @@ export default function Index({ auth, rekening_belanja }: PageProps<{ rekening_b
                                 <SecondaryButton
                                     type="button"
                                     className="w-full justify-center border-emerald-500 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-600 dark:text-emerald-400 dark:hover:bg-emerald-900/30"
-                                    onClick={() => window.location.href = route('rekening-belanja.download-template')}
+                                    onClick={() => { window.open(route('rekening-belanja.download-template'), '_blank'); }}
                                 >
                                     <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />

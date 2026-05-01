@@ -743,7 +743,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                             </div>
                                             <div>
                                                 <p className="mb-24">
-                                                    {bkpBankData?.sekolah?.kecamatan || '................'}, {(() => {
+                                                    Kec. {bkpBankData?.sekolah?.kecamatan || '................'}, {(() => {
                                                         const monthIndex = monthList.indexOf(bulanBank.toLowerCase());
                                                         let dateObj;
                                                         if (monthIndex !== -1 && tahun) {
@@ -1032,7 +1032,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                             </div>
                                             <div>
                                                 <p className="mb-24">
-                                                    {bkpUmumData?.sekolah?.kecamatan || '................'}, {(() => {
+                                                    Kec. {bkpUmumData?.sekolah?.kecamatan || '................'}, {(() => {
                                                         const monthIndex = monthList.indexOf(bulanUmum.toLowerCase());
                                                         let dateObj;
                                                         if (monthIndex !== -1 && tahun) {
@@ -1270,7 +1270,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                             </div>
                                             <div>
                                                 <p className="mb-24">
-                                                    {bkpPajakData?.data?.sekolah?.kecamatan || '................'}, {bkpPajakData?.data?.tanggal_penutupan || '...'}
+                                                    Kec. {bkpPajakData?.data?.sekolah?.kecamatan || '................'}, {bkpPajakData?.data?.tanggal_penutupan || '...'}
                                                     <br />Bendahara,
                                                 </p>
                                                 <p className="font-bold underline uppercase underline-offset-2">
@@ -1607,7 +1607,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                                         <p>NIP. {bkpRegData?.data?.nipKepalaSekolah}</p>
                                                     </div>
                                                     <div>
-                                                        <p>{bkpRegData?.data?.kecamatan || '.....................'}, {bkpRegData?.data?.tanggalPenutupan}</p>
+                                                        <p>Kec. {bkpRegData?.data?.kecamatan || '.....................'}, {bkpRegData?.data?.tanggalPenutupan}</p>
                                                         <p>Yang Memeriksa,</p>
                                                         <div className="h-24"></div>
                                                         <p className="font-bold underline decoration-1 underline-offset-4">{bkpRegData?.data?.namaBendahara}</p>
@@ -1730,7 +1730,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                             {/* Signatures */}
                                             <div className="mt-16 pt-8">
                                                 <div className="text-center mb-4 text-right">
-                                                    <p>{bkpBaData?.data?.namaKecamatan}, {bkpBaData?.data?.tanggalPemeriksaan}</p>
+                                                    <p>Kec. {bkpBaData?.data?.namaKecamatan}, {bkpBaData?.data?.tanggalPemeriksaan}</p>
                                                 </div>
                                                 <div className="flex justify-between text-center px-4">
                                                     <div>
@@ -2358,7 +2358,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                             </div>
                                             <div>
                                                 <p className="mb-24">
-                                                    {bkpPembantuData?.sekolah?.kecamatan || '................'}, {(() => {
+                                                    Kec. {bkpPembantuData?.sekolah?.kecamatan || '................'}, {(() => {
                                                         const monthIndex = monthList.indexOf(bulanPembantu.toLowerCase());
                                                         let dateObj;
                                                         if (monthIndex !== -1 && tahun) {
