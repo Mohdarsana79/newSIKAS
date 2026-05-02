@@ -12,6 +12,7 @@ use App\Models\Rkas;
 use App\Models\RkasPerubahan;
 use App\Models\SetorTunai;
 use App\Models\SekolahProfile;
+use App\Models\KodeKegiatan;
 use App\Models\Sts;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
@@ -25,64 +26,69 @@ use App\Exports\BkpUmumExport;
 
 class BukuKasUmumController extends Controller
 {
+    /**
+     * @var BukuKasService
+     */
+    protected $bukuKasService;
+
     public function __construct(BukuKasService $bukuKasService)
     {
         $this->bukuKasService = $bukuKasService;
     }
 
     // Ganti semua pemanggilan method yang dipindah ke service
-    private function hitungSaldoTunaiNonTunai($penganggaran_id)
+    private function hitungSaldoTunaiNonTunai(int $penganggaran_id)
     {
         return $this->bukuKasService->hitungSaldoTunaiNonTunai($penganggaran_id);
     }
 
-    private function hitungTotalDanaTersedia($penganggaran_id)
+    private function hitungTotalDanaTersedia(int $penganggaran_id)
     {
         return $this->bukuKasService->hitungTotalDanaTersedia($penganggaran_id);
     }
 
-    private function hitungSaldoBankSebelumBulan($penganggaran_id, $bulanTarget)
+    private function hitungSaldoBankSebelumBulan(int $penganggaran_id, string $bulanTarget)
     {
         return $this->bukuKasService->hitungSaldoBankSebelumBulan($penganggaran_id, $bulanTarget);
     }
 
-    private function hitungSaldoTunaiSebelumBulan($penganggaran_id, $bulanTarget)
+    private function hitungSaldoTunaiSebelumBulan(int $penganggaran_id, string $bulanTarget)
     {
         return $this->bukuKasService->hitungSaldoTunaiSebelumBulan($penganggaran_id, $bulanTarget);
     }
 
     // Helper function untuk konversi bulan
-    private function convertBulanToNumber($bulan)
+    private function convertBulanToNumber(string $bulan)
     {
         return $this->bukuKasService->convertBulanToNumber($bulan);
     }
 
-    private function convertNumberToBulan($angka)
+    private function convertNumberToBulan(int $angka)
     {
         return $this->bukuKasService->convertNumberToBulan($angka);
     }
 
-    private function hitungSaldoAkhirBkpBank($penganggaran_id, $tahun, $bulan)
+    private function hitungSaldoAkhirBkpBank(int $penganggaran_id, int|string $tahun, string $bulan)
     {
         return $this->bukuKasService->hitungSaldoAkhirBkpBank($penganggaran_id, $tahun, $bulan);
     }
 
-    private function hitungSaldoAwalBkpUmum($penganggaran_id, $tahun, $bulan)
+    private function hitungSaldoAwalBkpUmum(int $penganggaran_id, int|string $tahun, string $bulan)
     {
         return $this->bukuKasService->hitungSaldoAwalBkpUmum($penganggaran_id, $tahun, $bulan);
     }
 
-    private function getSaldoKasFromPembantu($penganggaran_id, $tahun, $bulan, $bulanAngka)
+    private function getSaldoKasFromPembantu(int $penganggaran_id, int|string $tahun, string $bulan, int $bulanAngka)
     {
         return $this->bukuKasService->getSaldoKasFromPembantu($penganggaran_id, $tahun, $bulan, $bulanAngka);
     }
 
-    private function getDataFromBkpUmumCalculation($penganggaran_id, $tahun, $bulan, $bulanAngka)
+    private function getDataFromBkpUmumCalculation(int $penganggaran_id, int|string $tahun, string $bulan, int $bulanAngka)
     {
         return $this->bukuKasService->getDataFromBkpUmumCalculation($penganggaran_id, $tahun, $bulan, $bulanAngka);
     }
 
-    private function getDenominasiUangKertas($saldoKas)
+    private function getDenominasiUangKertas(float|int $saldoKas)
     {
         return $this->bukuKasService->getDenominasiUangKertas($saldoKas);
     }
@@ -92,44 +98,44 @@ class BukuKasUmumController extends Controller
         return $this->bukuKasService->getDenominasiUangLogam($sisaUntukLogam);
     }
 
-    private function hitungTotalUangKertas($uangKertas)
+    private function hitungTotalUangKertas(array $uangKertas)
     {
         return $this->bukuKasService->hitungTotalUangKertas($uangKertas);
     }
 
-    private function hitungTotalUangLogam($uangLogam)
+    private function hitungTotalUangLogam(array $uangLogam)
     {
         return $this->bukuKasService->hitungTotalUangLogam($uangLogam);
     }
 
-    private function hitungTotalDibelanjakan($penganggaran_id, $bulan)
+    private function hitungTotalDibelanjakan(int $penganggaran_id, string $bulan)
     {
         $bulanAngka = $this->convertBulanToNumber($bulan);
-        $tahun = Penganggaran::find($penganggaran_id)->tahun_anggaran;
+        $tahun = Penganggaran::query()->find($penganggaran_id)->tahun_anggaran;
         
-        return BukuKasUmum::where('penganggaran_id', $penganggaran_id)
+        return BukuKasUmum::query()->where('penganggaran_id', $penganggaran_id)
             ->whereMonth('tanggal_transaksi', $bulanAngka)
             ->whereYear('tanggal_transaksi', $tahun)
             ->where('is_bunga_record', false)
             ->sum('total_transaksi_kotor');
     }
 
-    private function hitungTotalDibelanjakanSampaiBulanIni($penganggaran_id, $bulan)
+    private function hitungTotalDibelanjakanSampaiBulanIni(int $penganggaran_id, string $bulan)
     {
         $bulanAngka = $this->convertBulanToNumber($bulan);
-        $tahun = Penganggaran::find($penganggaran_id)->tahun_anggaran;
+        $tahun = Penganggaran::query()->find($penganggaran_id)->tahun_anggaran;
         
-        return BukuKasUmum::where('penganggaran_id', $penganggaran_id)
+        return BukuKasUmum::query()->where('penganggaran_id', $penganggaran_id)
             ->whereMonth('tanggal_transaksi', '<=', $bulanAngka)
             ->whereYear('tanggal_transaksi', $tahun)
             ->where('is_bunga_record', false)
             ->sum('total_transaksi_kotor');
     }
 
-    private function hitungAnggaranBelumDibelanjakan($penganggaran_id, $bulan)
+    private function hitungAnggaranBelumDibelanjakan(int $penganggaran_id, string $bulan)
     {
         $bulanAngka = $this->convertBulanToNumber($bulan);
-        $tahun = Penganggaran::find($penganggaran_id)->tahun_anggaran;
+        $tahun = Penganggaran::query()->find($penganggaran_id)->tahun_anggaran;
 
         // 1. Calculate Cumulative Budget (RKAS) up to current month (inclusive)
         $months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
@@ -145,7 +151,7 @@ class BukuKasUmumController extends Controller
         // Sum from Rkas (Tahap 1)
         $tahap1Months = array_intersect($monthsToInclude, $allMonthsTahap1);
         if (!empty($tahap1Months)) {
-            $totalAnggaran += Rkas::where('penganggaran_id', $penganggaran_id)
+            $totalAnggaran += Rkas::query()->where('penganggaran_id', $penganggaran_id)
                 ->whereIn('bulan', $tahap1Months)
                 ->sum(DB::raw('harga_satuan * jumlah'));
         }
@@ -154,7 +160,7 @@ class BukuKasUmumController extends Controller
         $tahap2Months = array_intersect($monthsToInclude, $allMonthsTahap2);
         if (!empty($tahap2Months)) {
              try {
-                $totalAnggaran += RkasPerubahan::where('penganggaran_id', $penganggaran_id)
+                $totalAnggaran += RkasPerubahan::query()->where('penganggaran_id', $penganggaran_id)
                     ->whereIn('bulan', $tahap2Months)
                     ->sum(DB::raw('harga_satuan * jumlah'));
              } catch (\Exception $e) {
@@ -164,7 +170,7 @@ class BukuKasUmumController extends Controller
         }
 
         // 2. Calculate Cumulative Spending up to CURRENT month (inclusive)
-        $totalDibelanjakanUntilNow = BukuKasUmum::where('penganggaran_id', $penganggaran_id)
+        $totalDibelanjakanUntilNow = BukuKasUmum::query()->where('penganggaran_id', $penganggaran_id)
             ->whereMonth('tanggal_transaksi', '<=', $bulanAngka) // Less than or equal to current month
             ->whereYear('tanggal_transaksi', $tahun)
             ->where('is_bunga_record', false)
@@ -176,16 +182,16 @@ class BukuKasUmumController extends Controller
     }
 
     // Update method showByBulan
-    public function index($tahun, $bulan)
+    public function index(int|string $tahun, string $bulan)
     {
         return $this->showByBulan($tahun, $bulan);
     }
 
-    public function showByBulan($tahun, $bulan)
+    public function showByBulan(int|string $tahun, string $bulan)
     {
         $bulan = ucfirst(strtolower($bulan));
         // Cari data penganggaran berdasarkan tahun
-        $penganggaran = Penganggaran::where('tahun_anggaran', $tahun)->first();
+        $penganggaran = Penganggaran::query()->where('tahun_anggaran', $tahun)->first();
 
         if (! $penganggaran) {
             return redirect()->route('penatausahaan.index') // CORRECTED ROUTE NAME
@@ -200,7 +206,7 @@ class BukuKasUmumController extends Controller
         $totalPenerimaanSemua = $this->bukuKasService->hitungTotalDanaTersedia($penganggaran->id);
         
         $prevMonthLimit = $this->convertBulanToNumber($bulan);
-        $totalBelanjaSebelumnya = BukuKasUmum::where('penganggaran_id', $penganggaran->id)
+        $totalBelanjaSebelumnya = BukuKasUmum::query()->where('penganggaran_id', $penganggaran->id)
             ->where('is_bunga_record', false)
             ->whereYear('tanggal_transaksi', $tahun)
             ->whereMonth('tanggal_transaksi', '<', $prevMonthLimit)
@@ -218,7 +224,7 @@ class BukuKasUmumController extends Controller
         $anggaranBelumDibelanjakan = $this->hitungAnggaranBelumDibelanjakan($penganggaran->id, $bulan);
 
         // Ambil data BKU untuk bulan tersebut (hanya transaksi reguler, bukan record bunga)
-        $bkuData = BukuKasUmum::where('penganggaran_id', $penganggaran->id)
+        $bkuData = BukuKasUmum::query()->where('penganggaran_id', $penganggaran->id)
             ->whereMonth('tanggal_transaksi', $this->convertBulanToNumber($bulan))
             ->where('is_bunga_record', false) // Hanya transaksi reguler
             ->with(['kodeKegiatan', 'rekeningBelanja', 'uraianDetails'])
@@ -227,7 +233,7 @@ class BukuKasUmumController extends Controller
 
         // Cek status BKU - apakah ada record yang status closed
         // Cek status BKU - berdasarkan adanya record bunga (closing)
-        $isClosed = BukuKasUmum::where('penganggaran_id', $penganggaran->id)
+        $isClosed = BukuKasUmum::query()->where('penganggaran_id', $penganggaran->id)
             ->whereMonth('tanggal_transaksi', $this->convertBulanToNumber($bulan))
             ->where('is_bunga_record', true)
             ->exists();
@@ -238,7 +244,8 @@ class BukuKasUmumController extends Controller
         $bulanAngka = $this->convertBulanToNumber($bulan);
 
         // Ambil data bunga bank
-        $bungaRecord = BukuKasUmum::where('penganggaran_id', $penganggaran->id)
+        /** @var \App\Models\BukuKasUmum $bungaRecord */
+        $bungaRecord = BukuKasUmum::query()->where('penganggaran_id', $penganggaran->id)
             ->whereMonth('tanggal_transaksi', $this->convertBulanToNumber($bulan))
             ->where('is_bunga_record', true)
             ->first();
@@ -256,17 +263,17 @@ class BukuKasUmumController extends Controller
         }
 
         // Ambil data penerimaan dana
-        $penerimaanDanas = PenerimaanDana::where('penganggaran_id', $penganggaran->id)
+        $penerimaanDanas = PenerimaanDana::query()->where('penganggaran_id', $penganggaran->id)
             ->orderBy('tanggal_terima', 'asc')
             ->get();
 
         // Ambil data penarikan tunai
-        $penarikanTunais = PenarikanTunai::where('penganggaran_id', $penganggaran->id)
+        $penarikanTunais = PenarikanTunai::query()->where('penganggaran_id', $penganggaran->id)
             ->orderBy('tanggal_penarikan', 'asc')
             ->get();
 
         // Ambil data setor tunai
-        $setorTunais = SetorTunai::where('penganggaran_id', $penganggaran->id)
+        $setorTunais = SetorTunai::query()->where('penganggaran_id', $penganggaran->id)
             ->orderBy('tanggal_setor', 'asc')
             ->get();
 
@@ -295,7 +302,7 @@ class BukuKasUmumController extends Controller
         $rkasItemsCombined = collect();
 
         if (!empty($targetMonthsTahap1)) {
-            $rkasItems1 = Rkas::where('penganggaran_id', $penganggaran->id)
+            $rkasItems1 = Rkas::query()->where('penganggaran_id', $penganggaran->id)
                 ->whereIn('bulan', $targetMonthsTahap1)
                 ->with(['kodeKegiatan', 'rekeningBelanja'])
                 ->withSum('bkuUraianDetails', 'volume')
@@ -313,7 +320,7 @@ class BukuKasUmumController extends Controller
             }
 
             if (!empty($targetMonthsTahap2)) {
-                $rkasItems2 = RkasPerubahan::where('penganggaran_id', $penganggaran->id)
+                $rkasItems2 = RkasPerubahan::query()->where('penganggaran_id', $penganggaran->id)
                     ->whereIn('bulan', $targetMonthsTahap2)
                     ->with(['kodeKegiatan', 'rekeningBelanja'])
                     ->withSum('bkuUraianDetails', 'volume')
@@ -354,7 +361,7 @@ class BukuKasUmumController extends Controller
         })->values();
 
         // Ambil Nomor Nota Terakhir
-        $lastNoteNumber = BukuKasUmum::where('penganggaran_id', $penganggaran->id)
+        $lastNoteNumber = BukuKasUmum::query()->where('penganggaran_id', $penganggaran->id)
             ->latest('created_at')
             ->value('id_transaksi') ?? '-';
 
@@ -385,7 +392,7 @@ class BukuKasUmumController extends Controller
         return Inertia::render('Penatausahaan/Bku', $data);
     }
 
-    private function hitungAnggaranBulanIni($penganggaran_id, $bulan)
+    private function hitungAnggaranBulanIni(int $penganggaran_id, string $bulan)
     {
         try {
             // Tentukan model yang akan digunakan berdasarkan bulan
@@ -393,7 +400,7 @@ class BukuKasUmumController extends Controller
             $model = $isTahap1 ? Rkas::class : RkasPerubahan::class;
 
             // Hitung total anggaran untuk bulan tertentu
-            $totalAnggaran = $model::where('penganggaran_id', $penganggaran_id)
+            $totalAnggaran = $model::query()->where('penganggaran_id', $penganggaran_id)
                 ->where('bulan', $bulan)
                 ->sum(DB::raw('harga_satuan * jumlah'));
 
@@ -450,7 +457,7 @@ class BukuKasUmumController extends Controller
             $nomorNota = $validated['nomor_nota'] ?? null;
             if (!$nomorNota) {
                 // Generate BPU-XXX
-                $lastTrans = BukuKasUmum::where('penganggaran_id', $validated['penganggaran_id'])
+                $lastTrans = BukuKasUmum::query()->where('penganggaran_id', $validated['penganggaran_id'])
                     ->where('id_transaksi', 'like', 'BPU-%')
                     ->orderByRaw('CAST(SUBSTRING(id_transaksi, 5) AS INTEGER) DESC')
                     ->first();
@@ -468,9 +475,9 @@ class BukuKasUmumController extends Controller
             // Validasi tambahan: pastikan tanggal nota sesuai dengan bulan yang dipilih
             $bulanTarget = $validated['bulan'];
             $bulanAngka = $this->convertBulanToNumber($bulanTarget);
-            $tahunAnggaran = Penganggaran::find($validated['penganggaran_id'])->tahun_anggaran;
+            $tahunAnggaran = Penganggaran::query()->find($validated['penganggaran_id'])->tahun_anggaran;
 
-            $tanggalNota = \Carbon\Carbon::parse($validated['tanggal_nota']);
+            $tanggalNota = Carbon::parse($validated['tanggal_nota']);
             if ($tanggalNota->month != $bulanAngka || $tanggalNota->year != $tahunAnggaran) {
                 return redirect()->back()->withErrors(['tanggal_nota' => 'Tanggal nota harus dalam bulan ' . $bulanTarget . ' tahun ' . $tahunAnggaran]);
             }
@@ -501,7 +508,7 @@ class BukuKasUmumController extends Controller
                  $totalKegiatanSetelahPajak = $totalKegiatan; // Tetap sama, tidak dikurangi pajak
 
                 // Dapatkan data rekening belanja untuk uraian
-                $rekeningBelanja = RekeningBelanja::find($rekeningId);
+                $rekeningBelanja = RekeningBelanja::query()->find($rekeningId, ['*']);
                 $uraianText = 'Lunas Bayar ' . $rekeningBelanja->rincian_objek;
 
                 // Dapatkan total anggaran untuk rekening belanja di bulan tersebut
@@ -509,9 +516,9 @@ class BukuKasUmumController extends Controller
                 $isTahap1 = in_array($bulanNormalized, ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni']);
                 $model = $isTahap1 ? Rkas::class : RkasPerubahan::class;
 
-                $totalAnggaran = $model::where('penganggaran_id', $validated['penganggaran_id'])
-                    ->where('kode_rekening_id', $rekeningId)
-                    ->where('bulan', $bulanTarget)
+                $totalAnggaran = $model::query()->where('penganggaran_id', '=', $validated['penganggaran_id'], 'and')
+                    ->where('kode_rekening_id', '=', $rekeningId, 'and')
+                    ->where('bulan', '=', $bulanTarget, 'and')
                      ->sum(DB::raw('harga_satuan * jumlah'));
 
                 // Simpan data Buku Kas Umum
@@ -611,7 +618,7 @@ class BukuKasUmumController extends Controller
             }
 
             // Check if already closed
-            $exists = BukuKasUmum::where('penganggaran_id', $request->penganggaran_id)
+            $exists = BukuKasUmum::query()->where('penganggaran_id', $request->penganggaran_id)
                 ->whereMonth('tanggal_transaksi', $monthNum)
                 ->whereYear('tanggal_transaksi', $year)
                 ->where('is_bunga_record', true)
@@ -663,7 +670,7 @@ class BukuKasUmumController extends Controller
             $tahun = $penganggaran->tahun_anggaran;
 
             // Find and delete the closing record
-            $deleted = BukuKasUmum::where('penganggaran_id', $request->penganggaran_id)
+            $deleted = BukuKasUmum::query()->where('penganggaran_id', $request->penganggaran_id)
                 ->whereMonth('tanggal_transaksi', $bulanNum)
                 ->whereYear('tanggal_transaksi', $tahun)
                 ->where('is_bunga_record', true)
@@ -683,7 +690,7 @@ class BukuKasUmumController extends Controller
         }
     }
 
-    public function laporPajak(Request $request, $id)
+    public function laporPajak(Request $request, int|string $id)
     {
         $request->validate([
             'tanggal_lapor' => 'required|date',
@@ -705,14 +712,14 @@ class BukuKasUmumController extends Controller
         }
     }
 
-    public function destroy($id)
+    public function destroy(int|string $id)
     {
         try {
             DB::beginTransaction();
             $bku = BukuKasUmum::findOrFail($id);
 
             // Delete related details
-            BukuKasUmumUraianDetail::where('buku_kas_umum_id', $bku->id)->delete();
+            BukuKasUmumUraianDetail::query()->where('buku_kas_umum_id', $bku->id)->delete();
 
             $bku->delete();
 
@@ -740,7 +747,7 @@ class BukuKasUmumController extends Controller
 
             // Delete transactions only (not closing records)
             // Filter: Same Budget, Same Month, Same Year, Not Interest/Closing Record
-            $deleted = BukuKasUmum::where('penganggaran_id', $request->penganggaran_id)
+            $deleted = BukuKasUmum::query()->where('penganggaran_id', $request->penganggaran_id)
                 ->whereMonth('tanggal_transaksi', $bulanNum)
                 ->whereYear('tanggal_transaksi', $tahun)
                 ->where('is_bunga_record', false)
@@ -756,7 +763,7 @@ class BukuKasUmumController extends Controller
     }
 
     // PERBAIKAN: ambil kegiatan dan rekening dengan memperhitungkan pergeseran bulan dalam periode yang sama
-    public function getKegiatanDanRekening($tahun, $bulan)
+    public function getKegiatanDanRekening(int|string $tahun, string $bulan)
     {
         try {
             Log::info('=== DEBUG getKegiatanDanRekening - PERGESERAN DALAM PERIODE ===', [
@@ -764,7 +771,7 @@ class BukuKasUmumController extends Controller
                 'bulan' => $bulan,
             ]);
 
-            $penganggaran = Penganggaran::where('tahun_anggaran', $tahun)->first();
+            $penganggaran = Penganggaran::query()->where('tahun_anggaran', $tahun)->first();
 
             if (! $penganggaran) {
                 return response()->json([
@@ -861,7 +868,7 @@ class BukuKasUmumController extends Controller
             // Jika Tahap 2, hitung belanja mulai dari Juli (7). Jika Tahap 1, mulai dari Januari (1).
             $spendingStartMonth = $isTargetTahap2 ? 7 : 1;
             
-            $bkuData = BukuKasUmum::where('penganggaran_id', $penganggaran->id)
+            $bkuData = BukuKasUmum::query()->where('penganggaran_id', $penganggaran->id)
                 ->whereRaw('EXTRACT(MONTH FROM tanggal_transaksi) BETWEEN ? AND ?', [$spendingStartMonth, $bulanTargetNumber])
                 ->whereYear('tanggal_transaksi', $tahun)
                 ->with(['kodeKegiatan', 'rekeningBelanja'])
@@ -908,6 +915,11 @@ class BukuKasUmumController extends Controller
                             'kegiatan_id' => $kegiatan->id,
                             'kode_rekening' => $firstItem->rekeningBelanja->kode_rekening ?? 'N/A',
                             'rincian_objek' => $firstItem->rekeningBelanja->rincian_objek ?? 'N/A',
+                            'is_ppn' => (bool) ($firstItem->rekeningBelanja->is_ppn ?? false),
+                            'is_pph21' => (bool) ($firstItem->rekeningBelanja->is_pph21 ?? false),
+                            'is_pph22' => (bool) ($firstItem->rekeningBelanja->is_pph22 ?? false),
+                            'is_pph23' => (bool) ($firstItem->rekeningBelanja->is_pph23 ?? false),
+                            'is_pph4' => (bool) ($firstItem->rekeningBelanja->is_pph4 ?? false),
                             'total_anggaran' => $totalAnggaran,
                             'sudah_dibelanjakan' => $sudahDibelanjakan,
                             'sisa_anggaran' => $sisaAnggaran,
@@ -974,7 +986,7 @@ class BukuKasUmumController extends Controller
     }
 
     // PERBAIKAN: ambil uraian dengan perhitungan yang lebih akurat - VERSI DIPERBAIKI
-    public function getUraianByRekening($tahun, $bulan, $rekeningId, Request $request)
+    public function getUraianByRekening(int|string $tahun, string $bulan, int|string $rekeningId, Request $request)
     {
         try {
             $kegiatanId = $request->query('kegiatan_id');
@@ -986,7 +998,7 @@ class BukuKasUmumController extends Controller
                 'kegiatanId' => $kegiatanId,
             ]);
 
-            $penganggaran = Penganggaran::where('tahun_anggaran', $tahun)->first();
+            $penganggaran = Penganggaran::query()->where('tahun_anggaran', $tahun)->first();
 
             if (! $penganggaran) {
                 return response()->json([
@@ -1131,7 +1143,6 @@ class BukuKasUmumController extends Controller
                     'dapat_digunakan' => $sisaVolume > 0,
                     'bulan_asal' => $bulanAsal->toArray(),
                     'is_tahap1' => $isTahap1,
-                    'is_tahap1' => $isTahap1,
                     'debug_info' => "RKAS: {$totalVolumeRkas}, Sudah: {$sudahDibelanjakanVolume}, Sisa: {$sisaVolume}",
                 ];
             })->filter(function ($item) {
@@ -1168,7 +1179,7 @@ class BukuKasUmumController extends Controller
             $bulan = $request->input('bulan');
             $tabType = $request->get('tab_type', 'Umum');
 
-            $penganggaran = Penganggaran::where('tahun_anggaran', $tahun)->first();
+            $penganggaran = Penganggaran::query()->where('tahun_anggaran', $tahun)->first();
 
             if (!$penganggaran) {
                 return response()->json([
@@ -1182,20 +1193,20 @@ class BukuKasUmumController extends Controller
             // Di dalam method getRekapanBkuAjax, bagian untuk tab Bank
             if ($tabType === 'Bank') {
                 // Data untuk BKP Bank
-                $penarikanTunais = PenarikanTunai::where('penganggaran_id', $penganggaran->id)
+                $penarikanTunais = PenarikanTunai::query()->where('penganggaran_id', $penganggaran->id)
                     ->whereMonth('tanggal_penarikan', $bulanAngka)
                     ->whereYear('tanggal_penarikan', $tahun)
                     ->orderBy('tanggal_penarikan', 'asc')
                     ->get();
 
                 // TAMBAHKAN: Ambil data penerimaan dana untuk bulan tersebut
-                $penerimaanDanas = PenerimaanDana::where('penganggaran_id', $penganggaran->id)
+                $penerimaanDanas = PenerimaanDana::query()->where('penganggaran_id', $penganggaran->id)
                     ->whereMonth('tanggal_terima', $bulanAngka)
                     ->whereYear('tanggal_terima', $tahun)
                     ->orderBy('tanggal_terima', 'asc')
                     ->get();
 
-                $bungaRecord = BukuKasUmum::where('penganggaran_id', $penganggaran->id)
+                $bungaRecord = BukuKasUmum::query()->where('penganggaran_id', $penganggaran->id)
                     ->whereMonth('tanggal_transaksi', $bulanAngka)
                     ->whereYear('tanggal_transaksi', $tahun)
                     ->where('is_bunga_record', true)
@@ -1228,8 +1239,20 @@ class BukuKasUmumController extends Controller
                     'currentSaldo' => $currentSaldo
                 ])->render();
             } else if ($tabType === 'Pembantu') {
-                $pembantuController = new BukuKasPembantuTunaiController();
-                $html = $pembantuController->getBkpPembantuData($tahun, $bulan);
+                $pembantuController = new BukuKasPembantuTunaiController($this->bukuKasService);
+                $pembantuData = $pembantuController->getBkpPembantuDataInternal($tahun, $bulan);
+                
+                if (!$pembantuData) {
+                    return response()->json(['success' => false, 'message' => 'Data Pembantu tidak ditemukan'], 404);
+                }
+
+                $html = view('laporan.partials.bkp-pembantu-table', [
+                    'items' => $pembantuData['items'],
+                    'data' => $pembantuData['data'],
+                    'bulan' => $bulan,
+                    'tahun' => $tahun,
+                    'bulanAngka' => $this->convertBulanToNumber($bulan)
+                ])->render();
 
                 return $html;
             } else if ($tabType === 'Umum') {
@@ -1311,44 +1334,44 @@ class BukuKasUmumController extends Controller
     /**
      * Generate PDF BKP Umum
      */
-    public function generateBkpUmumPdf($tahun, $bulan)
+    public function generateBkpUmumPdf(int|string $tahun, string $bulan)
     {
         try {
-            $penganggaran = Penganggaran::where('tahun_anggaran', $tahun)->first();
+            $penganggaran = Penganggaran::query()->where('tahun_anggaran', $tahun)->first();
 
             if (!$penganggaran) {
                 return response()->json(['error' => 'Data penganggaran tidak ditemukan'], 404);
             }
 
             // Ambil data sekolah
-            $sekolah = SekolahProfile::first();
+            $sekolah = SekolahProfile::query()->first();
 
             $bulanAngka = $this->convertBulanToNumber($bulan);
 
             // Ambil semua data yang diperlukan
-            $penerimaanDanas = PenerimaanDana::where('penganggaran_id', $penganggaran->id)
+            $penerimaanDanas = PenerimaanDana::query()->where('penganggaran_id', $penganggaran->id)
                 ->orderBy('tanggal_terima', 'asc')
                 ->get();
 
-            $penarikanTunais = PenarikanTunai::where('penganggaran_id', $penganggaran->id)
+            $penarikanTunais = PenarikanTunai::query()->where('penganggaran_id', $penganggaran->id)
                 ->whereMonth('tanggal_penarikan', $bulanAngka)
                 ->whereYear('tanggal_penarikan', $tahun)
                 ->orderBy('tanggal_penarikan', 'asc')
                 ->get();
 
-            $terimaTunais = PenarikanTunai::where('penganggaran_id', $penganggaran->id)
+            $terimaTunais = PenarikanTunai::query()->where('penganggaran_id', $penganggaran->id)
                 ->whereMonth('tanggal_penarikan', $bulanAngka)
                 ->whereYear('tanggal_penarikan', $tahun)
                 ->orderBy('tanggal_penarikan', 'asc')
                 ->get();
 
-            $setorTunais = SetorTunai::where('penganggaran_id', $penganggaran->id)
+            $setorTunais = SetorTunai::query()->where('penganggaran_id', $penganggaran->id)
                 ->whereMonth('tanggal_setor', $bulanAngka)
                 ->whereYear('tanggal_setor', $tahun)
                 ->orderBy('tanggal_setor', 'asc')
                 ->get();
 
-            $bkuData = BukuKasUmum::where('penganggaran_id', $penganggaran->id)
+            $bkuData = BukuKasUmum::query()->where('penganggaran_id', $penganggaran->id)
                 ->whereMonth('tanggal_transaksi', $bulanAngka)
                 ->whereYear('tanggal_transaksi', $tahun)
                 ->where('is_bunga_record', false)
@@ -1358,14 +1381,14 @@ class BukuKasUmumController extends Controller
                 ->orderBy('id', 'asc')
                 ->get();
 
-            $bungaRecord = BukuKasUmum::where('penganggaran_id', $penganggaran->id)
+            $bungaRecord = BukuKasUmum::query()->where('penganggaran_id', $penganggaran->id)
                 ->whereMonth('tanggal_transaksi', $bulanAngka)
                 ->whereYear('tanggal_transaksi', $tahun)
                 ->where('is_bunga_record', true)
                 ->first();
 
             // AMBIL DATA STS YANG MASUK BUKU BANK
-            $stsRecords = Sts::where('penganggaran_id', $penganggaran->id)
+            $stsRecords = Sts::query()->where('penganggaran_id', $penganggaran->id)
                 ->where('is_bkp', true)
                 ->whereMonth('tanggal_bayar', $bulanAngka)
                 ->whereYear('tanggal_bayar', $tahun)
@@ -1490,7 +1513,7 @@ class BukuKasUmumController extends Controller
         }
     }
 
-    private function siapkanDataRowsBkpUmum($penganggaran_id, $tahun, $bulan, $bulanAngka, $saldoAwal, $saldoAwalTunai, $penerimaanDanas, $penarikanTunais, $terimaTunais, $setorTunais, $bkuData, $bungaRecord, $stsRecords = [], $trkSaldoAwal = null)
+    private function siapkanDataRowsBkpUmum(int $penganggaran_id, int|string $tahun, string $bulan, int $bulanAngka, float $saldoAwal, float $saldoAwalTunai, mixed $penerimaanDanas, mixed $penarikanTunais, mixed $terimaTunais, mixed $setorTunais, mixed $bkuData, mixed $bungaRecord, mixed $stsRecords = [], mixed $trkSaldoAwal = null): array
     {
         $rowsData = [];
 
@@ -1728,11 +1751,11 @@ class BukuKasUmumController extends Controller
         return $rowsData;
     }
 
-    public function getBkpUmumData($tahun, $bulan)
+    public function getBkpUmumData(int|string $tahun, string $bulan)
     {
         try {
             Log::info('START getBkpUmumData', ['tahun' => $tahun, 'bulan' => $bulan]);
-            $penganggaran = Penganggaran::where('tahun_anggaran', $tahun)->first();
+            $penganggaran = Penganggaran::query()->where('tahun_anggaran', $tahun)->first();
 
             if (!$penganggaran) {
                 return response()->json([
@@ -1745,30 +1768,30 @@ class BukuKasUmumController extends Controller
             Log::info('Bulan Angka:', ['bulan' => $bulan, 'angka' => $bulanAngka]);
 
             // Ambil semua data yang diperlukan
-            $penerimaanDanas = PenerimaanDana::where('penganggaran_id', $penganggaran->id)
+            $penerimaanDanas = PenerimaanDana::query()->where('penganggaran_id', $penganggaran->id)
                 ->orderBy('tanggal_terima', 'asc')
                 ->get();
 
-            $penarikanTunais = PenarikanTunai::where('penganggaran_id', $penganggaran->id)
+            $penarikanTunais = PenarikanTunai::query()->where('penganggaran_id', $penganggaran->id)
                 ->whereMonth('tanggal_penarikan', $bulanAngka)
                 ->whereYear('tanggal_penarikan', $tahun)
                 ->orderBy('tanggal_penarikan', 'asc')
                 ->get();
 
-            $terimaTunais = PenarikanTunai::where('penganggaran_id', $penganggaran->id)
+            $terimaTunais = PenarikanTunai::query()->where('penganggaran_id', $penganggaran->id)
                 ->whereMonth('tanggal_penarikan', $bulanAngka)
                 ->whereYear('tanggal_penarikan', $tahun)
                 ->orderBy('tanggal_penarikan', 'asc')
                 ->get();
 
-            $setorTunais = SetorTunai::where('penganggaran_id', $penganggaran->id)
+            $setorTunais = SetorTunai::query()->where('penganggaran_id', $penganggaran->id)
                 ->whereMonth('tanggal_setor', $bulanAngka)
                 ->whereYear('tanggal_setor', $tahun)
                 ->orderBy('tanggal_setor', 'asc')
                 ->get();
 
             // AMBIL DATA STS YANG MASUK BUKU BANK
-            $stsRecords = Sts::where('penganggaran_id', $penganggaran->id)
+            $stsRecords = Sts::query()->where('penganggaran_id', $penganggaran->id)
                 ->where('is_bkp', true)
                 ->whereMonth('tanggal_bayar', $bulanAngka)
                 ->whereYear('tanggal_bayar', $tahun)
@@ -1788,7 +1811,7 @@ class BukuKasUmumController extends Controller
             }
 
             // Modified Query: Check for false OR null for backward compatibility or default mishaps
-            $bkuData = BukuKasUmum::where('penganggaran_id', $penganggaran->id)
+            $bkuData = BukuKasUmum::query()->where('penganggaran_id', $penganggaran->id)
                 ->whereMonth('tanggal_transaksi', $bulanAngka)
                 ->whereYear('tanggal_transaksi', $tahun)
                 ->where(function ($query) {
@@ -1807,7 +1830,7 @@ class BukuKasUmumController extends Controller
                 'bkuData' => $bkuData->count(),
             ]);
 
-            $bungaRecord = BukuKasUmum::where('penganggaran_id', $penganggaran->id)
+            $bungaRecord = BukuKasUmum::query()->where('penganggaran_id', $penganggaran->id)
                 ->whereMonth('tanggal_transaksi', $bulanAngka)
                 ->whereYear('tanggal_transaksi', $tahun)
                 ->where('is_bunga_record', true)
@@ -1947,7 +1970,7 @@ class BukuKasUmumController extends Controller
     /**
      * Generate PDF BKP Umum
      */
-    public function generateBkpUmumPdfAction(Request $request, $tahun, $bulan)
+    public function generateBkpUmumPdfAction(Request $request, int|string $tahun, string $bulan)
     {
         try {
             // Get Settings
@@ -2026,7 +2049,7 @@ class BukuKasUmumController extends Controller
     /**
      * Generate Excel BKP Umum
      */
-    public function generateBkpUmumExcelAction(Request $request, $tahun, $bulan)
+    public function generateBkpUmumExcelAction(Request $request, int|string $tahun, string $bulan)
     {
         try {
             Carbon::setLocale('id');
@@ -2088,26 +2111,26 @@ class BukuKasUmumController extends Controller
         }
     }
 
-    private function dataBkpUmumInternal($tahun, $bulan)
+    private function dataBkpUmumInternal(int|string $tahun, string $bulan)
     {
-        $penganggaran = Penganggaran::where('tahun_anggaran', $tahun)->first();
+        $penganggaran = Penganggaran::query()->where('tahun_anggaran', $tahun)->first();
         if (!$penganggaran) return null;
 
         $bulanAngka = $this->convertBulanToNumber($bulan);
 
         // Fetch Data matching getBkpUmumData logic
-        $penerimaanDanas = PenerimaanDana::where('penganggaran_id', $penganggaran->id)
+        $penerimaanDanas = PenerimaanDana::query()->where('penganggaran_id', $penganggaran->id)
                 ->orderBy('tanggal_terima', 'asc')->get();
-        $penarikanTunais = PenarikanTunai::where('penganggaran_id', $penganggaran->id)
+        $penarikanTunais = PenarikanTunai::query()->where('penganggaran_id', $penganggaran->id)
                 ->whereMonth('tanggal_penarikan', $bulanAngka)->whereYear('tanggal_penarikan', $tahun)
                 ->orderBy('tanggal_penarikan', 'asc')->get();
         $terimaTunais = $penarikanTunais;
-        $setorTunais = SetorTunai::where('penganggaran_id', $penganggaran->id)
+        $setorTunais = SetorTunai::query()->where('penganggaran_id', $penganggaran->id)
                 ->whereMonth('tanggal_setor', $bulanAngka)->whereYear('tanggal_setor', $tahun)
                 ->orderBy('tanggal_setor', 'asc')->get();
         
         // AMBIL DATA STS
-        $stsRecords = Sts::where('penganggaran_id', $penganggaran->id)
+        $stsRecords = Sts::query()->where('penganggaran_id', $penganggaran->id)
             ->where('is_bkp', true)
             ->whereMonth('tanggal_bayar', $bulanAngka)
             ->whereYear('tanggal_bayar', $tahun)
@@ -2126,7 +2149,7 @@ class BukuKasUmumController extends Controller
             }
         }
 
-        $bkuData = BukuKasUmum::where('penganggaran_id', $penganggaran->id)
+        $bkuData = BukuKasUmum::query()->where('penganggaran_id', $penganggaran->id)
                 ->whereMonth('tanggal_transaksi', $bulanAngka)->whereYear('tanggal_transaksi', $tahun)
                 ->where(function ($query) {
                     $query->where('is_bunga_record', false)->orWhereNull('is_bunga_record');
@@ -2135,7 +2158,7 @@ class BukuKasUmumController extends Controller
                 ->orderBy('tanggal_transaksi', 'asc')
                 ->orderBy('id_transaksi', 'asc')
                 ->get();
-        $bungaRecord = BukuKasUmum::where('penganggaran_id', $penganggaran->id)
+        $bungaRecord = BukuKasUmum::query()->where('penganggaran_id', $penganggaran->id)
                 ->whereMonth('tanggal_transaksi', $bulanAngka)->whereYear('tanggal_transaksi', $tahun)
                 ->where('is_bunga_record', true)
                 ->first();
@@ -2271,7 +2294,7 @@ class BukuKasUmumController extends Controller
         }
     }
     
-    public function destroyPenarikan($id)
+    public function destroyPenarikan(int|string $id)
     {
         try {
             DB::beginTransaction();
@@ -2316,7 +2339,7 @@ class BukuKasUmumController extends Controller
         }
     }
 
-    public function destroySetor($id)
+    public function destroySetor(int|string $id)
     {
          try {
             DB::beginTransaction();
@@ -2341,7 +2364,7 @@ class BukuKasUmumController extends Controller
         try {
             DB::beginTransaction();
 
-            $penganggaran = Penganggaran::where('tahun_anggaran', $validated['tahun'])->firstOrFail();
+            $penganggaran = Penganggaran::query()->where('tahun_anggaran', $validated['tahun'])->firstOrFail();
             $penganggaran->update([
                 'is_trk_saldo_awal' => $validated['is_trk_saldo_awal'],
                 'tanggal_trk_saldo_awal' => $validated['is_trk_saldo_awal'] ? $validated['tanggal_trk_saldo_awal'] : null,
@@ -2356,9 +2379,9 @@ class BukuKasUmumController extends Controller
         }
     }
 
-    public function getTrkSaldoAwal($tahun) 
+    public function getTrkSaldoAwal(int|string $tahun) 
     {
-        $penganggaran = Penganggaran::where('tahun_anggaran', $tahun)->first();
+        $penganggaran = Penganggaran::query()->where('tahun_anggaran', $tahun)->first();
 
         if ($penganggaran) {
              return response()->json([
@@ -2387,7 +2410,7 @@ class BukuKasUmumController extends Controller
             $tahun = $request->query('tahun');
             $bulan = $request->query('bulan');
             
-            $penganggaran = Penganggaran::where('tahun_anggaran', $tahun)->first();
+            $penganggaran = Penganggaran::query()->where('tahun_anggaran', $tahun)->first();
             
             if (!$penganggaran) {
                 return response()->json([
@@ -2433,7 +2456,7 @@ class BukuKasUmumController extends Controller
                     }
                 }
 
-                $modelClass = $isTahap2 ? \App\Models\RkasPerubahan::class : \App\Models\Rkas::class;
+                $modelClass = $isTahap2 ? RkasPerubahan::class : Rkas::class;
                 $usageForeignKey = $isTahap2 ? 'rkas_perubahan_id' : 'rkas_id';
 
                 // 1. Fetch Plans
@@ -2444,7 +2467,7 @@ class BukuKasUmumController extends Controller
                 if ($allPlans->isNotEmpty()) {
                     // 2. Fetch Usages
                     $planIds = $allPlans->pluck('id')->toArray();
-                    $allUsages = BukuKasUmumUraianDetail::whereIn($usageForeignKey, $planIds)
+                    $allUsages = BukuKasUmumUraianDetail::query()->whereIn($usageForeignKey, $planIds, 'and', false)
                         ->select($usageForeignKey, 'volume')
                         ->get();
                     
@@ -2497,7 +2520,7 @@ class BukuKasUmumController extends Controller
                  // No month? Return nothing or all? 
                  // If this is called without month, we can't calculate 'sisa' accurately properly without a 'to' date.
                  // let's return all purely based on Rkas existence if no month passed (fallback).
-                 $allPlans = \App\Models\Rkas::where('penganggaran_id', $penganggaran->id)->get(); // Use Rkas default
+                 $allPlans = Rkas::query()->where('penganggaran_id', $penganggaran->id)->get(); // Use Rkas default
                  foreach($allPlans as $p) {
                       $validKegiatanIds[$p->kode_id] = true;
                       $validRekeningPairs[$p->kode_id . '-' . $p->kode_rekening_id] = true;
@@ -2507,7 +2530,7 @@ class BukuKasUmumController extends Controller
             $validKegiatanIdsList = array_keys($validKegiatanIds);
 
              // Filter Kegiatan List
-             $kegiatanList = \App\Models\KodeKegiatan::whereIn('id', $validKegiatanIdsList)->get()->map(function($k) {
+             $kegiatanList = KodeKegiatan::query()->whereIn('id', $validKegiatanIdsList, 'and', false)->get()->map(function($k) {
                  return [
                      'id' => $k->id,
                      'kode' => $k->kode,
@@ -2525,7 +2548,7 @@ class BukuKasUmumController extends Controller
             $validRekeningIds = array_unique($validRekeningIds);
 
             // Fetch generic rekening details
-            $rekeningObjects = \App\Models\RekeningBelanja::whereIn('id', $validRekeningIds)->get()->keyBy('id');
+            $rekeningObjects = RekeningBelanja::query()->whereIn('id', $validRekeningIds, 'and', false)->get()->keyBy('id');
 
              $rekeningListFormatted = [];
              foreach($validRekeningPairs as $pair => $isValid) {
@@ -2538,7 +2561,12 @@ class BukuKasUmumController extends Controller
                         'id' => $r->id,
                         'kode_rekening' => $r->kode_rekening,
                         'rincian_objek' => $r->rincian_objek,
-                        'kegiatan_id' => (int)$kegId 
+                        'kegiatan_id' => (int)$kegId,
+                        'is_ppn' => (bool) ($r->is_ppn ?? false),
+                        'is_pph21' => (bool) ($r->is_pph21 ?? false),
+                        'is_pph22' => (bool) ($r->is_pph22 ?? false),
+                        'is_pph23' => (bool) ($r->is_pph23 ?? false),
+                        'is_pph4' => (bool) ($r->is_pph4 ?? false),
                      ];
                  }
              }
@@ -2561,6 +2589,28 @@ class BukuKasUmumController extends Controller
             ]);
         }
     }
+
+    /**
+     * Search toko/badan usaha dari riwayat BKU untuk autocomplete
+     */
+    public function searchToko(Request $request)
+    {
+        $query = $request->query('q', '');
+
+        $results = DB::table('buku_kas_umums')
+            ->where([['nama_toko', 'ILIKE', '%' . $query . '%']])
+            ->select('nama_toko', 'alamat_toko', 'npwp')
+            ->distinct()
+            ->limit(10)
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $results,
+            'query_received' => $query
+        ]);
+    }
+
     public function getUraianItems(Request $request)
     {
         try {
@@ -2573,7 +2623,7 @@ class BukuKasUmumController extends Controller
                 return response()->json(['success' => false, 'data' => []]);
             }
 
-            $penganggaran = Penganggaran::where('tahun_anggaran', $tahun)->first();
+            $penganggaran = Penganggaran::query()->where('tahun_anggaran', $tahun)->first();
             if (!$penganggaran) {
                 return response()->json(['success' => false, 'data' => []]);
             }
@@ -2603,11 +2653,11 @@ class BukuKasUmumController extends Controller
             }
 
             // Define model and foreign key column for usage query
-            $modelClass = $isTahap2 ? \App\Models\RkasPerubahan::class : \App\Models\Rkas::class;
+            $modelClass = $isTahap2 ? RkasPerubahan::class : Rkas::class;
             $usageForeignKey = $isTahap2 ? 'rkas_perubahan_id' : 'rkas_id';
 
             // 1. Fetch Plan Items (Cumulative up to current Month)
-            $planItems = $modelClass::where('penganggaran_id', $penganggaran->id)
+            $planItems = $modelClass::query()->where('penganggaran_id', $penganggaran->id)
                 ->where('kode_id', $kegiatanId)
                 ->where('kode_rekening_id', $rekeningId)
                 ->whereIn('bulan', $allowedMonths)
@@ -2619,7 +2669,7 @@ class BukuKasUmumController extends Controller
 
             // 2. Calculate Usage for these specific Plan Items
             $planIds = $planItems->pluck('id')->toArray();
-            $usageDetails = BukuKasUmumUraianDetail::whereIn($usageForeignKey, $planIds)
+            $usageDetails = BukuKasUmumUraianDetail::query()->whereIn($usageForeignKey, $planIds, 'and', false)
                 ->get();
 
             // 3. Group by Unique Item Attributes to consolidate Plan and Usage

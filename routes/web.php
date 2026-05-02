@@ -206,6 +206,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/api/bku/trk-saldo-awal/{tahun}', [BukuKasUmumController::class, 'getTrkSaldoAwal'])->name('api.bku.trk-saldo-awal.get');
     Route::post('/api/bku/trk-saldo-awal/save', [BukuKasUmumController::class, 'storeTrkSaldoAwal'])->name('api.bku.trk-saldo-awal.save');
     Route::get('/api/bku/kegiatan-rekening', [BukuKasUmumController::class, 'getKegiatanRekening'])->name('api.bku.kegiatan-rekening');
+    Route::get('/api/bku/search-toko', [BukuKasUmumController::class, 'searchToko'])->name('api.bku.search-toko');
 
     // API Routes for Penatausahaan (Inferred from context)
     // Route::get('/api/realisasi/data', [RekapitulasiRealisasiController::class, 'getRealisasiData'])->name('api.realisasi.data');

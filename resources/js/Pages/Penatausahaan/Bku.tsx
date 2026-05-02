@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm, router } from '@inertiajs/react';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import Modal from '@/Components/Modal';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
@@ -74,6 +74,7 @@ export default function Bku({
     const [isReportingTax, setIsReportingTax] = useState(false);
     const [alamatTokoError, setAlamatTokoError] = useState('');
     const [tanggalTransaksiError, setTanggalTransaksiError] = useState('');
+    const [npwpError, setNpwpError] = useState('');
 
     // Search State
     const [isSearchVisible, setIsSearchVisible] = useState(false);
@@ -138,6 +139,71 @@ export default function Bku({
     const [fetchedRkasItems, setFetchedRkasItems] = useState<any[]>([]);
     const [isLoadingActivities, setIsLoadingActivities] = useState(false);
     const [isLoadingItems, setIsLoadingItems] = useState(false);
+
+    // Search Toko State
+    const [tokoResults, setTokoResults] = useState<any[]>([]);
+    const [showTokoDropdown, setShowTokoDropdown] = useState(false);
+    const [isSearchingToko, setIsSearchingToko] = useState(false);
+    const tokoSearchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // Tax Automation State
+    const [statusPegawai, setStatusPegawai] = useState<'ASN' | 'Non-ASN' | ''>('');
+    const [golonganASN, setGolonganASN] = useState<string>('');
+    const [showTarifModal, setShowTarifModal] = useState(false);
+    const [detectedTaxes, setDetectedTaxes] = useState<{
+        is_ppn: boolean; is_pph21: boolean; is_pph22: boolean; is_pph23: boolean; is_pph4: boolean;
+    }>({ is_ppn: false, is_pph21: false, is_pph22: false, is_pph23: false, is_pph4: false });
+
+    // Kode rekening khusus yang kena PPh 23 + PB1 10%
+    const KODE_REKENING_PB1 = ['5.1.02.01.01.0052', '5.1.02.01.01.0053', '5.1.02.01.01.0055'];
+
+    // Tarif PPh 21 Non-PNS sesuai PP 58 Tahun 2023 & PMK 168 Tahun 2023
+    const TARIF_PPH21_DENGAN_NPWP = [
+        { min: 0, max: 5400000, rate: 0 },
+        { min: 5400000, max: 5650000, rate: 0.25 },
+        { min: 5650000, max: 5950000, rate: 0.5 },
+        { min: 5950000, max: 6300000, rate: 0.75 },
+        { min: 6300000, max: 6750000, rate: 1 },
+        { min: 6750000, max: 7500000, rate: 1.25 },
+        { min: 7500000, max: 8550000, rate: 1.5 },
+        { min: 8550000, max: 9650000, rate: 1.75 },
+        { min: 9650000, max: 10050000, rate: 2 },
+        { min: 10050000, max: 10350000, rate: 2.25 },
+        { min: 10350000, max: 10700000, rate: 2.5 },
+        { min: 10700000, max: 11050000, rate: 3 },
+        { min: 11050000, max: 11600000, rate: 3.5 },
+        { min: 11600000, max: 12500000, rate: 4 },
+        { min: 12500000, max: 13750000, rate: 5 },
+        { min: 13750000, max: 15100000, rate: 6 },
+    ];
+    const TARIF_PPH21_TANPA_NPWP = [
+        { min: 0, max: 5400000, rate: 0 },
+        { min: 5400000, max: 5650000, rate: 0.5 },
+        { min: 5650000, max: 5950000, rate: 1 },
+        { min: 5950000, max: 6300000, rate: 1.5 },
+        { min: 6300000, max: 6750000, rate: 2 },
+        { min: 6750000, max: 7500000, rate: 2.5 },
+        { min: 7500000, max: 8550000, rate: 3 },
+        { min: 8550000, max: 9650000, rate: 3.5 },
+        { min: 9650000, max: 10050000, rate: 4 },
+        { min: 10050000, max: 10350000, rate: 4.5 },
+        { min: 10350000, max: 10700000, rate: 5 },
+        { min: 10700000, max: 11050000, rate: 6 },
+        { min: 11050000, max: 11600000, rate: 7 },
+        { min: 11600000, max: 12500000, rate: 8 },
+        { min: 12500000, max: 13750000, rate: 10 },
+        { min: 13750000, max: 15100000, rate: 12 },
+    ];
+
+    // Helper: Cari tarif PPh 21 Non-ASN berdasarkan total transaksi
+    const getTarifPPh21NonASN = (totalTransaksi: number, hasNpwp: boolean) => {
+        const tarif = hasNpwp ? TARIF_PPH21_DENGAN_NPWP : TARIF_PPH21_TANPA_NPWP;
+        for (const t of tarif) {
+            if (totalTransaksi >= t.min && totalTransaksi < t.max) return t.rate;
+        }
+        // Jika lebih dari batas maksimal, gunakan tarif tertinggi
+        return tarif[tarif.length - 1].rate;
+    };
 
     // Fetch Activities and Accounts on Modal Open
     useEffect(() => {
@@ -278,27 +344,119 @@ export default function Bku({
             setSelectedActivityId('');
             setSelectedAccountId('');
             setDetailUraian('');
+            setStatusPegawai('');
+            setGolonganASN('');
+            setDetectedTaxes({ is_ppn: false, is_pph21: false, is_pph22: false, is_pph23: false, is_pph4: false });
         }
     }, [isModalOpen]);
 
-    // Auto-calculate Tax Logic
+    // Stable key dari items yang dipilih — hanya berubah saat item benar-benar ditambah/dihapus
+    const itemsKey = useMemo(() => data.items.map((i: any) => `${i.rkas_id}`).sort().join(','), [data.items]);
+    const totalTransaksi = useMemo(() => data.items.reduce((sum: number, item: any) => sum + (item.total || 0), 0), [data.items]);
+
+    // Deteksi pajak yang berlaku (update badge) — ringan, hanya set detectedTaxes
+    useEffect(() => {
+        if (data.items.length === 0) {
+            setDetectedTaxes({ is_ppn: false, is_pph21: false, is_pph22: false, is_pph23: false, is_pph4: false });
+            return;
+        }
+        const selectedRekeningIds = [...new Set(data.items.map((i: any) => String(i.rekening_id)))];
+        const selectedAccounts = fetchedAccounts.filter((acc: any) => selectedRekeningIds.includes(String(acc.id)));
+        setDetectedTaxes({
+            is_ppn: selectedAccounts.some((a: any) => a.is_ppn),
+            is_pph21: selectedAccounts.some((a: any) => a.is_pph21),
+            is_pph22: selectedAccounts.some((a: any) => a.is_pph22),
+            is_pph23: selectedAccounts.some((a: any) => a.is_pph23),
+            is_pph4: selectedAccounts.some((a: any) => a.is_pph4),
+        });
+    }, [itemsKey, fetchedAccounts]);
+
+    // Auto-set pajak pada form — HANYA jalan saat items berubah (itemsKey), bukan saat has_tax berubah
+    useEffect(() => {
+        if (data.items.length === 0) return;
+
+        const selectedRekeningIds = [...new Set(data.items.map((i: any) => String(i.rekening_id)))];
+        const selectedAccounts = fetchedAccounts.filter((acc: any) => selectedRekeningIds.includes(String(acc.id)));
+        const hasNpwp = !!(data.npwp && data.npwp.trim() !== '' && !data.no_npwp);
+        const selectedKodes = selectedAccounts.map((a: any) => a.kode_rekening);
+        const hasPB1 = KODE_REKENING_PB1.some(k => selectedKodes.includes(k));
+
+        const taxes = {
+            is_ppn: selectedAccounts.some((a: any) => a.is_ppn),
+            is_pph21: selectedAccounts.some((a: any) => a.is_pph21),
+            is_pph22: selectedAccounts.some((a: any) => a.is_pph22),
+            is_pph23: selectedAccounts.some((a: any) => a.is_pph23),
+        };
+
+        if (taxes.is_pph21) {
+            setData('has_tax', true);
+            setData('pajak', 'PPh 21');
+        } else if (taxes.is_pph23 && !taxes.is_pph21) {
+            if (taxes.is_ppn && totalTransaksi >= 2000000) {
+                setData('has_tax', true);
+                setData('pajak', 'PPN');
+                setData('persen_pajak', '11');
+            } else {
+                setData('has_tax', true);
+                setData('pajak', 'PPh 23');
+                setData('persen_pajak', hasNpwp ? '2' : '4');
+            }
+        } else if (taxes.is_pph22) {
+            setData('has_tax', true);
+            setData('pajak', 'PPh 22');
+            setData('persen_pajak', hasNpwp ? '1.5' : '3');
+        } else if (taxes.is_ppn && totalTransaksi >= 2000000) {
+            setData('has_tax', true);
+            setData('pajak', 'PPN');
+            setData('persen_pajak', '11');
+        }
+
+        if (hasPB1) {
+            setData('has_local_tax', true);
+            setData('pajak_daerah', 'PB1');
+            setData('persen_pajak_daerah', '10');
+        }
+    }, [itemsKey]); // Hanya re-run saat item selection berubah
+
+    // Auto-set PPh 21 persen berdasarkan status pegawai & golongan
+    useEffect(() => {
+        if (!detectedTaxes.is_pph21 || data.pajak !== 'PPh 21') return;
+
+        const hasNpwp = !!(data.npwp && data.npwp.trim() !== '' && !data.no_npwp);
+
+        if (statusPegawai === 'ASN') {
+            let rate = '0';
+            if (golonganASN === 'Golongan III') rate = '5';
+            else if (golonganASN === 'Golongan IV') rate = '15';
+            setData('persen_pajak', rate);
+        } else if (statusPegawai === 'Non-ASN') {
+            const rate = getTarifPPh21NonASN(totalTransaksi, hasNpwp);
+            setData('persen_pajak', String(rate));
+        }
+    }, [statusPegawai, golonganASN]);
+
+    // Auto-calculate Tax Amount
     useEffect(() => {
         const totalTransaction = data.items.reduce((sum: number, item: any) => sum + (item.total || 0), 0);
 
         // Main Tax
-        if (data.has_tax) {
+        if (data.has_tax && data.persen_pajak) {
             const amount = Math.round(totalTransaction * (Number(data.persen_pajak) / 100));
             if (data.total_pajak !== amount) {
                 setData('total_pajak', amount);
             }
+        } else if (!data.has_tax && data.total_pajak !== 0) {
+            setData('total_pajak', 0);
         }
 
         // Local Tax
-        if (data.has_local_tax) {
+        if (data.has_local_tax && data.persen_pajak_daerah) {
             const amount = Math.round(totalTransaction * (Number(data.persen_pajak_daerah) / 100));
             if (data.total_pajak_daerah !== amount) {
                 setData('total_pajak_daerah', amount);
             }
+        } else if (!data.has_local_tax && data.total_pajak_daerah !== 0) {
+            setData('total_pajak_daerah', 0);
         }
     }, [data.has_tax, data.persen_pajak, data.has_local_tax, data.persen_pajak_daerah, data.items]);
 
@@ -423,9 +581,63 @@ export default function Bku({
     ];
 
     const closeModal = () => {
+        // Jangan tutup modal utama jika modal tarif pajak sedang terbuka
+        if (showTarifModal) return;
         setIsModalOpen(false);
         setCurrentStep(1);
         reset();
+    };
+
+    // Search Toko Handler (debounced)
+    const handleSearchToko = (value: string) => {
+        setData('nama_toko', value);
+        
+        if (tokoSearchRef.current) {
+            clearTimeout(tokoSearchRef.current);
+        }
+
+        if (value.trim().length < 2) {
+            setTokoResults([]);
+            setShowTokoDropdown(false);
+            return;
+        }
+
+        // Tampilkan dropdown segera dengan status "Mencari..."
+        setShowTokoDropdown(true);
+        setIsSearchingToko(true);
+
+        tokoSearchRef.current = setTimeout(() => {
+            console.log("Searching toko for:", value);
+            axios.get(route('api.bku.search-toko', { q: value }))
+                .then(res => {
+                    console.log("Search response:", res.data);
+                    if (res.data.success) {
+                        setTokoResults(res.data.data || []);
+                    } else {
+                        setTokoResults([]);
+                    }
+                })
+                .catch(err => {
+                    console.error("Search error:", err.response || err);
+                    setTokoResults([]);
+                })
+                .finally(() => {
+                    setIsSearchingToko(false);
+                });
+        }, 500); // 500ms debounce
+    };
+
+    const selectToko = (toko: any) => {
+        setData('nama_toko', toko.nama_toko || '');
+        setData('alamat_toko', toko.alamat_toko || '');
+        setData('nomor_telepon', toko.nomor_telepon || '');
+        setData('npwp', toko.npwp || '');
+        setShowTokoDropdown(false);
+    };
+
+    const addNewToko = () => {
+        // Cukup tutup dropdown, nama_toko sudah terisi dari input
+        setShowTokoDropdown(false);
     };
 
     const nextStep = () => {
@@ -444,8 +656,12 @@ export default function Bku({
                     if (element) element.focus();
                 }, 0);
                 return;
+            } else if (!data.npwp && !data.no_npwp) {
+                setNpwpError('Wajib di isi. Centang jika tidak memiliki NPWP.');
+                return;
             }
         }
+        setNpwpError('');
         setCurrentStep(prev => Math.min(prev + 1, 3));
     };
 
@@ -1004,17 +1220,73 @@ export default function Bku({
                     <>
                         <InputLabel value="Nama Toko/Badan Usaha" className="!text-[10pt]" />
                         <div className="relative mt-1">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <svg className="h-4 w-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
-                                </svg>
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
+                                {isSearchingToko ? (
+                                    <svg className="animate-spin h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                    </svg>
+                                ) : (
+                                    <svg className="h-4 w-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+                                    </svg>
+                                )}
                             </div>
                             <TextInput
                                 className="pl-9 block w-full text-gray-900 !text-[10pt]"
                                 value={data.nama_toko}
-                                onChange={(e) => setData('nama_toko', e.target.value)}
-                                placeholder="Nama toko tempat Anda membeli barang/jasa"
+                                onChange={(e) => handleSearchToko(e.target.value)}
+                                onFocus={() => { if (data.nama_toko.trim().length >= 2) setShowTokoDropdown(true); }}
+                                onBlur={() => setTimeout(() => setShowTokoDropdown(false), 200)}
+                                placeholder="Cari atau ketik nama toko/badan usaha"
+                                autoComplete="off"
                             />
+
+                            {/* Dropdown Results */}
+                            {showTokoDropdown && (
+                                <div className="absolute z-50 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                                    {isSearchingToko ? (
+                                        <div className="p-3 text-center text-[10pt] text-gray-500">Mencari...</div>
+                                    ) : tokoResults.length > 0 ? (
+                                        <>
+                                            {tokoResults.map((toko, idx) => (
+                                                <button
+                                                    key={idx}
+                                                    type="button"
+                                                    onMouseDown={(e) => { e.preventDefault(); selectToko(toko); }}
+                                                    className="w-full text-left px-3 py-2 hover:bg-blue-50 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700 last:border-b-0 transition-colors"
+                                                >
+                                                    <div className="text-[10pt] font-medium text-gray-900 dark:text-gray-100">{toko.nama_toko}</div>
+                                                    {toko.alamat_toko && (
+                                                        <div className="text-[9pt] text-gray-500 dark:text-gray-400 truncate">{toko.alamat_toko}</div>
+                                                    )}
+                                                </button>
+                                            ))}
+                                            {/* Tambah opsi baru di bawah */}
+                                            <button
+                                                type="button"
+                                                onMouseDown={(e) => { e.preventDefault(); addNewToko(); }}
+                                                className="w-full text-left px-3 py-2 hover:bg-green-50 dark:hover:bg-green-900/20 border-t border-gray-200 dark:border-gray-600 transition-colors"
+                                            >
+                                                <span className="text-[10pt] text-green-700 dark:text-green-400 font-semibold">+ Tambah "{data.nama_toko}"</span>
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <div className="p-3">
+                                            <p className="text-[10pt] text-gray-500 dark:text-gray-400 mb-2">
+                                                Kata kunci "<span className="font-medium">{data.nama_toko}</span>" tidak ditemukan.
+                                            </p>
+                                            <button
+                                                type="button"
+                                                onMouseDown={(e) => { e.preventDefault(); addNewToko(); }}
+                                                className="w-full text-left px-3 py-2 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-md transition-colors"
+                                            >
+                                                <span className="text-[10pt] text-green-700 dark:text-green-400 font-semibold">+ Tambah "{data.nama_toko}"</span>
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </>
                 )}
@@ -1035,8 +1307,8 @@ export default function Bku({
                 <InputError message={alamatTokoError} className="mt-2" />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 ms-2 me-2">
-                <div>
+            <div className="grid grid-cols-1 md:grid-cols-1 gap-3 ms-2 me-2">
+                {/* <div>
                     <InputLabel value="Nomor Telepon" className="!text-[10pt]" />
                     <TextInput
                         className="mt-1 block w-full text-gray-900 !text-[10pt]"
@@ -1044,22 +1316,31 @@ export default function Bku({
                         onChange={(e) => setData('nomor_telepon', e.target.value)}
                         placeholder="Nomor kontak (Opsional)"
                     />
-                </div>
+                </div> */}
 
                 <div>
                     <InputLabel value="NPWP Toko/Badan Usaha" className="!text-[10pt]" />
                     <TextInput
-                        className="mt-1 block w-full text-gray-900 disabled:bg-gray-100 disabled:text-gray-500 !text-[10pt]"
+                        className={`mt-1 block w-full text-gray-900 disabled:bg-gray-100 disabled:text-gray-500 !text-[10pt] ${npwpError ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
                         value={data.npwp}
-                        onChange={(e) => setData('npwp', e.target.value)}
-                        placeholder="NPWP (Opsional)"
+                        onChange={(e) => {
+                            const value = e.target.value.replace(/\D/g, '').slice(0, 16);
+                            setData('npwp', value);
+                            if (value) setNpwpError('');
+                        }}
+                        placeholder="NPWP (16 digit angka)"
                         disabled={data.no_npwp}
+                        maxLength={16}
                     />
+                    <InputError message={npwpError} className="mt-1" />
                     <div className="mt-1 flex items-center gap-2">
                         <input
                             type="checkbox"
                             checked={data.no_npwp}
-                            onChange={(e) => setData('no_npwp', e.target.checked)}
+                            onChange={(e) => {
+                                setData('no_npwp', e.target.checked);
+                                if (e.target.checked) setNpwpError('');
+                            }}
                             className="rounded border-gray-300 text-blue-600 shadow-sm focus:ring-blue-500 h-3 w-3"
                         />
                         <span className="text-gray-600 dark:text-gray-400 text-[9pt]">Tidak punya NPWP</span>
@@ -1338,8 +1619,26 @@ export default function Bku({
                 ));
             })()}
 
-            {/* Tax Inputs */}
-            <div className="mt-4 space-y-3">
+            {/* Tax Inputs - Auto Detection */}
+            <div className="mt-4 space-y-4">
+
+                {/* Detected Taxes Banner */}
+                {/* {(detectedTaxes.is_ppn || detectedTaxes.is_pph21 || detectedTaxes.is_pph22 || detectedTaxes.is_pph23 || detectedTaxes.is_pph4) && (
+                    <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg p-3">
+                        <div className="flex items-center gap-2 mb-2">
+                            <svg className="w-5 h-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            <span className="text-amber-800 dark:text-amber-200 text-[10pt] font-bold">Pajak Terdeteksi dari Rekening Belanja</span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            {detectedTaxes.is_ppn && <span className="inline-flex py-0.5 px-2 rounded-full text-[9pt] font-semibold bg-blue-100 text-blue-800 border border-blue-200">PPN</span>}
+                            {detectedTaxes.is_pph21 && <span className="inline-flex py-0.5 px-2 rounded-full text-[9pt] font-semibold bg-green-100 text-green-800 border border-green-200">PPh 21</span>}
+                            {detectedTaxes.is_pph22 && <span className="inline-flex py-0.5 px-2 rounded-full text-[9pt] font-semibold bg-purple-100 text-purple-800 border border-purple-200">PPh 22</span>}
+                            {detectedTaxes.is_pph23 && <span className="inline-flex py-0.5 px-2 rounded-full text-[9pt] font-semibold bg-orange-100 text-orange-800 border border-orange-200">PPh 23</span>}
+                            {detectedTaxes.is_pph4 && <span className="inline-flex py-0.5 px-2 rounded-full text-[9pt] font-semibold bg-red-100 text-red-800 border border-red-200">PPh 4(2)</span>}
+                        </div>
+                    </div>
+                )} */}
+
                 {/* Main Tax Checkbox */}
                 <div className="flex items-center gap-2">
                     <input
@@ -1348,24 +1647,33 @@ export default function Bku({
                         onChange={(e) => setData('has_tax', e.target.checked)}
                         className="rounded border-gray-300 text-blue-600 shadow-sm focus:ring-blue-500"
                     />
-                    <span className="text-gray-700 dark:text-gray-300 text-[10pt] font-medium">Centang jika pembelanjaan ini dikenakan pajak</span>
+                    <span className="text-gray-700 dark:text-gray-300 text-[10pt] font-medium">Kenakan pajak pada pembelanjaan ini</span>
                 </div>
 
                 {/* Tax Card */}
                 {data.has_tax && (
-                    <div className="bg-white dark:bg-gray-800 p-2 rounded-lg border border-gray-200 dark:border-gray-700 space-y-3">
+                    <div className="bg-white dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-700 space-y-4">
+                        {/* Row: Jenis Pajak + Persen + Total */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                             <div className="space-y-1">
                                 <InputLabel value="Jenis Pajak" className="!text-[10pt]" />
                                 <select
                                     value={data.pajak}
-                                    onChange={(e) => setData('pajak', e.target.value)}
+                                    onChange={(e) => {
+                                        setData('pajak', e.target.value);
+                                        // Reset status pegawai jika bukan PPh 21
+                                        if (e.target.value !== 'PPh 21') {
+                                            setStatusPegawai('');
+                                            setGolonganASN('');
+                                        }
+                                    }}
                                     className="w-full text-gray-900 border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 !text-[10pt]"
                                 >
                                     <option value="PPN">PPN</option>
                                     <option value="PPh 21">PPh 21</option>
                                     <option value="PPh 22">PPh 22</option>
                                     <option value="PPh 23">PPh 23</option>
+                                    <option value="PPh 4(2)">PPh 4(2)</option>
                                 </select>
                             </div>
                             <div className="space-y-1">
@@ -1374,20 +1682,87 @@ export default function Bku({
                                     type="number"
                                     min="0"
                                     max="100"
+                                    step="0.01"
                                     value={data.persen_pajak}
                                     onChange={(e) => setData('persen_pajak', e.target.value)}
                                     className="w-full text-gray-900 !text-[10pt]"
+                                    placeholder="Isi persen pajak"
                                 />
                             </div>
                             <div className="space-y-1">
                                 <InputLabel value="Total Pajak" className="!text-[10pt]" />
                                 <TextInput
-                                    value={data.total_pajak.toLocaleString('id-ID')}
+                                    value={formatCurrency(data.total_pajak)}
                                     disabled
                                     className="w-full bg-gray-100 text-gray-900 !text-[10pt]"
                                 />
                             </div>
                         </div>
+
+                        {/* PPh 21 Specific: ASN / Non-ASN */}
+                        {data.pajak === 'PPh 21' && detectedTaxes.is_pph21 && (
+                            <div className="border-t border-gray-200 dark:border-gray-700 pt-3">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                                    <div className="space-y-1">
+                                        <InputLabel value="Status Penerima Honor" className="!text-[10pt]" />
+                                        <select
+                                            value={statusPegawai}
+                                            onChange={(e) => {
+                                                setStatusPegawai(e.target.value as 'ASN' | 'Non-ASN' | '');
+                                                setGolonganASN('');
+                                            }}
+                                            className="w-full text-gray-900 border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 !text-[10pt]"
+                                        >
+                                            <option value="">-- Pilih Status --</option>
+                                            <option value="ASN">ASN (PNS)</option>
+                                            <option value="Non-ASN">Non-ASN</option>
+                                        </select>
+
+                                        {/* Non-ASN: Info card + tarif (Sekarang di bawah select) */}
+                                        {statusPegawai === 'Non-ASN' && (
+                                            <div className="mt-2 bg-orange-50 dark:bg-orange-900/20 p-3 rounded-lg border border-orange-200 dark:border-orange-700 space-y-2">
+                                                <div className="flex items-center justify-between">
+                                                    <p className="text-[9pt] text-orange-700 dark:text-orange-300">
+                                                        Tarif: <strong>{data.persen_pajak}%</strong>
+                                                        {data.npwp && !data.no_npwp ? ' (NPWP)' : ' (Non-NPWP — 2x)'}
+                                                    </p>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setShowTarifModal(true)}
+                                                        className="text-[9pt] font-semibold text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 underline"
+                                                    >
+                                                        Info Pajak
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* ASN: Pilih Golongan (Tetap di samping di kolom ke-2) */}
+                                    {statusPegawai === 'ASN' && (
+                                        <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-200 dark:border-blue-700">
+                                            <InputLabel value="Golongan PNS" className="!text-[10pt] mb-1" />
+                                            <select
+                                                value={golonganASN}
+                                                onChange={(e) => setGolonganASN(e.target.value)}
+                                                className="w-full text-gray-900 border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 !text-[10pt]"
+                                            >
+                                                <option value="">-- Pilih Golongan --</option>
+                                                <option value="Golongan I">Golongan I (0%)</option>
+                                                <option value="Golongan II">Golongan II (0%)</option>
+                                                <option value="Golongan III">Golongan III (5%)</option>
+                                                <option value="Golongan IV">Golongan IV (15%)</option>
+                                            </select>
+                                            {golonganASN && (
+                                                <p className="text-[9pt] text-blue-700 dark:text-blue-300 mt-2">
+                                                    Tarif PPh 21 untuk {golonganASN}: <strong>{data.persen_pajak}%</strong>
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -1399,12 +1774,12 @@ export default function Bku({
                         onChange={(e) => setData('has_local_tax', e.target.checked)}
                         className="rounded border-gray-300 text-blue-600 shadow-sm focus:ring-blue-500"
                     />
-                    <span className="text-gray-700 dark:text-gray-300 text-[10pt] font-medium">Centang jika pembelanjaan ini dikenakan pajak daerah</span>
+                    <span className="text-gray-700 dark:text-gray-300 text-[10pt] font-medium">Kenakan pajak daerah pada pembelanjaan ini</span>
                 </div>
 
                 {/* Local Tax Card */}
                 {data.has_local_tax && (
-                    <div className="bg-white dark:bg-gray-800 p-2 rounded-lg border border-gray-200 dark:border-gray-700 space-y-3">
+                    <div className="bg-white dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-700 space-y-3">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                             <div className="space-y-1">
                                 <InputLabel value="Jenis Pajak Daerah" className="!text-[10pt]" />
@@ -1422,15 +1797,16 @@ export default function Bku({
                                     type="number"
                                     min="0"
                                     max="100"
+                                    step="0.01"
                                     value={data.persen_pajak_daerah}
                                     onChange={(e) => setData('persen_pajak_daerah', e.target.value)}
                                     className="w-full text-gray-900 !text-[10pt]"
                                 />
                             </div>
                             <div className="space-y-1">
-                                <InputLabel value="Total Pajak" className="!text-[10pt]" />
+                                <InputLabel value="Total Pajak Daerah" className="!text-[10pt]" />
                                 <TextInput
-                                    value={data.total_pajak_daerah.toLocaleString('id-ID')}
+                                    value={formatCurrency(data.total_pajak_daerah)}
                                     disabled
                                     className="w-full bg-gray-100 text-gray-900 !text-[10pt]"
                                 />
@@ -1940,7 +2316,7 @@ export default function Bku({
             </div>
 
             {/* Modal Tambah Pembelanjaan */}
-            <Modal show={isModalOpen} onClose={closeModal} maxWidth="4xl">
+            <Modal show={isModalOpen} onClose={closeModal} closeable={false} maxWidth="4xl">
                 <div className="relative bg-white dark:bg-gray-800 rounded-lg">
                     {/* Beautiful Header Background */}
                     <div className="bg-gradient-to-r from-cyan-600 to-blue-600 p-6 rounded-t-lg shadow-sm">
@@ -2533,6 +2909,80 @@ export default function Bku({
                     </div>
                 )}
             </Modal>
+
+            {/* Modal Informasi Tarif Pajak PPh 21 — Custom overlay (bukan HeadlessUI Dialog) agar tidak ikut menutup modal induk */}
+            {showTarifModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 py-6" onClick={() => setShowTarifModal(false)}>
+                    <div className="absolute inset-0 bg-gray-500/75" />
+                    <div
+                        className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl sm:max-w-2xl sm:w-full max-h-[85vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="p-6 max-h-[80vh] overflow-y-auto">
+                            <div className="flex justify-between items-center mb-4">
+                                <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Informasi Tarif Pajak</h2>
+                                <button onClick={() => setShowTarifModal(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                </button>
+                            </div>
+
+                            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-3 mb-4">
+                                <p className="text-[10pt] text-blue-800 dark:text-blue-200">
+                                    Berdasarkan <strong>PP 58 Tahun 2023</strong> dan <strong>PMK 168 Tahun 2023</strong>, terdapat penyesuaian besaran PPh 21 untuk honor.
+                                </p>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {/* Tarif Dengan NPWP */}
+                                <div>
+                                    <h3 className="text-[10pt] font-bold text-green-700 dark:text-green-400 mb-2">Tarif Non-PNS dengan NIK/NPWP</h3>
+                                    <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                                        <table className="w-full text-[9pt]">
+                                            <thead className="bg-green-50 dark:bg-green-900/30">
+                                                <tr>
+                                                    <th className="px-2 py-1.5 text-left font-semibold text-gray-700 dark:text-gray-300">Tarif</th>
+                                                    <th className="px-2 py-1.5 text-left font-semibold text-gray-700 dark:text-gray-300">Rentang Penghasilan</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                                                {TARIF_PPH21_DENGAN_NPWP.map((t, i) => (
+                                                    <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-700/30">
+                                                        <td className="px-2 py-1 font-semibold text-green-700 dark:text-green-400">{t.rate}%</td>
+                                                        <td className="px-2 py-1 text-gray-600 dark:text-gray-400">Rp {(t.min / 1000000).toFixed(1)} jt - Rp {(t.max / 1000000).toFixed(1)} jt</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                {/* Tarif Tanpa NPWP */}
+                                <div>
+                                    <h3 className="text-[10pt] font-bold text-red-700 dark:text-red-400 mb-2">Tarif Non-PNS tanpa NIK/NPWP</h3>
+                                    <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                                        <table className="w-full text-[9pt]">
+                                            <thead className="bg-red-50 dark:bg-red-900/30">
+                                                <tr>
+                                                    <th className="px-2 py-1.5 text-left font-semibold text-gray-700 dark:text-gray-300">Tarif</th>
+                                                    <th className="px-2 py-1.5 text-left font-semibold text-gray-700 dark:text-gray-300">Rentang Penghasilan</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                                                {TARIF_PPH21_TANPA_NPWP.map((t, i) => (
+                                                    <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-700/30">
+                                                        <td className="px-2 py-1 font-semibold text-red-700 dark:text-red-400">{t.rate}%</td>
+                                                        <td className="px-2 py-1 text-gray-600 dark:text-gray-400">Rp {(t.min / 1000000).toFixed(1)} jt - Rp {(t.max / 1000000).toFixed(1)} jt</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </AuthenticatedLayout >
     );
 }
