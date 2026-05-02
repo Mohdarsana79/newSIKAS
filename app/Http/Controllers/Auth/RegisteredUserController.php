@@ -42,7 +42,7 @@ class RegisteredUserController extends Controller
         $user = User::create([
             'name' => $request->name,
             'username' => $request->username,
-            'email' => $request->username . '@sikas.local',
+            'email' => str_contains($request->username, '@') ? $request->username : $request->username . '@sikas.local',
             'password' => Hash::make($request->password),
         ]);
 

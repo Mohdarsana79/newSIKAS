@@ -161,6 +161,15 @@ export default function Login({
                         </button>
                     </div>
                     <InputError message={errors.password} className="mt-2" />
+
+                    <div className="flex items-center justify-end mt-1">
+                        <Link
+                            href={route('password.request')}
+                            className="text-sm font-medium text-indigo-600 hover:text-indigo-500 transition-colors"
+                        >
+                            Lupa Password?
+                        </Link>
+                    </div>
                 </div>
 
                 <div className="flex items-center">
