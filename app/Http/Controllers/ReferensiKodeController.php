@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Symfony\Component\Process\Process;
+use Illuminate\Support\Facades\Log;
 
 class ReferensiKodeController extends Controller
 {
@@ -31,17 +32,54 @@ class ReferensiKodeController extends Controller
 
         $env = $_SERVER;
         unset($env['OPENSSL_CONF']);
-        
-        // Inject essential Windows vars
-        $env['SystemRoot'] = $env['SystemRoot'] ?? 'C:\\Windows';
-        $env['SystemDrive'] = $env['SystemDrive'] ?? 'C:';
-        $env['USERPROFILE'] = $env['USERPROFILE'] ?? 'C:\\Users\\Digitalisasi';
-        $env['APPDATA'] = $env['APPDATA'] ?? 'C:\\Users\\Digitalisasi\\AppData\\Roaming';
-        $env['LOCALAPPDATA'] = $env['LOCALAPPDATA'] ?? 'C:\\Users\\Digitalisasi\\AppData\\Local';
-        $env['TEMP'] = $env['TEMP'] ?? 'C:\\Users\\Digitalisasi\\AppData\\Local\\Temp';
-        $env['TMP'] = $env['TMP'] ?? 'C:\\Users\\Digitalisasi\\AppData\\Local\\Temp';
 
-        $process = new Process([$pythonPath, $scriptPath, $tipe, $year], null, $env);
+        $appdata = $env['APPDATA'] ?? null;
+        $userprofile = $env['USERPROFILE'] ?? null;
+
+        if (empty($appdata)) {
+            $appdata = trim(shell_exec("powershell -Command \"[Environment]::GetFolderPath('ApplicationData')\""));
+        }
+
+        if (empty($userprofile)) {
+            $userprofile = trim(shell_exec("powershell -Command \"[Environment]::GetFolderPath('UserProfile')\""));
+        }
+
+        if (empty($userprofile) && !empty($appdata)) {
+            $userprofile = dirname(dirname($appdata));
+        }
+
+        if (empty($appdata) && !empty($userprofile)) {
+            $appdata = $userprofile . '\\AppData\\Roaming';
+        }
+
+        $env['SystemRoot']    = $env['SystemRoot']    ?? 'C:\\Windows';
+        $env['SystemDrive']   = $env['SystemDrive']   ?? 'C:';
+        $env['USERPROFILE']   = $userprofile ?: ($env['USERPROFILE'] ?? 'C:\\Users\\Digitalisasi');
+        $env['APPDATA']       = $appdata     ?: ($env['APPDATA']     ?? 'C:\\Users\\Digitalisasi\\AppData\\Roaming');
+        $env['LOCALAPPDATA']  = $env['LOCALAPPDATA']  ?? ($userprofile ? $userprofile . '\\AppData\\Local' : '');
+        $env['TEMP']          = $env['TEMP']           ?? ($userprofile ? $userprofile . '\\AppData\\Local\\Temp' : '');
+        $env['TMP']           = $env['TMP']            ?? $env['TEMP'];
+
+        // Pastikan path dasar Windows tersedia (Sangat Penting untuk Python & SQLCipher)
+        $env['SystemRoot']    = $env['SystemRoot']    ?? 'C:\\Windows';
+        $env['SystemDrive']   = $env['SystemDrive']   ?? 'C:';
+        $env['USERPROFILE']   = !empty($userprofile) ? $userprofile : ($env['USERPROFILE'] ?? 'C:\\Users\\Digitalisasi');
+        $env['APPDATA']       = !empty($appdata)     ? $appdata     : ($env['APPDATA']     ?? 'C:\\Users\\Digitalisasi\\AppData\\Roaming');
+        $env['LOCALAPPDATA']  = $env['LOCALAPPDATA']  ?? (empty($userprofile) ? '' : $userprofile . '\\AppData\\Local');
+        $env['TEMP']          = $env['TEMP']           ?? (empty($userprofile) ? '' : $userprofile . '\\AppData\\Local\\Temp');
+        $env['TMP']           = $env['TMP']            ?? $env['TEMP'];
+
+        Log::info('Arkas Referensi Fetch ENV Final', [
+            'APPDATA'    => $env['APPDATA'],
+            'USERPROFILE'=> $env['USERPROFILE'],
+            'SystemDrive'=> $env['SystemDrive']
+        ]);
+
+        $dbPathManual = env('ARKAS_DB_PATH', '');
+        $dbPathManual = trim($dbPathManual, '"\' ');
+        $dbPathManual = str_replace('\\', '/', $dbPathManual);
+
+        $process = new Process([$pythonPath, $scriptPath, $tipe, $year, $dbPathManual], null, $env);
         // Bisa memakan waktu lebih lama karena data > 5000 baris
         $process->setTimeout(60); 
         $process->run();
@@ -129,16 +167,47 @@ class ReferensiKodeController extends Controller
 
         $env = $_SERVER;
         unset($env['OPENSSL_CONF']);
-        $env['SystemRoot'] = $env['SystemRoot'] ?? 'C:\\Windows';
-        $env['SystemDrive'] = $env['SystemDrive'] ?? 'C:';
-        $env['USERPROFILE'] = $env['USERPROFILE'] ?? 'C:\\Users\\Digitalisasi';
-        $env['APPDATA'] = $env['APPDATA'] ?? 'C:\\Users\\Digitalisasi\\AppData\\Roaming';
-        $env['LOCALAPPDATA'] = $env['LOCALAPPDATA'] ?? 'C:\\Users\\Digitalisasi\\AppData\\Local';
-        $env['TEMP'] = $env['TEMP'] ?? 'C:\\Users\\Digitalisasi\\AppData\\Local\\Temp';
-        $env['TMP'] = $env['TMP'] ?? 'C:\\Users\\Digitalisasi\\AppData\\Local\\Temp';
 
-        $process = new Process([$pythonPath, $scriptPath, $tipe, $year], null, $env);
-        $process->setTimeout(60); 
+        $appdata = $env['APPDATA'] ?? null;
+        $userprofile = $env['USERPROFILE'] ?? null;
+
+        if (empty($appdata)) {
+            $appdata = trim(shell_exec("powershell -Command \"[Environment]::GetFolderPath('ApplicationData')\""));
+        }
+
+        if (empty($userprofile)) {
+            $userprofile = trim(shell_exec("powershell -Command \"[Environment]::GetFolderPath('UserProfile')\""));
+        }
+
+        if (empty($userprofile) && !empty($appdata)) {
+            $userprofile = dirname(dirname($appdata));
+        }
+
+        if (empty($appdata) && !empty($userprofile)) {
+            $appdata = $userprofile . '\\AppData\\Roaming';
+        }
+
+        // Pastikan path dasar Windows tersedia (Sangat Penting untuk Python & SQLCipher)
+        $env['SystemRoot']    = $env['SystemRoot']    ?? 'C:\\Windows';
+        $env['SystemDrive']   = $env['SystemDrive']   ?? 'C:';
+        $env['USERPROFILE']   = !empty($userprofile) ? $userprofile : ($env['USERPROFILE'] ?? 'C:\\Users\\Digitalisasi');
+        $env['APPDATA']       = !empty($appdata)     ? $appdata     : ($env['APPDATA']     ?? 'C:\\Users\\Digitalisasi\\AppData\\Roaming');
+        $env['LOCALAPPDATA']  = $env['LOCALAPPDATA']  ?? (empty($userprofile) ? '' : $userprofile . '\\AppData\\Local');
+        $env['TEMP']          = $env['TEMP']           ?? (empty($userprofile) ? '' : $userprofile . '\\AppData\\Local\\Temp');
+        $env['TMP']           = $env['TMP']            ?? $env['TEMP'];
+
+        Log::info('Arkas Referensi Sync ENV Final', [
+            'APPDATA'    => $env['APPDATA'],
+            'USERPROFILE'=> $env['USERPROFILE'],
+            'SystemDrive'=> $env['SystemDrive']
+        ]);
+
+        $dbPathManual = env('ARKAS_DB_PATH', '');
+        $dbPathManual = trim($dbPathManual, '"\' ');
+        $dbPathManual = str_replace('\\', '/', $dbPathManual);
+
+        $process = new Process([$pythonPath, $scriptPath, $tipe, $year, $dbPathManual], null, $env);
+        $process->setTimeout(120); 
         $process->run();
 
         if (!$process->isSuccessful()) {

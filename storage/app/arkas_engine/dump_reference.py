@@ -2,7 +2,46 @@ import sqlite3
 import json
 import sys
 import os
+import glob
 import traceback
+
+def find_arkas_db(manual_path=None):
+    """
+    Mencari file arkas.db secara dinamis.
+    Jika manual_path diberikan, gunakan itu dulu.
+    """
+    if manual_path:
+        # Bersihkan tanda petik dan spasi liar
+        manual_path = manual_path.strip().strip('"').strip("'")
+        if os.path.exists(manual_path):
+            return manual_path
+
+    # Strategi 1: Dari APPDATA environment variable
+    appdata = os.environ.get('APPDATA', '')
+    if appdata:
+        path = os.path.join(appdata, 'Arkas', 'arkas.db')
+        if os.path.exists(path):
+            return path
+
+    # Strategi 2: Dari USERPROFILE + AppData/Roaming
+    userprofile = os.environ.get('USERPROFILE', '')
+    if userprofile:
+        path = os.path.join(userprofile, 'AppData', 'Roaming', 'Arkas', 'arkas.db')
+        if os.path.exists(path):
+            return path
+
+    # Strategi 3: Glob ke semua folder pengguna
+    system_drive = os.environ.get('SystemDrive', 'C:')
+    patterns = [
+        os.path.join(system_drive, 'Users', '*', 'AppData', 'Roaming', 'Arkas', 'arkas.db'),
+        os.path.join(system_drive, 'Users', '*', 'AppData', 'Local', 'Arkas', 'arkas.db'),
+    ]
+    for pattern in patterns:
+        matches = glob.glob(pattern)
+        if matches:
+            return matches[0]
+
+    return None
 
 def main():
     try:
@@ -12,21 +51,21 @@ def main():
 
         tipe = sys.argv[1]
         tahun = sys.argv[2]
+        manual_db_path = sys.argv[3] if len(sys.argv) > 3 and sys.argv[3] != "" else None
 
-        appdata = os.environ.get('APPDATA', '')
-        if not appdata:
-            print(json.dumps({"error": "APPDATA environment variable tidak ditemukan."}))
-            sys.exit(1)
-
-        db_path = os.path.join(appdata, 'Arkas', 'arkas.db')
-
-        if not os.path.exists(db_path):
-            print(json.dumps({"error": f"Database ARKAS tidak ditemukan di {db_path}"}))
+        db_path = find_arkas_db(manual_db_path)
+        if not db_path:
+            error_msg = "Database ARKAS tidak ditemukan."
+            if manual_db_path:
+                error_msg += f" Jalur manual salah: {manual_db_path}"
+            
+            print(json.dumps({
+                "error": error_msg + " Pastikan lokasi database sudah benar di menu Path Arkas."
+            }))
             sys.exit(1)
 
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
-
         cursor.execute("PRAGMA cipher_compatibility = 4;")
         cursor.execute("PRAGMA key = 'K3md1kbudRIS3n4yan';")
 
@@ -38,7 +77,6 @@ def main():
             sys.exit(1)
 
         results = []
-
         if tipe == 'kegiatan':
             query = """
                 SELECT DISTINCT id_kode, uraian_kode 
@@ -47,25 +85,20 @@ def main():
                 ORDER BY id_kode
             """
             cursor.execute(query, (tahun,))
-            
             all_codes = {}
             for row in cursor.fetchall():
                 all_codes[row[0]] = row[1]
-                
             for id_kode, uraian in all_codes.items():
                 parts = id_kode.strip('.').split('.')
-                # Hanya ambil yang level 3 ke atas (uraian kegiatan sesungguhnya)
                 if len(parts) >= 3:
                     program_kode = parts[0] + '.'
                     sub_program_kode = parts[0] + '.' + parts[1] + '.'
-                    
                     results.append({
                         "id_kode": id_kode,
                         "program": all_codes.get(program_kode, ''),
                         "sub_program": all_codes.get(sub_program_kode, ''),
                         "uraian_kode": uraian
                     })
-
         elif tipe == 'rekening':
             query = """
                 SELECT DISTINCT kode_rekening, rekening, is_ppn, is_pph21, is_pph22, is_pph23, is_pph4
@@ -76,19 +109,14 @@ def main():
             cursor.execute(query, (tahun,))
             for row in cursor.fetchall():
                 kode = row[0]
-                
-                # Hanya ambil kode rekening yang lengkap (6 bagian, contoh: 5.2.05.08.01.0005)
                 parts = kode.strip('.').split('.')
-                if len(parts) < 6:
-                    continue
-
+                if len(parts) < 6: continue
                 pajak_list = []
                 if row[2] == 1: pajak_list.append("PPN")
                 if row[3] == 1: pajak_list.append("PPh 21")
                 if row[4] == 1: pajak_list.append("PPh 22")
                 if row[5] == 1: pajak_list.append("PPh 23")
                 if row[6] == 1: pajak_list.append("PPh 4(2)")
-
                 results.append({
                     "kode_rekening": kode,
                     "rekening": row[1],
@@ -104,8 +132,7 @@ def main():
             sys.exit(1)
 
         conn.close()
-
-        print(json.dumps({"status": "success", "data": results}))
+        print(json.dumps({"status": "success", "data": results, "db_path": db_path}))
 
     except Exception as e:
         error_msg = f"{str(e)}\n{traceback.format_exc()}"

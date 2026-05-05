@@ -127,6 +127,8 @@ export default function Bku({
     const [isReopenModalOpen, setIsReopenModalOpen] = useState(false);
     const [isReopening, setIsReopening] = useState(false);
     const [currentStep, setCurrentStep] = useState(1);
+    const [isNoteConfirmationOpen, setIsNoteConfirmationOpen] = useState(false);
+    const [isDuplicateNoteModalOpen, setIsDuplicateNoteModalOpen] = useState(false);
 
     // Step 2 Local State
     const [selectedActivityId, setSelectedActivityId] = useState<string>('');
@@ -640,6 +642,28 @@ export default function Bku({
         setShowTokoDropdown(false);
     };
 
+    const isNoteDuplicate = (noteNumber: string) => {
+        if (!noteNumber) return false;
+        // Cek di bkuData
+        return (bkuData || []).some((item: any) => 
+            item.id_transaksi === noteNumber || item.nomor_nota === noteNumber
+        );
+    };
+
+    const generateNextBpu = () => {
+        // Jika tidak ada lastNoteNumber, mulai dari BPU-001
+        if (!lastNoteNumber) return 'BPU-001';
+        
+        // Cari angka terakhir dari BPU-XXX
+        const match = lastNoteNumber.match(/BPU-(\d+)/);
+        if (match) {
+            const nextNumber = parseInt(match[1]) + 1;
+            return `BPU-${String(nextNumber).padStart(3, '0')}`;
+        }
+        
+        return 'BPU-001';
+    };
+
     const nextStep = () => {
         if (currentStep === 1) {
             if (!data.tanggal_transaksi) {
@@ -661,8 +685,33 @@ export default function Bku({
                 return;
             }
         }
+        
+        if (currentStep === 2) {
+            // Check Duplicate
+            if (data.nomor_nota && isNoteDuplicate(data.nomor_nota)) {
+                setIsDuplicateNoteModalOpen(true);
+                return;
+            }
+
+            // Check Empty
+            if (!data.nomor_nota) {
+                setIsNoteConfirmationOpen(true);
+                return;
+            }
+        }
+
         setNpwpError('');
         setCurrentStep(prev => Math.min(prev + 1, 3));
+    };
+
+    const handleConfirmEmptyNote = () => {
+        const nextBpu = generateNextBpu();
+        setData('nomor_nota', nextBpu);
+        setIsNoteConfirmationOpen(false);
+        // Lanjut ke step berikutnya setelah auto-generate
+        setTimeout(() => {
+            setCurrentStep(3);
+        }, 100);
     };
 
     const prevStep = () => {
@@ -1365,8 +1414,20 @@ export default function Bku({
                             onChange={(e) => setData('nomor_nota', e.target.value)}
                             placeholder="Kosongkan untuk auto-generate (BPU-XXX)"
                         />
-                        <span className="text-[9pt] text-gray-500 mt-1 block">
+                        <span className="text-[9pt] text-gray-500 mt-1 flex items-center gap-1">
                             Nomor Nota Terakhir: <span className="font-semibold text-gray-700 dark:text-gray-300">{lastNoteNumber}</span>
+                            {lastNoteNumber && lastNoteNumber !== '-' && (
+                                <button
+                                    type="button"
+                                    onClick={() => setData('nomor_nota', lastNoteNumber)}
+                                    className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors text-blue-600 dark:text-blue-400"
+                                    title="Salin nomor nota terakhir"
+                                >
+                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
+                                    </svg>
+                                </button>
+                            )}
                         </span>
                     </div>
                     <div>
@@ -2397,6 +2458,47 @@ export default function Bku({
                                 </PrimaryButton>
                             )}
                         </div>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Modal Konfirmasi Nota Kosong */}
+            <Modal show={isNoteConfirmationOpen} onClose={() => setIsNoteConfirmationOpen(false)} maxWidth="md">
+                <div className="p-6">
+                    <div className="flex items-center gap-3 text-amber-600 mb-4">
+                        <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">Nomor Nota Kosong</h3>
+                    </div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                        Nomor nota masih kosong, apakah Anda yakin ingin melanjutkan? 
+                        <br /><br />
+                        Jika lanjut, sistem akan otomatis membuat nomor nota menjadi <span className="font-bold text-blue-600">{generateNextBpu()}</span>.
+                    </p>
+                    <div className="flex justify-end gap-3">
+                        <SecondaryButton onClick={() => setIsNoteConfirmationOpen(false)}>Batal</SecondaryButton>
+                        <PrimaryButton onClick={handleConfirmEmptyNote} className="bg-amber-600 hover:bg-amber-700">Ya, Lanjut</PrimaryButton>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Modal Peringatan Nota Duplikat */}
+            <Modal show={isDuplicateNoteModalOpen} onClose={() => setIsDuplicateNoteModalOpen(false)} maxWidth="md">
+                <div className="p-6">
+                    <div className="flex items-center gap-3 text-red-600 mb-4">
+                        <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">Nomor Nota Sudah Digunakan</h3>
+                    </div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                        Nomor nota <span className="font-bold text-red-600">{data.nomor_nota}</span> sudah pernah digunakan dalam transaksi lain. Silakan gunakan nomor nota yang berbeda.
+                    </p>
+                    <div className="flex justify-end">
+                        <PrimaryButton onClick={() => setIsDuplicateNoteModalOpen(false)} className="bg-red-600 hover:bg-red-700 text-white">
+                            Mengerti
+                        </PrimaryButton>
                     </div>
                 </div>
             </Modal>

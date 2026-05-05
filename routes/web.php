@@ -33,6 +33,7 @@ use App\Http\Controllers\BeritaAcaraPenutupanController;
 use App\Http\Controllers\LphController;
 use App\Http\Controllers\ArkasToolController;
 use App\Http\Controllers\ReferensiKodeController;
+use App\Http\Controllers\ArkasSettingController;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -156,6 +157,8 @@ Route::middleware('auth')->group(function () {
     // Arkas Tools
     Route::get('/arkas-tools', [ArkasToolController::class, 'index'])->name('arkas-tools.index');
     Route::get('/arkas-tools/search', [ArkasToolController::class, 'search'])->name('arkas-tools.search');
+    Route::get('/arkas-tools/path', [ArkasSettingController::class, 'getPath'])->name('arkas-tools.get-path');
+    Route::post('/arkas-tools/path', [ArkasSettingController::class, 'savePath'])->name('arkas-tools.save-path');
     
     // Referensi Kode Routes
     Route::get('/referensi-kode', [ReferensiKodeController::class, 'index'])->name('referensi-kode.index');

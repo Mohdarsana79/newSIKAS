@@ -6044,6 +6044,7 @@ namespace App\Models {
      * App\Models\Sts
      *
      * @property boolean $is_bkp
+     * @property string|null $tanggal_buku_bank
      * @property \Illuminate\Support\Carbon|null $updated_at
      * @property \Illuminate\Support\Carbon|null $created_at
      * @property float $jumlah_bayar
@@ -6061,6 +6062,7 @@ namespace App\Models {
      * @method static \Illuminate\Database\Eloquent\Builder<Sts>|Sts whereJumlahBayar($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Sts>|Sts whereCreatedAt($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Sts>|Sts whereUpdatedAt($value)
+     * @method static \Illuminate\Database\Eloquent\Builder<Sts>|Sts whereTanggalBukuBank($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Sts>|Sts whereIsBkp($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Sts>|Sts newModelQuery()
      * @method static \Illuminate\Database\Eloquent\Builder<Sts>|Sts newQuery()

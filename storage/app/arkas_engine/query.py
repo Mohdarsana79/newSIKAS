@@ -2,6 +2,46 @@ import sqlite3
 import json
 import sys
 import os
+import glob
+
+def find_arkas_db(manual_path=None):
+    """
+    Mencari file arkas.db secara dinamis.
+    Jika manual_path diberikan, gunakan itu dulu.
+    """
+    if manual_path:
+        # Bersihkan tanda petik dan spasi liar
+        manual_path = manual_path.strip().strip('"').strip("'")
+        if os.path.exists(manual_path):
+            return manual_path
+
+    # Strategi 1: Dari APPDATA environment variable
+    appdata = os.environ.get('APPDATA', '')
+    if appdata:
+        path = os.path.join(appdata, 'Arkas', 'arkas.db')
+        if os.path.exists(path):
+            return path
+
+    # Strategi 2: Dari USERPROFILE + AppData/Roaming
+    userprofile = os.environ.get('USERPROFILE', '')
+    if userprofile:
+        path = os.path.join(userprofile, 'AppData', 'Roaming', 'Arkas', 'arkas.db')
+        if os.path.exists(path):
+            return path
+
+    # Strategi 3: Glob ke semua folder pengguna (paling fleksibel)
+    system_drive = os.environ.get('SystemDrive', 'C:')
+    patterns = [
+        os.path.join(system_drive, 'Users', '*', 'AppData', 'Roaming', 'Arkas', 'arkas.db'),
+        os.path.join(system_drive, 'Users', '*', 'AppData', 'Local', 'Arkas', 'arkas.db'),
+    ]
+    for pattern in patterns:
+        matches = glob.glob(pattern)
+        if matches:
+            return matches[0]
+
+    return None
+
 
 def main():
     if len(sys.argv) < 2:
@@ -10,10 +50,17 @@ def main():
 
     keyword = sys.argv[1]
     year = sys.argv[2] if len(sys.argv) > 2 else '2026'
-    
-    db_path = os.path.join(os.environ.get('APPDATA', ''), 'Arkas', 'arkas.db')
-    if not os.path.exists(db_path):
-        print(json.dumps({'error': f'arkas.db not found at {db_path}'}))
+    manual_db_path = sys.argv[3] if len(sys.argv) > 3 and sys.argv[3] != "" else None
+
+    db_path = find_arkas_db(manual_db_path)
+    if not db_path:
+        error_msg = 'Database arkas.db tidak ditemukan.'
+        if manual_db_path:
+            error_msg += f' Jalur manual salah: {manual_db_path}'
+        
+        print(json.dumps({
+            'error': error_msg + ' Pastikan lokasi database sudah benar di menu Path Arkas.'
+        }))
         sys.exit(1)
 
     try:
@@ -21,7 +68,7 @@ def main():
         cursor = conn.cursor()
         cursor.execute("PRAGMA cipher_compatibility = 4;")
         cursor.execute("PRAGMA key = 'K3md1kbudRIS3n4yan';")
-        
+
         if keyword == '__ALL__':
             query = """
                 SELECT a.id_barang, a.nama_barang, a.kode_rekening, b.rekening, a.satuan, a.batas_atas, a.tahun
@@ -40,16 +87,19 @@ def main():
                 LIMIT 100
             """
             cursor.execute(query, (f'%{keyword}%',))
+
         columns = [col[0] for col in cursor.description]
         rows = cursor.fetchall()
-        
+
         results = []
         for row in rows:
             results.append(dict(zip(columns, row)))
-            
-        print(json.dumps({'status': 'success', 'data': results}))
+
+        conn.close()
+        print(json.dumps({'status': 'success', 'data': results, 'db_path': db_path}))
     except Exception as e:
         print(json.dumps({'error': str(e)}))
+
 
 if __name__ == '__main__':
     main()

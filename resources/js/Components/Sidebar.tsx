@@ -1,5 +1,10 @@
 import { Link, usePage } from '@inertiajs/react';
 import { ReactNode, useState, useEffect } from 'react';
+import Modal from '@/Components/Modal';
+import TextInput from '@/Components/TextInput';
+import PrimaryButton from '@/Components/PrimaryButton';
+import SecondaryButton from '@/Components/SecondaryButton';
+import axios from 'axios';
 
 interface NavLinkProps {
     href: string;
@@ -35,6 +40,40 @@ export default function Sidebar({ className = '', isOpen = true, setIsOpen }: { 
     const [isDataMasterOpen, setIsDataMasterOpen] = useState(true);
     const [isFiturPelengkapOpen, setIsFiturPelengkapOpen] = useState(true);
     const [isIntegrasiOpen, setIsIntegrasiOpen] = useState(true);
+    
+    // Path Arkas Modal State
+    const [showPathModal, setShowPathModal] = useState(false);
+    const [arkasPath, setArkasPath] = useState('');
+    const [isSaving, setIsSaving] = useState(false);
+    const [loadError, setLoadError] = useState('');
+
+    const openPathModal = async () => {
+        setShowPathModal(true);
+        setLoadError('');
+        try {
+            const res = await axios.get(route('arkas-tools.get-path'));
+            setArkasPath(res.data.path || '');
+        } catch (err) {
+            setLoadError('Gagal mengambil data path.');
+        }
+    };
+
+    const handleSavePath = async () => {
+        setIsSaving(true);
+        try {
+            const res = await axios.post(route('arkas-tools.save-path'), { path: arkasPath });
+            if (res.data.status === 'success') {
+                alert('Path Arkas berhasil disimpan!');
+                setShowPathModal(false);
+            } else {
+                alert('Gagal: ' + res.data.message);
+            }
+        } catch (err) {
+            alert('Terjadi kesalahan saat menyimpan.');
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
     // Auto-close submenus when sidebar is closed (mini mode)
     useEffect(() => {
@@ -193,6 +232,20 @@ export default function Sidebar({ className = '', isOpen = true, setIsOpen }: { 
                                 <NavLink href={route('integrasi.sync.index')} active={route().current('integrasi.sync.*')} isSidebarOpen={isOpen} icon={<IconSync />}>
                                     Singkron
                                 </NavLink>
+                                
+                                {/* Path Arkas Trigger */}
+                                <button
+                                    onClick={openPathModal}
+                                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group overflow-hidden text-slate-400 hover:text-white hover:bg-white/5 ${!isOpen ? 'justify-center px-0 mx-auto w-12' : ''}`}
+                                    title={!isOpen ? "Path Arkas" : undefined}
+                                >
+                                    <div className="shrink-0 z-10 transition-transform duration-300 group-hover:scale-110">
+                                        <IconPath />
+                                    </div>
+                                    <span className={`z-10 font-medium whitespace-nowrap transition-all duration-300 origin-left ${!isOpen ? 'opacity-0 w-0 scale-0' : 'opacity-100 w-auto scale-100'}`}>
+                                        Path Arkas
+                                    </span>
+                                </button>
                             </div>
                         </div>
 
@@ -221,6 +274,65 @@ export default function Sidebar({ className = '', isOpen = true, setIsOpen }: { 
                     </Link>
                 </div>
             </aside>
+
+            {/* Modal Pengaturan Path Arkas */}
+            <Modal show={showPathModal} onClose={() => !isSaving && setShowPathModal(false)} maxWidth="lg">
+                <div className="p-8 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden relative">
+                    {/* Visual Decor */}
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 blur-3xl rounded-full -mr-16 -mt-16"></div>
+                    
+                    <div className="relative z-10">
+                        <div className="flex items-center gap-4 mb-6">
+                            <div className="p-3 bg-indigo-500/10 rounded-2xl border border-indigo-500/20">
+                                <IconPath />
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-bold text-white">Konfigurasi Database ARKAS</h2>
+                                <p className="text-sm text-slate-400 mt-1">Tentukan lokasi file <code className="text-indigo-400">arkas.db</code> secara manual.</p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-300 mb-2">Jalur File Database (Full Path)</label>
+                                <TextInput
+                                    className="w-full bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500 focus:ring-indigo-500/20 transition-all placeholder:text-slate-700"
+                                    placeholder="C:\Users\ASUS\AppData\Roaming\Arkas\arkas.db"
+                                    value={arkasPath}
+                                    onChange={(e) => setArkasPath(e.target.value)}
+                                    disabled={isSaving}
+                                />
+                                <p className="mt-2 text-[11px] text-slate-500 leading-relaxed italic">
+                                    * Contoh lokasi umum: <span className="text-slate-400 select-all">C:\Users\NAMA_USER\AppData\Roaming\Arkas\arkas.db</span>
+                                </p>
+                            </div>
+
+                            {loadError && (
+                                <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-400 text-xs">
+                                    {loadError}
+                                </div>
+                            )}
+
+                            <div className="pt-4 flex justify-end gap-3">
+                                <SecondaryButton 
+                                    onClick={() => setShowPathModal(false)} 
+                                    disabled={isSaving}
+                                    className="border-slate-800 text-slate-400 hover:bg-slate-800"
+                                >
+                                    Batal
+                                </SecondaryButton>
+                                <PrimaryButton 
+                                    onClick={handleSavePath} 
+                                    disabled={isSaving}
+                                    className="bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-500/20"
+                                >
+                                    {isSaving ? 'Menyimpan...' : 'Simpan Perubahan'}
+                                </PrimaryButton>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </Modal>
         </>
     );
 }
@@ -347,5 +459,11 @@ const IconSync = () => (
 const IconBackup = () => (
     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+    </svg>
+);
+
+const IconPath = () => (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
     </svg>
 );

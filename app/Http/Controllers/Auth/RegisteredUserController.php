@@ -18,7 +18,7 @@ class RegisteredUserController extends Controller
     public function create(): Response
     {
         return Inertia::render('Auth/Register', [
-            'isLocked' => User::count() > 0,
+            'isLocked' => User::query()->exists(),
         ]);
     }
 
@@ -29,7 +29,7 @@ class RegisteredUserController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-        if (User::count() > 0) {
+        if (User::query()->exists()) {
             return redirect(route('login'))->withErrors(['email' => 'Registrasi hanya diizinkan untuk satu pengguna.']);
         }
 

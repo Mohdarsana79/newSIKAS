@@ -360,9 +360,11 @@ class BukuKasUmumController extends Controller
             return $mergedItem;
         })->values();
 
-        // Ambil Nomor Nota Terakhir
+        // Ambil Nomor Nota Terakhir (Excluding bunga/closing record)
         $lastNoteNumber = BukuKasUmum::query()->where('penganggaran_id', $penganggaran->id)
-            ->latest('created_at')
+            ->where('is_bunga_record', false)
+            ->whereNotNull('id_transaksi')
+            ->latest('id')
             ->value('id_transaksi') ?? '-';
 
         $data = [
