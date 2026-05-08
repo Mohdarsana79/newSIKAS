@@ -28,6 +28,7 @@ class PenganggaranController extends Controller
         foreach ($anggarans as $anggaran) {
             // Check existence
             $hasPerubahan = RkasPerubahan::where('penganggaran_id', $anggaran->id)->exists();
+            $hasBku = \App\Models\BukuKasUmum::where('penganggaran_id', $anggaran->id)->exists();
 
             // 1. Add Regular Item
             $items->push([
@@ -36,26 +37,19 @@ class PenganggaranController extends Controller
                 'pagu' => 'Rp ' . number_format($anggaran->pagu_anggaran, 0, ',', '.'),
                 'status' => 'regular',
                 'has_perubahan' => $hasPerubahan, // Flag to disable button / hide edit
+                'has_bku' => $hasBku,
                 'tahun' => $anggaran->tahun_anggaran,
             ]);
 
             // 2. Add Perubahan Item if exists
             if ($hasPerubahan) {
-                // For Perubahan, we might want to show the same Pagu or calculated one?
-                // Usually Perubahan might have same Pagu unless changed.
-                // Assuming same ID for routing to Penganggaran resource, but we need to route to Perubahan Index.
-                // The frontend uses `route('rkas.index', item.id)`.
-                // For Perubahan, likely `route('rkas-perubahan.index', item.id)`?
-                // Effectively we pass the same penganggaran ID but distinguish by status type in frontend or routing?
-                // The frontend `Index.tsx` links: `href={route('rkas.index', item.id)}`.
-                // We'll need to update Frontend to handle different routes based on status.
-                
                 $items->push([
                     'id' => $anggaran->id, // Same ID, will use status to change route
                     'title' => 'RKAS Perubahan ' . $anggaran->tahun_anggaran,
                     'pagu' => 'Rp ' . number_format($anggaran->pagu_anggaran, 0, ',', '.'),
                     'status' => 'perubahan',
                     'has_perubahan' => true,
+                    'has_bku' => $hasBku,
                     'tahun' => $anggaran->tahun_anggaran,
                 ]);
             }
@@ -157,6 +151,13 @@ class PenganggaranController extends Controller
     public function destroy($id)
     {
         $penganggaran = Penganggaran::findOrFail($id);
+
+        // Validasi BKU
+        $hasBku = \App\Models\BukuKasUmum::where('penganggaran_id', $id)->exists();
+        if ($hasBku) {
+            return redirect()->back()->with('error', 'Penganggaran tidak dapat di hapus karena sudah ada data belanja pada BKU, anda perlu menghapus data bku pada penganggaran ini untuk dapat menghapus penganggaran ini');
+        }
+
         $penganggaran->delete();
 
         return redirect()->back()->with('success', 'Data anggaran berhasil dihapus');

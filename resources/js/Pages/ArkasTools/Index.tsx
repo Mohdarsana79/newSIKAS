@@ -246,8 +246,8 @@ export default function Index({ auth }: any) {
                 <div className="p-6">
                     {!isFetchingAll ? (
                         <>
-                            <h2 className="text-lg font-medium text-gray-900">Konfirmasi Tarik Data</h2>
-                            <p className="mt-2 text-sm text-gray-600">
+                            <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">Konfirmasi Tarik Data</h2>
+                            <p className="mt-2 text-sm text-gray-600 dark:text-gray-100">
                                 Anda akan menarik seluruh referensi barang ARKAS dari semua tahun (sekitar ~75.000+ baris data).
                                 Proses ini mungkin akan memakan waktu hingga beberapa detik.
                             </p>

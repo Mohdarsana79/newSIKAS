@@ -423,8 +423,8 @@ export default function ReferensiKode() {
                 <div className="p-6">
                     {!isSyncingConfirm ? (
                         <>
-                            <h2 className="text-lg font-medium text-gray-900">Konfirmasi Sinkronisasi</h2>
-                            <p className="mt-2 text-sm text-gray-600">
+                            <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">Konfirmasi Sinkronisasi</h2>
+                            <p className="mt-2 text-sm text-gray-600 dark:text-gray-100">
                                 Anda akan menyimpan seluruh data {syncTipe === 'kegiatan' ? 'Kegiatan' : 'Rekening Belanja'} ARKAS yang berstatus "Data Baru" ke dalam database SIKAS lokal Anda.
                             </p>
                             <p className="mt-2 text-sm font-semibold text-amber-600">

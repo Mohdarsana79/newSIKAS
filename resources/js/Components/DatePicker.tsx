@@ -20,12 +20,16 @@ interface DatePickerProps {
 }
 
 export default function DatePicker({ value, onChange, placeholder = "Pilih tanggal", className, disabled, startMonth, endMonth, inputDisabled, id: elementId, minDate, maxDate }: DatePickerProps) {
-    const dateValue = value ? (typeof value === 'string' && value.includes('-') ? (
+    const dateValueRaw = value ? (typeof value === 'string' && value.includes('-') ? (
         (() => {
-            const [y, m, d] = value.split('-').map(Number);
+            // Ambil hanya bagian tanggal (sebelum spasi atau huruf T pada ISO string)
+            const datePart = value.split(/[ T]/)[0];
+            const [y, m, d] = datePart.split('-').map(Number);
             return new Date(y, m - 1, d);
         })()
     ) : new Date(value)) : undefined;
+
+    const dateValue = (dateValueRaw instanceof Date && !isNaN(dateValueRaw.getTime())) ? dateValueRaw : undefined;
 
     // Combine custom disabled logic with min/max date logic
     const disabledDays = disabled || (

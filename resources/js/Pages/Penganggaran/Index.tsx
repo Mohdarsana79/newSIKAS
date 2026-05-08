@@ -19,6 +19,8 @@ interface PenganggaranItem {
     pagu: string;
     status: 'regular' | 'perubahan';
     has_perubahan: boolean;
+    has_bku: boolean;
+    tahun: string;
 }
 
 interface Anggaran {
@@ -48,6 +50,8 @@ export default function Index({ auth, items, anggarans, can_create }: PageProps<
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [deleteId, setDeleteId] = useState<number | null>(null);
     const [deleteStatus, setDeleteStatus] = useState<'regular' | 'perubahan' | null>(null);
+    const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
+    const [alertMessage, setAlertMessage] = useState('');
 
     const [isDeleting, setIsDeleting] = useState(false);
 
@@ -123,6 +127,12 @@ export default function Index({ auth, items, anggarans, can_create }: PageProps<
     };
 
     const handleDelete = (id: number, status: 'regular' | 'perubahan') => {
+        const item = items.find(i => i.id === id && i.status === status);
+        if (item && item.has_bku) {
+            setAlertMessage("Penganggaran tidak dapat di hapus karena sudah ada data belanja pada BKU, anda perlu menghapus data bku pada penganggaran ini untuk dapat menghapus penganggaran ini");
+            setIsAlertModalOpen(true);
+            return;
+        }
         setDeleteId(id);
         setDeleteStatus(status);
         setIsDeleteModalOpen(true);
@@ -600,6 +610,30 @@ export default function Index({ auth, items, anggarans, can_create }: PageProps<
                         }}>
                             Pergi ke Profil Sekolah
                         </SecondaryButton>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Modal Validasi BKU */}
+            <Modal show={isAlertModalOpen} onClose={() => setIsAlertModalOpen(false)} maxWidth="sm">
+                <div className="p-6">
+                    <div className="flex items-center justify-center mb-4">
+                        <div className="bg-amber-100 dark:bg-amber-900/30 p-3 rounded-full">
+                            <svg className="w-8 h-8 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                        </div>
+                    </div>
+                    <h2 className="text-lg font-bold text-center text-gray-900 dark:text-white mb-2">
+                        Tidak Dapat Menghapus
+                    </h2>
+                    <p className="text-center text-sm text-gray-600 dark:text-gray-400">
+                        {alertMessage}
+                    </p>
+                    <div className="mt-6 flex justify-center">
+                        <PrimaryButton className="w-full justify-center" onClick={() => setIsAlertModalOpen(false)}>
+                            Mengerti
+                        </PrimaryButton>
                     </div>
                 </div>
             </Modal>

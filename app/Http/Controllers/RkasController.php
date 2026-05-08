@@ -35,6 +35,43 @@ class RkasController extends Controller
         $paguAnggaran = $penganggaran->pagu_anggaran;
         $paguHalf = $paguAnggaran / 2;
 
+        $monthMap = array_flip(Rkas::getBulanList());
+
+        // Get total spent from BKU directly grouped by unique signature
+        $bkuSpents = \App\Models\BukuKasUmumUraianDetail::selectRaw('buku_kas_umum_uraian_details.kode_kegiatan_id, buku_kas_umum_uraian_details.rekening_belanja_id, LOWER(TRIM(buku_kas_umum_uraian_details.uraian)) as uraian_clean, buku_kas_umum_uraian_details.harga_satuan, SUM(buku_kas_umum_uraian_details.volume) as total_volume')
+            ->join('buku_kas_umums', 'buku_kas_umums.id', '=', 'buku_kas_umum_uraian_details.buku_kas_umum_id')
+            ->where('buku_kas_umums.penganggaran_id', $penganggaran->id)
+            ->groupBy('buku_kas_umum_uraian_details.kode_kegiatan_id', 'buku_kas_umum_uraian_details.rekening_belanja_id', 'uraian_clean', 'buku_kas_umum_uraian_details.harga_satuan')
+            ->get()
+            ->keyBy(function($item) {
+                return $item->kode_kegiatan_id . '|' . $item->rekening_belanja_id . '|' . $item->uraian_clean . '|' . (float)$item->harga_satuan;
+            });
+
+        // Group by identical items to distribute BKU spending (FIFO)
+        $groupedRaw = $itemsRaw->groupBy(function ($item) {
+             return $item->kode_id . '|' . $item->kode_rekening_id . '|' . strtolower(trim($item->uraian)) . '|' . (float)$item->harga_satuan;
+        });
+
+        foreach ($groupedRaw as $key => $group) {
+            // Sort by month index to process earliest month first
+            $sortedGroup = $group->sortBy(function ($item) use ($monthMap) {
+                return $monthMap[$item->bulan] ?? 99;
+            });
+            
+            // Total spent for this group in BKU
+            $totalSpent = isset($bkuSpents[$key]) ? $bkuSpents[$key]->total_volume : 0;
+            
+            foreach ($sortedGroup as $item) {
+                if ($totalSpent > 0) {
+                    $allocate = min($totalSpent, $item->jumlah);
+                    $item->dibelanjakan_calc = $allocate;
+                    $totalSpent -= $allocate;
+                } else {
+                    $item->dibelanjakan_calc = 0;
+                }
+            }
+        }
+
         // Transform items for frontend
         $items = $itemsRaw->map(function($item) {
              return [
@@ -44,7 +81,7 @@ class RkasController extends Controller
                 'rekening' => $item->rekeningBelanja ? ($item->rekeningBelanja->kode_rekening . ' - ' . $item->rekeningBelanja->rincian_objek) : '-',
                 'uraian' => $item->uraian,
                 'dianggaran' => $item->jumlah,
-                'dibelanjakan' => 0, // Placeholder
+                'dibelanjakan' => $item->dibelanjakan_calc ?? 0,
                 'satuan' => $item->satuan,
                 'harga' => number_format($item->harga_satuan, 0, ',', '.'),
                 'total' => number_format($item->jumlah * $item->harga_satuan, 0, ',', '.'),
@@ -63,11 +100,17 @@ class RkasController extends Controller
         });
 
         $hasPerubahan = RkasPerubahan::where('penganggaran_id', $id)->exists();
+        $juniBkuClosed = \App\Models\BukuKasUmum::where('penganggaran_id', $id)
+            ->whereMonth('tanggal_transaksi', 6)
+            ->where('is_bunga_record', true)
+            ->whereNotNull('tanggal_tutup')
+            ->exists();
 
         return Inertia::render('Penganggaran/Rkas/Index', [
             'anggaran' => [
                 'id' => $penganggaran->id,
                 'has_perubahan' => $hasPerubahan,
+                'juni_bku_closed' => $juniBkuClosed,
                 'tahun' => (string)$penganggaran->tahun_anggaran,
                 'pagu_total' => number_format($paguAnggaran, 0, ',', '.'),
                 'sumber_dana' => 'BOSP Reguler',
@@ -366,6 +409,7 @@ class RkasController extends Controller
         $totalBuku = $grafikData['buku_anggaran'] ?? 0;
         $totalHonor = $grafikData['honor_anggaran'] ?? 0;
         $totalPemeliharaan = $grafikData['sarpras_anggaran'] ?? 0;
+        $spentPemeliharaan = $grafikData['sarpras_spent'] ?? 0;
 
         // Honor Logic
         $honorPercent = $totalAnggaran > 0 ? ($totalHonor / $totalAnggaran) * 100 : 0;
@@ -373,6 +417,10 @@ class RkasController extends Controller
         $isNegeri = stripos($statusSekolah, 'negeri') !== false;
         $maxHonor = $isNegeri ? 20 : 40;
         $honorValid = $honorPercent <= $maxHonor;
+
+        $pemeliharaanPercent = $totalAnggaran > 0 ? ($totalPemeliharaan / $totalAnggaran) * 100 : 0;
+        $spentPercent = $totalAnggaran > 0 ? ($spentPemeliharaan / $totalAnggaran) * 100 : 0;
+        $pemeliharaanValid = $pemeliharaanPercent <= 20;
 
         $grafikDataResponse = [
             'total' => $totalAnggaran,
@@ -390,9 +438,9 @@ class RkasController extends Controller
             ],
             'pemeliharaan' => [
                 'value' => $totalPemeliharaan,
-                'percentage' => $totalAnggaran > 0 ? ($totalPemeliharaan / $totalAnggaran) * 100 : 0,
-                'valid' => ($totalAnggaran > 0 && ($totalPemeliharaan / $totalAnggaran) * 100 <= 20) ? true : false, 
-                'message' => 'Anggaran pemeliharaan sarpras Anda adalah ' . number_format(($totalAnggaran > 0 ? ($totalPemeliharaan / $totalAnggaran) * 100 : 0), 2) . '% dan ' . (($totalAnggaran > 0 && ($totalPemeliharaan / $totalAnggaran) * 100 <= 20) ? 'sudah' : 'belum') . ' sesuai dengan proporsi maksimal 20% dari total pagu anggaran.'
+                'percentage' => $pemeliharaanPercent,
+                'valid' => $pemeliharaanValid, 
+                'message' => 'Anggaran pemeliharaan sarpras Anda adalah ' . number_format($pemeliharaanPercent, 2) . '% dan sudah dilaporkan di BKU sebesar ' . number_format($spentPercent, 2) . '% dari total pagu anggaran. Anggaran ' . ($pemeliharaanValid ? 'sudah' : 'belum') . ' sesuai dengan proporsi maksimal 20% dari total pagu anggaran.'
             ],
             'jenis_belanja' => $grafikData['jenis_belanja'] ?? []
         ];
@@ -493,6 +541,33 @@ class RkasController extends Controller
             ->where('uraian', $rkas->uraian)
             ->get();
 
+        // Calculate FIFO spent per month for frontend validation
+        $bkuSpentVolume = \App\Models\BukuKasUmumUraianDetail::join('buku_kas_umums', 'buku_kas_umums.id', '=', 'buku_kas_umum_uraian_details.buku_kas_umum_id')
+            ->where('buku_kas_umums.penganggaran_id', $rkas->penganggaran_id)
+            ->where('buku_kas_umum_uraian_details.kode_kegiatan_id', $rkas->kode_id)
+            ->where('buku_kas_umum_uraian_details.rekening_belanja_id', $rkas->kode_rekening_id)
+            ->whereRaw('LOWER(TRIM(buku_kas_umum_uraian_details.uraian)) = LOWER(TRIM(?))', [$rkas->uraian])
+            ->where('buku_kas_umum_uraian_details.harga_satuan', $rkas->harga_satuan)
+            ->sum('buku_kas_umum_uraian_details.volume');
+
+        $monthMap = array_flip(Rkas::getBulanList());
+        $sortedItems = $siblings->sortBy(function ($item) use ($monthMap) {
+            return $monthMap[$item->bulan] ?? 99;
+        });
+
+        $remainingSpent = $bkuSpentVolume;
+        $spentMap = [];
+
+        foreach ($sortedItems as $item) {
+            if ($remainingSpent > 0) {
+                $allocate = min($remainingSpent, $item->jumlah);
+                $spentMap[$item->id] = $allocate;
+                $remainingSpent -= $allocate;
+            } else {
+                $spentMap[$item->id] = 0;
+            }
+        }
+
         return response()->json([
             'kegiatan_id' => (string)$rkas->kode_id, // Cast to string for Select component
             'rekening_id' => (string)$rkas->kode_rekening_id,
@@ -501,12 +576,12 @@ class RkasController extends Controller
             'program_nama' => $rkas->kodeKegiatan ? $rkas->kodeKegiatan->program : '-',
             'kegiatan_nama' => $rkas->kodeKegiatan ? $rkas->kodeKegiatan->uraian : '-',
             'rekening_nama' => $rkas->rekeningBelanja ? ($rkas->rekeningBelanja->kode_rekening . ' - ' . $rkas->rekeningBelanja->rincian_objek) : '-',
-            'alokasi' => $siblings->map(function($item) {
+            'alokasi' => $siblings->map(function($item) use ($spentMap) {
                 return [
                     'month' => $item->bulan,
                     'quantity' => $item->jumlah,
                     'unit' => $item->satuan,
-                    // calculate amount for display if needed, but frontend calculates it from price * qty
+                    'spent' => $spentMap[$item->id] ?? 0, // Injected for real-time validation
                 ];
             })->values()
         ]);
@@ -531,6 +606,64 @@ class RkasController extends Controller
         DB::beginTransaction();
         try {
             $original = Rkas::findOrFail($request->original_id);
+            // Validasi BKU
+            $bkuSpentVolume = \App\Models\BukuKasUmumUraianDetail::join('buku_kas_umums', 'buku_kas_umums.id', '=', 'buku_kas_umum_uraian_details.buku_kas_umum_id')
+                ->where('buku_kas_umums.penganggaran_id', $original->penganggaran_id)
+                ->where('buku_kas_umum_uraian_details.kode_kegiatan_id', $original->kode_id)
+                ->where('buku_kas_umum_uraian_details.rekening_belanja_id', $original->kode_rekening_id)
+                ->whereRaw('LOWER(TRIM(buku_kas_umum_uraian_details.uraian)) = LOWER(TRIM(?))', [$original->uraian])
+                ->where('buku_kas_umum_uraian_details.harga_satuan', $original->harga_satuan)
+                ->sum('buku_kas_umum_uraian_details.volume');
+
+            if ($bkuSpentVolume > 0) {
+                // Check if signature changed
+                if ($request->kegiatan_id != $original->kode_id || 
+                    $request->rekening_id != $original->kode_rekening_id || 
+                    strtolower(trim($request->uraian)) != strtolower(trim($original->uraian)) || 
+                    $request->harga_satuan != $original->harga_satuan) {
+                    
+                    return redirect()->back()->withErrors(['message' => 'Tidak Dapat Melakukan Perubahan, Karena Sudah Dibelanjakan Pada BKU. Hapus Belanja Ini Pada BKU Terlebih Dahulu Agar Dapat Melakukan Update Data.']);
+                }
+
+                // Hitung FIFO per bulan untuk BKU spent
+                $originalItems = Rkas::where('penganggaran_id', $original->penganggaran_id)
+                    ->where('kode_id', $original->kode_id)
+                    ->where('kode_rekening_id', $original->kode_rekening_id)
+                    ->where('uraian', $original->uraian)
+                    ->get();
+
+                $monthMap = array_flip(Rkas::getBulanList());
+                $sortedItems = $originalItems->sortBy(function ($item) use ($monthMap) {
+                    return $monthMap[$item->bulan] ?? 99;
+                });
+
+                $remainingSpent = $bkuSpentVolume;
+                $spentPerMonth = [];
+
+                foreach ($sortedItems as $item) {
+                    if ($remainingSpent > 0) {
+                        $allocate = min($remainingSpent, $item->jumlah);
+                        $spentPerMonth[$item->bulan] = ($spentPerMonth[$item->bulan] ?? 0) + $allocate;
+                        $remainingSpent -= $allocate;
+                    } else {
+                        $spentPerMonth[$item->bulan] = ($spentPerMonth[$item->bulan] ?? 0);
+                    }
+                }
+
+                $proposedPerMonth = [];
+                foreach ($request->alokasi as $alloc) {
+                    $proposedPerMonth[$alloc['month']] = ($proposedPerMonth[$alloc['month']] ?? 0) + $alloc['quantity'];
+                }
+
+                foreach ($spentPerMonth as $month => $spent) {
+                    if ($spent > 0) {
+                        $proposed = $proposedPerMonth[$month] ?? 0;
+                        if ($proposed < $spent) {
+                            return redirect()->back()->withErrors(['message' => "Tidak Dapat Melakukan Perubahan. Anggaran bulan {$month} sudah terpakai sebanyak {$spent} di BKU!"]);
+                        }
+                    }
+                }
+            }
             
             // 1. Delete the OLD group
             Rkas::where('penganggaran_id', $original->penganggaran_id)
@@ -790,6 +923,19 @@ class RkasController extends Controller
         
         $target = Rkas::findOrFail($request->id);
         
+        // Validasi BKU
+        $bkuSpentVolume = \App\Models\BukuKasUmumUraianDetail::join('buku_kas_umums', 'buku_kas_umums.id', '=', 'buku_kas_umum_uraian_details.buku_kas_umum_id')
+            ->where('buku_kas_umums.penganggaran_id', $target->penganggaran_id)
+            ->where('buku_kas_umum_uraian_details.kode_kegiatan_id', $target->kode_id)
+            ->where('buku_kas_umum_uraian_details.rekening_belanja_id', $target->kode_rekening_id)
+            ->whereRaw('LOWER(TRIM(buku_kas_umum_uraian_details.uraian)) = LOWER(TRIM(?))', [$target->uraian])
+            ->where('buku_kas_umum_uraian_details.harga_satuan', $target->harga_satuan)
+            ->sum('buku_kas_umum_uraian_details.volume');
+
+        if ($bkuSpentVolume > 0) {
+            return redirect()->back()->withErrors(['message' => 'Tidak Dapat Melakukan Perubahan, Karena Sudah Dibelanjakan Pada BKU. Hapus Belanja Ini Pada BKU Terlebih Dahulu Agar Dapat Melakukan Update Data.']);
+        }
+
         // Delete all matches
         Rkas::where('penganggaran_id', $target->penganggaran_id)
             ->where('kode_id', $target->kode_id)
@@ -1239,14 +1385,28 @@ class RkasController extends Controller
             $sarprasAnggaran = Rkas::where('penganggaran_id', $penganggaranId)
                 ->whereHas('kodeKegiatan', function ($query) {
                     // Kode kegiatan Pemeliharaan Prasarana Lahan, Bangunan dan Ruang
-                    $query->where('kode', 'like', '05.08.01%');
+                    $query->where('kode', 'like', '05.08.01%')
+                            ->orWhere('kode', 'like', '05.08.03%')
+                            ->orWhere('kode', 'like', '05.08.05%')
+                            ->orWhere('kode', 'like', '05.08.10%');
                 })
                 ->get()
                 ->sum(function ($item) {
                     return $item->jumlah * $item->harga_satuan;
                 });
 
+            // Hitung realisasi SARPRAS dari BKU
+            $sarprasSpent = \App\Models\BukuKasUmumUraianDetail::whereHas('bukuKasUmum', function($q) use ($penganggaranId) {
+                $q->where('penganggaran_id', $penganggaranId);
+            })->whereHas('kodeKegiatan', function($q) {
+                $q->where('kode', 'like', '05.08.01%')
+                  ->orWhere('kode', 'like', '05.08.03%')
+                  ->orWhere('kode', 'like', '05.08.05%')
+                  ->orWhere('kode', 'like', '05.08.10%');
+            })->sum('jumlah');
+
             Log::info('🏫 [GRAFIK_DEBUG] Sarpras anggaran calculated: ' . number_format($sarprasAnggaran, 2));
+            Log::info('🏫 [GRAFIK_DEBUG] Sarpras spent calculated: ' . number_format($sarprasSpent, 2));
             Log::info('🏫 [GRAFIK_DEBUG] Sarpras percentage: ' . ($totalPagu > 0 ? number_format(($sarprasAnggaran / $totalPagu) * 100, 2) : 0) . '%');
 
             // 4. Data untuk grafik jenis belanja lainnya - BERDASARKAN REKENING BELANJA SAJA
@@ -1314,6 +1474,7 @@ class RkasController extends Controller
                 'buku_anggaran' => $bukuAnggaran,
                 'honor_anggaran' => $honorAnggaran,
                 'sarpras_anggaran' => $sarprasAnggaran,
+                'sarpras_spent' => $sarprasSpent,
                 'jenis_belanja' => $jenisBelanjaData,
                 'total_pagu' => $totalPagu,
                 'honor_percentage' => $honorPercentage,

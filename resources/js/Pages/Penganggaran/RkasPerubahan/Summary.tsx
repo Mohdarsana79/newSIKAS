@@ -149,6 +149,17 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
     const [isLoading, setIsLoading] = useState(false);
     const [isDarkMode, setIsDarkMode] = useState(false);
 
+    const formatDateSafe = (dateStr: string | undefined, formatStr: string = 'dd/MM/yyyy') => {
+        if (!dateStr) return '-';
+        try {
+            const datePart = dateStr.split(/[ T]/)[0];
+            const [y, m, d] = datePart.split('-').map(Number);
+            return format(new Date(y, m - 1, d), formatStr, { locale: id });
+        } catch (e) {
+            return '-';
+        }
+    };
+
     useEffect(() => {
         const checkDarkMode = () => setIsDarkMode(document.documentElement.classList.contains('dark'));
         checkDarkMode();
@@ -406,7 +417,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                             Tanggal Perubahan
                         </button>
                         <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
-                            Tanggal Perubahan: {anggaran.tanggal_perubahan ? format(new Date(anggaran.tanggal_perubahan), 'dd/MM/yyyy') : '-'}
+                            Tanggal Perubahan: {formatDateSafe(anggaran.tanggal_perubahan)}
                         </span>
                     </div>
                 </div>
@@ -749,7 +760,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                                             </div>
 
                                             <div className="text-center">
-                                                <p className="mb-1">Kec. {anggaran.sekolah?.kecamatan || '...'}, {anggaran.tanggal_perubahan ? format(new Date(anggaran.tanggal_perubahan), 'd MMMM yyyy', { locale: id }) : '...'}</p>
+                                                <p className="mb-1">Kec. {anggaran.sekolah?.kecamatan || '...'}, {formatDateSafe(anggaran.tanggal_perubahan, 'd MMMM yyyy')}</p>
                                                 <p className="mb-20">Bendahara,</p>
                                                 <p className="font-bold underline uppercase">{anggaran.bendahara || '-'}</p>
                                                 <p>NIP. {anggaran.nip_bendahara || '-'}</p>
@@ -886,7 +897,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                                     {/* Footers */}
                                     <div className="flex justify-end text-sm text-gray-900 dark:text-gray-100 px-4 text-center">
                                         <div>
-                                            <p className="mb-1">{anggaran.sekolah?.kecamatan}, {anggaran.tanggal_perubahan ? format(new Date(anggaran.tanggal_perubahan), 'd MMMM yyyy', { locale: id }) : '8 Desember 2025'}</p>
+                                            <p className="mb-1">{anggaran.sekolah?.kecamatan}, {formatDateSafe(anggaran.tanggal_perubahan, 'd MMMM yyyy')}</p>
                                             <p className="mb-20">Kepala Sekolah</p>
                                             <p className="font-bold underline uppercase">{anggaran.kepala_sekolah || '....................'}</p>
                                             <p className="uppercase">NIP. {anggaran.nip_kepala_sekolah || '-'}</p>
@@ -1019,7 +1030,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                                     {/* Footer Signatures (Hardcoded as per Request/Common Practice, dynamic based on School Profile ideal) */}
                                     <div className="mt-12 flex justify-end text-sm text-gray-900 dark:text-gray-100">
                                         <div className="text-center">
-                                            <p className="mb-1">{anggaran.sekolah?.kecamatan}, {anggaran.tanggal_perubahan ? format(new Date(anggaran.tanggal_perubahan), 'd MMMM yyyy', { locale: id }) : '8 Desember 2025'}</p>
+                                            <p className="mb-1">{anggaran.sekolah?.kecamatan}, {formatDateSafe(anggaran.tanggal_perubahan, 'd MMMM yyyy')}</p>
                                             <p className="mb-20">Kepala Sekolah</p>
                                             <p className="font-bold underline uppercase">{anggaran.kepala_sekolah || '....................'}</p>
                                             <p className="uppercase">{anggaran.nip_kepala_sekolah || '-'}</p>
@@ -1271,7 +1282,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                                             </div>
 
                                             <div className="text-center">
-                                                <p className="mb-1">{anggaran.sekolah?.kecamatan || '...'}, {anggaran.tanggal_perubahan ? format(new Date(anggaran.tanggal_perubahan), 'd MMMM yyyy', { locale: id }) : '...'}</p>
+                                                <p className="mb-1">{anggaran.sekolah?.kecamatan || '...'}, {formatDateSafe(anggaran.tanggal_perubahan, 'd MMMM yyyy')}</p>
                                                 <p className="mb-20">Bendahara,</p>
                                                 <p className="font-bold underline uppercase">{anggaran.bendahara || '-'}</p>
                                                 <p>NIP. {anggaran.nip_bendahara || '-'}</p>
@@ -1455,7 +1466,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                                                     labels: ['Pemeliharaan Sarpras', 'Komponen Anggaran Lainnya'],
                                                     colors: ['#10B981', isDarkMode ? '#374151' : '#E5E7EB'],
                                                     legend: { position: 'bottom', labels: { colors: isDarkMode ? '#f3f4f6' : '#374151' } },
-                                                    dataLabels: { enabled: true, formatter: (val) => (val as number).toFixed(1) + '%' },
+                                                    dataLabels: { enabled: true, formatter: (val) => (val as number).toFixed(2) + '%' },
                                                     plotOptions: { pie: { donut: { size: '65%', labels: { show: true, total: { show: true, showAlways: true, label: 'Total', fontSize: '12px', fontWeight: 600, color: isDarkMode ? '#f3f4f6' : '#373d3f' } } } } },
                                                     tooltip: { y: { formatter: (val) => formatCurrency(val) } },
                                                     stroke: { show: !isDarkMode }
@@ -1492,7 +1503,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                                                     labels: grafikData.jenis_belanja.map((d: any) => d.label),
                                                     colors: grafikData.jenis_belanja.map((d: any) => d.color),
                                                     legend: { position: 'bottom', labels: { colors: isDarkMode ? '#f3f4f6' : '#374151' } },
-                                                    dataLabels: { enabled: true, formatter: (val) => (val as number).toFixed(1) + '%' },
+                                                    dataLabels: { enabled: true, formatter: (val) => (val as number).toFixed(2) + '%' },
                                                     plotOptions: { pie: { donut: { size: '65%', labels: { show: true, total: { show: true, showAlways: true, label: 'Total', fontSize: '12px', fontWeight: 600, color: isDarkMode ? '#f3f4f6' : '#373d3f' } } } } },
                                                     tooltip: { y: { formatter: (val) => formatCurrency(val) } },
                                                     stroke: { show: !isDarkMode }

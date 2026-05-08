@@ -561,7 +561,7 @@ class BukuKasUmumController extends Controller
                         'satuan' => $item['satuan'],
                         'harga_satuan' => $item['harga_satuan'],
                         'volume' => $item['volume'],
-                        'subtotal' => $item['jumlah_belanja'],
+                        'jumlah' => $item['jumlah_belanja'],
                     ]);
                 }
 

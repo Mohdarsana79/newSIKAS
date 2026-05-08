@@ -21,6 +21,7 @@ interface RkasMonthAllocation {
     amount: string;
     quantity: string;
     unit: string;
+    spent?: number; // Added for real-time validation
 }
 
 interface RkasItem {
@@ -167,7 +168,21 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
         }
 
         const newAlokasi = [...data.alokasi];
-        newAlokasi[index] = { ...newAlokasi[index], [field]: value };
+
+        if (field === 'quantity') {
+            const spent = newAlokasi[index].spent || 0;
+            const newQty = Number(value);
+
+            if (newQty < spent) {
+                setAlertMessage(`Tidak Dapat Melakukan Perubahan. Anggaran bulan ${newAlokasi[index].month} sudah terpakai sebanyak ${spent} di BKU!`);
+                setIsAlertModalOpen(true);
+                return; // Jangan update state, biarkan nilai tetap di angka sebelumnya
+            } else {
+                newAlokasi[index].quantity = value;
+            }
+        } else {
+            newAlokasi[index] = { ...newAlokasi[index], [field]: value };
+        }
 
         // If updating the unit of the first item, sync it to all others
         if (field === 'unit' && index === 0) {
@@ -207,7 +222,13 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                 rekening_id: String(editData.kode_rekening_id),
                 uraian: editData.uraian,
                 harga_satuan: String(Math.floor(Number(editData.harga_satuan_raw || editData.harga_satuan.replace(/\D/g, '')))),
-                alokasi: transformedAlokasi
+                alokasi: editData.bulan_data.map((item: any) => ({
+                    month: item.bulan,
+                    amount: String(item.total),
+                    quantity: String(item.jumlah),
+                    unit: item.satuan,
+                    spent: item.spent || 0
+                }))
             });
 
             setEditId(id);
@@ -241,6 +262,15 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
 
     const handleDeleteGroup = () => {
         if (!editId) return;
+
+        // Validasi instan: jika ada bulan yang sudah dibelanjakan
+        const hasSpent = data.alokasi.some(a => (a.spent || 0) > 0);
+        if (hasSpent) {
+            setAlertMessage("Tidak Dapat Melakukan Perubahan, Karena Sudah Dibelanjakan Pada BKU. Hapus Belanja Ini Pada BKU Terlebih Dahulu Agar Dapat Melakukan Update Data.");
+            setIsAlertModalOpen(true);
+            return;
+        }
+
         setIsDeleteModalOpen(true);
     };
 
@@ -644,18 +674,23 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                                             </td>
                                         </tr>
                                     ) : (
-                                        filteredItems.map((item, index) => (
-                                            <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition border-b border-gray-100 last:border-0">
-                                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{index + 1}</td>
-                                                <td className="px-4 py-4 text-xs text-gray-900 dark:text-gray-100 font-medium max-w-[150px]">{item.program}</td>
-                                                <td className="px-4 py-4 text-xs text-gray-900 dark:text-gray-100 max-w-[150px]">{item.kegiatan}</td>
-                                                <td className="px-4 py-4 text-xs text-gray-900 dark:text-gray-100 max-w-[150px]">{item.rekening}</td>
-                                                <td className="px-4 py-4 text-xs text-gray-900 dark:text-gray-100 max-w-[150px]">{item.uraian}</td>
-                                                <td className="px-4 py-4 text-xs text-center text-gray-900 dark:text-gray-100 font-medium">{item.dianggaran}</td>
-                                                <td className="px-4 py-4 text-xs text-center text-gray-900 dark:text-gray-100 font-medium">{item.dibelanjakan}</td>
-                                                <td className="px-4 py-4 text-xs text-gray-900 dark:text-gray-100">{item.satuan}</td>
-                                                <td className="px-4 py-4 text-xs text-gray-900 dark:text-gray-100 font-medium whitespace-nowrap">Rp {item.harga}</td>
-                                                <td className="px-4 py-4 text-xs text-gray-900 dark:text-white font-bold whitespace-nowrap">Rp {item.total}</td>
+                                        filteredItems.map((item, index) => {
+                                            const isBelanja = item.dibelanjakan >= item.dianggaran;
+                                            const textClass = isBelanja ? 'text-gray-400 dark:text-gray-500' : 'text-gray-900 dark:text-gray-100';
+                                            const boldTextClass = isBelanja ? 'text-gray-400 dark:text-gray-500' : 'text-gray-900 dark:text-white';
+                                            
+                                            return (
+                                            <tr key={item.id} className={`hover:bg-gray-50 dark:hover:bg-gray-700/50 transition border-b border-gray-100 last:border-0 ${isBelanja ? 'bg-gray-50 dark:bg-gray-800/50' : ''}`}>
+                                                <td className={`px-4 py-4 whitespace-nowrap text-sm ${textClass}`}>{index + 1}</td>
+                                                <td className={`px-4 py-4 text-xs font-medium max-w-[150px] ${textClass}`}>{item.program}</td>
+                                                <td className={`px-4 py-4 text-xs max-w-[150px] ${textClass}`}>{item.kegiatan}</td>
+                                                <td className={`px-4 py-4 text-xs max-w-[150px] ${textClass}`}>{item.rekening}</td>
+                                                <td className={`px-4 py-4 text-xs max-w-[150px] ${textClass}`}>{item.uraian}</td>
+                                                <td className={`px-4 py-4 text-xs text-center font-medium ${textClass}`}>{item.dianggaran}</td>
+                                                <td className={`px-4 py-4 text-xs text-center font-bold ${textClass}`}>{item.dibelanjakan}</td>
+                                                <td className={`px-4 py-4 text-xs ${textClass}`}>{item.satuan}</td>
+                                                <td className={`px-4 py-4 text-xs font-medium whitespace-nowrap ${textClass}`}>Rp {item.harga}</td>
+                                                <td className={`px-4 py-4 text-xs font-bold whitespace-nowrap ${boldTextClass}`}>Rp {item.total}</td>
                                                 <td className="px-4 py-4 whitespace-nowrap text-center">
                                                     <Dropdown>
                                                         <Dropdown.Trigger>
@@ -666,20 +701,22 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                                                             </button>
                                                         </Dropdown.Trigger>
                                                         <Dropdown.Content contentClasses="py-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg">
-                                                            <button
-                                                                type="button"
-                                                                onClick={(e) => {
-                                                                    e.preventDefault();
-                                                                    e.stopPropagation();
-                                                                    handleEdit(item.id);
-                                                                }}
-                                                                className="flex items-center gap-2 px-4 py-2 text-sm leading-5 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 w-full text-left transition duration-150 ease-in-out focus:outline-none"
-                                                            >
-                                                                <svg className="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                                </svg>
-                                                                Edit
-                                                            </button>
+                                                            {!isBelanja && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={(e) => {
+                                                                        e.preventDefault();
+                                                                        e.stopPropagation();
+                                                                        handleEdit(item.id);
+                                                                    }}
+                                                                    className="flex items-center gap-2 px-4 py-2 text-sm leading-5 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 w-full text-left transition duration-150 ease-in-out focus:outline-none"
+                                                                >
+                                                                    <svg className="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                                    </svg>
+                                                                    Edit
+                                                                </button>
+                                                            )}
                                                             <button
                                                                 type="button"
                                                                 onClick={(e) => {
@@ -695,20 +732,23 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                                                                 </svg>
                                                                 Detail
                                                             </button>
-                                                            <Dropdown.Link as="button" href="#" onClick={(e) => {
-                                                                e.preventDefault();
-                                                                handleSisip(item.id);
-                                                            }} className="flex items-center gap-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 w-full text-left">
-                                                                <svg className="w-4 h-4 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                                                                </svg>
-                                                                Sisip Uraian
-                                                            </Dropdown.Link>
+                                                            {!isBelanja && (
+                                                                <Dropdown.Link as="button" href="#" onClick={(e) => {
+                                                                    e.preventDefault();
+                                                                    handleSisip(item.id);
+                                                                }} className="flex items-center gap-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 w-full text-left">
+                                                                    <svg className="w-4 h-4 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                                                    </svg>
+                                                                    Sisip Uraian
+                                                                </Dropdown.Link>
+                                                            )}
                                                         </Dropdown.Content>
                                                     </Dropdown>
                                                 </td>
                                             </tr>
-                                        ))
+                                        );
+                                    })
                                     )}
                                     {/* Footer Row */}
                                     {filteredItems.length > 0 && (
@@ -846,26 +886,32 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                             {errors.alokasi && <div className="text-red-500 text-xs mb-2">{errors.alokasi}</div>}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {/* Allocated Months */}
-                                {data.alokasi.map((alloc, index) => (
-                                    <div key={index} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 relative group">
-                                        <button
-                                            type="button"
-                                            onClick={() => handleRemoveMonth(index)}
-                                            className={`absolute -top-2 -right-2 rounded-full p-1 shadow-md transition-colors z-10 
-                                                ${isLocked(alloc.month) ? 'bg-gray-400 cursor-not-allowed hidden' : 'bg-red-500 hover:bg-red-600 text-white'}`}
-                                            disabled={isLocked(alloc.month)}
-                                        >
-                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                            </svg>
-                                        </button>
+                                {data.alokasi.map((alloc, index) => {
+                                    const spentValue = Number(alloc.spent || 0);
+                                    const qtyValue = Number(alloc.quantity || 0);
+                                    const hasSpent = spentValue > 0 || isLocked(alloc.month);
+                                    const isLunas = (spentValue > 0 && spentValue >= qtyValue) || isLocked(alloc.month);
+
+                                    return (
+                                    <div key={index} className={`bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 relative group ${isLunas ? 'opacity-70 grayscale-[0.5]' : ''}`}>
+                                        {!hasSpent && (
+                                            <button
+                                                type="button"
+                                                onClick={() => handleRemoveMonth(index)}
+                                                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600 transition-colors z-10"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                            </button>
+                                        )}
 
                                         <div className="grid grid-cols-2 gap-3 mb-3">
                                             <select
-                                                className={`w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 text-sm rounded-md shadow-sm h-9 py-1 ${isLocked(alloc.month) ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                                                className={`w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 text-sm rounded-md shadow-sm h-9 py-1 ${hasSpent ? 'bg-gray-100 dark:bg-gray-800 cursor-not-allowed' : ''}`}
                                                 value={alloc.month}
                                                 onChange={(e) => updateAllocation(index, 'month', e.target.value)}
-                                                disabled={isLocked(alloc.month)}
+                                                disabled={hasSpent}
                                             >
                                                 <option value="">Pilih Bulan</option>
                                                 {monthOptions.map(m => (
@@ -886,24 +932,21 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                                                 </div>
                                                 <input
                                                     type="text"
-                                                    className={`pl-5 w-full text-sm rounded-md shadow-sm h-9
-                                                        ${isLocked(alloc.month)
-                                                            ? 'bg-gray-100 text-gray-500 cursor-not-allowed border-gray-300 dark:border-gray-700'
-                                                            : (showValidationErrors && !alloc.quantity
-                                                                ? 'border-red-500 focus:border-red-500 focus:ring-red-500 bg-red-50 dark:bg-red-900/10'
-                                                                : 'border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300')
-                                                        }
-                                                    `}
+                                                    className={`pl-5 w-full text-sm rounded-md shadow-sm h-9 
+                                                        ${showValidationErrors && !alloc.quantity
+                                                            ? 'border-red-500 focus:border-red-500 focus:ring-red-500 bg-red-50 dark:bg-red-900/10'
+                                                            : (isLunas ? 'bg-gray-100 dark:bg-gray-800 cursor-not-allowed border-gray-300 dark:border-gray-700 dark:text-gray-500' : 'border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300')
+                                                        }`}
                                                     placeholder="Jumlah"
                                                     value={alloc.quantity}
                                                     onChange={(e) => updateAllocation(index, 'quantity', e.target.value.replace(/\D/g, ''))}
-                                                    disabled={isLocked(alloc.month)}
+                                                    disabled={isLunas}
                                                 />
                                             </div>
                                             <input
                                                 type="text"
                                                 className={`w-full text-sm rounded-md shadow-sm h-9 
-                                                    ${index > 0 ? 'bg-gray-100 dark:bg-gray-800 text-gray-500 cursor-not-allowed border-gray-300 dark:border-gray-700' :
+                                                    ${(index > 0 || isLunas) ? 'bg-gray-100 dark:bg-gray-800 text-gray-500 cursor-not-allowed border-gray-300 dark:border-gray-700' :
                                                         (showValidationErrors && !alloc.unit
                                                             ? 'border-red-500 focus:border-red-500 focus:ring-red-500 bg-red-50 dark:bg-red-900/10 dark:text-gray-300'
                                                             : 'border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300')
@@ -912,11 +955,12 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                                                 placeholder="Satuan"
                                                 value={alloc.unit}
                                                 onChange={(e) => updateAllocation(index, 'unit', e.target.value)}
-                                                readOnly={index > 0}
+                                                readOnly={index > 0 || isLunas}
+                                                disabled={isLunas}
                                             />
                                         </div>
                                     </div>
-                                ))}
+                                )})}
 
                                 {/* Add Month Button */}
                                 {data.alokasi.length < 12 && (
