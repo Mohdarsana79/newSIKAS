@@ -1331,7 +1331,7 @@ class RkasController extends Controller
      */
     private function getGrafikData($penganggaranId)
     {
-        Log::info('🔍 [GRAFIK_DEBUG] Starting getGrafikData for penganggaran_id: ' . $penganggaranId);
+        Log::info('🔍 [GRAFIK_DEBUG_NEW_MURNI] Starting getGrafikData for penganggaran_id: ' . $penganggaranId);
 
         try {
             // Total pagu anggaran
@@ -1395,15 +1395,17 @@ class RkasController extends Controller
                     return $item->jumlah * $item->harga_satuan;
                 });
 
-            // Hitung realisasi SARPRAS dari BKU
-            $sarprasSpent = \App\Models\BukuKasUmumUraianDetail::whereHas('bukuKasUmum', function($q) use ($penganggaranId) {
-                $q->where('penganggaran_id', $penganggaranId);
-            })->whereHas('kodeKegiatan', function($q) {
-                $q->where('kode', 'like', '05.08.01%')
-                  ->orWhere('kode', 'like', '05.08.03%')
-                  ->orWhere('kode', 'like', '05.08.05%')
-                  ->orWhere('kode', 'like', '05.08.10%');
-            })->sum('jumlah');
+            $sarprasSpent = \DB::table('buku_kas_umum_uraian_details')
+                ->join('buku_kas_umums', 'buku_kas_umums.id', '=', 'buku_kas_umum_uraian_details.buku_kas_umum_id')
+                ->join('kode_kegiatans', 'kode_kegiatans.id', '=', 'buku_kas_umum_uraian_details.kode_kegiatan_id')
+                ->where('buku_kas_umums.penganggaran_id', $penganggaranId)
+                ->where(function($q) {
+                    $q->where('kode_kegiatans.kode', 'like', '05.08.01%')
+                      ->orWhere('kode_kegiatans.kode', 'like', '05.08.03%')
+                      ->orWhere('kode_kegiatans.kode', 'like', '05.08.05%')
+                      ->orWhere('kode_kegiatans.kode', 'like', '05.08.10%');
+                })
+                ->sum('buku_kas_umum_uraian_details.jumlah');
 
             Log::info('🏫 [GRAFIK_DEBUG] Sarpras anggaran calculated: ' . number_format($sarprasAnggaran, 2));
             Log::info('🏫 [GRAFIK_DEBUG] Sarpras spent calculated: ' . number_format($sarprasSpent, 2));
