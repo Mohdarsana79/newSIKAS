@@ -78,8 +78,6 @@ class AssertableInertia extends AssertableJson
             PHPUnit::assertArrayHasKey('props', $page);
             PHPUnit::assertArrayHasKey('url', $page);
             PHPUnit::assertArrayHasKey('version', $page);
-            PHPUnit::assertArrayHasKey('encryptHistory', $page);
-            PHPUnit::assertArrayHasKey('clearHistory', $page);
         } catch (AssertionFailedError $e) {
             PHPUnit::fail('Not a valid Inertia response.');
         }
@@ -88,8 +86,8 @@ class AssertableInertia extends AssertableJson
         $instance->component = $page['component'];
         $instance->url = $page['url'];
         $instance->version = $page['version'];
-        $instance->encryptHistory = $page['encryptHistory'];
-        $instance->clearHistory = $page['clearHistory'];
+        $instance->encryptHistory = isset($page['encryptHistory']);
+        $instance->clearHistory = isset($page['clearHistory']);
         $instance->deferredProps = $page['deferredProps'] ?? [];
         $instance->flash = $page['flash'] ?? [];
 
@@ -107,7 +105,7 @@ class AssertableInertia extends AssertableJson
 
         if ($shouldExist || (is_null($shouldExist) && config('inertia.testing.ensure_pages_exist', true))) {
             try {
-                app('inertia.testing.view-finder')->find($value);
+                app('inertia.view-finder')->find($value);
             } catch (InvalidArgumentException $exception) {
                 PHPUnit::fail(sprintf('Inertia page component file [%s] does not exist.', $value));
             }
@@ -233,18 +231,9 @@ class AssertableInertia extends AssertableJson
      */
     public function hasFlash(string $key, mixed $expected = null): self
     {
-        PHPUnit::assertTrue(
-            Arr::has($this->flash, $key),
-            sprintf('Inertia Flash Data is missing key [%s].', $key)
-        );
-
-        if (func_num_args() > 1) {
-            PHPUnit::assertSame(
-                $expected,
-                Arr::get($this->flash, $key),
-                sprintf('Inertia Flash Data [%s] does not match expected value.', $key)
-            );
-        }
+        func_num_args() > 1
+            ? static::assertFlashHas($this->flash, $key, $expected)
+            : static::assertFlashHas($this->flash, $key);
 
         return $this;
     }
@@ -254,12 +243,43 @@ class AssertableInertia extends AssertableJson
      */
     public function missingFlash(string $key): self
     {
-        PHPUnit::assertFalse(
-            Arr::has($this->flash, $key),
-            sprintf('Inertia Flash Data has unexpected key [%s].', $key)
-        );
+        static::assertFlashMissing($this->flash, $key);
 
         return $this;
+    }
+
+    /**
+     * Assert that the given flash data array contains the given key, optionally with the expected value.
+     *
+     * @param  array<string, mixed>  $flash
+     */
+    public static function assertFlashHas(array $flash, string $key, mixed $expected = null): void
+    {
+        PHPUnit::assertTrue(
+            Arr::has($flash, $key),
+            sprintf('Inertia Flash Data is missing key [%s].', $key)
+        );
+
+        if (func_num_args() > 2) {
+            PHPUnit::assertSame(
+                $expected,
+                Arr::get($flash, $key),
+                sprintf('Inertia Flash Data [%s] does not match expected value.', $key)
+            );
+        }
+    }
+
+    /**
+     * Assert that the given flash data array does not contain the given key.
+     *
+     * @param  array<string, mixed>  $flash
+     */
+    public static function assertFlashMissing(array $flash, string $key): void
+    {
+        PHPUnit::assertFalse(
+            Arr::has($flash, $key),
+            sprintf('Inertia Flash Data has unexpected key [%s].', $key)
+        );
     }
 
     /**
@@ -269,14 +289,16 @@ class AssertableInertia extends AssertableJson
      */
     public function toArray()
     {
-        return [
-            'component' => $this->component,
-            'props' => $this->prop(),
-            'url' => $this->url,
-            'version' => $this->version,
-            'encryptHistory' => $this->encryptHistory,
-            'clearHistory' => $this->clearHistory,
-            'flash' => $this->flash,
-        ];
+        return array_merge(
+            [
+                'component' => $this->component,
+                'props' => $this->prop(),
+                'url' => $this->url,
+                'version' => $this->version,
+                'flash' => $this->flash,
+            ],
+            $this->encryptHistory ? ['encryptHistory' => true] : [],
+            $this->clearHistory ? ['clearHistory' => true] : [],
+        );
     }
 }

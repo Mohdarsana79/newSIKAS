@@ -4,18 +4,26 @@ namespace Inertia;
 
 use BackedEnum;
 use Closure;
+use Illuminate\Contracts\Debug\ExceptionHandler as ExceptionHandlerContract;
+use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Contracts\Support\Arrayable;
+use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
 use Illuminate\Http\Request as HttpRequest;
+use Illuminate\Routing\Router;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Request;
 use Illuminate\Support\Facades\Response as BaseResponse;
 use Illuminate\Support\Traits\Macroable;
+use Inertia\Ssr\DisablesSsr;
+use Inertia\Ssr\ExcludesSsrPaths;
+use Inertia\Ssr\Gateway;
 use Inertia\Support\Header;
+use Inertia\Support\SessionKey;
 use InvalidArgumentException;
+use LogicException;
 use Symfony\Component\HttpFoundation\RedirectResponse;
-use Symfony\Component\HttpFoundation\RedirectResponse as SymfonyRedirect;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use UnitEnum;
 
@@ -66,6 +74,13 @@ class ResponseFactory
     protected $urlResolver;
 
     /**
+     * The component transformer callback.
+     *
+     * @var Closure|null
+     */
+    protected $componentTransformer;
+
+    /**
      * Set the root view template for Inertia responses. This template
      * serves as the HTML wrapper that contains the Inertia root element
      * where the frontend application will be mounted.
@@ -80,7 +95,7 @@ class ResponseFactory
      * included with every response, making it ideal for user authentication
      * state, flash messages, etc.
      *
-     * @param  string|array<array-key, mixed>|\Illuminate\Contracts\Support\Arrayable<array-key, mixed>|\Inertia\ProvidesInertiaProperties  $key
+     * @param  string|array<array-key, mixed>|Arrayable<array-key, mixed>|ProvidesInertiaProperties  $key
      * @param  mixed  $value
      */
     public function share($key, $value = null): void
@@ -126,7 +141,7 @@ class ResponseFactory
     /**
      * Set the asset version.
      *
-     * @param  \Closure|string|null  $version
+     * @param  Closure|string|null  $version
      */
     public function version($version): void
     {
@@ -154,11 +169,27 @@ class ResponseFactory
     }
 
     /**
+     * Set the component transformer.
+     */
+    public function transformComponentUsing(?Closure $componentTransformer = null): void
+    {
+        $this->componentTransformer = $componentTransformer;
+    }
+
+    /**
      * Clear the browser history on the next visit.
      */
     public function clearHistory(): void
     {
-        session([SessionKey::ClearHistory->value => true]);
+        session([SessionKey::CLEAR_HISTORY => true]);
+    }
+
+    /**
+     * Preserve the URL fragment across the next redirect.
+     */
+    public function preserveFragment(): void
+    {
+        session([SessionKey::PRESERVE_FRAGMENT => true]);
     }
 
     /**
@@ -172,13 +203,33 @@ class ResponseFactory
     }
 
     /**
-     * Create a lazy property.
-     *
-     * @deprecated Use `optional` instead.
+     * Disable server-side rendering, optionally based on a condition.
      */
-    public function lazy(callable $callback): LazyProp
+    public function disableSsr(Closure|bool $condition = true): void
     {
-        return new LazyProp($callback);
+        $gateway = app(Gateway::class);
+
+        if (! $gateway instanceof DisablesSsr) {
+            throw new LogicException('The configured SSR gateway does not support disabling server-side rendering conditionally.');
+        }
+
+        $gateway->disable($condition);
+    }
+
+    /**
+     * Exclude the given paths from server-side rendering.
+     *
+     * @param  array<int, string>|string  $paths
+     */
+    public function withoutSsr(array|string $paths): void
+    {
+        $gateway = app(Gateway::class);
+
+        if (! $gateway instanceof ExcludesSsrPaths) {
+            throw new LogicException('The configured SSR gateway does not support excluding paths from server-side rendering.');
+        }
+
+        $gateway->except($paths);
     }
 
     /**
@@ -192,9 +243,9 @@ class ResponseFactory
     /**
      * Create a deferred property.
      */
-    public function defer(callable $callback, string $group = 'default'): DeferProp
+    public function defer(callable $callback, string $group = 'default', bool $rescue = false): DeferProp
     {
-        return new DeferProp($callback, $group);
+        return new DeferProp($callback, $group, $rescue);
     }
 
     /**
@@ -261,7 +312,7 @@ class ResponseFactory
     /**
      * Find the component or fail.
      *
-     * @throws \Inertia\ComponentNotFoundException
+     * @throws ComponentNotFoundException
      */
     protected function findComponentOrFail(string $component): void
     {
@@ -273,13 +324,41 @@ class ResponseFactory
     }
 
     /**
+     * Transform the component name.
+     *
+     * @param  mixed  $component
+     * @return mixed
+     */
+    protected function transformComponent($component)
+    {
+        if (! $this->componentTransformer) {
+            return $component;
+        }
+
+        return ($this->componentTransformer)($component) ?? $component;
+    }
+
+    /**
      * Create an Inertia response.
      *
-     * @param  array<array-key, mixed>|\Illuminate\Contracts\Support\Arrayable<array-key, mixed>|ProvidesInertiaProperties  $props
+     * @param  BackedEnum|UnitEnum|string  $component
+     * @param  array<array-key, mixed>|Arrayable<array-key, mixed>|ProvidesInertiaProperties  $props
      */
-    public function render(string $component, $props = []): Response
+    public function render($component, $props = []): Response
     {
-        if (config('inertia.ensure_pages_exist', false)) {
+        $component = $this->transformComponent($component);
+
+        $component = match (true) {
+            $component instanceof BackedEnum => $component->value,
+            $component instanceof UnitEnum => $component->name,
+            default => $component,
+        };
+
+        if (! is_string($component)) {
+            throw new InvalidArgumentException('Component argument must be of type string or a string BackedEnum');
+        }
+
+        if (config('inertia.pages.ensure_pages_exist', false)) {
             $this->findComponentOrFail($component);
         }
 
@@ -292,7 +371,8 @@ class ResponseFactory
 
         return new Response(
             $component,
-            array_merge($this->sharedProps, $props),
+            $this->sharedProps,
+            $props,
             $this->rootView,
             $this->getVersion(),
             $this->encryptHistory ?? config('inertia.history.encrypt', false),
@@ -303,15 +383,51 @@ class ResponseFactory
     /**
      * Create an Inertia location response.
      *
-     * @param  string|\Symfony\Component\HttpFoundation\RedirectResponse  $url
+     * @param  string|RedirectResponse  $url
      */
     public function location($url): SymfonyResponse
     {
         if (Request::inertia()) {
-            return BaseResponse::make('', 409, [Header::LOCATION => $url instanceof SymfonyRedirect ? $url->getTargetUrl() : $url]);
+            return BaseResponse::make('', 409, [Header::LOCATION => $url instanceof RedirectResponse ? $url->getTargetUrl() : $url]);
         }
 
-        return $url instanceof SymfonyRedirect ? $url : Redirect::away($url);
+        return $url instanceof RedirectResponse ? $url : Redirect::away($url);
+    }
+
+    /**
+     * Register a callback to handle HTTP exceptions for Inertia requests.
+     */
+    public function handleExceptionsUsing(callable $callback): void
+    {
+        /** @var mixed $handler */
+        $handler = app(ExceptionHandlerContract::class);
+
+        if (! $handler instanceof ExceptionHandler) {
+            if (app()->runningInConsole()) {
+                return;
+            }
+
+            if (! method_exists($handler, 'respondUsing')) {
+                throw new LogicException('The bound exception handler does not have a `respondUsing` method.');
+            }
+        }
+
+        /** @var ExceptionHandler $handler */
+        $handler->respondUsing(function ($response, $e, $request) use ($callback) {
+            $result = $callback(new ExceptionResponse(
+                $e,
+                $request,
+                $response,
+                app(Router::class),
+                app(Kernel::class),
+            ));
+
+            if ($result instanceof ExceptionResponse) {
+                return $result->toResponse($request);
+            }
+
+            return $result ?? $response;
+        });
     }
 
     /**
@@ -319,7 +435,7 @@ class ResponseFactory
      * flash data is not persisted in the browser's history state, making it
      * ideal for one-time notifications like toasts or highlights.
      *
-     * @param  \BackedEnum|\UnitEnum|string|array<string, mixed>  $key
+     * @param  BackedEnum|UnitEnum|string|array<string, mixed>  $key
      */
     public function flash(BackedEnum|UnitEnum|string|array $key, mixed $value = null): self
     {
@@ -335,7 +451,7 @@ class ResponseFactory
             $flash = [$key => $value];
         }
 
-        session()->now(SessionKey::FlashData->value, [
+        session()->flash(SessionKey::FLASH_DATA, [
             ...$this->getFlashed(),
             ...$flash,
         ]);
@@ -362,6 +478,18 @@ class ResponseFactory
     {
         $request ??= request();
 
-        return $request->hasSession() ? $request->session()->get(SessionKey::FlashData->value, []) : [];
+        return $request->hasSession() ? $request->session()->get(SessionKey::FLASH_DATA, []) : [];
+    }
+
+    /**
+     * Retrieve and remove the flashed data from the session.
+     *
+     * @return array<string, mixed>
+     */
+    public function pullFlashed(?HttpRequest $request = null): array
+    {
+        $request ??= request();
+
+        return $request->hasSession() ? $request->session()->pull(SessionKey::FLASH_DATA, []) : [];
     }
 }

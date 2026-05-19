@@ -29,6 +29,9 @@ export default function Login({
     const securityCodeInput = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
+        // Clear pajak reminder flag so it will show again after a fresh login
+        sessionStorage.removeItem('pajak_reminder_shown');
+
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const errs = errors as any;
         if (errs.two_factor_required) {

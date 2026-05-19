@@ -15,6 +15,19 @@ import Dropdown from '@/Components/Dropdown';
 import SearchableSelect from '@/Components/SearchableSelect';
 import axios from 'axios';
 
+/**
+ * Helper: Parse string tanggal dari server (format YYYY-MM-DD atau ISO UTC)
+ * sebagai local midnight — mencegah timezone offset WIB (UTC+7).
+ *
+ * Masalah: new Date('2026-05-01T00:00:00.000000Z') di WIB = 2026-04-30T17:00:00+07:00
+ * Solusi:  parseLocalDate('2026-05-01T00:00:00.000000Z') = new Date(2026, 4, 1) = 2026-05-01 lokal
+ */
+function parseLocalDate(dateStr: string): Date {
+    const part = dateStr.split(/[T ]/)[0]; // Ambil bagian 'YYYY-MM-DD'
+    const [y, m, d] = part.split('-').map(Number);
+    return new Date(y, m - 1, d); // Local midnight — tidak ada timezone shift
+}
+
 interface BkuProps {
     bulan: string;
     tahun: string;
@@ -545,8 +558,9 @@ export default function Bku({
     const endOfActiveMonth = new Date(yearInt, currentMonthIndex + 1, 0);
 
     // Find the earliest date of fund reception
+    // Gunakan parseLocalDate agar tidak terjadi timezone offset (UTC → WIB)
     const earliestReceptionDate = (penerimaanDanas || [])
-        .map((p: any) => new Date(p.tanggal_terima))
+        .map((p: any) => parseLocalDate(p.tanggal_terima))
         .sort((a: Date, b: Date) => a.getTime() - b.getTime())[0];
 
     const disabledWithdrawalDates = [
@@ -557,16 +571,18 @@ export default function Bku({
     ];
 
     // Find the earliest date of cash withdrawal (Penarikan Tunai) - Adjusted for Stages
+    // Gunakan parseLocalDate agar tidak terjadi timezone offset (UTC → WIB)
     const globalEarliestWithdrawal = (penarikanTunais || [])
-        .map((p: any) => new Date(p.tanggal_penarikan))
+        .map((p: any) => parseLocalDate(p.tanggal_penarikan))
         .sort((a: Date, b: Date) => a.getTime() - b.getTime())[0];
 
     // Stage 2 Logic (July - December)
     const isStage2 = currentMonthIndex >= 6; // July index is 6
     const startOfStage2 = new Date(yearInt, 6, 1);
 
+    // Gunakan parseLocalDate agar tidak terjadi timezone offset (UTC → WIB)
     const earliestStage2Withdrawal = (penarikanTunais || [])
-        .map((p: any) => new Date(p.tanggal_penarikan))
+        .map((p: any) => parseLocalDate(p.tanggal_penarikan))
         .filter((d: Date) => d >= startOfStage2)
         .sort((a: Date, b: Date) => a.getTime() - b.getTime())[0];
 

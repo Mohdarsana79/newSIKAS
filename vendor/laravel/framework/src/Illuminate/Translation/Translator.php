@@ -252,7 +252,7 @@ class Translator extends NamespacedItemResolver implements TranslatorContract
 
         if (is_string($line)) {
             return $this->makeReplacements($line, $replace);
-        } elseif (is_array($line) && count($line) > 0) {
+        } elseif (is_array($line) && $line !== []) {
             array_walk_recursive($line, function (&$value, $key) use ($replace) {
                 $value = $this->makeReplacements($value, $replace);
             });
@@ -386,7 +386,7 @@ class Translator extends NamespacedItemResolver implements TranslatorContract
      * Register a callback that is responsible for handling missing translation keys.
      *
      * @param  callable|null  $callback
-     * @return static
+     * @return $this
      */
     public function handleMissingKeysUsing(?callable $callback)
     {
@@ -456,7 +456,9 @@ class Translator extends NamespacedItemResolver implements TranslatorContract
     {
         $locales = array_filter([$locale ?: $this->locale, $this->fallback]);
 
-        return call_user_func($this->determineLocalesUsing ?: fn () => $locales, $locales);
+        $determined = call_user_func($this->determineLocalesUsing ?: fn () => $locales, $locales);
+
+        return array_values(array_unique($determined));
     }
 
     /**

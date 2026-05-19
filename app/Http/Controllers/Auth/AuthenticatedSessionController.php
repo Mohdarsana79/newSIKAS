@@ -51,6 +51,7 @@ class AuthenticatedSessionController extends Controller
         }
 
         $request->session()->regenerate();
+        $request->session()->flash('show_changelog', true);
 
         return redirect()->intended(route('dashboard', absolute: false));
     }

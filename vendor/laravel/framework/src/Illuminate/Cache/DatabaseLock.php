@@ -113,19 +113,23 @@ class DatabaseLock extends Lock
      * Release the lock.
      *
      * @return bool
+     *
+     * @throws \Throwable
      */
     public function release()
     {
-        if ($this->isOwnedByCurrentProcess()) {
-            $this->connection->table($this->table)
+        try {
+            return $this->connection->table($this->table)
                 ->where('key', $this->name)
                 ->where('owner', $this->owner)
-                ->delete();
+                ->delete() > 0;
+        } catch (Throwable $e) {
+            if ($this->causedByConcurrencyError($e)) {
+                return true;
+            }
 
-            return true;
+            throw $e;
         }
-
-        return false;
     }
 
     /**
@@ -167,7 +171,10 @@ class DatabaseLock extends Lock
      */
     protected function getCurrentOwner()
     {
-        return $this->connection->table($this->table)->where('key', $this->name)->first()?->owner;
+        return $this->connection->table($this->table)
+            ->where('key', $this->name)
+            ->where('expiration', '>', $this->currentTime())
+            ->first()?->owner;
     }
 
     /**

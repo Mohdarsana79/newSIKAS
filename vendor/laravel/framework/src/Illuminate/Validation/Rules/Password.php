@@ -142,6 +142,8 @@ class Password implements DataAwareRule, ImplicitRule, IteratorAggregate, Rule, 
      *
      * @param  static|callable|null  $callback
      * @return static|void
+     *
+     * @throws \InvalidArgumentException
      */
     public static function defaults($callback = null)
     {
@@ -228,7 +230,7 @@ class Password implements DataAwareRule, ImplicitRule, IteratorAggregate, Rule, 
      * Set the minimum size of the password.
      *
      * @param  int  $size
-     * @return $this
+     * @return static
      */
     public static function min($size)
     {

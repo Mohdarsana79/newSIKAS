@@ -116,6 +116,14 @@ class Uri implements Htmlable, JsonSerializable, Responsable, Stringable
     }
 
     /**
+     * Get the URI's authority.
+     */
+    public function authority(): ?string
+    {
+        return $this->uri->getAuthority();
+    }
+
+    /**
      * Get the URI's scheme.
      */
     public function scheme(): ?string
@@ -327,6 +335,14 @@ class Uri implements Htmlable, JsonSerializable, Responsable, Stringable
     }
 
     /**
+     * Remove the fragment from the URI.
+     */
+    public function withoutFragment(): static
+    {
+        return new static($this->uri->withFragment(null));
+    }
+
+    /**
      * Create a redirect HTTP response for the given URI.
      */
     public function redirect(int $status = 302, array $headers = []): RedirectResponse
@@ -374,7 +390,7 @@ class Uri implements Htmlable, JsonSerializable, Responsable, Stringable
             return $this->value();
         }
 
-        return Str::replace(Str::after($this->value(), '?'), $this->query()->decode(), $this->value());
+        return Str::replace($this->query()->value(), $this->query()->decode(), $this->value());
     }
 
     /**
@@ -382,7 +398,15 @@ class Uri implements Htmlable, JsonSerializable, Responsable, Stringable
      */
     public function value(): string
     {
-        return (string) $this;
+        return $this->toString();
+    }
+
+    /**
+     * Get the string representation of the URI.
+     */
+    public function toString(): string
+    {
+        return $this->uri->toString();
     }
 
     /**
@@ -391,6 +415,14 @@ class Uri implements Htmlable, JsonSerializable, Responsable, Stringable
     public function isEmpty(): bool
     {
         return trim($this->value()) === '';
+    }
+
+    /**
+     * Determine if the URI is not an empty string.
+     */
+    public function isNotEmpty(): bool
+    {
+        return ! $this->isEmpty();
     }
 
     /**
@@ -437,6 +469,6 @@ class Uri implements Htmlable, JsonSerializable, Responsable, Stringable
      */
     public function __toString(): string
     {
-        return $this->uri->toString();
+        return $this->toString();
     }
 }

@@ -34,6 +34,8 @@ use App\Http\Controllers\LphController;
 use App\Http\Controllers\ArkasToolController;
 use App\Http\Controllers\ReferensiKodeController;
 use App\Http\Controllers\ArkasSettingController;
+use App\Http\Controllers\NotificationController;
+
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -211,6 +213,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/api/bku/kegiatan-rekening', [BukuKasUmumController::class, 'getKegiatanRekening'])->name('api.bku.kegiatan-rekening');
     Route::get('/api/bku/search-toko', [BukuKasUmumController::class, 'searchToko'])->name('api.bku.search-toko');
 
+    // Notifications
+    Route::get('/api/notifications/pajak', [NotificationController::class, 'getPajakNotifications'])->name('api.notifications.pajak');
+    Route::get('/api/notifications/pajak/details', [NotificationController::class, 'getPajakDetails'])->name('api.notifications.pajak.details');
+
     // API Routes for Penatausahaan (Inferred from context)
     // Route::get('/api/realisasi/data', [RekapitulasiRealisasiController::class, 'getRealisasiData'])->name('api.realisasi.data');
     // Route::get('/api/bkp-umum/data', [BukuKasUmumController::class, 'getRekapanBkuAjax'])->name('api.bkp-umum.data');
@@ -325,6 +331,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/ba/cetak', [BeritaAcaraPenutupanController::class, 'generateBeritaAcaraPdf'])->name('ba.cetak');
     Route::get('/realisasi/cetak', [RekapitulasiRealisasiController::class, 'generatePdf'])->name('realisasi.cetak');
     Route::get('/rek-realisasi/cetak', [RekapitulasiRealisasiController::class, 'generateRekapRealisasiPerRekeningPdf'])->name('rek-realisasi.cetak');
+
 });
 
 require __DIR__.'/auth.php';

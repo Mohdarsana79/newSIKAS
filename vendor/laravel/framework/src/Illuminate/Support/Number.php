@@ -222,7 +222,7 @@ class Number
      * @param  int|float  $number
      * @param  int  $precision
      * @param  int|null  $maxPrecision
-     * @return bool|string
+     * @return string|false
      */
     public static function abbreviate(int|float $number, int $precision = 0, ?int $maxPrecision = null)
     {
@@ -261,7 +261,7 @@ class Number
      * @param  int|float  $number
      * @param  int  $precision
      * @param  int|null  $maxPrecision
-     * @param  array  $units
+     * @param  array<int, string>  $units
      * @return string|false
      */
     protected static function summarize(int|float $number, int $precision = 0, ?int $maxPrecision = null, array $units = [])
@@ -289,7 +289,15 @@ class Number
         $displayExponent = $numberExponent - ($numberExponent % 3);
         $number /= pow(10, $displayExponent);
 
-        return trim(sprintf('%s%s', static::format($number, $precision, $maxPrecision), $units[$displayExponent] ?? ''));
+        $formatted = static::format($number, $precision, $maxPrecision);
+
+        if (static::parseFloat($formatted) >= 1000 && isset($units[$displayExponent + 3])) {
+            $number /= 1000;
+            $displayExponent += 3;
+            $formatted = static::format($number, $precision, $maxPrecision);
+        }
+
+        return trim(sprintf('%s%s', $formatted, $units[$displayExponent] ?? ''));
     }
 
     /**
@@ -312,7 +320,7 @@ class Number
      * @param  int|float  $by
      * @param  int|float  $start
      * @param  int|float  $offset
-     * @return array
+     * @return list<array{int|float, int|float}>
      */
     public static function pairs(int|float $to, int|float $by, int|float $start = 0, int|float $offset = 1)
     {
@@ -345,9 +353,11 @@ class Number
     /**
      * Execute the given callback using the given locale.
      *
+     * @template TReturn
+     *
      * @param  string  $locale
-     * @param  callable  $callback
-     * @return mixed
+     * @param  callable(): TReturn  $callback
+     * @return TReturn
      */
     public static function withLocale(string $locale, callable $callback)
     {
@@ -365,9 +375,11 @@ class Number
     /**
      * Execute the given callback using the given currency.
      *
+     * @template TReturn
+     *
      * @param  string  $currency
-     * @param  callable  $callback
-     * @return mixed
+     * @param  callable(): TReturn  $callback
+     * @return TReturn
      */
     public static function withCurrency(string $currency, callable $callback)
     {

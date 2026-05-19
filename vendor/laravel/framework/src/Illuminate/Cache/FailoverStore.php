@@ -3,21 +3,31 @@
 namespace Illuminate\Cache;
 
 use Illuminate\Cache\Events\CacheFailedOver;
+use Illuminate\Contracts\Cache\CanFlushLocks;
 use Illuminate\Contracts\Cache\LockProvider;
 use Illuminate\Contracts\Events\Dispatcher;
 use RuntimeException;
 use Throwable;
 
-class FailoverStore extends TaggableStore implements LockProvider
+class FailoverStore extends TaggableStore implements CanFlushLocks, LockProvider
 {
     /**
+     * The caches which failed on the last action.
+     *
+     * @var list<string>
+     */
+    protected array $failingCaches = [];
+
+    /**
      * Create a new failover store.
+     *
+     * @param  array<int, string>  $stores
      */
     public function __construct(
         protected CacheManager $cache,
         protected Dispatcher $events,
-        protected array $stores)
-    {
+        protected array $stores
+    ) {
     }
 
     /**
@@ -142,6 +152,18 @@ class FailoverStore extends TaggableStore implements LockProvider
     }
 
     /**
+     * Adjust the expiration time of a cached item.
+     *
+     * @param  string  $key
+     * @param  int  $seconds
+     * @return bool
+     */
+    public function touch($key, $seconds)
+    {
+        return $this->attemptOnAllStores(__FUNCTION__, func_get_args());
+    }
+
+    /**
      * Remove an item from the cache.
      *
      * @param  string  $key
@@ -179,6 +201,38 @@ class FailoverStore extends TaggableStore implements LockProvider
     }
 
     /**
+     * Flush all of the stale locks from every backing store.
+     *
+     * @return bool
+     */
+    public function flushLocks(): bool
+    {
+        $result = true;
+
+        foreach ($this->stores as $store) {
+            $underlyingStore = $this->store($store)->getStore();
+
+            if ($underlyingStore instanceof CanFlushLocks) {
+                if (! $underlyingStore->flushLocks()) {
+                    $result = false;
+                }
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Determine if the lock store is separate from the cache store.
+     *
+     * @return bool
+     */
+    public function hasSeparateLockStore(): bool
+    {
+        return true;
+    }
+
+    /**
      * Get the cache key prefix.
      *
      * @return string
@@ -190,19 +244,31 @@ class FailoverStore extends TaggableStore implements LockProvider
 
     /**
      * Attempt the given method on all stores.
+     *
+     * @return mixed
+     *
+     * @throws \Throwable
      */
     protected function attemptOnAllStores(string $method, array $arguments)
     {
-        $lastException = null;
+        [$lastException, $failedCaches] = [null, []];
 
-        foreach ($this->stores as $store) {
-            try {
-                return $this->store($store)->{$method}(...$arguments);
-            } catch (Throwable $e) {
-                $lastException = $e;
+        try {
+            foreach ($this->stores as $store) {
+                try {
+                    return $this->store($store)->{$method}(...$arguments);
+                } catch (Throwable $e) {
+                    $lastException = $e;
 
-                $this->events->dispatch(new CacheFailedOver($store, $e));
+                    $failedCaches[] = $store;
+
+                    if (! in_array($store, $this->failingCaches)) {
+                        $this->events->dispatch(new CacheFailedOver($store, $e));
+                    }
+                }
             }
+        } finally {
+            $this->failingCaches = $failedCaches;
         }
 
         throw $lastException ?? new RuntimeException('All failover cache stores failed.');

@@ -97,7 +97,7 @@ class Blueprint
      *
      * @param  \Illuminate\Database\Connection  $connection
      * @param  string  $table
-     * @param  \Closure|null  $callback
+     * @param  (\Closure(self): void)|null  $callback
      */
     public function __construct(Connection $connection, $table, ?Closure $callback = null)
     {
@@ -215,7 +215,7 @@ class Blueprint
     protected function addFluentIndexes()
     {
         foreach ($this->columns as $column) {
-            foreach (['primary', 'unique', 'index', 'fulltext', 'fullText', 'spatialIndex'] as $index) {
+            foreach (['primary', 'unique', 'index', 'fulltext', 'fullText', 'spatialIndex', 'vectorIndex'] as $index) {
                 // If the column is supposed to be changed to an auto increment column and
                 // the specified index is primary, there is no need to add a command on
                 // MySQL, as it will be handled during the column definition instead.
@@ -227,7 +227,11 @@ class Blueprint
                 // to "true" (boolean), no name has been specified for this index so the
                 // index method can be called without a name and it will generate one.
                 if ($column->{$index} === true) {
-                    $this->{$index}($column->name);
+                    $indexMethod = $index === 'index' && $column->type === 'vector'
+                        ? 'vectorIndex'
+                        : $index;
+
+                    $this->{$indexMethod}($column->name);
                     $column->{$index} = null;
 
                     continue 2;
@@ -247,7 +251,11 @@ class Blueprint
                 // value, we'll go ahead and call the index method and pass the name for
                 // the index since the developer specified the explicit name for this.
                 elseif (isset($column->{$index})) {
-                    $this->{$index}($column->name, $column->{$index});
+                    $indexMethod = $index === 'index' && $column->type === 'vector'
+                        ? 'vectorIndex'
+                        : $index;
+
+                    $this->{$indexMethod}($column->name, $column->{$index});
                     $column->{$index} = null;
 
                     continue 2;
@@ -695,6 +703,18 @@ class Blueprint
     }
 
     /**
+     * Specify a vector index for the table.
+     *
+     * @param  string  $column
+     * @param  string|null  $name
+     * @return \Illuminate\Database\Schema\IndexDefinition
+     */
+    public function vectorIndex($column, $name = null)
+    {
+        return $this->indexCommand('vectorIndex', $column, $name, 'hnsw', 'vector_cosine_ops');
+    }
+
+    /**
      * Specify a raw index for the table.
      *
      * @param  string  $expression
@@ -1040,9 +1060,7 @@ class Blueprint
                 ->referencesModelColumn($model->getKeyName());
         }
 
-        $modelTraits = class_uses_recursive($model);
-
-        if (in_array(HasUlids::class, $modelTraits, true)) {
+        if (isset(class_uses_recursive($model)[HasUlids::class])) {
             return $this->foreignUlid($column, 26)
                 ->table($model->getTable())
                 ->referencesModelColumn($model->getKeyName());
@@ -1344,7 +1362,7 @@ class Blueprint
      */
     public function softDeletesDatetime($column = 'deleted_at', $precision = null)
     {
-        return $this->datetime($column, $precision)->nullable();
+        return $this->dateTime($column, $precision)->nullable();
     }
 
     /**
@@ -1496,6 +1514,17 @@ class Blueprint
         $options = $dimensions ? compact('dimensions') : [];
 
         return $this->addColumn('vector', $column, $options);
+    }
+
+    /**
+     * Create a new tsvector column on the table.
+     *
+     * @param  string  $column
+     * @return \Illuminate\Database\Schema\ColumnDefinition
+     */
+    public function tsvector($column)
+    {
+        return $this->addColumn('tsvector', $column);
     }
 
     /**
@@ -1799,7 +1828,7 @@ class Blueprint
      * Add the columns from the callback after the given column.
      *
      * @param  string  $column
-     * @param  \Closure  $callback
+     * @param  (\Closure(self): void)  $callback
      * @return void
      */
     public function after($column, Closure $callback)

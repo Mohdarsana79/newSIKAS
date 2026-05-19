@@ -7,7 +7,10 @@ use Illuminate\Http\Request;
 use Illuminate\Session\Store;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\MessageBag;
+use Inertia\Ssr\ExcludesSsrPaths;
+use Inertia\Ssr\Gateway;
 use Inertia\Support\Header;
+use Inertia\Support\SessionKey;
 use Symfony\Component\HttpFoundation\Response;
 
 class Middleware
@@ -27,6 +30,13 @@ class Middleware
      * @var bool
      */
     protected $withAllErrors = false;
+
+    /**
+     * The paths that should be excluded from server-side rendering.
+     *
+     * @var array<int, string>
+     */
+    protected $withoutSsr = [];
 
     /**
      * Determine the current asset version.
@@ -85,7 +95,7 @@ class Middleware
     /**
      * Define a callback that returns the relative URL.
      *
-     * @return \Closure|null
+     * @return Closure|null
      */
     public function urlResolver()
     {
@@ -95,7 +105,7 @@ class Middleware
     /**
      * Handle the incoming request.
      *
-     * @return \Symfony\Component\HttpFoundation\Response
+     * @return Response
      */
     public function handle(Request $request, Closure $next)
     {
@@ -119,10 +129,16 @@ class Middleware
             Inertia::resolveUrlUsing($urlResolver);
         }
 
+        $ssrGateway = app(Gateway::class);
+
+        if (! empty($this->withoutSsr) && $ssrGateway instanceof ExcludesSsrPaths) {
+            $ssrGateway->except($this->withoutSsr);
+        }
+
         $response = $next($request);
         $response->headers->set('Vary', Header::INERTIA);
 
-        if ($response->isRedirect()) {
+        if ($isRedirect = $response->isRedirect()) {
             $this->reflash($request);
         }
 
@@ -142,7 +158,19 @@ class Middleware
             $response->setStatusCode(303);
         }
 
+        if ($isRedirect && $this->redirectHasFragment($response) && ! $request->prefetch()) {
+            $response = $this->onRedirectWithFragment($request, $response);
+        }
+
         return $response;
+    }
+
+    /**
+     * Determine if the redirect response contains a URL fragment.
+     */
+    protected function redirectHasFragment(Response $response): bool
+    {
+        return str_contains($response->headers->get('Location', ''), '#');
     }
 
     /**
@@ -151,7 +179,7 @@ class Middleware
     protected function reflash(Request $request): void
     {
         if ($flashed = Inertia::getFlashed($request)) {
-            $request->session()->flash(SessionKey::FlashData->value, $flashed);
+            $request->session()->flash(SessionKey::FLASH_DATA, $flashed);
         }
     }
 
@@ -161,6 +189,16 @@ class Middleware
     public function onEmptyResponse(Request $request, Response $response): Response
     {
         return Redirect::back();
+    }
+
+    /**
+     * Handle redirects with URL fragments.
+     */
+    public function onRedirectWithFragment(Request $request, Response $response): Response
+    {
+        return response('', 409, [
+            Header::REDIRECT => $response->headers->get('Location'),
+        ]);
     }
 
     /**

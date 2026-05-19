@@ -1,5 +1,7 @@
 import { PageProps } from '@/types';
 import { Head, Link } from '@inertiajs/react';
+import DarkModeSwitcher from '@/Components/DarkModeSwitcher';
+import FullscreenSwitcher from '@/Components/FullscreenSwitcher';
 
 export default function Welcome({
     auth,
@@ -22,6 +24,8 @@ export default function Welcome({
                     <span className="text-xl font-bold tracking-tight text-indigo-700 dark:text-indigo-400">SIKAS</span>
                 </div>
                 <div className="flex items-center gap-4">
+                    <FullscreenSwitcher />
+                    <DarkModeSwitcher />
                     <a
                         href="https://www.youtube.com/@giandarsana5772"
                         target="_blank"

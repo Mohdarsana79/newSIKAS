@@ -2,9 +2,9 @@
 
 namespace Inertia;
 
-class DeferProp implements IgnoreFirstLoad, Mergeable, Onceable
+class DeferProp implements Deferrable, IgnoreFirstLoad, Mergeable, Onceable, Rescuable
 {
-    use MergesProps, ResolvesCallables, ResolvesOnce;
+    use DefersProps, MergesProps, ResolvesCallables, ResolvesOnce;
 
     /**
      * The callback to resolve the property.
@@ -16,33 +16,22 @@ class DeferProp implements IgnoreFirstLoad, Mergeable, Onceable
     protected $callback;
 
     /**
-     * The defer group.
+     * Indicates if exceptions should be rescued during deferred resolution.
      *
-     * @var string|null
+     * @var bool
      */
-    protected $group;
+    protected $rescue;
 
     /**
      * Create a new deferred property instance. Deferred properties are excluded
      * from the initial page load and only evaluated when requested by the
      * frontend, improving initial page performance.
      */
-    public function __construct(callable $callback, ?string $group = null)
+    public function __construct(callable $callback, ?string $group = null, bool $rescue = false)
     {
         $this->callback = $callback;
-        $this->group = $group;
-    }
-
-    /**
-     * Get the defer group for this property. Properties with the same group
-     * are loaded together in a single request, allowing for efficient
-     * batching of related deferred data.
-     *
-     * @return string|null
-     */
-    public function group()
-    {
-        return $this->group;
+        $this->rescue = $rescue;
+        $this->defer($group);
     }
 
     /**
@@ -53,5 +42,13 @@ class DeferProp implements IgnoreFirstLoad, Mergeable, Onceable
     public function __invoke()
     {
         return $this->resolveCallable($this->callback);
+    }
+
+    /**
+     * Determine if deferred resolution errors should be rescued.
+     */
+    public function shouldRescue(): bool
+    {
+        return $this->rescue;
     }
 }

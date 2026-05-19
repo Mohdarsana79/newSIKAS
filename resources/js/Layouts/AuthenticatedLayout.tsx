@@ -1,6 +1,7 @@
 import Sidebar from '@/Components/Sidebar';
 import Navbar from '@/Components/Navbar';
 import { PropsWithChildren, ReactNode, useState } from 'react';
+import ChangelogModal from '@/Components/ChangelogModal';
 
 import Toast from '@/Components/Toast';
 
@@ -20,6 +21,7 @@ export default function Authenticated({
     return (
         <div className="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 flex">
             <Toast />
+            <ChangelogModal />
             {/* Sidebar */}
             <Sidebar
                 isOpen={sidebarOpen}

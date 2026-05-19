@@ -2,6 +2,7 @@
 
 namespace Illuminate\Cache;
 
+use Illuminate\Contracts\Cache\CanFlushLocks;
 use Illuminate\Contracts\Cache\LockProvider;
 use Illuminate\Contracts\Redis\Factory as Redis;
 use Illuminate\Redis\Connections\PhpRedisClusterConnection;
@@ -10,8 +11,9 @@ use Illuminate\Redis\Connections\PredisClusterConnection;
 use Illuminate\Redis\Connections\PredisConnection;
 use Illuminate\Support\LazyCollection;
 use Illuminate\Support\Str;
+use RuntimeException;
 
-class RedisStore extends TaggableStore implements LockProvider
+class RedisStore extends TaggableStore implements CanFlushLocks, LockProvider
 {
     use RetrievesMultipleKeys {
         many as private manyAlias;
@@ -47,17 +49,26 @@ class RedisStore extends TaggableStore implements LockProvider
     protected $lockConnection;
 
     /**
+     * The classes that should be allowed during unserialization.
+     *
+     * @var array|bool|null
+     */
+    protected $serializableClasses;
+
+    /**
      * Create a new Redis store.
      *
      * @param  \Illuminate\Contracts\Redis\Factory  $redis
      * @param  string  $prefix
      * @param  string  $connection
+     * @param  array|bool|null  $serializableClasses
      */
-    public function __construct(Redis $redis, $prefix = '', $connection = 'default')
+    public function __construct(Redis $redis, $prefix = '', $connection = 'default', $serializableClasses = null)
     {
         $this->redis = $redis;
         $this->setPrefix($prefix);
         $this->setConnection($connection);
+        $this->serializableClasses = $serializableClasses;
     }
 
     /**
@@ -85,7 +96,7 @@ class RedisStore extends TaggableStore implements LockProvider
      */
     public function many(array $keys)
     {
-        if (count($keys) === 0) {
+        if ($keys === []) {
             return [];
         }
 
@@ -255,6 +266,18 @@ class RedisStore extends TaggableStore implements LockProvider
     }
 
     /**
+     * Adjust the expiration time of a cached item.
+     *
+     * @param  string  $key
+     * @param  int  $seconds
+     * @return bool
+     */
+    public function touch($key, $seconds)
+    {
+        return (bool) $this->connection()->expire($this->getPrefix().$key, (int) max(1, $seconds));
+    }
+
+    /**
      * Remove an item from the cache.
      *
      * @param  string  $key
@@ -273,6 +296,24 @@ class RedisStore extends TaggableStore implements LockProvider
     public function flush()
     {
         $this->connection()->flushdb();
+
+        return true;
+    }
+
+    /**
+     * Remove all locks from the store.
+     *
+     * @return bool
+     *
+     * @throws \RuntimeException
+     */
+    public function flushLocks(): bool
+    {
+        if (! $this->hasSeparateLockStore()) {
+            throw new RuntimeException('Flushing locks is only supported when the lock store is separate from the cache store.');
+        }
+
+        $this->lockConnection()->flushdb();
 
         return true;
     }
@@ -485,7 +526,15 @@ class RedisStore extends TaggableStore implements LockProvider
      */
     protected function unserialize($value)
     {
-        return is_numeric($value) ? $value : unserialize($value);
+        if (is_numeric($value)) {
+            return $value;
+        }
+
+        if ($this->serializableClasses !== null) {
+            return unserialize($value, ['allowed_classes' => $this->serializableClasses]);
+        }
+
+        return unserialize($value);
     }
 
     /**
@@ -518,5 +567,15 @@ class RedisStore extends TaggableStore implements LockProvider
         }
 
         return $this->unserialize($value);
+    }
+
+    /**
+     * Determine if the lock store is separate from the cache store.
+     *
+     * @return bool
+     */
+    public function hasSeparateLockStore(): bool
+    {
+        return $this->lockConnection !== $this->connection;
     }
 }

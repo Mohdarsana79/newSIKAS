@@ -5,9 +5,11 @@ namespace Illuminate\Database\Schema;
 use Closure;
 use Illuminate\Container\Container;
 use Illuminate\Database\Connection;
+use Illuminate\Database\PostgresConnection;
 use Illuminate\Support\Traits\Macroable;
 use InvalidArgumentException;
 use LogicException;
+use RuntimeException;
 
 class Builder
 {
@@ -37,7 +39,7 @@ class Builder
     /**
      * The default string length for migrations.
      *
-     * @var int|null
+     * @var non-negative-int|null
      */
     public static $defaultStringLength = 255;
 
@@ -49,7 +51,7 @@ class Builder
     /**
      * The default relationship morph key type.
      *
-     * @var string
+     * @var 'int'|'uuid'|'ulid'
      */
     public static $defaultMorphKeyType = 'int';
 
@@ -67,7 +69,7 @@ class Builder
     /**
      * Set the default string length for migrations.
      *
-     * @param  int  $length
+     * @param  non-negative-int  $length
      * @return void
      */
     public static function defaultStringLength($length)
@@ -249,7 +251,7 @@ class Builder
      * Get the user-defined types that belong to the connection.
      *
      * @param  string|string[]|null  $schema
-     * @return list<array{name: string, schema: string, type: string, type: string, category: string, implicit: bool}>
+     * @return list<array{name: string, schema: string, schema_qualified_name: string, type: string, category: string, implicit: bool}>
      */
     public function getTypes($schema = null)
     {
@@ -361,6 +363,8 @@ class Builder
      * @param  string  $column
      * @param  bool  $fullDefinition
      * @return string
+     *
+     * @throws \InvalidArgumentException
      */
     public function getColumnType($table, $column, $fullDefinition = false)
     {
@@ -390,7 +394,7 @@ class Builder
      * Get the columns for a given table.
      *
      * @param  string  $table
-     * @return list<array{name: string, type: string, type_name: string, nullable: bool, default: mixed, auto_increment: bool, comment: string|null, generation: array{type: string, expression: string|null}|null}>
+     * @return list<array{name: string, type: string, type_name: string, collation: string|null, nullable: bool, default: mixed, auto_increment: bool, comment: string|null, generation: array{type: string, expression: string|null}|null}>
      */
     public function getColumns($table)
     {
@@ -465,7 +469,7 @@ class Builder
      * Get the foreign keys for a given table.
      *
      * @param  string  $table
-     * @return array
+     * @return list<array{name: string|null, columns: list<string>, foreign_schema: string|null, foreign_table: string, foreign_columns: list<string>, on_update: string|null, on_delete: string|null}>
      */
     public function getForeignKeys($table)
     {
@@ -625,8 +629,10 @@ class Builder
     /**
      * Disable foreign key constraints during the execution of a callback.
      *
-     * @param  \Closure  $callback
-     * @return mixed
+     * @template TReturn
+     *
+     * @param  (\Closure(): TReturn)  $callback
+     * @return TReturn
      */
     public function withoutForeignKeyConstraints(Closure $callback)
     {
@@ -637,6 +643,40 @@ class Builder
         } finally {
             $this->enableForeignKeyConstraints();
         }
+    }
+
+    /**
+     * Create the vector extension on the schema if it does not exist.
+     *
+     * @param  string|null  $schema
+     * @return void
+     */
+    public function ensureVectorExtensionExists($schema = null)
+    {
+        $this->ensureExtensionExists('vector', $schema);
+    }
+
+    /**
+     * Create a new extension on the schema if it does not exist.
+     *
+     * @param  string  $name
+     * @param  string|null  $schema
+     * @return void
+     *
+     * @throws \RuntimeException
+     */
+    public function ensureExtensionExists($name, $schema = null)
+    {
+        if (! $this->getConnection() instanceof PostgresConnection) {
+            throw new RuntimeException('Extensions are only supported by Postgres.');
+        }
+
+        $name = $this->getConnection()->getSchemaGrammar()->wrap($name);
+
+        $this->getConnection()->statement(match (filled($schema)) {
+            true => "create extension if not exists {$name} schema {$this->getConnection()->getSchemaGrammar()->wrap($schema)}",
+            false => "create extension if not exists {$name}",
+        });
     }
 
     /**
@@ -693,7 +733,9 @@ class Builder
      *
      * @param  string  $reference
      * @param  string|bool|null  $withDefaultSchema
-     * @return array
+     * @return array{string|null, string}
+     *
+     * @throws \InvalidArgumentException
      */
     public function parseSchemaAndTable($reference, $withDefaultSchema = null)
     {

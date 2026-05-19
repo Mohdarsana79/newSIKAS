@@ -13,9 +13,9 @@ use Inertia\Support\Header;
  *
  * @template T
  */
-class ScrollProp implements Mergeable
+class ScrollProp implements Deferrable, Mergeable
 {
-    use MergesProps, ResolvesCallables;
+    use DefersProps, MergesProps, ResolvesCallables;
 
     /**
      * The property value.
@@ -43,7 +43,7 @@ class ScrollProp implements Mergeable
     /**
      * The scroll metadata provider.
      *
-     * @var ProvidesScrollMetadata|callable(T): \Inertia\ProvidesScrollMetadata|null
+     * @var ProvidesScrollMetadata|callable(T): ProvidesScrollMetadata|null
      */
     protected $metadata;
 
@@ -53,7 +53,7 @@ class ScrollProp implements Mergeable
      * completely replacing the property value.
      *
      * @param  T  $value
-     * @param  ProvidesScrollMetadata|callable(T): \Inertia\ProvidesScrollMetadata|null  $metadata
+     * @param  ProvidesScrollMetadata|callable(T): ProvidesScrollMetadata|null  $metadata
      */
     public function __construct(mixed $value, string $wrapper = 'data', ProvidesScrollMetadata|callable|null $metadata = null)
     {

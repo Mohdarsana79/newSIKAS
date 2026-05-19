@@ -17,6 +17,8 @@ class Serializer
      * Serialize the given property to an array.
      *
      * @return array<string, mixed>
+     *
+     * @throws \RuntimeException
      */
     public static function serialize(Types\Type $type): array
     {
@@ -56,7 +58,7 @@ class Serializer
                     static fn (Types\Type $property) => static::isRequired($property),
                 ));
 
-                if (count($required) > 0) {
+                if ($required !== []) {
                     $attributes['required'] = $required;
                 }
 

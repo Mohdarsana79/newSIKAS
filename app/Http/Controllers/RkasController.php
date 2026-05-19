@@ -2,16 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\BukuKasUmum;
+use App\Models\BukuKasUmumUraianDetail;
 use App\Models\KodeKegiatan;
 use App\Models\Penganggaran;
 use App\Models\RekeningBelanja;
 use App\Models\Rkas;
+use App\Models\RkasPerubahan;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Inertia\Controller;
 use Inertia\Inertia;
-use Barryvdh\DomPDF\Facade\Pdf;
-use App\Models\RkasPerubahan;
 
 class RkasController extends Controller
 {
@@ -1386,9 +1389,9 @@ class RkasController extends Controller
                 ->whereHas('kodeKegiatan', function ($query) {
                     // Kode kegiatan Pemeliharaan Prasarana Lahan, Bangunan dan Ruang
                     $query->where('kode', 'like', '05.08.01%')
-                            ->orWhere('kode', 'like', '05.08.03%')
-                            ->orWhere('kode', 'like', '05.08.05%')
-                            ->orWhere('kode', 'like', '05.08.10%');
+                            ->orWhere('kode', 'like', '05.08.03%');
+                            // ->orWhere('kode', 'like', '05.08.05%')
+                            // ->orWhere('kode', 'like', '05.08.10%');
                 })
                 ->get()
                 ->sum(function ($item) {

@@ -871,6 +871,9 @@ class Container implements ArrayAccess, ContainerContract
      *
      * @param  string|class-string<TClass>  $id
      * @return ($id is class-string<TClass> ? TClass : mixed)
+     *
+     * @throws \Illuminate\Contracts\Container\CircularDependencyException
+     * @throws \Illuminate\Container\EntryNotFoundException
      */
     public function get(string $id)
     {
@@ -1160,16 +1163,12 @@ class Container implements ArrayAccess, ContainerContract
         // new instance of this class, injecting the created dependencies in.
         try {
             $instances = $this->resolveDependencies($dependencies);
-        } catch (BindingResolutionException $e) {
+        } finally {
             array_pop($this->buildStack);
-
-            throw $e;
         }
 
-        array_pop($this->buildStack);
-
         $this->fireAfterResolvingAttributeCallbacks(
-            $reflector->getAttributes(), $instance = $reflector->newInstanceArgs($instances)
+            $reflector->getAttributes(), $instance = new $concrete(...$instances)
         );
 
         return $instance;
@@ -1236,9 +1235,9 @@ class Container implements ArrayAccess, ContainerContract
             // If the class is null, it means the dependency is a string or some other
             // primitive type which we can not resolve since it is not a class and
             // we will just bomb out with an error since we have no-where to go.
-            $result ??= is_null(Util::getParameterClassName($dependency))
+            $result ??= is_null($className = Util::getParameterClassName($dependency))
                 ? $this->resolvePrimitive($dependency)
-                : $this->resolveClass($dependency);
+                : $this->resolveClass($dependency, $className);
 
             $this->fireAfterResolvingAttributeCallbacks($dependency->getAttributes(), $result);
 
@@ -1321,9 +1320,9 @@ class Container implements ArrayAccess, ContainerContract
      *
      * @throws \Illuminate\Contracts\Container\BindingResolutionException
      */
-    protected function resolveClass(ReflectionParameter $parameter)
+    protected function resolveClass(ReflectionParameter $parameter, ?string $className = null)
     {
-        $className = Util::getParameterClassName($parameter);
+        $className ??= Util::getParameterClassName($parameter);
 
         // First we will check if a default value has been defined for the parameter.
         // If it has, and no explicit binding exists, we should return it to avoid
@@ -1376,6 +1375,8 @@ class Container implements ArrayAccess, ContainerContract
      * Resolve a dependency based on an attribute.
      *
      * @return mixed
+     *
+     * @throws \Illuminate\Contracts\Container\BindingResolutionException
      */
     public function resolveFromAttribute(ReflectionAttribute $attribute)
     {
@@ -1792,42 +1793,42 @@ class Container implements ArrayAccess, ContainerContract
     /**
      * Determine if a given offset exists.
      *
-     * @param  string  $key
+     * @param  string  $offset
      */
-    public function offsetExists($key): bool
+    public function offsetExists($offset): bool
     {
-        return $this->bound($key);
+        return $this->bound($offset);
     }
 
     /**
      * Get the value at a given offset.
      *
-     * @param  string  $key
+     * @param  string  $offset
      */
-    public function offsetGet($key): mixed
+    public function offsetGet($offset): mixed
     {
-        return $this->make($key);
+        return $this->make($offset);
     }
 
     /**
      * Set the value at a given offset.
      *
-     * @param  string  $key
+     * @param  string  $offset
      * @param  mixed  $value
      */
-    public function offsetSet($key, $value): void
+    public function offsetSet($offset, $value): void
     {
-        $this->bind($key, $value instanceof Closure ? $value : fn () => $value);
+        $this->bind($offset, $value instanceof Closure ? $value : fn () => $value);
     }
 
     /**
      * Unset the value at a given offset.
      *
-     * @param  string  $key
+     * @param  string  $offset
      */
-    public function offsetUnset($key): void
+    public function offsetUnset($offset): void
     {
-        unset($this->bindings[$key], $this->instances[$key], $this->resolved[$key]);
+        unset($this->bindings[$offset], $this->instances[$offset], $this->resolved[$offset]);
     }
 
     /**

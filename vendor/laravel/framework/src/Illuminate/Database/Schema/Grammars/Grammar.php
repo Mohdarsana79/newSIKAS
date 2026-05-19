@@ -67,6 +67,8 @@ abstract class Grammar extends BaseGrammar
      * Compile the query to determine the schemas.
      *
      * @return string
+     *
+     * @throws \RuntimeException
      */
     public function compileSchemas()
     {
@@ -150,6 +152,20 @@ abstract class Grammar extends BaseGrammar
     public function compileIndexes($schema, $table)
     {
         throw new RuntimeException('This database driver does not support retrieving indexes.');
+    }
+
+    /**
+     * Compile a vector index key command.
+     *
+     * @param  \Illuminate\Database\Schema\Blueprint  $blueprint
+     * @param  \Illuminate\Support\Fluent  $command
+     * @return void
+     *
+     * @throws \RuntimeException
+     */
+    public function compileVectorIndex(Blueprint $blueprint, Fluent $command)
+    {
+        throw new RuntimeException('The database driver in use does not support vector indexes.');
     }
 
     /**
@@ -270,6 +286,8 @@ abstract class Grammar extends BaseGrammar
      * @param  \Illuminate\Database\Schema\Blueprint  $blueprint
      * @param  \Illuminate\Support\Fluent  $command
      * @return string
+     *
+     * @throws \RuntimeException
      */
     public function compileDropForeign(Blueprint $blueprint, Fluent $command)
     {
@@ -345,6 +363,19 @@ abstract class Grammar extends BaseGrammar
     protected function typeVector(Fluent $column)
     {
         throw new RuntimeException('This database driver does not support the vector type.');
+    }
+
+    /**
+     * Create the column definition for a tsvector type.
+     *
+     * @param  \Illuminate\Support\Fluent  $column
+     * @return string
+     *
+     * @throws \RuntimeException
+     */
+    protected function typeTsvector(Fluent $column)
+    {
+        throw new RuntimeException('This database driver does not support the tsvector type.');
     }
 
     /**
