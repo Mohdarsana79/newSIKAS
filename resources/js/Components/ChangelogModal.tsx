@@ -61,6 +61,7 @@ export default function ChangelogModal() {
                         <ul className="list-disc pl-6 text-sm text-gray-700 dark:text-gray-300 space-y-2 leading-relaxed">
                             <li><span className="font-medium">Bug Tanggal BKU:</span> Telah dilakukan perbaikan pada sistem tanggal BKU yang sebelumnya mengalami kendala mundur 1 hari (kembali ke 1 hari sebelum tanggal yang ditetapkan) akibat dari ketidaksesuaian zona waktu (Timezone Offset). Kini tanggal akan disimpan secara akurat.</li>
                             <li><span className="font-medium">Perbaikan Tombol Fullscreen dan Drak Mode:</span> Perbaikan tombol fullscreen dan dark mode yang sebelumnya tidak berfungsi dengan baik.</li>
+                            <li><span className="font-medium">Bug Referensi Kode:</span> Perbaikan pada referensi kode kegiatan yang sebelumnya tidak sesuai dengan ARKAS Online. Penambahan keterangan perlu update ketika terdeteksi perbedaan data pada database sikas dan database arkas online</li>
                         </ul>
                     </div>
                 </div>

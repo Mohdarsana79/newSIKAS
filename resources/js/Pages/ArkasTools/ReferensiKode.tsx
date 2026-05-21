@@ -228,7 +228,7 @@ export default function ReferensiKode() {
                                     </p>
                                 </div>
                                 <div className="flex gap-2">
-                                    <PrimaryButton onClick={() => triggerSync('kegiatan')} disabled={kegiatanData.length === 0 || kegiatanLoading || kegiatanSyncing || !kegiatanData.some((i: any) => i.status === 'Data Baru')} className="bg-emerald-600 hover:bg-emerald-700 focus:bg-emerald-700 active:bg-emerald-900">
+                                    <PrimaryButton onClick={() => triggerSync('kegiatan')} disabled={kegiatanData.length === 0 || kegiatanLoading || kegiatanSyncing || !kegiatanData.some((i: any) => i.status === 'Data Baru' || i.status === 'Perlu Update')} className="bg-emerald-600 hover:bg-emerald-700 focus:bg-emerald-700 active:bg-emerald-900">
                                         {kegiatanSyncing ? 'Menyinkronkan...' : 'Sync Database'}
                                     </PrimaryButton>
                                     <PrimaryButton onClick={() => fetchData('kegiatan')} disabled={kegiatanLoading || kegiatanSyncing}>
@@ -284,6 +284,10 @@ export default function ReferensiKode() {
                                                             {item.status === 'Data Baru' ? (
                                                                 <span className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
                                                                     Data Baru
+                                                                </span>
+                                                            ) : item.status === 'Perlu Update' ? (
+                                                                <span className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                                                                    Perlu Update
                                                                 </span>
                                                             ) : (
                                                                 <span className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">

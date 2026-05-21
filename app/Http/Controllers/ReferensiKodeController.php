@@ -98,8 +98,14 @@ class ReferensiKodeController extends Controller
         $data = $result['data'] ?? [];
         
         $existingRekening = [];
+        $existingKegiatan = [];
         if ($tipe === 'kegiatan') {
-            $existing = \App\Models\KodeKegiatan::query()->pluck('kode')->toArray();
+            $existingKegiatan = \App\Models\KodeKegiatan::query()
+                ->select(['kode', 'program', 'sub_program', 'uraian'])
+                ->get()
+                ->keyBy('kode')
+                ->toArray();
+            $existing = array_keys($existingKegiatan);
         } else {
             // Untuk rekening: ambil seluruh data beserta nilai pajaknya
             $existingRekening = \App\Models\RekeningBelanja::query()
@@ -112,7 +118,18 @@ class ReferensiKodeController extends Controller
 
         foreach ($data as &$row) {
             if ($tipe === 'kegiatan') {
-                $row['status'] = in_array($row['id_kode'], $existing) ? 'Sudah Ada' : 'Data Baru';
+                $kode = $row['id_kode'];
+                if (!isset($existingKegiatan[$kode])) {
+                    $row['status'] = 'Data Baru';
+                } else {
+                    $ex = $existingKegiatan[$kode];
+                    $changed = (
+                        $ex['program'] !== ($row['program'] ?? '') ||
+                        $ex['sub_program'] !== ($row['sub_program'] ?? '') ||
+                        $ex['uraian'] !== ($row['uraian_kode'] ?? '')
+                    );
+                    $row['status'] = $changed ? 'Perlu Update' : 'Sudah Ada';
+                }
             } else {
                 $kode = $row['kode_rekening'];
                 if (!isset($existingRekening[$kode])) {
@@ -226,11 +243,17 @@ class ReferensiKodeController extends Controller
 
         // Menggunakan array untuk mempercepat pengecekan
         if ($tipe === 'kegiatan') {
-            $existing = \App\Models\KodeKegiatan::query()->pluck('kode')->toArray();
+            $existingMap = \App\Models\KodeKegiatan::query()
+                ->select(['kode', 'program', 'sub_program', 'uraian'])
+                ->get()
+                ->keyBy('kode')
+                ->toArray();
             
             $inserts = [];
+            $updatedCount = 0;
+
             foreach ($data as $row) {
-                if (!in_array($row['id_kode'], $existing)) {
+                if (!isset($existingMap[$row['id_kode']])) {
                     $inserts[] = [
                         'kode' => $row['id_kode'],
                         'program' => $row['program'] ?? '',
@@ -240,6 +263,25 @@ class ReferensiKodeController extends Controller
                         'updated_at' => now(),
                     ];
                     $syncedCount++;
+                } else {
+                    $ex = $existingMap[$row['id_kode']];
+                    $changed = (
+                        $ex['program'] !== ($row['program'] ?? '') ||
+                        $ex['sub_program'] !== ($row['sub_program'] ?? '') ||
+                        $ex['uraian'] !== ($row['uraian_kode'] ?? '')
+                    );
+
+                    if ($changed) {
+                        \App\Models\KodeKegiatan::query()
+                            ->where('kode', $row['id_kode'])
+                            ->update([
+                                'program' => $row['program'] ?? '',
+                                'sub_program' => $row['sub_program'] ?? '',
+                                'uraian' => $row['uraian_kode'] ?? '',
+                                'updated_at' => now(),
+                            ]);
+                        $updatedCount++;
+                    }
                 }
             }
             if (count($inserts) > 0) {
@@ -248,6 +290,19 @@ class ReferensiKodeController extends Controller
                     \App\Models\KodeKegiatan::insert($chunk);
                 }
             }
+            
+            $message = "Berhasil sinkronisasi $syncedCount data baru";
+            if ($updatedCount > 0) {
+                $message .= " dan memperbarui $updatedCount data yang berubah";
+            }
+            $message .= '.';
+
+            return response()->json([
+                'status'  => 'success',
+                'message' => $message,
+                'synced'  => $syncedCount,
+                'updated' => $updatedCount,
+            ]);
 
         } else {
             // Ambil semua data yang sudah ada, beserta nilai pajaknya
