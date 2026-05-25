@@ -29,7 +29,7 @@ export default function ChangelogModal() {
                         Informasi Rilis
                     </h2>
                     <span className="bg-indigo-100 text-indigo-800 text-sm font-semibold px-3 py-1 rounded-full dark:bg-indigo-900 dark:text-indigo-300">
-                        SIKAS V.2026.7
+                        SIKAS V.2026.9
                     </span>
                 </div>
 
@@ -62,6 +62,7 @@ export default function ChangelogModal() {
                             <li><span className="font-medium">Bug Tanggal BKU:</span> Telah dilakukan perbaikan pada sistem tanggal BKU yang sebelumnya mengalami kendala mundur 1 hari (kembali ke 1 hari sebelum tanggal yang ditetapkan) akibat dari ketidaksesuaian zona waktu (Timezone Offset). Kini tanggal akan disimpan secara akurat.</li>
                             <li><span className="font-medium">Perbaikan Tombol Fullscreen dan Drak Mode:</span> Perbaikan tombol fullscreen dan dark mode yang sebelumnya tidak berfungsi dengan baik.</li>
                             <li><span className="font-medium">Bug Referensi Kode:</span> Perbaikan pada referensi kode kegiatan yang sebelumnya tidak sesuai dengan ARKAS Online. Penambahan keterangan perlu update ketika terdeteksi perbedaan data pada database sikas dan database arkas online</li>
+                            <li><span className="font-medium">Bug Pajak Kwitansi:</span> Perbaikan bug pada generate kwitansi yang menampilkan nilai pajak tidak sesuai pada pph jika pajaknya 0% dan penyesuaian klasifikasi pajak.</li>
                         </ul>
                     </div>
                 </div>

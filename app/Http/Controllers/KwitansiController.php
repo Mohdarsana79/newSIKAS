@@ -298,7 +298,7 @@ class KwitansiController extends Controller
             $totalAmount = $this->calculateTotalFromUraianDetails($kwitansi->bukuKasUmum);
             $jumlahUang = $this->convertToText($totalAmount);
 
-            $pajakData = $this->klasifikasiPajak($kwitansi->bukuKasUmum);
+            $pajakData = $this->klasifikasiPajak($kwitansi->bukuKasUmum, $totalAmount);
 
             // Calculate Tahap Roman
             $bulan = \Carbon\Carbon::parse($kwitansi->bukuKasUmum->tanggal_transaksi)->month;
@@ -393,7 +393,7 @@ class KwitansiController extends Controller
                 $parsedKode = $this->parseKodeKegiatan($kwitansi->kodeKegiatan);
                 $totalAmount = $this->calculateTotalFromUraianDetails($kwitansi->bukuKasUmum);
                 $jumlahUang = $this->convertToText($totalAmount);
-                $pajakData = $this->klasifikasiPajak($kwitansi->bukuKasUmum);
+                $pajakData = $this->klasifikasiPajak($kwitansi->bukuKasUmum, $totalAmount);
 
                 // Calculate Tahap Roman for each
                 $bulan = \Carbon\Carbon::parse($kwitansi->bukuKasUmum->tanggal_transaksi)->month;
@@ -469,7 +469,7 @@ class KwitansiController extends Controller
         return preg_replace('/[^a-zA-Z0-9._-]/', '_', $filename);
     }
 
-    private function klasifikasiPajak($bukuKasUmum)
+    private function klasifikasiPajak($bukuKasUmum, $totalAmount = 0)
     {
         $pajakName = strtolower($bukuKasUmum->pajak ?? '');
         $pajakDaerahName = strtolower($bukuKasUmum->pajak_daerah ?? '');
@@ -495,7 +495,7 @@ class KwitansiController extends Controller
         }
 
         if ($bukuKasUmum->total_pajak == 0 && $bukuKasUmum->pajak) {
-            $pajakValue = $this->extractPajakValueFromName($bukuKasUmum->pajak);
+            $pajakValue = $this->extractPajakValueFromName($bukuKasUmum->pajak, $totalAmount);
             if ($pajakValue > 0) {
                 if (strpos($pajakName, 'pph') !== false) {
                     $pajakData['pph'] = $pajakValue;
@@ -507,11 +507,32 @@ class KwitansiController extends Controller
         return $pajakData;
     }
 
-    private function extractPajakValueFromName($pajakName)
+    private function extractPajakValueFromName($pajakName, $totalAmount = 0)
     {
-        preg_match('/\d+/', $pajakName, $matches);
-        if (! empty($matches)) {
-            return (float) $matches[0];
+        // Hilangkan kata-kata yang mengandung angka pasal/jenis pajak (misal "pph 21", "pasal 22", "pb1")
+        $cleanName = preg_replace('/(?:pph|pasal|pb)\s*\d+/i', '', $pajakName);
+        
+        // Cari persentase terlebih dahulu (misal "10%", "5.5%", "0%")
+        if (preg_match('/(\d+(?:\.\d+)?)\s*%/', $cleanName, $percentMatches)) {
+            $percentage = (float)$percentMatches[1];
+            return ($percentage / 100) * $totalAmount;
+        }
+
+        // Hilangkan titik atau koma yang biasa dipakai untuk ribuan/desimal agar bisa diconvert ke float utuh
+        $cleanName = str_replace(['.', ','], '', $cleanName);
+
+        // Ambil angka yang tersisa sebagai nominal uang
+        preg_match_all('/\d+/', $cleanName, $matches);
+        
+        if (! empty($matches[0])) {
+            // Cari angka terbesar dari semua angka yang tersisa sebagai asumsi nominal uang
+            $maxVal = 0;
+            foreach ($matches[0] as $match) {
+                if ((float)$match > $maxVal) {
+                    $maxVal = (float)$match;
+                }
+            }
+            return $maxVal;
         }
         return 0;
     }
@@ -534,7 +555,7 @@ class KwitansiController extends Controller
             $parsedKode = $this->parseKodeKegiatan($kwitansi->kodeKegiatan);
             $totalAmount = $this->calculateTotalFromUraianDetails($kwitansi->bukuKasUmum);
             $jumlahUang = $this->convertToText($totalAmount);
-            $pajakData = $this->klasifikasiPajak($kwitansi->bukuKasUmum);
+            $pajakData = $this->klasifikasiPajak($kwitansi->bukuKasUmum, $totalAmount);
 
             // Calculate Tahap Roman
             $bulan = \Carbon\Carbon::parse($kwitansi->bukuKasUmum->tanggal_transaksi)->month;
@@ -592,7 +613,7 @@ class KwitansiController extends Controller
             $totalAmount = $this->calculateTotalFromUraianDetails($kwitansi->bukuKasUmum);
             $jumlahUang = $this->convertToText($totalAmount);
 
-            $pajakData = $this->klasifikasiPajak($kwitansi->bukuKasUmum);
+            $pajakData = $this->klasifikasiPajak($kwitansi->bukuKasUmum, $totalAmount);
 
             // Calculate Tahap Roman
             $bulan = \Carbon\Carbon::parse($kwitansi->bukuKasUmum->tanggal_transaksi)->month;
@@ -687,7 +708,7 @@ class KwitansiController extends Controller
                 $parsedKode = $this->parseKodeKegiatan($kwitansi->kodeKegiatan);
                 $totalAmount = $this->calculateTotalFromUraianDetails($kwitansi->bukuKasUmum);
                 $jumlahUang = $this->convertToText($totalAmount);
-                $pajakData = $this->klasifikasiPajak($kwitansi->bukuKasUmum);
+                $pajakData = $this->klasifikasiPajak($kwitansi->bukuKasUmum, $totalAmount);
 
                 // Calculate Tahap Roman for each
                 $bulan = \Carbon\Carbon::parse($kwitansi->bukuKasUmum->tanggal_transaksi)->month;
@@ -753,7 +774,7 @@ class KwitansiController extends Controller
             $parsedKode = $this->parseKodeKegiatan($kwitansi->kodeKegiatan);
             $totalAmount = $this->calculateTotalFromUraianDetails($kwitansi->bukuKasUmum);
             $jumlahUang = $this->convertToText($totalAmount);
-            $pajakData = $this->klasifikasiPajak($kwitansi->bukuKasUmum);
+            $pajakData = $this->klasifikasiPajak($kwitansi->bukuKasUmum, $totalAmount);
 
             // Calculate Tahap Roman
             $bulan = \Carbon\Carbon::parse($kwitansi->bukuKasUmum->tanggal_transaksi)->month;
