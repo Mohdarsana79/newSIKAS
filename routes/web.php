@@ -202,6 +202,7 @@ Route::middleware('auth')->group(function () {
 
     // BKU Actions
     Route::post('/bku/store', [BukuKasUmumController::class, 'store'])->name('bku.store');
+    Route::put('/bku/{id}', [BukuKasUmumController::class, 'update'])->name('bku.update');
     Route::delete('/bku/{id}', [BukuKasUmumController::class, 'destroy'])->name('bku.destroy');
     Route::post('/bku/tutup', [BukuKasUmumController::class, 'storePenutupan'])->name('bku.tutup');
     Route::post('/bku/reopen', [BukuKasUmumController::class, 'reopen'])->name('bku.reopen');

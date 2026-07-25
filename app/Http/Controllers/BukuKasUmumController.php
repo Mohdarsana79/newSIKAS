@@ -588,6 +588,148 @@ class BukuKasUmumController extends Controller
         }
     }
 
+    public function update(Request $request, $id)
+    {
+        try {
+            DB::beginTransaction();
+
+            $bku = BukuKasUmum::findOrFail($id);
+
+            // Validasi data
+            $validated = $request->validate([
+                'penganggaran_id' => 'required|exists:penganggarans,id',
+                'kode_kegiatan_id' => 'required|array',
+                'kode_kegiatan_id.*' => 'exists:kode_kegiatans,id',
+                'kode_rekening_id' => 'required|array',
+                'kode_rekening_id.*' => 'exists:rekening_belanjas,id',
+                'tanggal_nota' => 'required|date',
+                'jenis_transaksi' => 'required|in:tunai,non-tunai',
+                'nomor_nota' => 'nullable|string|max:100',
+                'nama_toko' => 'nullable|string|max:255',
+                'nama_penerima_pembayaran' => 'nullable|string|max:255',
+                'alamat_toko' => 'nullable|string',
+                'nomor_telepon' => 'nullable|string|max:20',
+                'npwp' => 'nullable|string|max:25',
+                'uraian_opsional' => 'nullable|string',
+                'uraian_items' => 'required|array',
+                'uraian_items.*.id' => 'required|numeric',
+                'uraian_items.*.uraian_text' => 'required|string',
+                'uraian_items.*.satuan' => 'required|string',
+                'uraian_items.*.jumlah_belanja' => 'required|numeric|min:0',
+                'uraian_items.*.volume' => 'required|numeric|min:0',
+                'uraian_items.*.harga_satuan' => 'required|numeric|min:0',
+                'uraian_items.*.kegiatan_id' => 'required|exists:kode_kegiatans,id',
+                'uraian_items.*.rekening_id' => 'required|exists:rekening_belanjas,id',
+                'pajak' => 'nullable|string',
+                'persen_pajak' => 'nullable',
+                'total_pajak' => 'nullable|numeric',
+                'pajak_daerah' => 'nullable|string',
+                'persen_pajak_daerah' => 'nullable',
+                'total_pajak_daerah' => 'nullable|numeric',
+                'bulan' => 'required|string',
+                'total_transaksi_kotor' => 'nullable|numeric',
+            ]);
+
+            // Validasi tambahan: pastikan tanggal nota sesuai dengan bulan yang dipilih
+            $bulanTarget = $validated['bulan'];
+            $bulanAngka = $this->convertBulanToNumber($bulanTarget);
+            $tahunAnggaran = Penganggaran::query()->find($validated['penganggaran_id'])->tahun_anggaran;
+
+            $tanggalNota = Carbon::parse($validated['tanggal_nota']);
+            if ($tanggalNota->month != $bulanAngka || $tanggalNota->year != $tahunAnggaran) {
+                return redirect()->back()->withErrors(['tanggal_nota' => 'Tanggal nota harus dalam bulan ' . $bulanTarget . ' tahun ' . $tahunAnggaran]);
+            }
+
+            $kegiatanId = $validated['kode_kegiatan_id'][0];
+            $rekeningId = $validated['kode_rekening_id'][0];
+
+            $uraianItemsForThisKegiatan = $validated['uraian_items'];
+            if (empty($uraianItemsForThisKegiatan)) {
+                return redirect()->back()->withErrors(['uraian_items' => 'Minimal 1 rincian barang/jasa harus dipilih.']);
+            }
+
+            $totalKegiatan = 0;
+            foreach ($uraianItemsForThisKegiatan as $item) {
+                $totalKegiatan += $item['jumlah_belanja'];
+            }
+
+            $rekeningBelanja = RekeningBelanja::query()->find($rekeningId, ['*']);
+            $uraianText = 'Lunas Bayar ' . $rekeningBelanja->rincian_objek;
+
+            $bulanNormalized = ucfirst(strtolower($bulanTarget));
+            $isTahap1 = in_array($bulanNormalized, ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni']);
+            $model = $isTahap1 ? Rkas::class : RkasPerubahan::class;
+
+            $totalAnggaran = $model::query()->where('penganggaran_id', '=', $validated['penganggaran_id'], 'and')
+                ->where('kode_rekening_id', '=', $rekeningId, 'and')
+                ->where('bulan', '=', $bulanTarget, 'and')
+                ->sum(DB::raw('harga_satuan * jumlah'));
+
+            $nomorNota = $validated['nomor_nota'] ?: $bku->id_transaksi;
+
+            // Update header BKU
+            $bku->update([
+                'penganggaran_id' => $validated['penganggaran_id'],
+                'kode_kegiatan_id' => $kegiatanId,
+                'rekening_belanja_id' => $rekeningId,
+                'tanggal_transaksi' => $validated['tanggal_nota'],
+                'jenis_transaksi' => $validated['jenis_transaksi'],
+                'id_transaksi' => $nomorNota,
+                'nama_toko' => $validated['nama_toko'],
+                'nama_penerima_pembayaran' => $validated['nama_penerima_pembayaran'],
+                'alamat_toko' => $validated['alamat_toko'],
+                'npwp' => $validated['npwp'],
+                'uraian' => $uraianText,
+                'uraian_opsional' => $validated['uraian_opsional'],
+                'anggaran' => $totalAnggaran,
+                'dibelanjakan' => $totalKegiatan,
+                'total_transaksi_kotor' => $totalKegiatan,
+                'pajak' => $validated['pajak'] ?? null,
+                'persen_pajak' => $validated['persen_pajak'] ?? null,
+                'total_pajak' => $validated['total_pajak'] ?? 0,
+                'pajak_daerah' => $validated['pajak_daerah'] ?? null,
+                'persen_pajak_daerah' => $validated['persen_pajak_daerah'] ?? null,
+                'total_pajak_daerah' => $validated['total_pajak_daerah'] ?? 0,
+            ]);
+
+            // Hapus rincian lama
+            BukuKasUmumUraianDetail::where('buku_kas_umum_id', $bku->id)->delete();
+
+            // Simpan detail rincian baru
+            foreach ($uraianItemsForThisKegiatan as $item) {
+                BukuKasUmumUraianDetail::create([
+                    'buku_kas_umum_id' => $bku->id,
+                    'penganggaran_id' => $validated['penganggaran_id'],
+                    'kode_kegiatan_id' => $kegiatanId,
+                    'rekening_belanja_id' => $rekeningId,
+                    'rkas_id' => $isTahap1 ? $item['id'] : null,
+                    'rkas_perubahan_id' => ! $isTahap1 ? $item['id'] : null,
+                    'uraian' => $item['uraian_text'],
+                    'satuan' => $item['satuan'],
+                    'harga_satuan' => $item['harga_satuan'],
+                    'volume' => $item['volume'],
+                    'jumlah' => $item['jumlah_belanja'],
+                ]);
+            }
+
+            $this->updateSaldoSetelahTransaksi(
+                $validated['penganggaran_id'],
+                $totalKegiatan,
+                $validated['jenis_transaksi']
+            );
+
+            DB::commit();
+
+            return redirect()->back()->with('success', 'Data BKU berhasil diperbarui');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error mengupdate BKU: ' . $e->getMessage());
+            Log::error('Request data: ', $request->all());
+
+            return redirect()->back()->with('error', 'Gagal memperbarui data: ' . $e->getMessage());
+        }
+    }
+
     private function updateSaldoSetelahTransaksi($penganggaran_id, $totalDibelanjakan, $jenis_transaksi)
     {
         // Implementasi update saldo jika diperlukan (misalnya update cache atau tabel rekap)
@@ -2469,9 +2611,11 @@ class BukuKasUmumController extends Controller
                 if ($allPlans->isNotEmpty()) {
                     // 2. Fetch Usages
                     $planIds = $allPlans->pluck('id')->toArray();
-                    $allUsages = BukuKasUmumUraianDetail::query()->whereIn($usageForeignKey, $planIds, 'and', false)
-                        ->select($usageForeignKey, 'volume')
-                        ->get();
+                    $usagesQuery = BukuKasUmumUraianDetail::query()->whereIn($usageForeignKey, $planIds, 'and', false);
+                    if ($request->filled('exclude_bku_id')) {
+                        $usagesQuery->where('buku_kas_umum_id', '!=', $request->query('exclude_bku_id'));
+                    }
+                    $allUsages = $usagesQuery->select($usageForeignKey, 'volume')->get();
                     
                     // Grouping variables
                     $groups = [];
@@ -2527,6 +2671,21 @@ class BukuKasUmumController extends Controller
                       $validKegiatanIds[$p->kode_id] = true;
                       $validRekeningPairs[$p->kode_id . '-' . $p->kode_rekening_id] = true;
                  }
+            }
+
+            if ($request->filled('exclude_bku_id')) {
+                $editingDetails = BukuKasUmumUraianDetail::where('buku_kas_umum_id', $request->query('exclude_bku_id'))->get();
+                foreach ($editingDetails as $detail) {
+                    if ($detail->kode_kegiatan_id && $detail->rekening_belanja_id) {
+                        $validKegiatanIds[$detail->kode_kegiatan_id] = true;
+                        $validRekeningPairs[$detail->kode_kegiatan_id . '-' . $detail->rekening_belanja_id] = true;
+                    }
+                }
+                $editingBku = BukuKasUmum::find($request->query('exclude_bku_id'));
+                if ($editingBku && $editingBku->kode_kegiatan_id && $editingBku->rekening_belanja_id) {
+                    $validKegiatanIds[$editingBku->kode_kegiatan_id] = true;
+                    $validRekeningPairs[$editingBku->kode_kegiatan_id . '-' . $editingBku->rekening_belanja_id] = true;
+                }
             }
 
             $validKegiatanIdsList = array_keys($validKegiatanIds);
@@ -2671,7 +2830,11 @@ class BukuKasUmumController extends Controller
 
             // 2. Calculate Usage for these specific Plan Items
             $planIds = $planItems->pluck('id')->toArray();
+            $excludeBkuId = $request->query('exclude_bku_id');
             $usageDetails = BukuKasUmumUraianDetail::query()->whereIn($usageForeignKey, $planIds, 'and', false)
+                ->when($excludeBkuId, function ($query, $id) {
+                    $query->where('buku_kas_umum_id', '!=', $id);
+                })
                 ->get();
 
             // 3. Group by Unique Item Attributes to consolidate Plan and Usage

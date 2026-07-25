@@ -134,9 +134,6 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
         'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
     ];
 
-    const lockedMonths: string[] = []; // Bulan Tahap 1 diizinkan untuk diedit/dihapus pada RKAS Perubahan
-    const isLocked = (month: string) => lockedMonths.includes(month);
-
     const { data, setData, post, processing, errors, reset } = useForm({
         kegiatan_id: '',
         rekening_id: '',
@@ -162,11 +159,6 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
     };
 
     const updateAllocation = (index: number, field: keyof RkasMonthAllocation, value: string) => {
-        if (field === 'month' && isLocked(value)) {
-            alert('Bulan Januari sampai Juni tidak dapat diubah atau ditambahkan pada RKAS Perubahan.');
-            return;
-        }
-
         const newAlokasi = [...data.alokasi];
 
         if (field === 'quantity') {
@@ -277,55 +269,18 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
     const confirmDelete = () => {
         if (!editId) return;
 
-        // Check if there are locked months (Jan-Jun) that must be preserved
-        const preservedDetails = data.alokasi.filter(a => isLocked(a.month));
-
-        if (preservedDetails.length > 0) {
-            // If there are locked months, we perform an UPDATE to keep them and remove others
-            // effectively "deleting" Jul-Dec by not including them.
-
-            const bulan = preservedDetails.map(a => a.month);
-            const jumlah = preservedDetails.map(a => Number(a.quantity));
-            const satuan = preservedDetails.map(a => a.unit);
-
-            const payload = {
-                kode_id: data.kegiatan_id,
-                kode_rekening_id: data.rekening_id,
-                uraian: data.uraian,
-                harga_satuan: Number(data.harga_satuan),
-                bulan: bulan,
-                jumlah: jumlah,
-                satuan: satuan,
-                tahun_anggaran: anggaran.tahun
-            };
-
-            router.put(route('rkas-perubahan.update', editId), payload, {
-                onStart: () => setIsDeleting(true),
-                onFinish: () => setIsDeleting(false),
-                onSuccess: () => {
-                    setIsDeleteModalOpen(false);
-                    setIsModalOpen(false);
-                    reset();
-                    setIsEditMode(false);
-                    setEditId(null);
-                    // Optional: Show toast/alert? Inertia usually handles flash messages
-                }
-            });
-
-        } else {
-            // No locked months, safe to destroy all
-            router.delete(route('rkas-perubahan.destroy-all', editId), {
-                onStart: () => setIsDeleting(true),
-                onFinish: () => setIsDeleting(false),
-                onSuccess: () => {
-                    setIsDeleteModalOpen(false);
-                    setIsModalOpen(false);
-                    reset();
-                    setIsEditMode(false);
-                    setEditId(null);
-                }
-            });
-        }
+        // Dalam RKAS Perubahan, seluruh bulan (Tahap 1 maupun Tahap 2) dapat dihapus selama belum dibelanjakan di BKU
+        router.delete(route('rkas-perubahan.destroy-all', editId), {
+            onStart: () => setIsDeleting(true),
+            onFinish: () => setIsDeleting(false),
+            onSuccess: () => {
+                setIsDeleteModalOpen(false);
+                setIsModalOpen(false);
+                reset();
+                setIsEditMode(false);
+                setEditId(null);
+            }
+        });
     };
 
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -889,8 +844,8 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                                 {data.alokasi.map((alloc, index) => {
                                     const spentValue = Number(alloc.spent || 0);
                                     const qtyValue = Number(alloc.quantity || 0);
-                                    const hasSpent = spentValue > 0 || isLocked(alloc.month);
-                                    const isLunas = (spentValue > 0 && spentValue >= qtyValue) || isLocked(alloc.month);
+                                    const hasSpent = spentValue > 0;
+                                    const isLunas = spentValue > 0 && spentValue >= qtyValue;
 
                                     return (
                                     <div key={index} className={`bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 relative group ${isLunas ? 'opacity-70 grayscale-[0.5]' : ''}`}>
@@ -915,7 +870,7 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                                             >
                                                 <option value="">Pilih Bulan</option>
                                                 {monthOptions.map(m => (
-                                                    <option key={m} value={m} disabled={isLocked(m)}>{m}</option>
+                                                    <option key={m} value={m}>{m}</option>
                                                 ))}
                                             </select>
                                             <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md flex items-center justify-end px-3 text-sm text-gray-600 dark:text-gray-400">
@@ -1015,9 +970,7 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                         Konfirmasi Hapus
                     </h2>
                     <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">
-                        {data.alokasi.some(a => isLocked(a.month))
-                            ? "Data bulan Januari-Juni tidak akan dihapus. Apakah Anda yakin ingin menghapus alokasi bulan Juli-Desember?"
-                            : "Apakah Anda yakin ingin menghapus semua data dalam kelompok kegiatan ini? Tindakan ini tidak dapat dibatalkan."}
+                        Apakah Anda yakin ingin menghapus semua data dalam kelompok kegiatan ini? Tindakan ini tidak dapat dibatalkan.
                     </p>
                     <div className="mt-6 flex justify-end gap-3">
                         <button

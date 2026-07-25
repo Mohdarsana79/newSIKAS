@@ -78,6 +78,8 @@ export default function Bku({
     auth
 }: BkuProps) {
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isEditMode, setIsEditMode] = useState(false);
+    const [editingBkuId, setEditingBkuId] = useState<number | null>(null);
 
     const [isTarikTunaiOpen, setIsTarikTunaiOpen] = useState(false);
     const [isSetorTunaiOpen, setIsSetorTunaiOpen] = useState(false);
@@ -94,7 +96,7 @@ export default function Bku({
     const [searchQuery, setSearchQuery] = useState('');
 
     // Form handling for BKU (Spending) - Defined early for dependency usage
-    const { data, setData, post, processing, errors, reset, transform } = useForm({
+    const { data, setData, post, put, processing, errors, reset, transform } = useForm({
         // Common
         penganggaran_id: penganggaran.id,
         bulan: bulan,
@@ -224,7 +226,11 @@ export default function Bku({
     useEffect(() => {
         if (isModalOpen && bulan && tahun) {
             setIsLoadingActivities(true);
-            axios.get(route('api.bku.kegiatan-rekening', { tahun, bulan }))
+            const params: any = { tahun, bulan };
+            if (isEditMode && editingBkuId) {
+                params.exclude_bku_id = editingBkuId;
+            }
+            axios.get(route('api.bku.kegiatan-rekening'), { params })
                 .then(res => {
                     if (res.data.success) {
                         setFetchedActivities(res.data.kegiatan_list);
@@ -238,14 +244,18 @@ export default function Bku({
                 })
                 .finally(() => setIsLoadingActivities(false));
         }
-    }, [isModalOpen, bulan, tahun]);
+    }, [isModalOpen, bulan, tahun, isEditMode, editingBkuId]);
 
     // Fetch Uraian Items when Account selected
     useEffect(() => {
         if (selectedActivityId && selectedAccountId) {
             setIsLoadingItems(true);
+            const params: any = { kegiatan_id: selectedActivityId };
+            if (isEditMode && editingBkuId) {
+                params.exclude_bku_id = editingBkuId;
+            }
             axios.get(route('api.bku.uraian', { tahun, bulan, rekeningId: selectedAccountId }), {
-                params: { kegiatan_id: selectedActivityId }
+                params: params
             })
                 .then(res => {
                     if (res.data.success) {
@@ -262,7 +272,27 @@ export default function Bku({
         } else {
             setFetchedRkasItems([]);
         }
-    }, [selectedActivityId, selectedAccountId, tahun, bulan]);
+    }, [selectedActivityId, selectedAccountId, tahun, bulan, isEditMode, editingBkuId]);
+
+    // When fetchedRkasItems updates during edit mode, sync sisa_volume_limit
+    useEffect(() => {
+        if (isEditMode && fetchedRkasItems.length > 0 && data.items.length > 0) {
+            const updatedItems = data.items.map((item: any) => {
+                const matchingRkas = fetchedRkasItems.find((r: any) => Number(r.id) === Number(item.rkas_id));
+                if (matchingRkas) {
+                    return {
+                        ...item,
+                        sisa_volume_limit: Number(matchingRkas.sisa_volume || 0)
+                    };
+                }
+                return item;
+            });
+            const isDifferent = updatedItems.some((item, idx) => item.sisa_volume_limit !== data.items[idx]?.sisa_volume_limit);
+            if (isDifferent) {
+                setData('items', updatedItems);
+            }
+        }
+    }, [fetchedRkasItems, isEditMode]);
 
 
 
@@ -602,6 +632,8 @@ export default function Bku({
         // Jangan tutup modal utama jika modal tarif pajak sedang terbuka
         if (showTarifModal) return;
         setIsModalOpen(false);
+        setIsEditMode(false);
+        setEditingBkuId(null);
         setCurrentStep(1);
         reset();
     };
@@ -922,14 +954,33 @@ export default function Bku({
             };
         });
 
-        post(route('bku.store'), {
-            onSuccess: () => {
-                setIsModalOpen(false);
-                reset();
-                setCurrentStep(1);
-            },
-            preserveScroll: true,
-        });
+        if (isEditMode && editingBkuId) {
+            put(route('bku.update', editingBkuId), {
+                onSuccess: () => {
+                    setIsModalOpen(false);
+                    setIsEditMode(false);
+                    setEditingBkuId(null);
+                    reset();
+                    setCurrentStep(1);
+                },
+                onError: (errors: any) => {
+                    console.error("Update BKU Error:", errors);
+                },
+                preserveScroll: true,
+            });
+        } else {
+            post(route('bku.store'), {
+                onSuccess: () => {
+                    setIsModalOpen(false);
+                    reset();
+                    setCurrentStep(1);
+                },
+                onError: (errors: any) => {
+                    console.error("Store BKU Error:", errors);
+                },
+                preserveScroll: true,
+            });
+        }
     };
 
     const handleReopenBku = () => {
@@ -1104,6 +1155,66 @@ export default function Bku({
             safeString(item.total_transaksi_kotor).includes(lowerQuery) ||
             safeString(item.nama_toko).includes(lowerQuery);
     });
+
+    const handleEditClick = (item: any) => {
+        setIsEditMode(true);
+        setEditingBkuId(item.id);
+        const details = item.uraian_details || item.uraianDetails || [];
+        const kegId = item.kode_kegiatan_id || item.kode_kegiatan?.id || details[0]?.kode_kegiatan_id || '';
+        const rekId = item.rekening_belanja_id || item.rekening_belanja?.id || details[0]?.rekening_belanja_id || details[0]?.rekening_id || '';
+        setSelectedActivityId(String(kegId));
+        setSelectedAccountId(String(rekId));
+        setDetailUraian(item.uraian_opsional || '');
+
+        const mappedItems = details.map((d: any) => ({
+            rkas_id: d.rkas_id || d.rkas_perubahan_id,
+            uraian: d.uraian,
+            volume: Number(d.volume || 0),
+            sisa_volume_limit: Number(d.volume || 0),
+            satuan: d.satuan || '',
+            harga_satuan: Number(d.harga_satuan || 0),
+            total: Number(d.jumlah || (d.volume * d.harga_satuan) || 0),
+            kegiatan_id: String(d.kode_kegiatan_id || item.kode_kegiatan_id || ''),
+            rekening_id: String(d.rekening_belanja_id || item.rekening_belanja_id || '')
+        }));
+
+        const isNoEntity = !!(item.nama_penerima_pembayaran && !item.nama_toko);
+
+        setData({
+            penganggaran_id: penganggaran.id,
+            bulan: bulan,
+            is_siplah: false,
+            tanggal_transaksi: item.tanggal_transaksi ? String(item.tanggal_transaksi).split(' ')[0] : '',
+            jenis_transaksi: item.jenis_transaksi ? (item.jenis_transaksi.toLowerCase() === 'tunai' ? 'Tunai' : 'Nontunai') : 'Tunai',
+            no_entity: isNoEntity,
+            nama_toko: item.nama_toko || '',
+            nama_penerima_pembayaran: item.nama_penerima_pembayaran || '',
+            alamat_toko: item.alamat_toko || '',
+            nomor_telepon: item.nomor_telepon || '',
+            npwp: item.npwp || '',
+            no_npwp: !item.npwp || item.npwp === '-' || item.npwp === '',
+            nomor_nota: item.id_transaksi || '',
+            tanggal_nota: item.tanggal_transaksi ? String(item.tanggal_transaksi).split(' ')[0] : '',
+            items: mappedItems,
+            bebas_pajak: !item.total_pajak && !item.total_pajak_daerah,
+            has_tax: !!(item.pajak && Number(item.total_pajak) > 0),
+            pajak: item.pajak || 'PPN',
+            persen_pajak: item.persen_pajak || '',
+            total_pajak: Number(item.total_pajak || 0),
+            has_local_tax: !!(item.pajak_daerah && Number(item.total_pajak_daerah) > 0),
+            pajak_daerah: item.pajak_daerah || 'PB1',
+            persen_pajak_daerah: item.persen_pajak_daerah || '',
+            total_pajak_daerah: Number(item.total_pajak_daerah || 0),
+            bunga_bank: '',
+            pajak_bunga: '',
+            tanggal_lapor: '',
+            kode_masa_pajak: '',
+            ntpn: ''
+        });
+
+        setCurrentStep(1);
+        setIsModalOpen(true);
+    };
 
     const handleDeleteClick = (id: number, type: 'penarikan' | 'setor' | 'bku' | 'penerimaan') => {
         if (type === 'penerimaan') {
@@ -1989,7 +2100,12 @@ export default function Bku({
                         <div className="flex flex-wrap gap-2 w-full lg:w-auto">
                             {!is_closed && (
                                 <button
-                                    onClick={() => setIsModalOpen(true)}
+                                    onClick={() => {
+                                        setIsEditMode(false);
+                                        setEditingBkuId(null);
+                                        reset();
+                                        setIsModalOpen(true);
+                                    }}
                                     className="inline-flex items-center px-4 py-2 bg-primary dark:bg-primary-800 border border-gray-300 dark:border-gray-600 rounded-md font-semibold text-[10pt] text-gray-300 dark:text-gray-300 uppercase tracking-widest shadow-sm hover:bg-gray-50 hover:text-gray-900 dark:hover:bg-gray-700 focus:outline-none transition ease-in-out duration-150"
                                 >
                                     <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -2348,15 +2464,26 @@ export default function Bku({
                                                                     </button>
                                                                 )}
                                                                 {!is_closed && (
-                                                                    <button
-                                                                        className="w-full text-left px-4 py-2 text-[10pt] text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center"
-                                                                        onClick={() => handleDeleteClick(item.id, 'bku')}
-                                                                    >
-                                                                        <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                                        </svg>
-                                                                        Hapus
-                                                                    </button>
+                                                                    <>
+                                                                        <button
+                                                                            className="w-full text-left px-4 py-2 text-[10pt] text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 flex items-center"
+                                                                            onClick={() => handleEditClick(item)}
+                                                                        >
+                                                                            <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                                            </svg>
+                                                                            Edit
+                                                                        </button>
+                                                                        <button
+                                                                            className="w-full text-left px-4 py-2 text-[10pt] text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center"
+                                                                            onClick={() => handleDeleteClick(item.id, 'bku')}
+                                                                        >
+                                                                            <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                                            </svg>
+                                                                            Hapus
+                                                                        </button>
+                                                                    </>
                                                                 )}
                                                                 <button
                                                                     className="w-full text-left px-4 py-2 text-[10pt] text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-900/20 flex items-center"
@@ -2405,7 +2532,7 @@ export default function Bku({
                             </div>
                             <div>
                                 <h2 className="text-xl font-bold text-white">
-                                    Isi Detail Pembelanjaan
+                                    {isEditMode ? 'UPDATE Detail Pembelanjaan' : 'Isi Detail Pembelanjaan'}
                                 </h2>
                                 <p className="text-cyan-100 text-[10pt] mt-1">
                                     Isi detail barang atau jasa yang Anda belanjakan yang terdapat dalam 1 nota.
