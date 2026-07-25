@@ -28,7 +28,10 @@ class PenganggaranController extends Controller
         foreach ($anggarans as $anggaran) {
             // Check existence
             $hasPerubahan = RkasPerubahan::where('penganggaran_id', $anggaran->id)->exists();
-            $hasBku = \App\Models\BukuKasUmum::where('penganggaran_id', $anggaran->id)->exists();
+            $hasBkuReguler = \App\Models\BukuKasUmum::where('penganggaran_id', $anggaran->id)->exists();
+            $hasBkuPerubahan = \App\Models\BukuKasUmum::where('penganggaran_id', $anggaran->id)
+                ->whereMonth('tanggal_transaksi', '>=', 7)
+                ->exists();
 
             // 1. Add Regular Item
             $items->push([
@@ -37,7 +40,7 @@ class PenganggaranController extends Controller
                 'pagu' => 'Rp ' . number_format($anggaran->pagu_anggaran, 0, ',', '.'),
                 'status' => 'regular',
                 'has_perubahan' => $hasPerubahan, // Flag to disable button / hide edit
-                'has_bku' => $hasBku,
+                'has_bku' => $hasBkuReguler,
                 'tahun' => $anggaran->tahun_anggaran,
             ]);
 
@@ -49,7 +52,7 @@ class PenganggaranController extends Controller
                     'pagu' => 'Rp ' . number_format($anggaran->pagu_anggaran, 0, ',', '.'),
                     'status' => 'perubahan',
                     'has_perubahan' => true,
-                    'has_bku' => $hasBku,
+                    'has_bku' => $hasBkuPerubahan,
                     'tahun' => $anggaran->tahun_anggaran,
                 ]);
             }

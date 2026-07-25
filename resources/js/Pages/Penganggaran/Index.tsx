@@ -129,7 +129,11 @@ export default function Index({ auth, items, anggarans, can_create }: PageProps<
     const handleDelete = (id: number, status: 'regular' | 'perubahan') => {
         const item = items.find(i => i.id === id && i.status === status);
         if (item && item.has_bku) {
-            setAlertMessage("Penganggaran tidak dapat di hapus karena sudah ada data belanja pada BKU, anda perlu menghapus data bku pada penganggaran ini untuk dapat menghapus penganggaran ini");
+            if (status === 'perubahan') {
+                setAlertMessage("RKAS Perubahan tidak dapat dihapus karena sudah ada data belanja pada BKU bulan Juli - Desember. Anda perlu menghapus data BKU pada periode tersebut terlebih dahulu.");
+            } else {
+                setAlertMessage("Penganggaran tidak dapat di hapus karena sudah ada data belanja pada BKU, anda perlu menghapus data bku pada penganggaran ini untuk dapat menghapus penganggaran ini");
+            }
             setIsAlertModalOpen(true);
             return;
         }

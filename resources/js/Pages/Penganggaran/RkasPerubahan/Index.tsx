@@ -134,7 +134,7 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
         'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
     ];
 
-    const lockedMonths = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni'];
+    const lockedMonths: string[] = []; // Bulan Tahap 1 diizinkan untuk diedit/dihapus pada RKAS Perubahan
     const isLocked = (month: string) => lockedMonths.includes(month);
 
     const { data, setData, post, processing, errors, reset } = useForm({
@@ -765,7 +765,7 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                     ) : null}
                 </div>
             </div>
-            {/* Modal Tambah RKAS */}
+            {/* Modal Tambah / Edit RKAS */}
             <Modal show={isModalOpen} onClose={() => { if (!isAlertModalOpen && !isDeleteModalOpen) closeModal(); }} maxWidth="2xl">
                 {/* Modal Header */}
                 <div className={`flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700 ${isEditMode ? 'bg-indigo-600' : isSisipMode ? 'bg-white dark:bg-gray-800' : 'bg-white dark:bg-gray-800'}`}>

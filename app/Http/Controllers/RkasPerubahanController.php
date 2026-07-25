@@ -441,10 +441,13 @@ class RkasPerubahanController extends Controller
     {
         // $id is penganggaran_id
         
-        // Validasi BKU
-        $hasBku = \App\Models\BukuKasUmum::where('penganggaran_id', $id)->exists();
-        if ($hasBku) {
-            return redirect()->back()->with('error', 'Penganggaran tidak dapat di hapus karena sudah ada data belanja pada BKU, anda perlu menghapus data bku pada penganggaran ini untuk dapat menghapus penganggaran ini');
+        // Validasi BKU (Khusus Tahap 2 / Juli - Desember)
+        $hasBkuPerubahan = \App\Models\BukuKasUmum::where('penganggaran_id', $id)
+            ->whereMonth('tanggal_transaksi', '>=', 7)
+            ->exists();
+            
+        if ($hasBkuPerubahan) {
+            return redirect()->back()->with('error', 'RKAS Perubahan tidak dapat dihapus karena sudah ada data belanja pada BKU bulan Juli - Desember. Anda perlu menghapus data BKU pada periode tersebut terlebih dahulu.');
         }
 
         RkasPerubahan::where('penganggaran_id', $id)->delete();
