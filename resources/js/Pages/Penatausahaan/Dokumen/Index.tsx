@@ -20,6 +20,7 @@ interface Dokumen {
 interface BukuKasUmum {
     id: number;
     uraian: string;
+    uraian_opsional?: string | null;
     tanggal_transaksi: string;
     dokumen: Dokumen | null;
 }
@@ -241,7 +242,7 @@ export default function Index({ auth, penganggarans }: Props) {
                                                     {(pagination?.from || 1) + index}
                                                 </td>
                                                 <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
-                                                    {item.uraian}
+                                                    {item.uraian_opsional || item.uraian}
                                                     {item.dokumen && (
                                                         <div className="text-xs text-indigo-500 mt-1 font-medium">
                                                             Dokumen: {item.dokumen.nama_dokumen}
@@ -267,7 +268,7 @@ export default function Index({ auth, penganggarans }: Props) {
                                                             </button>
                                                         </>
                                                     ) : (
-                                                        item.uraian && (
+                                                        (item.uraian_opsional || item.uraian) && (
                                                             <button
                                                                 onClick={() => openAddModal(item)}
                                                                 className="inline-flex items-center px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-md hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
@@ -357,7 +358,7 @@ export default function Index({ auth, penganggarans }: Props) {
                             <div className="bg-purple-50 dark:bg-gray-700 p-4 rounded-lg border border-purple-100 dark:border-gray-600">
                                 <div className="text-xs text-purple-600 dark:text-purple-300 font-semibold uppercase tracking-wide">Uraian Transaksi</div>
                                 <div className="mt-1 text-gray-900 dark:text-gray-100 font-medium text-lg leading-relaxed">
-                                    {selectedBku?.uraian}
+                                    {selectedBku?.uraian_opsional || selectedBku?.uraian}
                                 </div>
                             </div>
 

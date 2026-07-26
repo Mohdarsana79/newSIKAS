@@ -29,7 +29,7 @@ export default function ChangelogModal() {
                         Informasi Rilis
                     </h2>
                     <span className="bg-indigo-100 text-indigo-800 text-sm font-semibold px-3 py-1 rounded-full dark:bg-indigo-900 dark:text-indigo-300">
-                        SIKAS V.2026.9
+                        SIKAS V.2026.12
                     </span>
                 </div>
 
@@ -47,6 +47,7 @@ export default function ChangelogModal() {
                             <li><span className="font-medium">Alert Notifikasi:</span> Penambahan modal alert notifikasi interaktif yang memberikan informasi kritis langsung di layar pengguna saat pertama kali mengakses aplikasi.</li>
                             <li><span className="font-medium">Arkas Tools:</span> Penambahan fitur Arkas Tools untuk memudahkan pengguna dalam mengelola data rkas dalam pencarian barang dan jasa dan mencari batas atas dan bawah Harga Satuan Barang/Jasa. yang langsung di ambil dari ARKAS Online.</li>
                             <li><span className="font-medium">Referensi Kode:</span> Penambahan fitur Referensi Kode untuk memudahkan pengguna dalam mencari kode referensi yang sesuai. yang di ambil langsung dari ARKAS Online.</li>
+                            <li><span className="font-medium">Fitur Update Belanja :</span> Penambahan fitur Update Belanja pada BKU untuk memudahkan pengguna dalam melakukan update data belanja.</li>
                         </ul>
                     </div>
 
@@ -63,6 +64,8 @@ export default function ChangelogModal() {
                             <li><span className="font-medium">Perbaikan Tombol Fullscreen dan Drak Mode:</span> Perbaikan tombol fullscreen dan dark mode yang sebelumnya tidak berfungsi dengan baik.</li>
                             <li><span className="font-medium">Bug Referensi Kode:</span> Perbaikan pada referensi kode kegiatan yang sebelumnya tidak sesuai dengan ARKAS Online. Penambahan keterangan perlu update ketika terdeteksi perbedaan data pada database sikas dan database arkas online</li>
                             <li><span className="font-medium">Bug Pajak Kwitansi:</span> Perbaikan bug pada generate kwitansi yang menampilkan nilai pajak tidak sesuai pada pph jika pajaknya 0% dan penyesuaian klasifikasi pajak.</li>
+                            <li><span className="font-medium">Pengaktifan Fitur Update Rkas Perubahan : </span> Fitur Update data telah di perbaiki pada rkas perubahan agar tidak membatasi pengguna melakukan pengeditan data pada tahap 1.</li>
+                            <li><span className="font-medium">Perbaikan Nama Dokumen : </span> Perbaikan penamaan dokumen ketika uraian opsional tidak ada maka akan di tampilkan uraian transaksi.</li>
                         </ul>
                     </div>
                 </div>

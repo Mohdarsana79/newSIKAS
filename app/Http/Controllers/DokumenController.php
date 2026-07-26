@@ -25,15 +25,21 @@ class DokumenController extends Controller
             ->with(['dokumen'])
             ->where('penganggaran_id', $request->penganggaran_id)
             ->whereMonth('tanggal_transaksi', $request->bulan)
-            ->whereNotNull('uraian')
-            ->where('uraian', '!=', '');
+            ->where(function ($q) {
+                $q->where(function ($q1) {
+                    $q1->whereNotNull('uraian')->where('uraian', '!=', '');
+                })->orWhere(function ($q2) {
+                    $q2->whereNotNull('uraian_opsional')->where('uraian_opsional', '!=', '');
+                });
+            });
 
         if ($request->search) {
             $search = strtolower($request->search);
             $query->where(function($q) use ($search) {
                 $q->whereHas('dokumen', function($subQ) use ($search) {
                     $subQ->whereRaw('LOWER(nama_dokumen) LIKE ?', ['%' . $search . '%']);
-                })->orWhereRaw('LOWER(uraian) LIKE ?', ['%' . $search . '%']);
+                })->orWhereRaw('LOWER(uraian) LIKE ?', ['%' . $search . '%'])
+                  ->orWhereRaw('LOWER(uraian_opsional) LIKE ?', ['%' . $search . '%']);
             });
         }
 
