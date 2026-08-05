@@ -32,16 +32,22 @@ class Sp2bController extends Controller
     {
         $validated = $request->validate([
             'penganggaran_id' => 'required|exists:penganggarans,id',
+            'jenis_periode' => 'required|in:bulan,tahap',
+            'bulan' => 'required_if:jenis_periode,bulan',
             'nomor_sp2b' => [
                 'required',
                 'string',
                 Rule::unique('sp2bs')->where(function ($query) use ($request) {
-                    return $query->where('tahap', $request->tahap)
-                                 ->where('penganggaran_id', $request->penganggaran_id);
+                    $q = $query->where('penganggaran_id', $request->penganggaran_id)
+                               ->where('jenis_periode', $request->jenis_periode);
+                    if ($request->jenis_periode == 'bulan') {
+                        return $q->where('bulan', $request->bulan);
+                    }
+                    return $q->where('tahap', $request->tahap);
                 })
             ],
             'tanggal_sp2b' => 'required|date',
-            'tahap' => 'required|in:1,2',
+            'tahap' => 'required_if:jenis_periode,tahap|in:1,2',
             'saldo_awal' => 'required|numeric',
             'pendapatan' => 'required|numeric',
             'belanja' => 'required|numeric',
@@ -67,16 +73,22 @@ class Sp2bController extends Controller
         
         $validated = $request->validate([
             'penganggaran_id' => 'required|exists:penganggarans,id',
+            'jenis_periode' => 'required|in:bulan,tahap',
+            'bulan' => 'required_if:jenis_periode,bulan',
             'nomor_sp2b' => [
                 'required',
                 'string',
                 Rule::unique('sp2bs')->ignore($id)->where(function ($query) use ($request) {
-                    return $query->where('tahap', $request->tahap)
-                                 ->where('penganggaran_id', $request->penganggaran_id);
+                    $q = $query->where('penganggaran_id', $request->penganggaran_id)
+                               ->where('jenis_periode', $request->jenis_periode);
+                    if ($request->jenis_periode == 'bulan') {
+                        return $q->where('bulan', $request->bulan);
+                    }
+                    return $q->where('tahap', $request->tahap);
                 })
             ],
             'tanggal_sp2b' => 'required|date',
-            'tahap' => 'required|in:1,2',
+            'tahap' => 'required_if:jenis_periode,tahap|in:1,2',
             'saldo_awal' => 'required|numeric',
             'pendapatan' => 'required|numeric',
             'belanja' => 'required|numeric',
@@ -117,7 +129,9 @@ class Sp2bController extends Controller
     {
         try {
             $tahun = $request->tahun_anggaran;
+            $jenisPeriode = $request->jenis_periode ?? 'tahap';
             $tahap = $request->tahap;
+            $bulan = $request->bulan;
             $sekolahId = auth()->user()->sekolah_id ?? 1;
 
             $penganggaran = Penganggaran::where('sekolah_id', $sekolahId)
@@ -128,39 +142,64 @@ class Sp2bController extends Controller
                 return response()->json(['error' => "Data Penganggaran tidak ditemukan untuk tahun $tahun"], 404);
             }
 
-            // Define dates based on Tahap
-            $startDate = $tahap == '1' ? "$tahun-01-01" : "$tahun-07-01";
-            $endDate = $tahap == '1' ? "$tahun-06-30" : "$tahun-12-31";
-
-            // Saldo Awal logic
             $bukuKasService = app(\App\Services\BukuKasService::class);
-            $startMonth = $tahap == '1' ? 1 : 7;
-            
-            // Getting previous balance
-            $sisaTunaiSebelum = $bukuKasService->hitungSaldoTunaiSebelumBulan($penganggaran->id, $startMonth);
-            $sisaBankSebelum = $bukuKasService->hitungSaldoBankSebelumBulan($penganggaran->id, $startMonth);
-            $saldoAwal = $sisaTunaiSebelum + $sisaBankSebelum;
+            $saldoAwal = 0;
+            $pendapatan = 0;
 
-            // Tambahkan Saldo Awal (Luncuran) jika Tahap 1
-            if ($tahap == '1') {
-                $penerimaanAwal = PenerimaanDana::where('penganggaran_id', $penganggaran->id)
-                    ->where('sumber_dana', 'Bosp Reguler Tahap 1')
-                    ->first();
-                if ($penerimaanAwal && $penerimaanAwal->saldo_awal) {
-                    $saldoAwal += $penerimaanAwal->saldo_awal;
-                }
-            }
+            if ($jenisPeriode === 'bulan') {
+                $startDate = Carbon::create($tahun, $bulan, 1)->format('Y-m-d');
+                $endDate = Carbon::create($tahun, $bulan, 1)->endOfMonth()->format('Y-m-d');
 
-            // Pendapatan during this Tahap
-            // To be safe, we use PenerimaanDana matching the tahap.
-            $pendapatan = PenerimaanDana::where('penganggaran_id', $penganggaran->id)
-                ->where(function($q) use ($tahap) {
-                    if ($tahap == '1') {
-                        $q->where('sumber_dana', 'like', '%Tahap 1%')->orWhere('sumber_dana', 'like', '%Tahap I%');
-                    } else {
-                        $q->where('sumber_dana', 'like', '%Tahap 2%')->orWhere('sumber_dana', 'like', '%Tahap II%');
+                $sisaTunaiSebelum = $bukuKasService->hitungSaldoTunaiSebelumBulan($penganggaran->id, $bulan);
+                $sisaBankSebelum = $bukuKasService->hitungSaldoBankSebelumBulan($penganggaran->id, $bulan);
+                $saldoAwal = $sisaTunaiSebelum + $sisaBankSebelum;
+
+                // Tambahkan saldo awal dari penerimaan dana jika bulan 1
+                if ($bulan == 1) {
+                    $penerimaanAwal = PenerimaanDana::where('penganggaran_id', $penganggaran->id)
+                        ->where('sumber_dana', 'Bosp Reguler Tahap 1')
+                        ->first();
+                    if ($penerimaanAwal && $penerimaanAwal->saldo_awal) {
+                        $saldoAwal += $penerimaanAwal->saldo_awal;
                     }
-                })->sum('jumlah_dana');
+                }
+
+                $pendapatan = PenerimaanDana::where('penganggaran_id', $penganggaran->id)
+                    ->whereMonth('tanggal_terima', $bulan)
+                    ->sum('jumlah_dana');
+
+            } else {
+                // Define dates based on Tahap
+                $startDate = $tahap == '1' ? "$tahun-01-01" : "$tahun-07-01";
+                $endDate = $tahap == '1' ? "$tahun-06-30" : "$tahun-12-31";
+
+                $startMonth = $tahap == '1' ? 1 : 7;
+                
+                // Getting previous balance
+                $sisaTunaiSebelum = $bukuKasService->hitungSaldoTunaiSebelumBulan($penganggaran->id, $startMonth);
+                $sisaBankSebelum = $bukuKasService->hitungSaldoBankSebelumBulan($penganggaran->id, $startMonth);
+                $saldoAwal = $sisaTunaiSebelum + $sisaBankSebelum;
+
+                // Tambahkan Saldo Awal (Luncuran) jika Tahap 1
+                if ($tahap == '1') {
+                    $penerimaanAwal = PenerimaanDana::where('penganggaran_id', $penganggaran->id)
+                        ->where('sumber_dana', 'Bosp Reguler Tahap 1')
+                        ->first();
+                    if ($penerimaanAwal && $penerimaanAwal->saldo_awal) {
+                        $saldoAwal += $penerimaanAwal->saldo_awal;
+                    }
+                }
+
+                // Pendapatan during this Tahap
+                $pendapatan = PenerimaanDana::where('penganggaran_id', $penganggaran->id)
+                    ->where(function($q) use ($tahap) {
+                        if ($tahap == '1') {
+                            $q->where('sumber_dana', 'like', '%Tahap 1%')->orWhere('sumber_dana', 'like', '%Tahap I%');
+                        } else {
+                            $q->where('sumber_dana', 'like', '%Tahap 2%')->orWhere('sumber_dana', 'like', '%Tahap II%');
+                        }
+                    })->sum('jumlah_dana');
+            }
 
             // Pengeluaran
             $bkuExpenses = BukuKasUmum::where('penganggaran_id', $penganggaran->id)
@@ -229,8 +268,17 @@ class Sp2bController extends Controller
         $paperSize = request()->input('paper_size', 'A4');
         $fontSize = request()->input('font_size', '12pt');
         
-        // Ensure month translation works
-        $semester_text = $sp2b->tahap == '1' ? 'Januari s.d Juni' : 'Juli s.d Desember';
+        $periode_text = '';
+        if ($sp2b->jenis_periode === 'bulan' && $sp2b->bulan) {
+            $months = [
+                1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April', 5 => 'Mei', 6 => 'Juni',
+                7 => 'Juli', 8 => 'Agustus', 9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'
+            ];
+            $periode_text = ($months[(int)$sp2b->bulan] ?? '') . ' ';
+        } else {
+            $semester_text = $sp2b->tahap == '1' ? 'Januari s.d Juni' : 'Juli s.d Desember';
+            $periode_text = $semester_text . ' ';
+        }
 
         $data = [
             'sp2b' => $sp2b,
@@ -241,7 +289,7 @@ class Sp2bController extends Controller
                 'nip' => $penganggaran->nip_kepala_sekolah
             ],
             'tanggal_cetak' => Carbon::parse($sp2b->tanggal_sp2b)->locale('id')->isoFormat('D MMMM Y'),
-            'periode_text' => $semester_text . ' Tahun Anggaran ' . $penganggaran->tahun_anggaran,
+            'periode_text' => $periode_text . 'Tahun Anggaran ' . $penganggaran->tahun_anggaran,
             'fontSize' => $fontSize,
         ];
 

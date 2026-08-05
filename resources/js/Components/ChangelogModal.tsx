@@ -29,7 +29,7 @@ export default function ChangelogModal() {
                         Informasi Rilis
                     </h2>
                     <span className="bg-indigo-100 text-indigo-800 text-sm font-semibold px-3 py-1 rounded-full dark:bg-indigo-900 dark:text-indigo-300">
-                        SIKAS V.2026.12
+                        SIKAS V.2026.13
                     </span>
                 </div>
 
@@ -48,6 +48,7 @@ export default function ChangelogModal() {
                             <li><span className="font-medium">Arkas Tools:</span> Penambahan fitur Arkas Tools untuk memudahkan pengguna dalam mengelola data rkas dalam pencarian barang dan jasa dan mencari batas atas dan bawah Harga Satuan Barang/Jasa. yang langsung di ambil dari ARKAS Online.</li>
                             <li><span className="font-medium">Referensi Kode:</span> Penambahan fitur Referensi Kode untuk memudahkan pengguna dalam mencari kode referensi yang sesuai. yang di ambil langsung dari ARKAS Online.</li>
                             <li><span className="font-medium">Fitur Update Belanja :</span> Penambahan fitur Update Belanja pada BKU untuk memudahkan pengguna dalam melakukan update data belanja.</li>
+                            <li><span className="font-medium">Pembaruan SP2B :</span> Penambahan Jenis pilihan Bulanan saat melakukan generate SP2B</li>
                         </ul>
                     </div>
 

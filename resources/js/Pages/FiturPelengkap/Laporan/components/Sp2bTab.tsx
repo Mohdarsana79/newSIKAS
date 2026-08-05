@@ -18,6 +18,8 @@ interface Sp2bData {
     id: number;
     nomor_sp2b: string;
     tanggal_sp2b: string;
+    jenis_periode: 'bulan' | 'tahap';
+    bulan?: number | null;
     tahap: '1' | '2';
     saldo_awal: number;
     pendapatan: number;
@@ -69,6 +71,8 @@ export default function Sp2bTab() {
         id: null as number | null,
         nomor_sp2b: '',
         tanggal_sp2b: '',
+        jenis_periode: 'tahap' as 'bulan' | 'tahap',
+        bulan: new Date().getMonth() + 1,
         tahap: '1',
         penganggaran_id: 0,
         tahun_anggaran: new Date().getFullYear().toString(),
@@ -99,6 +103,8 @@ export default function Sp2bTab() {
             const response = await axios.get('/fitur-pelengkap/api/sp2b/calculate', {
                 params: {
                     tahun_anggaran: formData.tahun_anggaran,
+                    jenis_periode: formData.jenis_periode,
+                    bulan: formData.bulan,
                     tahap: formData.tahap
                 }
             });
@@ -212,6 +218,8 @@ export default function Sp2bTab() {
             id: item.id,
             nomor_sp2b: item.nomor_sp2b,
             tanggal_sp2b: item.tanggal_sp2b || '',
+            jenis_periode: item.jenis_periode || 'tahap',
+            bulan: item.bulan || new Date().getMonth() + 1,
             tahap: item.tahap as any,
             tahun_anggaran: item.penganggaran?.tahun_anggaran || new Date().getFullYear().toString(),
             penganggaran_id: item.penganggaran_id,
@@ -234,6 +242,8 @@ export default function Sp2bTab() {
             id: null,
             nomor_sp2b: '',
             tanggal_sp2b: '',
+            jenis_periode: 'tahap',
+            bulan: new Date().getMonth() + 1,
             tahap: '1',
             penganggaran_id: availableYears.length > 0 ? availableYears[0].id : 0,
             tahun_anggaran: availableYears.length > 0 ? String(availableYears[0].tahun_anggaran) : new Date().getFullYear().toString(),
@@ -291,7 +301,7 @@ export default function Sp2bTab() {
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Belanja Pegawai</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Belanja Barang dan Jasa</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Belanja Modal</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tahap</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Periode</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tahun</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Aksi</th>
                         </tr>
@@ -310,7 +320,9 @@ export default function Sp2bTab() {
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{formatCurrency(item.belanja_pegawai)}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{formatCurrency(item.belanja_barang_jasa)}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{formatCurrency(item.belanja_modal)}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{item.tahap}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                                            {item.jenis_periode === 'bulan' ? `Bulan ${item.bulan}` : `Tahap ${item.tahap}`}
+                                        </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{item.penganggaran?.tahun_anggaran}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                             <div className="flex items-center space-x-2">
@@ -487,19 +499,58 @@ export default function Sp2bTab() {
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-4">
                                     <div>
-                                        <InputLabel htmlFor="tahap" value="Tahap" className="text-gray-700 dark:text-gray-300 font-medium" />
+                                        <InputLabel htmlFor="jenis_periode" value="Jenis Periode" className="text-gray-700 dark:text-gray-300 font-medium" />
                                         <select
-                                            id="tahap"
+                                            id="jenis_periode"
                                             className="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-blue-500 focus:ring-blue-500 rounded-lg shadow-sm"
-                                            value={formData.tahap}
-                                            onChange={(e) => setFormData({ ...formData, tahap: e.target.value as '1' | '2' })}
+                                            value={formData.jenis_periode}
+                                            onChange={(e) => setFormData({ ...formData, jenis_periode: e.target.value as 'bulan' | 'tahap' })}
                                             required
                                         >
-                                            <option value="1">1</option>
-                                            <option value="2">2</option>
+                                            <option value="bulan">Bulan</option>
+                                            <option value="tahap">Tahap</option>
                                         </select>
                                     </div>
-                                    <div className="flex items-end col-span-3 justify-end">
+                                    {formData.jenis_periode === 'bulan' ? (
+                                        <div>
+                                            <InputLabel htmlFor="bulan" value="Bulan" className="text-gray-700 dark:text-gray-300 font-medium" />
+                                            <select
+                                                id="bulan"
+                                                className="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-blue-500 focus:ring-blue-500 rounded-lg shadow-sm"
+                                                value={formData.bulan || ''}
+                                                onChange={(e) => setFormData({ ...formData, bulan: Number(e.target.value) })}
+                                                required
+                                            >
+                                                <option value="1">Januari</option>
+                                                <option value="2">Februari</option>
+                                                <option value="3">Maret</option>
+                                                <option value="4">April</option>
+                                                <option value="5">Mei</option>
+                                                <option value="6">Juni</option>
+                                                <option value="7">Juli</option>
+                                                <option value="8">Agustus</option>
+                                                <option value="9">September</option>
+                                                <option value="10">Oktober</option>
+                                                <option value="11">November</option>
+                                                <option value="12">Desember</option>
+                                            </select>
+                                        </div>
+                                    ) : (
+                                        <div>
+                                            <InputLabel htmlFor="tahap" value="Tahap" className="text-gray-700 dark:text-gray-300 font-medium" />
+                                            <select
+                                                id="tahap"
+                                                className="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-blue-500 focus:ring-blue-500 rounded-lg shadow-sm"
+                                                value={formData.tahap}
+                                                onChange={(e) => setFormData({ ...formData, tahap: e.target.value as '1' | '2' })}
+                                                required
+                                            >
+                                                <option value="1">1</option>
+                                                <option value="2">2</option>
+                                            </select>
+                                        </div>
+                                    )}
+                                    <div className="flex items-end col-span-1 md:col-span-2 justify-end">
                                         <button
                                             type="button"
                                             onClick={handleCalculate}
