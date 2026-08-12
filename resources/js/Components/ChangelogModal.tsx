@@ -29,7 +29,7 @@ export default function ChangelogModal() {
                         Informasi Rilis
                     </h2>
                     <span className="bg-indigo-100 text-indigo-800 text-sm font-semibold px-3 py-1 rounded-full dark:bg-indigo-900 dark:text-indigo-300">
-                        SIKAS V.2026.13
+                        SIKAS V.2026.14
                     </span>
                 </div>
 
@@ -43,12 +43,9 @@ export default function ChangelogModal() {
                             Pembaharuan
                         </h3>
                         <ul className="list-disc pl-6 text-sm text-gray-700 dark:text-gray-300 space-y-2 leading-relaxed">
-                            <li><span className="font-medium">Fitur Notifikasi:</span> Penambahan sistem notifikasi komprehensif untuk mengingatkan pengguna terkait kewajiban atau peringatan sistem.</li>
-                            <li><span className="font-medium">Alert Notifikasi:</span> Penambahan modal alert notifikasi interaktif yang memberikan informasi kritis langsung di layar pengguna saat pertama kali mengakses aplikasi.</li>
-                            <li><span className="font-medium">Arkas Tools:</span> Penambahan fitur Arkas Tools untuk memudahkan pengguna dalam mengelola data rkas dalam pencarian barang dan jasa dan mencari batas atas dan bawah Harga Satuan Barang/Jasa. yang langsung di ambil dari ARKAS Online.</li>
-                            <li><span className="font-medium">Referensi Kode:</span> Penambahan fitur Referensi Kode untuk memudahkan pengguna dalam mencari kode referensi yang sesuai. yang di ambil langsung dari ARKAS Online.</li>
-                            <li><span className="font-medium">Fitur Update Belanja :</span> Penambahan fitur Update Belanja pada BKU untuk memudahkan pengguna dalam melakukan update data belanja.</li>
-                            <li><span className="font-medium">Pembaruan SP2B :</span> Penambahan Jenis pilihan Bulanan saat melakukan generate SP2B</li>
+                            <li><span className="font-medium">Penambahan Rekapitulasi Barang Habis Pakai (BHP):</span> Penambahan format Rekapitulasi Belanja Dana BOSP (Barang Habis Pakai)</li>
+                            <li><span className="font-medium">Penambahan Rekapitulasi Belanja Dana BOSP (Barang Modal / Aset):</span> Penambahan format Rekapitulasi Belanja Dana BOSP (Barang Modal / Aset)</li>
+                            <li><span className="font-medium">Penambahan Format Kwitan 3:</span> Penambahan format kwitansi pembayaran pada fitur kwitansi</li>
                         </ul>
                     </div>
 
@@ -61,12 +58,9 @@ export default function ChangelogModal() {
                             Perbaikan
                         </h3>
                         <ul className="list-disc pl-6 text-sm text-gray-700 dark:text-gray-300 space-y-2 leading-relaxed">
-                            <li><span className="font-medium">Bug Tanggal BKU:</span> Telah dilakukan perbaikan pada sistem tanggal BKU yang sebelumnya mengalami kendala mundur 1 hari (kembali ke 1 hari sebelum tanggal yang ditetapkan) akibat dari ketidaksesuaian zona waktu (Timezone Offset). Kini tanggal akan disimpan secara akurat.</li>
-                            <li><span className="font-medium">Perbaikan Tombol Fullscreen dan Drak Mode:</span> Perbaikan tombol fullscreen dan dark mode yang sebelumnya tidak berfungsi dengan baik.</li>
-                            <li><span className="font-medium">Bug Referensi Kode:</span> Perbaikan pada referensi kode kegiatan yang sebelumnya tidak sesuai dengan ARKAS Online. Penambahan keterangan perlu update ketika terdeteksi perbedaan data pada database sikas dan database arkas online</li>
-                            <li><span className="font-medium">Bug Pajak Kwitansi:</span> Perbaikan bug pada generate kwitansi yang menampilkan nilai pajak tidak sesuai pada pph jika pajaknya 0% dan penyesuaian klasifikasi pajak.</li>
-                            <li><span className="font-medium">Pengaktifan Fitur Update Rkas Perubahan : </span> Fitur Update data telah di perbaiki pada rkas perubahan agar tidak membatasi pengguna melakukan pengeditan data pada tahap 1.</li>
-                            <li><span className="font-medium">Perbaikan Nama Dokumen : </span> Perbaikan penamaan dokumen ketika uraian opsional tidak ada maka akan di tampilkan uraian transaksi.</li>
+                            <li><span className="font-medium">Perbaikan Bug Error 500:</span> Perbaikan Bug Error 500 saat melakukan instalasi aplikasi. </li>
+                            <li><span className="font-medium">Perbaikan BKU:</span> Perbaikan sistem pajak pada Buku Kas Umum (BKU) saat melakukan keterlambatan Setor Pajak </li>
+                            <li><span className="font-medium">Perbaikan BKP Pajak:</span> Perbaikan Buku Kas Pajak yang tidak menampilkan saldo awal pada saat melakukan setor pajak </li>
                         </ul>
                     </div>
                 </div>

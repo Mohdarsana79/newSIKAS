@@ -14,6 +14,42 @@ use Illuminate\Support\Facades\DB;
 class BukuKasService
 {
     /**
+     * Hitung saldo pajak sebelum bulan tertentu
+     */
+    public function hitungSaldoPajakSebelumBulan($penganggaran_id, $bulanTarget, $tahun)
+    {
+        try {
+            if ($bulanTarget == 1) {
+                return 0;
+            }
+
+            // Penerimaan Pajak (Berdasarkan Tanggal Transaksi)
+            $pajakDiterima = BukuKasUmum::query()->where('penganggaran_id', $penganggaran_id)
+                ->where(function ($query) {
+                    $query->where('is_bunga_record', false)->orWhereNull('is_bunga_record');
+                })
+                ->whereRaw('EXTRACT(MONTH FROM tanggal_transaksi) < ?', [$bulanTarget])
+                ->whereRaw('EXTRACT(YEAR FROM tanggal_transaksi) = ?', [$tahun])
+                ->sum(\Illuminate\Support\Facades\DB::raw('COALESCE(total_pajak, 0) + COALESCE(total_pajak_daerah, 0)'));
+
+            // Pengeluaran Pajak (Setor) (Berdasarkan Tanggal Lapor)
+            $pajakDisetor = BukuKasUmum::query()->where('penganggaran_id', $penganggaran_id)
+                ->whereNotNull('ntpn')
+                ->where(function ($query) {
+                    $query->where('is_bunga_record', false)->orWhereNull('is_bunga_record');
+                })
+                ->whereRaw('EXTRACT(MONTH FROM tanggal_lapor) < ?', [$bulanTarget])
+                ->whereRaw('EXTRACT(YEAR FROM tanggal_lapor) = ?', [$tahun])
+                ->sum(\Illuminate\Support\Facades\DB::raw('COALESCE(total_pajak, 0) + COALESCE(total_pajak_daerah, 0)'));
+
+            return max(0, $pajakDiterima - $pajakDisetor);
+        } catch (\Exception $e) {
+            Log::error('Error hitungSaldoPajakSebelumBulan: ' . $e->getMessage());
+            return 0;
+        }
+    }
+
+    /**
      * Hitung saldo bank sebelum bulan tertentu - VERSI DIPERBAIKI
      */
     public function hitungSaldoBankSebelumBulan($penganggaran_id, $bulanTarget)
@@ -31,7 +67,7 @@ class BukuKasService
             }
 
             // Hitung total penerimaan dana sampai bulan sebelumnya
-            $penerimaanDanas = PenerimaanDana::where('penganggaran_id', $penganggaran_id)
+            $penerimaanDanas = PenerimaanDana::query()->where('penganggaran_id', $penganggaran_id)
                 ->whereRaw('EXTRACT(MONTH FROM tanggal_terima) < ?', [$bulanTarget])
                 ->get();
 
@@ -46,14 +82,14 @@ class BukuKasService
             Log::info('Total Penerimaan Dana sampai bulan sebelumnya:', ['total' => $totalPenerimaan]);
 
             // Hitung total penarikan tunai sampai bulan sebelumnya
-            $totalPenarikanSampaiBulanSebelumnya = PenarikanTunai::where('penganggaran_id', $penganggaran_id)
+            $totalPenarikanSampaiBulanSebelumnya = PenarikanTunai::query()->where('penganggaran_id', $penganggaran_id)
                 ->whereRaw('EXTRACT(MONTH FROM tanggal_penarikan) < ?', [$bulanTarget])
                 ->sum('jumlah_penarikan');
 
             Log::info('Total Penarikan sampai bulan sebelumnya:', ['total' => $totalPenarikanSampaiBulanSebelumnya]);
 
             // Hitung bunga bank sampai bulan sebelumnya
-            $totalBungaSampaiBulanSebelumnya = BukuKasUmum::where('penganggaran_id', $penganggaran_id)
+            $totalBungaSampaiBulanSebelumnya = BukuKasUmum::query()->where('penganggaran_id', $penganggaran_id)
                 ->where('is_bunga_record', true)
                 ->whereRaw('EXTRACT(MONTH FROM tanggal_transaksi) < ?', [$bulanTarget])
                 ->sum('bunga_bank');
@@ -61,7 +97,7 @@ class BukuKasService
             Log::info('Total Bunga sampai bulan sebelumnya:', ['total' => $totalBungaSampaiBulanSebelumnya]);
 
             // Hitung pajak bunga sampai bulan sebelumnya
-            $totalPajakBungaSampaiBulanSebelumnya = BukuKasUmum::where('penganggaran_id', $penganggaran_id)
+            $totalPajakBungaSampaiBulanSebelumnya = BukuKasUmum::query()->where('penganggaran_id', $penganggaran_id)
                 ->where('is_bunga_record', true)
                 ->whereRaw('EXTRACT(MONTH FROM tanggal_transaksi) < ?', [$bulanTarget])
                 ->sum('pajak_bunga_bank');
@@ -69,7 +105,7 @@ class BukuKasService
             Log::info('Total Pajak Bunga sampai bulan sebelumnya:', ['total' => $totalPajakBungaSampaiBulanSebelumnya]);
 
             // PERBAIKAN: Hitung total belanja NON-TUNAI sampai bulan sebelumnya
-            $totalBelanjaNonTunaiSampaiBulanSebelumnya = BukuKasUmum::where('penganggaran_id', $penganggaran_id)
+            $totalBelanjaNonTunaiSampaiBulanSebelumnya = BukuKasUmum::query()->where('penganggaran_id', $penganggaran_id)
                 ->where('is_bunga_record', false)
                 ->where('jenis_transaksi', 'non-tunai')
                 ->whereRaw('EXTRACT(MONTH FROM tanggal_transaksi) < ?', [$bulanTarget])
@@ -78,7 +114,7 @@ class BukuKasService
             Log::info('Total Belanja Non-Tunai sampai bulan sebelumnya:', ['total' => $totalBelanjaNonTunaiSampaiBulanSebelumnya]);
 
             // PERBAIKAN: Hitung total STS (Buku Bank) sampai bulan sebelumnya
-            $totalStsSampaiBulanSebelumnya = \App\Models\Sts::where('penganggaran_id', $penganggaran_id)
+            $totalStsSampaiBulanSebelumnya = \App\Models\Sts::query()->where('penganggaran_id', $penganggaran_id)
                 ->where('is_bkp', true)
                 ->whereRaw('EXTRACT(MONTH FROM tanggal_bayar) < ?', [$bulanTarget])
                 ->sum('jumlah_bayar');
@@ -87,7 +123,7 @@ class BukuKasService
 
             // PERBAIKAN: Hitung TRK Saldo Awal sampai bulan sebelumnya
             $totalTrkSampaiBulanSebelumnya = 0;
-            $penganggaran = \App\Models\Penganggaran::find($penganggaran_id);
+            $penganggaran = \App\Models\Penganggaran::query()->find($penganggaran_id);
             if ($penganggaran && $penganggaran->is_trk_saldo_awal && $penganggaran->tanggal_trk_saldo_awal) {
                 $bulanTrk = \Carbon\Carbon::parse($penganggaran->tanggal_trk_saldo_awal)->month;
                 if ($bulanTrk < $bulanTarget) {
@@ -98,16 +134,16 @@ class BukuKasService
             Log::info('Total TRK sampai bulan sebelumnya:', ['total' => $totalTrkSampaiBulanSebelumnya]);
 
             // PERBAIKAN: Hitung total pajak (Diterima - Disetor) sampai bulan sebelumnya untuk Non-Tunai
-            $pajakDiterimaNonTunai = BukuKasUmum::where('penganggaran_id', $penganggaran_id)
+            $pajakDiterimaNonTunai = BukuKasUmum::query()->where('penganggaran_id', $penganggaran_id)
                 ->where('jenis_transaksi', 'non-tunai')
                 ->where('is_bunga_record', false)
                 ->whereRaw('EXTRACT(MONTH FROM tanggal_transaksi) < ?', [$bulanTarget])
                 ->sum(DB::raw('COALESCE(total_pajak, 0) + COALESCE(total_pajak_daerah, 0)'));
 
-            $pajakDisetorNonTunai = BukuKasUmum::where('penganggaran_id', $penganggaran_id)
+            $pajakDisetorNonTunai = BukuKasUmum::query()->where('penganggaran_id', $penganggaran_id)
                 ->where('jenis_transaksi', 'non-tunai')
                 ->where('is_bunga_record', false)
-                ->whereRaw('EXTRACT(MONTH FROM tanggal_transaksi) < ?', [$bulanTarget])
+                ->whereRaw('EXTRACT(MONTH FROM tanggal_lapor) < ?', [$bulanTarget])
                 ->whereNotNull('ntpn')
                 ->sum(DB::raw('COALESCE(total_pajak, 0) + COALESCE(total_pajak_daerah, 0)'));
             
@@ -155,32 +191,32 @@ class BukuKasService
             }
 
             // Hitung total penarikan tunai sampai bulan sebelumnya
-            $totalPenarikanSampaiBulanSebelumnya = PenarikanTunai::where('penganggaran_id', $penganggaran_id)
+            $totalPenarikanSampaiBulanSebelumnya = PenarikanTunai::query()->where('penganggaran_id', $penganggaran_id)
                 ->whereRaw('EXTRACT(MONTH FROM tanggal_penarikan) <= ?', [$bulanTarget - 1])
                 ->sum('jumlah_penarikan');
 
             // Hitung total setor tunai sampai bulan sebelumnya
-            $totalSetorSampaiBulanSebelumnya = SetorTunai::where('penganggaran_id', $penganggaran_id)
+            $totalSetorSampaiBulanSebelumnya = SetorTunai::query()->where('penganggaran_id', $penganggaran_id)
                 ->whereRaw('EXTRACT(MONTH FROM tanggal_setor) <= ?', [$bulanTarget - 1])
                 ->sum('jumlah_setor');
 
             // Hitung total belanja tunai sampai bulan sebelumnya
-            $belanjaTunaiSampaiBulanSebelumnya = BukuKasUmum::where('penganggaran_id', $penganggaran_id)
+            $belanjaTunaiSampaiBulanSebelumnya = BukuKasUmum::query()->where('penganggaran_id', $penganggaran_id)
                 ->where('jenis_transaksi', 'tunai')
                 ->whereRaw('EXTRACT(MONTH FROM tanggal_transaksi) <= ?', [$bulanTarget - 1])
                 ->sum('total_transaksi_kotor');
 
             // PERBAIKAN: Hitung total pajak (Diterima - Disetor) sampai bulan sebelumnya untuk Tunai
-            $pajakDiterimaTunai = BukuKasUmum::where('penganggaran_id', $penganggaran_id)
+            $pajakDiterimaTunai = BukuKasUmum::query()->where('penganggaran_id', $penganggaran_id)
                 ->where('jenis_transaksi', 'tunai')
                 ->where('is_bunga_record', false)
                 ->whereRaw('EXTRACT(MONTH FROM tanggal_transaksi) <= ?', [$bulanTarget - 1])
                 ->sum(DB::raw('COALESCE(total_pajak, 0) + COALESCE(total_pajak_daerah, 0)'));
 
-            $pajakDisetorTunai = BukuKasUmum::where('penganggaran_id', $penganggaran_id)
+            $pajakDisetorTunai = BukuKasUmum::query()->where('penganggaran_id', $penganggaran_id)
                 ->where('jenis_transaksi', 'tunai')
                 ->where('is_bunga_record', false)
-                ->whereRaw('EXTRACT(MONTH FROM tanggal_transaksi) <= ?', [$bulanTarget - 1])
+                ->whereRaw('EXTRACT(MONTH FROM tanggal_lapor) <= ?', [$bulanTarget - 1])
                 ->whereNotNull('ntpn')
                 ->sum(DB::raw('COALESCE(total_pajak, 0) + COALESCE(total_pajak_daerah, 0)'));
 
@@ -211,7 +247,7 @@ class BukuKasService
     {
         try {
             // Ambil semua penerimaan dana untuk penganggaran tertentu
-            $penerimaanDanas = PenerimaanDana::where('penganggaran_id', $penganggaran_id)->get();
+            $penerimaanDanas = PenerimaanDana::query()->where('penganggaran_id', $penganggaran_id)->get();
 
             $totalDana = 0;
 
@@ -230,7 +266,7 @@ class BukuKasService
             if ($penerimaanDanas->isNotEmpty()) {
                 $penganggaran = $penerimaanDanas->first()->penganggaran;
             } else {
-                 $penganggaran = Penganggaran::find($penganggaran_id);
+                 $penganggaran = Penganggaran::query()->find($penganggaran_id);
             }
 
             if ($penganggaran && $penganggaran->is_trk_saldo_awal && $penganggaran->jumlah_trk_saldo_awal) {
@@ -244,7 +280,7 @@ class BukuKasService
             // Jika sudah ditarik/disetor dari rekening sekolah, maka mengurangi saldo bank sekolah.
             // Asumsi: STS yang is_bkp=true adalah pengeluaran dari buku bank.
             
-            $totalSts = \App\Models\Sts::where('penganggaran_id', $penganggaran_id)
+            $totalSts = \App\Models\Sts::query()->where('penganggaran_id', $penganggaran_id)
                 ->where('is_bkp', true)
                 ->sum('jumlah_bayar');
             
@@ -315,7 +351,7 @@ class BukuKasService
             Log::info('=== PERHITUNGAN SALDO DIMULAI ===', ['penganggaran_id' => $penganggaran_id]);
 
             // 1. Hitung total penerimaan dana (termasuk saldo awal)
-            $penerimaanDanas = PenerimaanDana::where('penganggaran_id', $penganggaran_id)->get();
+            $penerimaanDanas = PenerimaanDana::query()->where('penganggaran_id', $penganggaran_id)->get();
             $totalPenerimaan = $penerimaanDanas->sum(function ($penerimaan) {
                 $total = $penerimaan->jumlah_dana;
                 if ($penerimaan->sumber_dana === 'Bosp Reguler Tahap 1' && $penerimaan->saldo_awal) {
@@ -327,8 +363,8 @@ class BukuKasService
             Log::info('Total Penerimaan', ['total' => $totalPenerimaan]);
 
             // 2. Hitung total penarikan dan setor tunai
-            $totalPenarikan = PenarikanTunai::where('penganggaran_id', $penganggaran_id)->sum('jumlah_penarikan');
-            $totalSetor = SetorTunai::where('penganggaran_id', $penganggaran_id)->sum('jumlah_setor');
+            $totalPenarikan = PenarikanTunai::query()->where('penganggaran_id', $penganggaran_id)->sum('jumlah_penarikan');
+            $totalSetor = SetorTunai::query()->where('penganggaran_id', $penganggaran_id)->sum('jumlah_setor');
             $netTunai = $totalPenarikan - $totalSetor;
 
             Log::info('Transaksi Tunai', [
@@ -338,17 +374,17 @@ class BukuKasService
             ]);
 
             // 3. Hitung total belanja (gunakan total_transaksi_kotor)
-            $totalBelanja = BukuKasUmum::where('penganggaran_id', $penganggaran_id)
+            $totalBelanja = BukuKasUmum::query()->where('penganggaran_id', $penganggaran_id)
                 ->sum('total_transaksi_kotor');
 
             Log::info('Total Belanja', ['total' => $totalBelanja]);
 
             // 4. Hitung belanja tunai dan non-tunai
-            $belanjaTunai = BukuKasUmum::where('penganggaran_id', $penganggaran_id)
+            $belanjaTunai = BukuKasUmum::query()->where('penganggaran_id', $penganggaran_id)
                 ->where('jenis_transaksi', 'tunai')
                 ->sum('total_transaksi_kotor');
 
-            $belanjaNonTunai = BukuKasUmum::where('penganggaran_id', $penganggaran_id)
+            $belanjaNonTunai = BukuKasUmum::query()->where('penganggaran_id', $penganggaran_id)
                 ->where('jenis_transaksi', 'non-tunai')
                 ->sum('total_transaksi_kotor');
 
@@ -364,13 +400,13 @@ class BukuKasService
             $saldoNonTunai = $totalPenerimaan - $belanjaNonTunai - $saldoTunai;
             
             // --- PENGURANGAN TRK SALDO AWAL (JIKA ADA) pada Non Tunai ---
-            $penganggaran = Penganggaran::find($penganggaran_id);
+            $penganggaran = Penganggaran::query()->find($penganggaran_id);
             if ($penganggaran && $penganggaran->is_trk_saldo_awal && $penganggaran->jumlah_trk_saldo_awal) {
                  $saldoNonTunai -= $penganggaran->jumlah_trk_saldo_awal;
             }
 
             // --- PENGURANGAN STS YANG MASUK BUKU BANK (JIKA ADA) pada Non Tunai ---
-            $totalSts = \App\Models\Sts::where('penganggaran_id', $penganggaran_id)
+            $totalSts = \App\Models\Sts::query()->where('penganggaran_id', $penganggaran_id)
                 ->where('is_bkp', true)
                 ->sum('jumlah_bayar');
             
@@ -480,7 +516,7 @@ class BukuKasService
             } else {
                 // Untuk bulan Januari, hitung penerimaan dana di bulan Januari
                 // PERBAIKAN: Hitung juga saldo_awal jika ada (sesuai logika hitungTotalDanaTersedia)
-                $penerimaanJanuari = PenerimaanDana::where('penganggaran_id', $penganggaran_id)
+                $penerimaanJanuari = PenerimaanDana::query()->where('penganggaran_id', $penganggaran_id)
                     ->whereYear('tanggal_terima', $tahun)
                     ->whereMonth('tanggal_terima', 1)
                     ->get();
@@ -497,12 +533,12 @@ class BukuKasService
             }
 
             // Data untuk bulan ini dari BKP Bank
-            $penarikanTunais = PenarikanTunai::where('penganggaran_id', $penganggaran_id)
+            $penarikanTunais = PenarikanTunai::query()->where('penganggaran_id', $penganggaran_id)
                 ->whereYear('tanggal_penarikan', $tahun)
                 ->whereMonth('tanggal_penarikan', $bulanAngka)
                 ->get();
 
-            $bungaRecord = BukuKasUmum::where('penganggaran_id', $penganggaran_id)
+            $bungaRecord = BukuKasUmum::query()->where('penganggaran_id', $penganggaran_id)
                 ->where('is_bunga_record', true)
                 ->whereYear('tanggal_transaksi', $tahun)
                 ->whereMonth('tanggal_transaksi', $bulanAngka)
@@ -513,7 +549,7 @@ class BukuKasService
             $totalPajakBunga = $bungaRecord ? $bungaRecord->pajak_bunga_bank : 0;
 
             // --- HITUNG STS BUKU BANK ---
-            $totalSts = \App\Models\Sts::where('penganggaran_id', $penganggaran_id)
+            $totalSts = \App\Models\Sts::query()->where('penganggaran_id', $penganggaran_id)
                 ->where('is_bkp', true)
                 ->whereYear('tanggal_bayar', $tahun)
                 ->whereMonth('tanggal_bayar', $bulanAngka)
@@ -521,7 +557,7 @@ class BukuKasService
 
             // --- HITUNG TRK SALDO AWAL (JIKA ADA) ---
             $totalTrk = 0;
-            $penganggaran = Penganggaran::find($penganggaran_id); // Fetch penganggaran to check TRK
+            $penganggaran = Penganggaran::query()->find($penganggaran_id); // Fetch penganggaran to check TRK
             if ($penganggaran && $penganggaran->is_trk_saldo_awal && $penganggaran->tanggal_trk_saldo_awal) {
                 $tglTrk = Carbon::parse($penganggaran->tanggal_trk_saldo_awal);
                 if ($tglTrk->year == $tahun && $tglTrk->month == $bulanAngka) {
@@ -532,7 +568,7 @@ class BukuKasService
             // PERBAIKAN: Untuk bulan selain Januari, tambahkan penerimaan dana di bulan tersebut
             if ($bulanAngka > 1) {
                 // PERBAIKAN: Hitung juga saldo_awal untuk bulan ini
-                $penerimaanBulanIniData = PenerimaanDana::where('penganggaran_id', $penganggaran_id)
+                $penerimaanBulanIniData = PenerimaanDana::query()->where('penganggaran_id', $penganggaran_id)
                     ->whereYear('tanggal_terima', $tahun)
                     ->whereMonth('tanggal_terima', $bulanAngka)
                     ->get();
@@ -553,18 +589,18 @@ class BukuKasService
             }
 
             // --- HITUNG SALDO PAJAK BULAN INI ---
-            $pajakDiterimaBulanIni = BukuKasUmum::where('penganggaran_id', $penganggaran_id)
+            $pajakDiterimaBulanIni = BukuKasUmum::query()->where('penganggaran_id', $penganggaran_id)
                 ->where('jenis_transaksi', 'non-tunai')
                 ->where('is_bunga_record', false)
                 ->whereYear('tanggal_transaksi', $tahun)
                 ->whereMonth('tanggal_transaksi', $bulanAngka)
                 ->sum(DB::raw('COALESCE(total_pajak, 0) + COALESCE(total_pajak_daerah, 0)'));
 
-            $pajakDisetorBulanIni = BukuKasUmum::where('penganggaran_id', $penganggaran_id)
+            $pajakDisetorBulanIni = BukuKasUmum::query()->where('penganggaran_id', $penganggaran_id)
                 ->where('jenis_transaksi', 'non-tunai')
                 ->where('is_bunga_record', false)
-                ->whereYear('tanggal_transaksi', $tahun)
-                ->whereMonth('tanggal_transaksi', $bulanAngka)
+                ->whereYear('tanggal_lapor', $tahun)
+                ->whereMonth('tanggal_lapor', $bulanAngka)
                 ->whereNotNull('ntpn')
                 ->sum(DB::raw('COALESCE(total_pajak, 0) + COALESCE(total_pajak_daerah, 0)'));
             
@@ -664,19 +700,19 @@ class BukuKasService
     {
         try {
             // Ambil data penarikan tunai untuk bulan tersebut
-            $penarikanTunais = PenarikanTunai::where('penganggaran_id', $penganggaran_id)
+            $penarikanTunais = PenarikanTunai::query()->where('penganggaran_id', $penganggaran_id)
                 ->whereMonth('tanggal_penarikan', $bulanAngka)
                 ->whereYear('tanggal_penarikan', $tahun)
                 ->orderBy('tanggal_penarikan', 'asc')
                 ->get();
 
-            $setorTunais = SetorTunai::where('penganggaran_id', $penganggaran_id)
+            $setorTunais = SetorTunai::query()->where('penganggaran_id', $penganggaran_id)
                 ->whereMonth('tanggal_setor', $bulanAngka)
                 ->whereYear('tanggal_setor', $tahun)
                 ->orderBy('tanggal_setor', 'asc')
                 ->get();
 
-            $bkuDataTunai = BukuKasUmum::where('penganggaran_id', $penganggaran_id)
+            $bkuDataTunai = BukuKasUmum::query()->where('penganggaran_id', $penganggaran_id)
                 ->whereMonth('tanggal_transaksi', $bulanAngka)
                 ->whereYear('tanggal_transaksi', $tahun)
                 ->where('is_bunga_record', false)
@@ -701,17 +737,31 @@ class BukuKasService
                 // Pajak Pusat
                 if ($transaksi->total_pajak > 0) {
                     $pajakPenerimaan += $transaksi->total_pajak;
-                    if (!empty($transaksi->ntpn)) {
-                        $pajakPengeluaran += $transaksi->total_pajak;
-                    }
                 }
 
                 // Pajak Daerah
                 if ($transaksi->total_pajak_daerah > 0) {
                     $pajakDaerahPenerimaan += $transaksi->total_pajak_daerah;
-                    if (!empty($transaksi->ntpn)) {
-                        $pajakDaerahPengeluaran += $transaksi->total_pajak_daerah;
-                    }
+                }
+            }
+
+            // Ambil data Setor Pajak secara terpisah (berdasarkan tanggal_lapor)
+            $bkuPajakDisetorTunai = BukuKasUmum::query()->where('penganggaran_id', $penganggaran_id)
+                ->whereMonth('tanggal_lapor', $bulanAngka)
+                ->whereYear('tanggal_lapor', $tahun)
+                ->where('jenis_transaksi', 'tunai')
+                ->whereNotNull('ntpn')
+                ->where(function ($query) {
+                    $query->where('is_bunga_record', false)->orWhereNull('is_bunga_record');
+                })
+                ->get();
+
+            foreach ($bkuPajakDisetorTunai as $transaksi) {
+                if ($transaksi->total_pajak > 0) {
+                    $pajakPengeluaran += $transaksi->total_pajak;
+                }
+                if ($transaksi->total_pajak_daerah > 0) {
+                    $pajakDaerahPengeluaran += $transaksi->total_pajak_daerah;
                 }
             }
 
@@ -749,22 +799,22 @@ class BukuKasService
     {
         try {
             // Ambil semua data yang diperlukan
-            $penerimaanDanas = PenerimaanDana::where('penganggaran_id', $penganggaran_id)
+            $penerimaanDanas = PenerimaanDana::query()->where('penganggaran_id', $penganggaran_id)
                 ->orderBy('tanggal_terima', 'asc')
                 ->get();
 
-            $penarikanTunais = PenarikanTunai::where('penganggaran_id', $penganggaran_id)
+            $penarikanTunais = PenarikanTunai::query()->where('penganggaran_id', $penganggaran_id)
                 ->whereMonth('tanggal_penarikan', $bulanAngka)
                 ->whereYear('tanggal_penarikan', $tahun)
                 ->get();
 
-            $setorTunais = SetorTunai::where('penganggaran_id', $penganggaran_id)
+            $setorTunais = SetorTunai::query()->where('penganggaran_id', $penganggaran_id)
                 ->whereMonth('tanggal_setor', $bulanAngka)
                 ->whereYear('tanggal_setor', $tahun)
                 ->get();
 
              // AMBIL DATA STS YANG MASUK BUKU BANK
-            $stsRecords = \App\Models\Sts::where('penganggaran_id', $penganggaran_id)
+            $stsRecords = \App\Models\Sts::query()->where('penganggaran_id', $penganggaran_id)
                 ->where('is_bkp', true)
                 ->whereMonth('tanggal_bayar', $bulanAngka)
                 ->whereYear('tanggal_bayar', $tahun)
@@ -772,7 +822,7 @@ class BukuKasService
 
             // AMBIL DATA TRK SALDO AWAL
             $trkSaldoAwalAmount = 0;
-            $penganggaran = Penganggaran::find($penganggaran_id);
+            $penganggaran = Penganggaran::query()->find($penganggaran_id);
             if ($penganggaran && $penganggaran->is_trk_saldo_awal && $penganggaran->tanggal_trk_saldo_awal && $penganggaran->jumlah_trk_saldo_awal) {
                 $tglTrk = Carbon::parse($penganggaran->tanggal_trk_saldo_awal);
                 if ($tglTrk->year == $tahun && $tglTrk->month == $bulanAngka) {
@@ -780,7 +830,7 @@ class BukuKasService
                 }
             }
 
-            $bkuData = BukuKasUmum::where('penganggaran_id', $penganggaran_id)
+            $bkuData = BukuKasUmum::query()->where('penganggaran_id', $penganggaran_id)
                 ->whereMonth('tanggal_transaksi', $bulanAngka)
                 ->whereYear('tanggal_transaksi', $tahun)
                 ->where(function ($query) {
@@ -788,7 +838,7 @@ class BukuKasService
                 })
                 ->get();
 
-            $bungaRecord = BukuKasUmum::where('penganggaran_id', $penganggaran_id)
+            $bungaRecord = BukuKasUmum::query()->where('penganggaran_id', $penganggaran_id)
                 ->whereMonth('tanggal_transaksi', $bulanAngka)
                 ->whereYear('tanggal_transaksi', $tahun)
                 ->where('is_bunga_record', true)
@@ -833,21 +883,30 @@ class BukuKasService
                 // Pajak Pusat
                 if ($transaksi->total_pajak > 0) {
                     $pajakPenerimaanTotal += $transaksi->total_pajak;
-                    if (!empty($transaksi->ntpn)) {
-                        $pajakPengeluaranTotal += $transaksi->total_pajak;
-                    }
-                    // Jika setor pajak (ada NTPN), di BKU controller tampil di DEBET (Pengeluaran) dan KREDIT (Penerimaan).
-                    // Logic BKU Controller:
-                    // Jika Terima Pajak (No NTPN) -> Penerimaan.
-                    // Jika Setor Pajak (NTPN) -> Penerimaan DAN Pengeluaran.
                 }
 
                 // Pajak Daerah
                 if ($transaksi->total_pajak_daerah > 0) {
                     $pajakPenerimaanTotal += $transaksi->total_pajak_daerah;
-                    if (!empty($transaksi->ntpn)) {
-                        $pajakPengeluaranTotal += $transaksi->total_pajak_daerah;
-                    }
+                }
+            }
+
+            // Ambil data Setor Pajak secara terpisah (berdasarkan tanggal_lapor)
+            $bkuPajakDisetor = BukuKasUmum::query()->where('penganggaran_id', $penganggaran_id)
+                ->whereMonth('tanggal_lapor', $bulanAngka)
+                ->whereYear('tanggal_lapor', $tahun)
+                ->whereNotNull('ntpn')
+                ->where(function ($query) {
+                    $query->where('is_bunga_record', false)->orWhereNull('is_bunga_record');
+                })
+                ->get();
+
+            foreach ($bkuPajakDisetor as $transaksi) {
+                if ($transaksi->total_pajak > 0) {
+                    $pajakPengeluaranTotal += $transaksi->total_pajak;
+                }
+                if ($transaksi->total_pajak_daerah > 0) {
+                    $pajakPengeluaranTotal += $transaksi->total_pajak_daerah;
                 }
             }
             $totalPenerimaan += $pajakPenerimaanTotal;

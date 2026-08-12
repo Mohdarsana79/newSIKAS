@@ -1525,6 +1525,16 @@ class BukuKasUmumController extends Controller
                 ->orderBy('id', 'asc')
                 ->get();
 
+            $bkuPajakDisetor = BukuKasUmum::query()->where('penganggaran_id', $penganggaran->id)
+                ->whereMonth('tanggal_lapor', $bulanAngka)
+                ->whereYear('tanggal_lapor', $tahun)
+                ->whereNotNull('ntpn')
+                ->where(function ($query) {
+                    $query->where('is_bunga_record', false)->orWhereNull('is_bunga_record');
+                })
+                ->orderBy('tanggal_lapor', 'asc')
+                ->get();
+
             $bungaRecord = BukuKasUmum::query()->where('penganggaran_id', $penganggaran->id)
                 ->whereMonth('tanggal_transaksi', $bulanAngka)
                 ->whereYear('tanggal_transaksi', $tahun)
@@ -1580,7 +1590,8 @@ class BukuKasUmumController extends Controller
                 $bkuData,
                 $bungaRecord,
                 $stsRecords,
-                $trkSaldoAwal
+                $trkSaldoAwal,
+                $bkuPajakDisetor
             );
 
             // Sort rows to ensure order matches Frontend (Tanggal first, then Group, then Sort Order)
@@ -1657,7 +1668,7 @@ class BukuKasUmumController extends Controller
         }
     }
 
-    private function siapkanDataRowsBkpUmum(int $penganggaran_id, int|string $tahun, string $bulan, int $bulanAngka, float $saldoAwal, float $saldoAwalTunai, mixed $penerimaanDanas, mixed $penarikanTunais, mixed $terimaTunais, mixed $setorTunais, mixed $bkuData, mixed $bungaRecord, mixed $stsRecords = [], mixed $trkSaldoAwal = null): array
+    private function siapkanDataRowsBkpUmum(int $penganggaran_id, int|string $tahun, string $bulan, int $bulanAngka, float $saldoAwal, float $saldoAwalTunai, mixed $penerimaanDanas, mixed $penarikanTunais, mixed $terimaTunais, mixed $setorTunais, mixed $bkuData, mixed $bungaRecord, mixed $stsRecords = [], mixed $trkSaldoAwal = null, mixed $bkuPajakDisetor = []): array
     {
         $rowsData = [];
 
@@ -1784,8 +1795,10 @@ class BukuKasUmumController extends Controller
 
         // DATA TRANSAKSI BKU
         $blockCounter = 100; // Start high to avoid collision with early items
+        $groupMap = [];
         foreach ($bkuData as $transaksi) {
             $blockCounter++;
+            $groupMap[$transaksi->id] = $blockCounter;
             
             $uraianText = $transaksi->uraian_opsional ?: $transaksi->uraian;
             if (empty($uraianText)) {
@@ -1803,64 +1816,78 @@ class BukuKasUmumController extends Controller
                 'group_id' => $blockCounter
             ];
 
-            // Baris Pajak Pusat
+            // Baris Pajak Pusat (Terima Pajak Saja)
             if ($transaksi->total_pajak > 0) {
-                 $uraianPajak = (empty($transaksi->ntpn) ? 'Terima Pajak ' : 'Setor Pajak ') .
-                                ($transaksi->pajak ?? '') . ' ' . ($transaksi->persen_pajak ?? '') . '%';
+                 $uraianPajak = 'Terima Pajak ' . ($transaksi->pajak ?? '') . ' ' . ($transaksi->persen_pajak ?? '') . '%';
                  
-                 if (empty($transaksi->ntpn)) {
-                    $rowsData[] = [
-                        'tanggal' => $transaksi->tanggal_transaksi,
-                        'kode_rekening' => '-',
-                        'no_bukti' => $transaksi->kode_masa_pajak ?? '-',
-                        'uraian' => $uraianPajak . ' ' . ($transaksi->uraian_opsional ?: $transaksi->uraian),
-                        'penerimaan' => $transaksi->total_pajak,
-                        'pengeluaran' => 0,
-                         'sort_order' => 11,
-                         'group_id' => $blockCounter
-                    ];
-                 } else {
-                     $rowsData[] = [
-                        'tanggal' => $transaksi->tanggal_transaksi,
-                        'kode_rekening' => '-',
-                        'no_bukti' => $transaksi->kode_masa_pajak,
-                        'uraian' => $uraianPajak . ' ' . ($transaksi->uraian_opsional ?: $transaksi->uraian),
-                        'penerimaan' => $transaksi->total_pajak,
-                        'pengeluaran' => $transaksi->total_pajak,
-                         'sort_order' => 11,
-                         'group_id' => $blockCounter
-                    ];
-                 }
+                 $rowsData[] = [
+                     'tanggal' => $transaksi->tanggal_transaksi,
+                     'kode_rekening' => '-',
+                     'no_bukti' => $transaksi->kode_masa_pajak ?? '-',
+                     'uraian' => $uraianPajak . ' ' . ($transaksi->uraian_opsional ?: $transaksi->uraian),
+                     'penerimaan' => $transaksi->total_pajak,
+                     'pengeluaran' => 0,
+                     'sort_order' => 11,
+                     'group_id' => $blockCounter
+                 ];
             }
             
-            // Baris Pajak Daerah
+            // Baris Pajak Daerah (Terima Pajak Saja)
              if ($transaksi->total_pajak_daerah > 0) {
-                 $uraianPajak = (empty($transaksi->ntpn) ? 'Terima Pajak Daerah ' : 'Setor Pajak Daerah ') .
-                                ($transaksi->pajak_daerah ?? '') . ' ' . ($transaksi->persen_pajak_daerah ?? '') . '%';
+                 $uraianPajak = 'Terima Pajak Daerah ' . ($transaksi->pajak_daerah ?? '') . ' ' . ($transaksi->persen_pajak_daerah ?? '') . '%';
                  
-                 if (empty($transaksi->ntpn)) {
-                    $rowsData[] = [
-                        'tanggal' => $transaksi->tanggal_transaksi,
-                        'kode_rekening' => '-',
-                        'no_bukti' => '-',
-                        'uraian' => $uraianPajak . ' ' . ($transaksi->uraian_opsional ?: $transaksi->uraian),
-                        'penerimaan' => $transaksi->total_pajak_daerah,
-                        'pengeluaran' => 0,
-                         'sort_order' => 11,
-                         'group_id' => $blockCounter
-                    ];
-                 } else {
-                     $rowsData[] = [
-                        'tanggal' => $transaksi->tanggal_transaksi,
-                        'kode_rekening' => '-',
-                        'no_bukti' => '-',
-                        'uraian' => $uraianPajak . ' ' . ($transaksi->uraian_opsional ?: $transaksi->uraian),
-                        'penerimaan' => $transaksi->total_pajak_daerah,
-                        'pengeluaran' => $transaksi->total_pajak_daerah,
-                         'sort_order' => 11,
-                         'group_id' => $blockCounter
-                    ];
-                 }
+                 $rowsData[] = [
+                     'tanggal' => $transaksi->tanggal_transaksi,
+                     'kode_rekening' => '-',
+                     'no_bukti' => '-',
+                     'uraian' => $uraianPajak . ' ' . ($transaksi->uraian_opsional ?: $transaksi->uraian),
+                     'penerimaan' => $transaksi->total_pajak_daerah,
+                     'pengeluaran' => 0,
+                     'sort_order' => 11,
+                     'group_id' => $blockCounter
+                 ];
+            }
+        }
+
+        // DATA PAJAK DISETOR (Setor Pajak Saja)
+        foreach ($bkuPajakDisetor as $transaksi) {
+            $currentGroupId = $groupMap[$transaksi->id] ?? null;
+            if (!$currentGroupId) {
+                $blockCounter++;
+                $currentGroupId = $blockCounter;
+                $groupMap[$transaksi->id] = $currentGroupId;
+            }
+            
+            // Baris Pajak Pusat (Setor Pajak Saja)
+            if ($transaksi->total_pajak > 0) {
+                 $uraianPajak = 'Setor Pajak ' . ($transaksi->pajak ?? '') . ' ' . ($transaksi->persen_pajak ?? '') . '%';
+                 
+                 $rowsData[] = [
+                     'tanggal' => $transaksi->tanggal_lapor,
+                     'kode_rekening' => '-',
+                     'no_bukti' => $transaksi->kode_masa_pajak ?? '-',
+                     'uraian' => $uraianPajak . ' ' . ($transaksi->uraian_opsional ?: $transaksi->uraian),
+                     'penerimaan' => 0,
+                     'pengeluaran' => $transaksi->total_pajak,
+                     'sort_order' => 12,
+                     'group_id' => $currentGroupId
+                 ];
+            }
+            
+            // Baris Pajak Daerah (Setor Pajak Saja)
+             if ($transaksi->total_pajak_daerah > 0) {
+                 $uraianPajak = 'Setor Pajak Daerah ' . ($transaksi->pajak_daerah ?? '') . ' ' . ($transaksi->persen_pajak_daerah ?? '') . '%';
+                 
+                 $rowsData[] = [
+                     'tanggal' => $transaksi->tanggal_lapor,
+                     'kode_rekening' => '-',
+                     'no_bukti' => '-',
+                     'uraian' => $uraianPajak . ' ' . ($transaksi->uraian_opsional ?: $transaksi->uraian),
+                     'penerimaan' => 0,
+                     'pengeluaran' => $transaksi->total_pajak_daerah,
+                     'sort_order' => 12,
+                     'group_id' => $currentGroupId
+                 ];
             }
         }
 
@@ -1966,12 +1993,23 @@ class BukuKasUmumController extends Controller
                 ->orderBy('id_transaksi', 'asc')
                 ->orderBy('id', 'asc')
                 ->get();
+
+            $bkuPajakDisetor = BukuKasUmum::query()->where('penganggaran_id', $penganggaran->id)
+                ->whereMonth('tanggal_lapor', $bulanAngka)
+                ->whereYear('tanggal_lapor', $tahun)
+                ->whereNotNull('ntpn')
+                ->where(function ($query) {
+                    $query->where('is_bunga_record', false)->orWhereNull('is_bunga_record');
+                })
+                ->orderBy('tanggal_lapor', 'asc')
+                ->get();
             
             Log::info('Counts Found:', [
                 'penerimaanDanas' => $penerimaanDanas->count(),
                 'penarikanTunais' => $penarikanTunais->count(),
                 'setorTunais' => $setorTunais->count(),
                 'bkuData' => $bkuData->count(),
+                'bkuPajakDisetor' => $bkuPajakDisetor->count(),
             ]);
 
             $bungaRecord = BukuKasUmum::query()->where('penganggaran_id', $penganggaran->id)
@@ -2000,7 +2038,7 @@ class BukuKasUmumController extends Controller
                 $penganggaran->id, $tahun, $bulan, $bulanAngka,
                 $saldoAwal, $saldoAwalTunai, $penerimaanDanas, $penarikanTunais, 
                 $terimaTunais, $setorTunais, $bkuData, $bungaRecord,
-                $stsRecords, $trkSaldoAwal
+                $stsRecords, $trkSaldoAwal, $bkuPajakDisetor
             );
             
             Log::info('Items generated from siapkanDataRowsBkpUmum:', ['count' => count($items)]);
@@ -2009,13 +2047,13 @@ class BukuKasUmumController extends Controller
             usort($items, function ($a, $b) {
                 $tA = strtotime($a['tanggal'] instanceof Carbon ? $a['tanggal']->toDateTimeString() : $a['tanggal']);
                 $tB = strtotime($b['tanggal'] instanceof Carbon ? $b['tanggal']->toDateTimeString() : $b['tanggal']);
-                if ($tA == $tB) {
-                    if ($a['group_id'] != $b['group_id']) {
-                        return $a['group_id'] - $b['group_id'];
-                    }
-                    return $a['sort_order'] - $b['sort_order'];
+                if ($tA !== $tB) {
+                    return $tA - $tB;
                 }
-                return $tA - $tB;
+                if (($a['group_id'] ?? 0) !== ($b['group_id'] ?? 0)) {
+                    return ($a['group_id'] ?? 0) - ($b['group_id'] ?? 0);
+                }
+                return ($a['sort_order'] ?? 99) - ($b['sort_order'] ?? 99);
             });
 
              // Calculate Totals using logic from Items to ensure consistency
@@ -2302,6 +2340,15 @@ class BukuKasUmumController extends Controller
                 ->orderBy('tanggal_transaksi', 'asc')
                 ->orderBy('id_transaksi', 'asc')
                 ->get();
+        
+        $bkuPajakDisetor = BukuKasUmum::query()->where('penganggaran_id', $penganggaran->id)
+                ->whereMonth('tanggal_lapor', $bulanAngka)->whereYear('tanggal_lapor', $tahun)
+                ->whereNotNull('ntpn')
+                ->where(function ($query) {
+                    $query->where('is_bunga_record', false)->orWhereNull('is_bunga_record');
+                })
+                ->orderBy('tanggal_lapor', 'asc')
+                ->get();
         $bungaRecord = BukuKasUmum::query()->where('penganggaran_id', $penganggaran->id)
                 ->whereMonth('tanggal_transaksi', $bulanAngka)->whereYear('tanggal_transaksi', $tahun)
                 ->where('is_bunga_record', true)
@@ -2326,20 +2373,20 @@ class BukuKasUmumController extends Controller
                 $penganggaran->id, $tahun, $bulan, $bulanAngka,
                 $saldoAwal, $saldoAwalTunai, $penerimaanDanas, $penarikanTunais, 
                 $terimaTunais, $setorTunais, $bkuData, $bungaRecord,
-                $stsRecords, $trkSaldoAwal
+                $stsRecords, $trkSaldoAwal, $bkuPajakDisetor
         );
 
         // Sort
         usort($items, function ($a, $b) {
             $tA = strtotime($a['tanggal'] instanceof Carbon ? $a['tanggal']->toDateTimeString() : $a['tanggal']);
             $tB = strtotime($b['tanggal'] instanceof Carbon ? $b['tanggal']->toDateTimeString() : $b['tanggal']);
-            if ($tA == $tB) {
-                if (($a['group_id'] ?? 0) != ($b['group_id'] ?? 0)) {
-                    return ($a['group_id'] ?? 0) - ($b['group_id'] ?? 0);
-                }
-                return ($a['sort_order'] ?? 0) - ($b['sort_order'] ?? 0);
+            if ($tA !== $tB) {
+                return $tA - $tB;
             }
-            return $tA - $tB;
+            if (($a['group_id'] ?? 0) !== ($b['group_id'] ?? 0)) {
+                return ($a['group_id'] ?? 0) - ($b['group_id'] ?? 0);
+            }
+            return ($a['sort_order'] ?? 99) - ($b['sort_order'] ?? 99);
         });
 
         // Totals Calculation from Items for consistency

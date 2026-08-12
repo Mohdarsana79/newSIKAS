@@ -117,152 +117,16 @@ class BukuPajakController extends Controller
 
             $bulanAngka = $this->convertBulanToNumber($bulan);
 
-            // Ambil data transaksi BKU yang memiliki pajak
-            $bkuData = BukuKasUmum::where('penganggaran_id', $penganggaran->id)
-                ->whereMonth('tanggal_transaksi', $bulanAngka)
-                ->whereYear('tanggal_transaksi', $tahun)
-                ->where(function ($query) {
-                    $query->where('total_pajak', '>', 0)
-                        ->orWhere('total_pajak_daerah', '>', 0);
-                })
-                ->with(['kodeKegiatan', 'rekeningBelanja'])
-                ->orderBy('tanggal_transaksi', 'asc')
-                ->get();
-
-            // Siapkan data untuk tampilan (bisa multiple rows per transaksi)
-            $pajakRows = [];
-            $runningPenerimaan = 0;
-            $runningPengeluaran = 0;
-            $currentSaldo = 0;
-
-            // Variabel untuk total
-            $totalPpn = 0;
-            $totalPph21 = 0;
-            $totalPph22 = 0;
-            $totalPph23 = 0;
-            $totalPb1 = 0;
-            $totalPenerimaan = 0;
-            $totalPengeluaran = 0;
-
-            foreach ($bkuData as $transaksi) {
-                $pajakName = strtolower($transaksi->pajak ?? '');
-                $pajakDaerahName = strtolower($transaksi->pajak_daerah ?? '');
-
-                $baseUraian = $transaksi->uraian_opsional ?? $transaksi->uraian ?? '';
-                $hasPajakPusat = $transaksi->total_pajak > 0;
-                $hasPajakDaerah = $transaksi->total_pajak_daerah > 0;
-
-                // Jika ada pajak pusat, buat baris terpisah
-                if ($hasPajakPusat) {
-                    $ppn = 0;
-                    $pph21 = 0;
-                    $pph22 = 0;
-                    $pph23 = 0;
-
-                    // Klasifikasi Pajak Pusat
-                    if (strpos($pajakName, 'pph21') !== false || strpos($pajakName, 'pph 21') !== false) {
-                        $pph21 = $transaksi->total_pajak;
-                        $totalPph21 += $pph21;
-                    } elseif (strpos($pajakName, 'pph22') !== false || strpos($pajakName, 'pph 22') !== false) {
-                        $pph22 = $transaksi->total_pajak;
-                        $totalPph22 += $pph22;
-                    } elseif (strpos($pajakName, 'pph23') !== false || strpos($pajakName, 'pph 23') !== false) {
-                        $pph23 = $transaksi->total_pajak;
-                        $totalPph23 += $pph23;
-                    } else {
-                        $ppn = $transaksi->total_pajak;
-                        $totalPpn += $ppn;
-                    }
-
-                    $jumlah = $ppn + $pph21 + $pph22 + $pph23;
-                    $pengeluaran = (!empty($transaksi->ntpn)) ? $jumlah : 0;
-                    $totalPengeluaran += $pengeluaran;
-
-                    // Tentukan uraian untuk pajak pusat
-                    $uraianPusat = '';
-                    if (!empty($transaksi->ntpn)) {
-                        if ($pph21 > 0) {
-                            $uraianPusat = 'Setor Pajak PPh 21 ' . ($transaksi->persen_pajak ?? '') . '% ' . $baseUraian;
-                        } elseif ($pph22 > 0) {
-                            $uraianPusat = 'Setor Pajak PPh 22 ' . ($transaksi->persen_pajak ?? '') . '% ' . $baseUraian;
-                        } elseif ($pph23 > 0) {
-                            $uraianPusat = 'Setor Pajak PPh 23 ' . ($transaksi->persen_pajak ?? '') . '% ' . $baseUraian;
-                        } else {
-                            $uraianPusat = 'Setor Pajak ' . ($transaksi->pajak ?? '') . ' ' . ($transaksi->persen_pajak ?? '') . '% ' . $baseUraian;
-                        }
-                    } else {
-                        if ($pph21 > 0) {
-                            $uraianPusat = 'Terima Pajak PPh 21 ' . ($transaksi->persen_pajak ?? '') . '% ' . $baseUraian;
-                        } elseif ($pph22 > 0) {
-                            $uraianPusat = 'Terima Pajak PPh 22 ' . ($transaksi->persen_pajak ?? '') . '% ' . $baseUraian;
-                        } elseif ($pph23 > 0) {
-                            $uraianPusat = 'Terima Pajak PPh 23 ' . ($transaksi->persen_pajak ?? '') . '% ' . $baseUraian;
-                        } else {
-                            $uraianPusat = 'Terima Pajak ' . ($transaksi->pajak ?? '') . ' ' . ($transaksi->persen_pajak ?? '') . '% ' . $baseUraian;
-                        }
-                    }
-
-                    // Update running total
-                    if ($jumlah != 0 || $pengeluaran != 0) {
-                        $runningPenerimaan += $jumlah;
-                        $runningPengeluaran += $pengeluaran;
-                        $currentSaldo = $runningPenerimaan - $runningPengeluaran;
-                    }
-
-                    $pajakRows[] = [
-                        'transaksi' => $transaksi,
-                        'uraian' => $uraianPusat,
-                        'ppn' => $ppn,
-                        'pph21' => $pph21,
-                        'pph22' => $pph22,
-                        'pph23' => $pph23,
-                        'pb1' => 0,
-                        'jumlah' => $jumlah,
-                        'pengeluaran' => $pengeluaran,
-                        'saldo' => $currentSaldo
-                    ];
-                }
-
-                // Jika ada pajak daerah (PB 1), buat baris terpisah
-                if ($hasPajakDaerah) {
-                    $pb1 = $transaksi->total_pajak_daerah;
-                    $totalPb1 += $pb1;
-
-                    $jumlah = $pb1;
-                    $pengeluaran = (!empty($transaksi->ntpn)) ? $jumlah : 0;
-                    $totalPengeluaran += $pengeluaran;
-
-                    // Tentukan uraian untuk pajak daerah
-                    $uraianDaerah = '';
-                    if (!empty($transaksi->ntpn)) {
-                        $uraianDaerah = 'Setor Pajak PB 1 ' . ($transaksi->persen_pajak_daerah ?? '') . '% ' . $baseUraian;
-                    } else {
-                        $uraianDaerah = 'Terima Pajak PB 1 ' . ($transaksi->persen_pajak_daerah ?? '') . '% ' . $baseUraian;
-                    }
-
-                    // Update running total
-                    if ($jumlah != 0 || $pengeluaran != 0) {
-                        $runningPenerimaan += $jumlah;
-                        $runningPengeluaran += $pengeluaran;
-                        $currentSaldo = $runningPenerimaan - $runningPengeluaran;
-                    }
-
-                    $pajakRows[] = [
-                        'transaksi' => $transaksi,
-                        'uraian' => $uraianDaerah,
-                        'ppn' => 0,
-                        'pph21' => 0,
-                        'pph22' => 0,
-                        'pph23' => 0,
-                        'pb1' => $pb1,
-                        'jumlah' => $jumlah,
-                        'pengeluaran' => $pengeluaran,
-                        'saldo' => $currentSaldo
-                    ];
-                }
-            }
-
-            $totalPenerimaan = $totalPpn + $totalPph21 + $totalPph22 + $totalPph23 + $totalPb1;
+            $dataPajak = $this->siapkanDataRowsBkpPajak($penganggaran, $bulanAngka, $tahun);
+            $pajakRows = $dataPajak['pajakRows'];
+            $totalPenerimaan = $dataPajak['totalPenerimaan'];
+            $totalPengeluaran = $dataPajak['totalPengeluaran'];
+            $currentSaldo = $dataPajak['currentSaldo'];
+            $totalPpn = $dataPajak['totalPpn'];
+            $totalPph21 = $dataPajak['totalPph21'];
+            $totalPph22 = $dataPajak['totalPph22'];
+            $totalPph23 = $dataPajak['totalPph23'];
+            $totalPb1 = $dataPajak['totalPb1'];
 
             // Ambil tanggal tutup BKU jika ada
             $bungaRecord = BukuKasUmum::where('penganggaran_id', $penganggaran->id)
@@ -282,6 +146,7 @@ class BukuPajakController extends Controller
                     'total_penerimaan' => $totalPenerimaan,
                     'total_pengeluaran' => $totalPengeluaran,
                     'saldo_akhir' => $currentSaldo,
+                    'saldo_awal' => $dataPajak['saldoAwalPajak'],
                     'total_pajak' => [
                         'ppn' => $totalPpn,
                         'pph21' => $totalPph21,
@@ -356,133 +221,33 @@ class BukuPajakController extends Controller
                 $bulanAngka = $this->convertBulanToNumber($m);
                 
                 // --- CORE LOGIC START (Derived from getBkpPajakData) ---
-                $bkuData = BukuKasUmum::where('penganggaran_id', $penganggaran->id)
-                    ->whereMonth('tanggal_transaksi', $bulanAngka)
-                    ->whereYear('tanggal_transaksi', $tahun)
-                    ->where(function ($query) {
-                        $query->where('total_pajak', '>', 0)
-                            ->orWhere('total_pajak_daerah', '>', 0);
-                    })
-                    ->with(['kodeKegiatan', 'rekeningBelanja'])
-                    ->orderBy('tanggal_transaksi', 'asc')
-                    ->get();
-
+                $dataPajak = $this->siapkanDataRowsBkpPajak($penganggaran, $bulanAngka, $tahun);
+                
                 $pajakRows = [];
-                // Add Saldo Awal Row if needed? Usually BKP Pajak starts fresh or carries over?
-                // Request image shows "Saldo awal bulan ... 0". Implies we might need to calculate prev month saldo.
-                // Assuming 0 for now based on typical tax book behavior unless specific logic requested.
-                // But wait, the image shows "Saldo awal bulan | ... | Saldo 0".
-                
-                $runningPenerimaan = 0;
-                $runningPengeluaran = 0;
-                $currentSaldo = 0;
-
-                // Saldo Awal Logic (Simplified: Tax is usually settled monthly, but let's assume 0 carried over)
-                $saldoAwal = 0;
-                
-                // Add Saldo Awal Row to list
                 $pajakRows[] = [
                     'is_saldo_awal' => true,
                     'tanggal' => Carbon::create($tahun, $bulanAngka, 1)->format('Y-m-d'),
                     'uraian' => 'Saldo awal bulan',
-                    'saldo' => 0
+                    'saldo' => $dataPajak['saldoAwalPajak'],
+                    'no_kode' => '-',
+                    'no_buku' => '-',
+                    'ppn' => 0, 'pph21' => 0, 'pph22' => 0, 'pph23' => 0, 'pb1' => 0,
+                    'jumlah' => 0, 'pengeluaran' => 0
                 ];
-
-                $totalPpn = 0; $totalPph21 = 0; $totalPph22 = 0; $totalPph23 = 0; $totalPb1 = 0;
-                $totalPenerimaan = 0; $totalPengeluaran = 0;
-
-                foreach ($bkuData as $transaksi) {
-                    $pajakName = strtolower($transaksi->pajak ?? '');
-                    $baseUraian = $transaksi->uraian_opsional ?? $transaksi->uraian ?? '';
-                    $hasPajakPusat = $transaksi->total_pajak > 0;
-                    $hasPajakDaerah = $transaksi->total_pajak_daerah > 0;
-
-                    if ($hasPajakPusat) {
-                        $ppn=0; $pph21=0; $pph22=0; $pph23=0;
-                        if (strpos($pajakName, 'pph21') !== false || strpos($pajakName, 'pph 21') !== false) $pph21 = $transaksi->total_pajak;
-                        elseif (strpos($pajakName, 'pph22') !== false || strpos($pajakName, 'pph 22') !== false) $pph22 = $transaksi->total_pajak;
-                        elseif (strpos($pajakName, 'pph23') !== false || strpos($pajakName, 'pph 23') !== false) $pph23 = $transaksi->total_pajak;
-                        else $ppn = $transaksi->total_pajak;
-
-                        $totalPpn += $ppn; $totalPph21 += $pph21; $totalPph22 += $pph22; $totalPph23 += $pph23;
-
-                        $jumlah = $ppn + $pph21 + $pph22 + $pph23;
-                        $keluar = (!empty($transaksi->ntpn)) ? $jumlah : 0;
-                        
-                        $totalPenerimaan += $jumlah;
-                        $totalPengeluaran += $keluar;
-
-                        $uraianPusat = '';
-                         if (!empty($transaksi->ntpn)) {
-                            if ($pph21 > 0) $uraianPusat = 'Setor Pajak PPh 21 ' . ($transaksi->persen_pajak ?? '') . '% ' . $baseUraian;
-                            elseif ($pph22 > 0) $uraianPusat = 'Setor Pajak PPh 22 ' . ($transaksi->persen_pajak ?? '') . '% ' . $baseUraian;
-                            elseif ($pph23 > 0) $uraianPusat = 'Setor Pajak PPh 23 ' . ($transaksi->persen_pajak ?? '') . '% ' . $baseUraian;
-                            else $uraianPusat = 'Setor Pajak ' . ($transaksi->pajak ?? '') . ' ' . ($transaksi->persen_pajak ?? '') . '% ' . $baseUraian;
-                        } else {
-                            if ($pph21 > 0) $uraianPusat = 'Terima Pajak PPh 21 ' . ($transaksi->persen_pajak ?? '') . '% ' . $baseUraian;
-                            elseif ($pph22 > 0) $uraianPusat = 'Terima Pajak PPh 22 ' . ($transaksi->persen_pajak ?? '') . '% ' . $baseUraian;
-                            elseif ($pph23 > 0) $uraianPusat = 'Terima Pajak PPh 23 ' . ($transaksi->persen_pajak ?? '') . '% ' . $baseUraian;
-                            else $uraianPusat = 'Terima Pajak ' . ($transaksi->pajak ?? '') . ' ' . ($transaksi->persen_pajak ?? '') . '% ' . $baseUraian;
-                        }
-
-                        if ($jumlah != 0 || $keluar != 0) {
-                            $runningPenerimaan += $jumlah;
-                            $runningPengeluaran += $keluar;
-                            $currentSaldo = $runningPenerimaan - $runningPengeluaran;
-                        }
-
-                        $pajakRows[] = [
-                            'tanggal' => $transaksi->tanggal_transaksi,
-                            'no_kode' => $transaksi->rekeningBelanja->kode_rekening ?? '-',
-                            'no_buku' => $transaksi->kode_masa_pajak ?? $transaksi->id_transaksi, // Using ID or Tax Code as book number equivalent
-                            'uraian' => $uraianPusat,
-                            'ppn' => $ppn,
-                            'pph21' => $pph21,
-                            'pph22' => $pph22,
-                            'pph23' => $pph23,
-                            'pb1' => 0,
-                            'jumlah' => $jumlah,
-                            'pengeluaran' => $keluar,
-                            'saldo' => $currentSaldo
-                        ];
-                    }
-
-                    if ($hasPajakDaerah) {
-                        $pb1 = $transaksi->total_pajak_daerah;
-                        $totalPb1 += $pb1;
-
-                        $jumlah = $pb1;
-                        $keluar = (!empty($transaksi->ntpn)) ? $jumlah : 0;
-                        
-                        $totalPenerimaan += $jumlah;
-                        $totalPengeluaran += $keluar;
-
-                        $uraianDaerah = !empty($transaksi->ntpn) 
-                            ? 'Setor Pajak PB 1 ' . ($transaksi->persen_pajak_daerah ?? '') . '% ' . $baseUraian
-                            : 'Terima Pajak PB 1 ' . ($transaksi->persen_pajak_daerah ?? '') . '% ' . $baseUraian;
-
-                         if ($jumlah != 0 || $keluar != 0) {
-                            $runningPenerimaan += $jumlah;
-                            $runningPengeluaran += $keluar;
-                            $currentSaldo = $runningPenerimaan - $runningPengeluaran;
-                        }
-
-                        $pajakRows[] = [
-                            'tanggal' => $transaksi->tanggal_transaksi,
-                            'no_kode' => $transaksi->rekeningBelanja->kode_rekening ?? '-',
-                            'no_buku' => '-',
-                            'uraian' => $uraianDaerah,
-                            'ppn' => 0,
-                            'pph21' => 0,
-                            'pph22' => 0,
-                            'pph23' => 0,
-                            'pb1' => $pb1,
-                            'jumlah' => $jumlah,
-                            'pengeluaran' => $keluar,
-                            'saldo' => $currentSaldo
-                        ];
-                    }
+                
+                // Append generated rows
+                foreach ($dataPajak['pajakRows'] as $row) {
+                    $pajakRows[] = $row;
                 }
+                
+                $totalPenerimaan = $dataPajak['totalPenerimaan'];
+                $totalPengeluaran = $dataPajak['totalPengeluaran'];
+                $currentSaldo = $dataPajak['currentSaldo'];
+                $totalPpn = $dataPajak['totalPpn'];
+                $totalPph21 = $dataPajak['totalPph21'];
+                $totalPph22 = $dataPajak['totalPph22'];
+                $totalPph23 = $dataPajak['totalPph23'];
+                $totalPb1 = $dataPajak['totalPb1'];
                 // --- CORE LOGIC END ---
 
                 // Ambil tanggal tutup BKU jika ada
@@ -575,127 +340,33 @@ class BukuPajakController extends Controller
                 $bulanAngka = $this->convertBulanToNumber($m);
                 
                 // --- CORE LOGIC START (Derived from getBkpPajakData) ---
-                $bkuData = BukuKasUmum::where('penganggaran_id', $penganggaran->id)
-                    ->whereMonth('tanggal_transaksi', $bulanAngka)
-                    ->whereYear('tanggal_transaksi', $tahun)
-                    ->where(function ($query) {
-                        $query->where('total_pajak', '>', 0)
-                            ->orWhere('total_pajak_daerah', '>', 0);
-                    })
-                    ->with(['kodeKegiatan', 'rekeningBelanja'])
-                    ->orderBy('tanggal_transaksi', 'asc')
-                    ->get();
-
-                $pajakRows = [];
-                // Add Saldo Awal Row if needed? Usually BKP Pajak starts fresh or carries over?
+                $dataPajak = $this->siapkanDataRowsBkpPajak($penganggaran, $bulanAngka, $tahun);
                 
-                $runningPenerimaan = 0;
-                $runningPengeluaran = 0;
-                $currentSaldo = 0;
-
-                // Add Saldo Awal Row to list
+                $pajakRows = [];
                 $pajakRows[] = [
                     'is_saldo_awal' => true,
                     'tanggal' => Carbon::create($tahun, $bulanAngka, 1)->format('Y-m-d'),
                     'uraian' => 'Saldo awal bulan',
-                    'saldo' => 0
+                    'saldo' => $dataPajak['saldoAwalPajak'],
+                    'no_kode' => '-',
+                    'no_buku' => '-',
+                    'ppn' => 0, 'pph21' => 0, 'pph22' => 0, 'pph23' => 0, 'pb1' => 0,
+                    'jumlah' => 0, 'pengeluaran' => 0
                 ];
-
-                $totalPpn = 0; $totalPph21 = 0; $totalPph22 = 0; $totalPph23 = 0; $totalPb1 = 0;
-                $totalPenerimaan = 0; $totalPengeluaran = 0;
-
-                foreach ($bkuData as $transaksi) {
-                    $pajakName = strtolower($transaksi->pajak ?? '');
-                    $baseUraian = $transaksi->uraian_opsional ?? $transaksi->uraian ?? '';
-                    $hasPajakPusat = $transaksi->total_pajak > 0;
-                    $hasPajakDaerah = $transaksi->total_pajak_daerah > 0;
-
-                    if ($hasPajakPusat) {
-                        $ppn=0; $pph21=0; $pph22=0; $pph23=0;
-                        if (strpos($pajakName, 'pph21') !== false || strpos($pajakName, 'pph 21') !== false) $pph21 = $transaksi->total_pajak;
-                        elseif (strpos($pajakName, 'pph22') !== false || strpos($pajakName, 'pph 22') !== false) $pph22 = $transaksi->total_pajak;
-                        elseif (strpos($pajakName, 'pph23') !== false || strpos($pajakName, 'pph 23') !== false) $pph23 = $transaksi->total_pajak;
-                        else $ppn = $transaksi->total_pajak;
-
-                        $totalPpn += $ppn; $totalPph21 += $pph21; $totalPph22 += $pph22; $totalPph23 += $pph23;
-
-                        $jumlah = $ppn + $pph21 + $pph22 + $pph23;
-                        $keluar = (!empty($transaksi->ntpn)) ? $jumlah : 0;
-                        
-                        $totalPenerimaan += $jumlah;
-                        $totalPengeluaran += $keluar;
-
-                        $uraianPusat = '';
-                         if (!empty($transaksi->ntpn)) {
-                            if ($pph21 > 0) $uraianPusat = 'Setor Pajak PPh 21 ' . ($transaksi->persen_pajak ?? '') . '% ' . $baseUraian;
-                            elseif ($pph22 > 0) $uraianPusat = 'Setor Pajak PPh 22 ' . ($transaksi->persen_pajak ?? '') . '% ' . $baseUraian;
-                            elseif ($pph23 > 0) $uraianPusat = 'Setor Pajak PPh 23 ' . ($transaksi->persen_pajak ?? '') . '% ' . $baseUraian;
-                            else $uraianPusat = 'Setor Pajak ' . ($transaksi->pajak ?? '') . ' ' . ($transaksi->persen_pajak ?? '') . '% ' . $baseUraian;
-                        } else {
-                            if ($pph21 > 0) $uraianPusat = 'Terima Pajak PPh 21 ' . ($transaksi->persen_pajak ?? '') . '% ' . $baseUraian;
-                            elseif ($pph22 > 0) $uraianPusat = 'Terima Pajak PPh 22 ' . ($transaksi->persen_pajak ?? '') . '% ' . $baseUraian;
-                            elseif ($pph23 > 0) $uraianPusat = 'Terima Pajak PPh 23 ' . ($transaksi->persen_pajak ?? '') . '% ' . $baseUraian;
-                            else $uraianPusat = 'Terima Pajak ' . ($transaksi->pajak ?? '') . ' ' . ($transaksi->persen_pajak ?? '') . '% ' . $baseUraian;
-                        }
-
-                        if ($jumlah != 0 || $keluar != 0) {
-                            $runningPenerimaan += $jumlah;
-                            $runningPengeluaran += $keluar;
-                            $currentSaldo = $runningPenerimaan - $runningPengeluaran;
-                        }
-
-                        $pajakRows[] = [
-                            'tanggal' => $transaksi->tanggal_transaksi,
-                            'no_kode' => $transaksi->rekeningBelanja->kode_rekening ?? '-',
-                            'no_buku' => $transaksi->kode_masa_pajak ?? $transaksi->id_transaksi,
-                            'uraian' => $uraianPusat,
-                            'ppn' => $ppn,
-                            'pph21' => $pph21,
-                            'pph22' => $pph22,
-                            'pph23' => $pph23,
-                            'pb1' => 0,
-                            'jumlah' => $jumlah,
-                            'pengeluaran' => $keluar,
-                            'saldo' => $currentSaldo
-                        ];
-                    }
-
-                    if ($hasPajakDaerah) {
-                        $pb1 = $transaksi->total_pajak_daerah;
-                        $totalPb1 += $pb1;
-
-                        $jumlah = $pb1;
-                        $keluar = (!empty($transaksi->ntpn)) ? $jumlah : 0;
-                        
-                        $totalPenerimaan += $jumlah;
-                        $totalPengeluaran += $keluar;
-
-                        $uraianDaerah = !empty($transaksi->ntpn) 
-                            ? 'Setor Pajak PB 1 ' . ($transaksi->persen_pajak_daerah ?? '') . '% ' . $baseUraian
-                            : 'Terima Pajak PB 1 ' . ($transaksi->persen_pajak_daerah ?? '') . '% ' . $baseUraian;
-
-                         if ($jumlah != 0 || $keluar != 0) {
-                            $runningPenerimaan += $jumlah;
-                            $runningPengeluaran += $keluar;
-                            $currentSaldo = $runningPenerimaan - $runningPengeluaran;
-                        }
-
-                        $pajakRows[] = [
-                            'tanggal' => $transaksi->tanggal_transaksi,
-                            'no_kode' => $transaksi->rekeningBelanja->kode_rekening ?? '-',
-                            'no_buku' => '-',
-                            'uraian' => $uraianDaerah,
-                            'ppn' => 0,
-                            'pph21' => 0,
-                            'pph22' => 0,
-                            'pph23' => 0,
-                            'pb1' => $pb1,
-                            'jumlah' => $jumlah,
-                            'pengeluaran' => $keluar,
-                            'saldo' => $currentSaldo
-                        ];
-                    }
+                
+                // Append generated rows
+                foreach ($dataPajak['pajakRows'] as $row) {
+                    $pajakRows[] = $row;
                 }
+                
+                $totalPenerimaan = $dataPajak['totalPenerimaan'];
+                $totalPengeluaran = $dataPajak['totalPengeluaran'];
+                $currentSaldo = $dataPajak['currentSaldo'];
+                $totalPpn = $dataPajak['totalPpn'];
+                $totalPph21 = $dataPajak['totalPph21'];
+                $totalPph22 = $dataPajak['totalPph22'];
+                $totalPph23 = $dataPajak['totalPph23'];
+                $totalPb1 = $dataPajak['totalPb1'];
 
                 // Ambil tanggal tutup BKU jika ada
                 $bungaRecord = BukuKasUmum::where('penganggaran_id', $penganggaran->id)
@@ -790,5 +461,194 @@ class BukuPajakController extends Controller
     {
         $bulanAngka = $this->convertBulanToNumber($bulan);
         return Carbon::create($tahun, $bulanAngka, 1)->endOfMonth();
+    }
+
+    private function siapkanDataRowsBkpPajak($penganggaran, $bulanAngka, $tahun)
+    {
+        // 1. Terima Pajak (Penerimaan)
+        $bkuPajakDiterima = BukuKasUmum::where('penganggaran_id', $penganggaran->id)
+            ->whereMonth('tanggal_transaksi', $bulanAngka)
+            ->whereYear('tanggal_transaksi', $tahun)
+            ->where(function ($query) {
+                $query->where('total_pajak', '>', 0)
+                    ->orWhere('total_pajak_daerah', '>', 0);
+            })
+            ->with(['kodeKegiatan', 'rekeningBelanja'])
+            ->orderBy('tanggal_transaksi', 'asc')
+            ->get();
+
+        // 2. Setor Pajak (Pengeluaran)
+        $bkuPajakDisetor = BukuKasUmum::where('penganggaran_id', $penganggaran->id)
+            ->whereMonth('tanggal_lapor', $bulanAngka)
+            ->whereYear('tanggal_lapor', $tahun)
+            ->whereNotNull('ntpn')
+            ->where(function ($query) {
+                $query->where('total_pajak', '>', 0)
+                    ->orWhere('total_pajak_daerah', '>', 0);
+            })
+            ->with(['kodeKegiatan', 'rekeningBelanja'])
+            ->orderBy('tanggal_lapor', 'asc')
+            ->get();
+
+        $pajakRows = [];
+        $totalPpn = 0; $totalPph21 = 0; $totalPph22 = 0; $totalPph23 = 0; $totalPb1 = 0;
+        
+        // --- LOOP 1: TERIMA PAJAK ---
+        foreach ($bkuPajakDiterima as $transaksi) {
+            $pajakName = strtolower($transaksi->pajak ?? '');
+            $baseUraian = $transaksi->uraian_opsional ?? $transaksi->uraian ?? '';
+            $hasPajakPusat = $transaksi->total_pajak > 0;
+            $hasPajakDaerah = $transaksi->total_pajak_daerah > 0;
+
+            if ($hasPajakPusat) {
+                $ppn=0; $pph21=0; $pph22=0; $pph23=0;
+                if (strpos($pajakName, 'pph21') !== false || strpos($pajakName, 'pph 21') !== false) {
+                    $pph21 = $transaksi->total_pajak; $totalPph21 += $pph21;
+                } elseif (strpos($pajakName, 'pph22') !== false || strpos($pajakName, 'pph 22') !== false) {
+                    $pph22 = $transaksi->total_pajak; $totalPph22 += $pph22;
+                } elseif (strpos($pajakName, 'pph23') !== false || strpos($pajakName, 'pph 23') !== false) {
+                    $pph23 = $transaksi->total_pajak; $totalPph23 += $pph23;
+                } else {
+                    $ppn = $transaksi->total_pajak; $totalPpn += $ppn;
+                }
+
+                $jumlah = $ppn + $pph21 + $pph22 + $pph23;
+                $uraianPusat = '';
+                if ($pph21 > 0) $uraianPusat = 'Terima Pajak PPh 21 ' . ($transaksi->persen_pajak ?? '') . '% ' . $baseUraian;
+                elseif ($pph22 > 0) $uraianPusat = 'Terima Pajak PPh 22 ' . ($transaksi->persen_pajak ?? '') . '% ' . $baseUraian;
+                elseif ($pph23 > 0) $uraianPusat = 'Terima Pajak PPh 23 ' . ($transaksi->persen_pajak ?? '') . '% ' . $baseUraian;
+                else $uraianPusat = 'Terima Pajak ' . ($transaksi->pajak ?? '') . ' ' . ($transaksi->persen_pajak ?? '') . '% ' . $baseUraian;
+
+                $pajakRows[] = [
+                    'transaksi' => $transaksi,
+                    'tanggal' => $transaksi->tanggal_transaksi,
+                    'no_kode' => $transaksi->rekeningBelanja->kode_rekening ?? '-',
+                    'no_buku' => $transaksi->kode_masa_pajak ?? $transaksi->id_transaksi,
+                    'uraian' => $uraianPusat,
+                    'ppn' => $ppn, 'pph21' => $pph21, 'pph22' => $pph22, 'pph23' => $pph23, 'pb1' => 0,
+                    'jumlah' => $jumlah, // Penerimaan
+                    'pengeluaran' => 0,
+                    'is_penerimaan' => true
+                ];
+            }
+
+            if ($hasPajakDaerah) {
+                $pb1 = $transaksi->total_pajak_daerah;
+                $totalPb1 += $pb1;
+                $uraianDaerah = 'Terima Pajak PB 1 ' . ($transaksi->persen_pajak_daerah ?? '') . '% ' . $baseUraian;
+
+                $pajakRows[] = [
+                    'transaksi' => $transaksi,
+                    'tanggal' => $transaksi->tanggal_transaksi,
+                    'no_kode' => $transaksi->rekeningBelanja->kode_rekening ?? '-',
+                    'no_buku' => '-',
+                    'uraian' => $uraianDaerah,
+                    'ppn' => 0, 'pph21' => 0, 'pph22' => 0, 'pph23' => 0, 'pb1' => $pb1,
+                    'jumlah' => $pb1, // Penerimaan
+                    'pengeluaran' => 0,
+                    'is_penerimaan' => true
+                ];
+            }
+        }
+
+        // --- LOOP 2: SETOR PAJAK ---
+        foreach ($bkuPajakDisetor as $transaksi) {
+            $pajakName = strtolower($transaksi->pajak ?? '');
+            $baseUraian = $transaksi->uraian_opsional ?? $transaksi->uraian ?? '';
+            $hasPajakPusat = $transaksi->total_pajak > 0;
+            $hasPajakDaerah = $transaksi->total_pajak_daerah > 0;
+
+            if ($hasPajakPusat) {
+                $ppn=0; $pph21=0; $pph22=0; $pph23=0;
+                if (strpos($pajakName, 'pph21') !== false || strpos($pajakName, 'pph 21') !== false) {
+                    $pph21 = $transaksi->total_pajak; 
+                } elseif (strpos($pajakName, 'pph22') !== false || strpos($pajakName, 'pph 22') !== false) {
+                    $pph22 = $transaksi->total_pajak; 
+                } elseif (strpos($pajakName, 'pph23') !== false || strpos($pajakName, 'pph 23') !== false) {
+                    $pph23 = $transaksi->total_pajak; 
+                } else {
+                    $ppn = $transaksi->total_pajak; 
+                }
+
+                $jumlah = $ppn + $pph21 + $pph22 + $pph23;
+                $uraianPusat = '';
+                if ($pph21 > 0) $uraianPusat = 'Setor Pajak PPh 21 ' . ($transaksi->persen_pajak ?? '') . '% ' . $baseUraian;
+                elseif ($pph22 > 0) $uraianPusat = 'Setor Pajak PPh 22 ' . ($transaksi->persen_pajak ?? '') . '% ' . $baseUraian;
+                elseif ($pph23 > 0) $uraianPusat = 'Setor Pajak PPh 23 ' . ($transaksi->persen_pajak ?? '') . '% ' . $baseUraian;
+                else $uraianPusat = 'Setor Pajak ' . ($transaksi->pajak ?? '') . ' ' . ($transaksi->persen_pajak ?? '') . '% ' . $baseUraian;
+
+                $pajakRows[] = [
+                    'transaksi' => $transaksi,
+                    'tanggal' => $transaksi->tanggal_lapor,
+                    'no_kode' => $transaksi->rekeningBelanja->kode_rekening ?? '-',
+                    'no_buku' => $transaksi->kode_masa_pajak ?? $transaksi->id_transaksi,
+                    'uraian' => $uraianPusat,
+                    'ppn' => $ppn, 'pph21' => $pph21, 'pph22' => $pph22, 'pph23' => $pph23, 'pb1' => 0,
+                    'jumlah' => 0, 
+                    'pengeluaran' => $jumlah, // Pengeluaran
+                    'is_penerimaan' => false
+                ];
+            }
+
+            if ($hasPajakDaerah) {
+                $pb1 = $transaksi->total_pajak_daerah;
+                $uraianDaerah = 'Setor Pajak PB 1 ' . ($transaksi->persen_pajak_daerah ?? '') . '% ' . $baseUraian;
+
+                $pajakRows[] = [
+                    'transaksi' => $transaksi,
+                    'tanggal' => $transaksi->tanggal_lapor,
+                    'no_kode' => $transaksi->rekeningBelanja->kode_rekening ?? '-',
+                    'no_buku' => '-',
+                    'uraian' => $uraianDaerah,
+                    'ppn' => 0, 'pph21' => 0, 'pph22' => 0, 'pph23' => 0, 'pb1' => $pb1,
+                    'jumlah' => 0, 
+                    'pengeluaran' => $pb1, // Pengeluaran
+                    'is_penerimaan' => false
+                ];
+            }
+        }
+        
+        // SORTING BY TANGGAL
+        usort($pajakRows, function ($a, $b) {
+            $tA = strtotime($a['tanggal'] instanceof \Carbon\Carbon ? $a['tanggal']->toDateTimeString() : $a['tanggal']);
+            $tB = strtotime($b['tanggal'] instanceof \Carbon\Carbon ? $b['tanggal']->toDateTimeString() : $b['tanggal']);
+            if ($tA == $tB) {
+                return $a['is_penerimaan'] === $b['is_penerimaan'] ? 0 : ($a['is_penerimaan'] ? -1 : 1);
+            }
+            return $tA - $tB;
+        });
+
+        // RECALCULATE SALDO
+        $saldoAwalPajak = app(\App\Services\BukuKasService::class)->hitungSaldoPajakSebelumBulan($penganggaran->id, $bulanAngka, $tahun);
+        
+        $runningPenerimaan = 0;
+        $runningPengeluaran = 0;
+        $currentSaldo = $saldoAwalPajak;
+        $totalPenerimaan = $saldoAwalPajak;
+        $totalPengeluaran = 0;
+
+        foreach ($pajakRows as &$row) {
+            if ($row['jumlah'] != 0 || $row['pengeluaran'] != 0) {
+                $runningPenerimaan += $row['jumlah'];
+                $runningPengeluaran += $row['pengeluaran'];
+                $currentSaldo = $saldoAwalPajak + $runningPenerimaan - $runningPengeluaran;
+            }
+            $totalPenerimaan += $row['jumlah'];
+            $totalPengeluaran += $row['pengeluaran'];
+            $row['saldo'] = $currentSaldo;
+        }
+
+        return [
+            'pajakRows' => $pajakRows,
+            'totalPenerimaan' => $totalPenerimaan,
+            'totalPengeluaran' => $totalPengeluaran,
+            'currentSaldo' => $currentSaldo,
+            'totalPpn' => $totalPpn,
+            'totalPph21' => $totalPph21,
+            'totalPph22' => $totalPph22,
+            'totalPph23' => $totalPph23,
+            'totalPb1' => $totalPb1,
+            'saldoAwalPajak' => $saldoAwalPajak
+        ];
     }
 }

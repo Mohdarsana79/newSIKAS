@@ -40,7 +40,7 @@ class BukuKasPembantuTunaiController extends Controller
                 ], 400);
             }
 
-            $penarikanTerakhir = PenarikanTunai::where('penganggaran_id', $penganggaran_id)
+            $penarikanTerakhir = PenarikanTunai::query()->where('penganggaran_id', $penganggaran_id)
                 ->orderBy('tanggal_penarikan', 'desc')
                 ->first();
 
@@ -254,26 +254,26 @@ class BukuKasPembantuTunaiController extends Controller
      */
     public function getBkpPembantuDataInternal($tahun, $bulan) 
     {
-         $penganggaran = Penganggaran::where('tahun_anggaran', $tahun)->first();
+         $penganggaran = Penganggaran::query()->where('tahun_anggaran', $tahun)->first();
          if (!$penganggaran) return null;
 
          $bulanAngka = $this->convertBulanToNumber($bulan);
          
          // Reuse the logic from getBkpPembantuData but return array
          // Copying essential parts
-         $penarikanTunais = PenarikanTunai::where('penganggaran_id', $penganggaran->id)
+         $penarikanTunais = PenarikanTunai::query()->where('penganggaran_id', $penganggaran->id)
                 ->whereMonth('tanggal_penarikan', $bulanAngka)
                 ->whereYear('tanggal_penarikan', $tahun)
                 ->orderBy('tanggal_penarikan', 'asc')
                 ->get();
 
-        $setorTunais = SetorTunai::where('penganggaran_id', $penganggaran->id)
+        $setorTunais = SetorTunai::query()->where('penganggaran_id', $penganggaran->id)
             ->whereMonth('tanggal_setor', $bulanAngka)
             ->whereYear('tanggal_setor', $tahun)
             ->orderBy('tanggal_setor', 'asc')
             ->get();
 
-        $bkuDataTunai = BukuKasUmum::where('penganggaran_id', $penganggaran->id)
+        $bkuDataTunai = BukuKasUmum::query()->where('penganggaran_id', $penganggaran->id)
             ->whereMonth('tanggal_transaksi', $bulanAngka)
             ->whereYear('tanggal_transaksi', $tahun)
             ->where('is_bunga_record', false)
@@ -282,6 +282,15 @@ class BukuKasPembantuTunaiController extends Controller
             ->orderBy('tanggal_transaksi', 'asc')
             ->orderBy('id_transaksi', 'asc')
             ->orderBy('id', 'asc')
+            ->get();
+
+        $bkuPajakDisetorTunai = BukuKasUmum::query()->where('penganggaran_id', $penganggaran->id)
+            ->whereMonth('tanggal_lapor', $bulanAngka)
+            ->whereYear('tanggal_lapor', $tahun)
+            ->whereNotNull('ntpn')
+            ->where('is_bunga_record', false)
+            ->where('jenis_transaksi', 'tunai')
+            ->orderBy('tanggal_lapor', 'asc')
             ->get();
 
         $saldoAwalTunai = $this->bukuKasService->hitungSaldoTunaiSebelumBulan($penganggaran->id, $bulanAngka);
@@ -295,15 +304,18 @@ class BukuKasPembantuTunaiController extends Controller
         foreach ($bkuDataTunai as $transaksi) {
             if ($transaksi->total_pajak > 0) {
                 $pajakPenerimaan += $transaksi->total_pajak;
-                if (!empty($transaksi->ntpn)) {
-                    $pajakPengeluaran += $transaksi->total_pajak;
-                }
             }
             if ($transaksi->total_pajak_daerah > 0) {
                 $pajakDaerahPenerimaan += $transaksi->total_pajak_daerah;
-                if (!empty($transaksi->ntpn)) {
-                    $pajakDaerahPengeluaran += $transaksi->total_pajak_daerah;
-                }
+            }
+        }
+
+        foreach ($bkuPajakDisetorTunai as $transaksi) {
+            if ($transaksi->total_pajak > 0) {
+                $pajakPengeluaran += $transaksi->total_pajak;
+            }
+            if ($transaksi->total_pajak_daerah > 0) {
+                $pajakDaerahPengeluaran += $transaksi->total_pajak_daerah;
             }
         }
 
@@ -334,8 +346,10 @@ class BukuKasPembantuTunaiController extends Controller
             ];
         }
 
+        $groupMap = [];
         foreach ($bkuDataTunai as $bku) {
             $blockCounter++;
+            $groupMap[$bku->id] = $blockCounter;
             $items[] = [
                 'tanggal' => $bku->tanggal_transaksi,
                 'uraian' => $bku->uraian_opsional ? $bku->uraian_opsional : $bku->uraian,
@@ -358,18 +372,6 @@ class BukuKasPembantuTunaiController extends Controller
                      'sort_order' => 11,
                      'group_id' => $blockCounter
                  ];
-                 if (!empty($bku->ntpn)) {
-                     $items[] = [
-                         'tanggal' => $bku->tanggal_transaksi,
-                         'uraian' => 'Setor Pajak ' . $bku->pajak . ' ' . $bku->persen_pajak . '%' . ' ' . $bku->uraian_opsional,
-                         'no_bukti' => $bku->kode_masa_pajak, 
-                         'kode_rekening' => '-',
-                         'penerimaan' => 0,
-                         'pengeluaran' => $bku->total_pajak,
-                         'sort_order' => 12,
-                         'group_id' => $blockCounter
-                     ];
-                 }
             }
             if ($bku->total_pajak_daerah > 0) {
                  $items[] = [
@@ -382,29 +384,53 @@ class BukuKasPembantuTunaiController extends Controller
                      'sort_order' => 11,
                      'group_id' => $blockCounter
                  ];
-                 if (!empty($bku->ntpn)) {
-                     $items[] = [
-                         'tanggal' => $bku->tanggal_transaksi,
-                         'uraian' => 'Setor Pajak ' . $bku->pajak_daerah . ' ' . $bku->persen_pajak_daerah . '%' . ' ' . $bku->uraian_opsional,
-                         'no_bukti' => '-',
-                         'kode_rekening' => '-',
-                         'penerimaan' => 0,
-                         'pengeluaran' => $bku->total_pajak_daerah,
-                         'sort_order' => 12,
-                         'group_id' => $blockCounter
-                     ];
-                 }
+            }
+        }
+
+        foreach ($bkuPajakDisetorTunai as $bku) {
+            $currentGroupId = $groupMap[$bku->id] ?? null;
+            if (!$currentGroupId) {
+                $blockCounter++;
+                $currentGroupId = $blockCounter;
+                $groupMap[$bku->id] = $currentGroupId;
+            }
+            if ($bku->total_pajak > 0) {
+                $items[] = [
+                    'tanggal' => $bku->tanggal_lapor,
+                    'uraian' => 'Setor Pajak ' . $bku->pajak . ' ' . $bku->persen_pajak . '%' . ' ' . $bku->uraian_opsional,
+                    'no_bukti' => $bku->kode_masa_pajak, 
+                    'kode_rekening' => '-',
+                    'penerimaan' => 0,
+                    'pengeluaran' => $bku->total_pajak,
+                    'sort_order' => 12,
+                    'group_id' => $currentGroupId
+                ];
+            }
+            if ($bku->total_pajak_daerah > 0) {
+                $items[] = [
+                    'tanggal' => $bku->tanggal_lapor,
+                    'uraian' => 'Setor Pajak ' . $bku->pajak_daerah . ' ' . $bku->persen_pajak_daerah . '%' . ' ' . $bku->uraian_opsional,
+                    'no_bukti' => '-',
+                    'kode_rekening' => '-',
+                    'penerimaan' => 0,
+                    'pengeluaran' => $bku->total_pajak_daerah,
+                    'sort_order' => 12,
+                    'group_id' => $currentGroupId
+                ];
             }
         }
         
         usort($items, function($a, $b) {
-            if ($a['tanggal'] !== $b['tanggal']) {
-                return strtotime($a['tanggal']) - strtotime($b['tanggal']);
+            $tA = strtotime($a['tanggal'] instanceof \Carbon\Carbon ? $a['tanggal']->toDateTimeString() : $a['tanggal']);
+            $tB = strtotime($b['tanggal'] instanceof \Carbon\Carbon ? $b['tanggal']->toDateTimeString() : $b['tanggal']);
+            
+            if ($tA !== $tB) {
+                return $tA - $tB;
             }
-            if ($a['group_id'] !== $b['group_id']) {
-                return $a['group_id'] - $b['group_id'];
+            if (($a['group_id'] ?? 0) !== ($b['group_id'] ?? 0)) {
+                return ($a['group_id'] ?? 0) - ($b['group_id'] ?? 0);
             }
-            return $a['sort_order'] - $b['sort_order'];
+            return ($a['sort_order'] ?? 99) - ($b['sort_order'] ?? 99);
         });
 
         return [

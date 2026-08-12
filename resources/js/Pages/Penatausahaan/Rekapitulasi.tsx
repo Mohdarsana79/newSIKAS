@@ -1262,7 +1262,11 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                                     <td className="border border-gray-600 p-2 text-center">-</td>
                                                     <td className="border border-gray-600 p-2 text-center">-</td>
                                                     <td className="border border-gray-600 p-2 text-center">-</td>
-                                                    <td className="border border-gray-600 p-2 text-right">0</td>
+                                                    <td className="border border-gray-600 p-2 text-right">
+                                                        {bkpPajakData?.data?.saldo_awal !== undefined 
+                                                            ? new Intl.NumberFormat('id-ID').format(bkpPajakData.data.saldo_awal) 
+                                                            : '0'}
+                                                    </td>
                                                 </tr>
 
                                                 {isLoading ? (
@@ -1275,13 +1279,13 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                                     bkpPajakData.items.map((item: any, index: number) => (
                                                         <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                                                             <td className="border border-gray-600 p-2 text-center whitespace-nowrap">
-                                                                {format(new Date(item.transaksi.tanggal_transaksi), 'dd-MM-yyyy')}
+                                                                {format(new Date(item.tanggal), 'dd-MM-yyyy')}
                                                             </td>
                                                             <td className="border border-gray-600 p-2 text-center">
-                                                                {item.transaksi.id_transaksi || '-'}
+                                                                {item.no_kode || '-'}
                                                             </td>
                                                             <td className="border border-gray-600 p-2 text-center text-xs">
-                                                                {item.transaksi.kode_masa_pajak || '-'}
+                                                                {item.no_buku || '-'}
                                                             </td>
                                                             <td className="border border-gray-600 p-2">
                                                                 {item.uraian}
