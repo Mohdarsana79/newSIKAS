@@ -11,6 +11,7 @@ import InputLabel from '@/Components/InputLabel';
 import InputError from '@/Components/InputError';
 import PrintSettingsModal, { PrintSettings } from '@/Components/PrintSettingsModal';
 import PdfPreviewModal from '@/Components/PdfPreviewModal';
+import Dropdown from '@/Components/Dropdown';
 import DatePicker from '@/Components/DatePicker';
 import { format } from 'date-fns';
 import Select from 'react-select';
@@ -27,8 +28,10 @@ interface KwitansiData {
     jumlah: string;
     preview_url: string;
     preview_url_2: string;
+    preview_url_3: string;
     pdf_url: string;
     pdf_url_2: string;
+    pdf_url_3: string;
     delete_data: {
         id: number;
         uraian: string;
@@ -54,6 +57,88 @@ interface YearData {
     id: number;
     tahun: string;
 }
+
+const formatOptions = [
+    { value: 1, label: 'Format 1' },
+    { value: 2, label: 'Format 2' },
+    { value: 3, label: 'Format 3' }
+];
+
+const KwitansiRowActions = ({ item, onPrint, onPreview }: { item: KwitansiData, onPrint: (id: number, format: 1 | 2 | 3) => void, onPreview: (url: string) => void }) => {
+    const [format, setFormat] = useState<1 | 2 | 3>(3);
+    
+    const handlePreview = () => {
+        let url = item.preview_url;
+        if (format === 2) url = item.preview_url_2;
+        if (format === 3) url = item.preview_url_3;
+        onPreview(url);
+    };
+
+    return (
+        <div className="flex items-center gap-2 justify-end">
+            <div className="w-36 text-xs text-left">
+                <Select
+                    options={formatOptions}
+                    value={formatOptions.find(opt => opt.value === format)}
+                    onChange={(selectedOption) => setFormat(selectedOption?.value as 1 | 2 | 3)}
+                    menuPortalTarget={document.body}
+                    styles={{
+                        menuPortal: base => ({ ...base, zIndex: 9999 }),
+                        control: (base, state) => ({
+                            ...base,
+                            minHeight: '28px',
+                            height: '28px',
+                            fontSize: '0.75rem',
+                            boxShadow: state.isFocused ? 'none' : base.boxShadow,
+                            borderColor: state.isFocused ? '#d1d5db' : base.borderColor,
+                            '&:hover': {
+                                borderColor: state.isFocused ? '#d1d5db' : base.borderColor
+                            }
+                        }),
+                        valueContainer: (base) => ({
+                            ...base,
+                            padding: '0 8px',
+                        }),
+                        input: (base) => ({
+                            ...base,
+                            margin: '0',
+                            padding: '0',
+                            '& input': {
+                                boxShadow: 'none !important',
+                                border: 'none !important'
+                            },
+                            '& input:focus': {
+                                boxShadow: 'none !important',
+                                border: 'none !important'
+                            }
+                        }),
+                        indicatorsContainer: (base) => ({
+                            ...base,
+                            height: '28px',
+                        }),
+                    }}
+                    isSearchable={true}
+                />
+            </div>
+            <button
+                onClick={() => onPrint(item.id, format)}
+                className="text-xs px-2.5 py-1.5 bg-indigo-500 text-white rounded hover:bg-indigo-600 transition-colors flex items-center gap-1 shadow-sm"
+                title="Cetak PDF"
+            >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg> 
+                PDF
+            </button>
+            <button
+                onClick={(e) => { e.preventDefault(); handlePreview(); }}
+                className="text-xs px-2.5 py-1.5 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors flex items-center gap-1 shadow-sm"
+                title="Preview"
+            >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg> 
+                View
+            </button>
+        </div>
+    );
+};
 
 export default function KwitansiIndex({ auth }: { auth: any }) {
     const [kwitansis, setKwitansis] = useState<KwitansiData[]>([]);
@@ -83,7 +168,7 @@ export default function KwitansiIndex({ auth }: { auth: any }) {
     // Print Settings Modal State
     const [showPrintSettings, setShowPrintSettings] = useState(false);
     const [selectedKwitansiId, setSelectedKwitansiId] = useState<number | null>(null);
-    const [selectedKwitansiType, setSelectedKwitansiType] = useState<1 | 2>(1);
+    const [selectedKwitansiType, setSelectedKwitansiType] = useState<1 | 2 | 3>(1);
 
     // PDF Preview Modal State
     const [showPreviewModal, setShowPreviewModal] = useState(false);
@@ -327,7 +412,7 @@ export default function KwitansiIndex({ auth }: { auth: any }) {
         setConfirmingDownload(true);
     };
 
-    const processDownloadAll = (mode: 'current' | 'year', type: 1 | 2) => {
+    const processDownloadAll = (mode: 'current' | 'year', type: 1 | 2 | 3) => {
         const params = new URLSearchParams();
 
         if (mode === 'current') {
@@ -341,12 +426,14 @@ export default function KwitansiIndex({ auth }: { auth: any }) {
         params.append('paper_size', downloadSettings.paperSize);
         params.append('font_size', downloadSettings.fontSize);
 
-        const targetUrl = type === 1 ? route('kwitansi.download-all') : route('kwitansi.download-all2');
+        let targetUrl = route('kwitansi.download-all');
+        if (type === 2) targetUrl = route('kwitansi.download-all2');
+        if (type === 3) targetUrl = route('kwitansi.download-all3');
         window.open(`${targetUrl}?${params.toString()}`, '_blank');
         setConfirmingDownload(false);
     };
 
-    const handlePrintClick = (id: number, type: 1 | 2) => {
+    const handlePrintClick = (id: number, type: 1 | 2 | 3) => {
         setSelectedKwitansiId(id);
         setSelectedKwitansiType(type);
         setShowPrintSettings(true);
@@ -354,7 +441,10 @@ export default function KwitansiIndex({ auth }: { auth: any }) {
 
     const processPrint = (settings: PrintSettings) => {
         if (selectedKwitansiId) {
-            const baseUrl = selectedKwitansiType === 1 ? route('kwitansi.pdf', selectedKwitansiId) : route('kwitansi.pdf2', selectedKwitansiId);
+            let baseUrl = route('kwitansi.pdf', selectedKwitansiId);
+            if (selectedKwitansiType === 2) baseUrl = route('kwitansi.pdf2', selectedKwitansiId);
+            if (selectedKwitansiType === 3) baseUrl = route('kwitansi.pdf3', selectedKwitansiId);
+            
             const params = new URLSearchParams({
                 paper_size: settings.paperSize,
                 font_size: settings.fontSize,
@@ -465,7 +555,7 @@ export default function KwitansiIndex({ auth }: { auth: any }) {
                     </div>
 
                     {/* Table Section */}
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
                         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
                             <h3 className="font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h7"></path></svg>
@@ -476,7 +566,7 @@ export default function KwitansiIndex({ auth }: { auth: any }) {
                             </h3>
                         </div>
 
-                        <div className="overflow-x-auto">
+                        <div className="overflow-x-auto pb-auto" style={{ minHeight: '400px' }}>
                             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                                 <thead className="bg-gray-50 dark:bg-gray-700">
                                     <tr>
@@ -514,46 +604,7 @@ export default function KwitansiIndex({ auth }: { auth: any }) {
                                                     {item.jumlah}
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                    <div className="flex justify-center items-center gap-2">
-                                                        <div className="flex flex-col gap-1 items-center border-r pr-2 border-gray-300 dark:border-gray-600">
-                                                            <span className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">Format 1</span>
-                                                            <div className="flex gap-2">
-                                                                <button
-                                                                    onClick={() => handlePrintClick(item.id, 1)}
-                                                                    className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
-                                                                    title="Cetak PDF 1"
-                                                                >
-                                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
-                                                                </button>
-                                                                <button
-                                                                    onClick={(e) => { e.preventDefault(); handlePreviewClick(item.preview_url); }}
-                                                                    className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
-                                                                    title="Preview 1"
-                                                                >
-                                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex flex-col gap-1 items-center pl-1">
-                                                            <span className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">Format 2</span>
-                                                            <div className="flex gap-2">
-                                                                <button
-                                                                    onClick={() => handlePrintClick(item.id, 2)}
-                                                                    className="text-emerald-600 hover:text-emerald-900 dark:text-emerald-400 dark:hover:text-emerald-300"
-                                                                    title="Cetak PDF 2"
-                                                                >
-                                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
-                                                                </button>
-                                                                <button
-                                                                    onClick={(e) => { e.preventDefault(); handlePreviewClick(item.preview_url_2); }}
-                                                                    className="text-teal-600 hover:text-teal-900 dark:text-teal-400 dark:hover:text-teal-300"
-                                                                    title="Preview 2"
-                                                                >
-                                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    </div>
+                                                    <KwitansiRowActions item={item} onPrint={handlePrintClick} onPreview={handlePreviewClick} />
                                                 </td>
                                             </tr>
                                         ))
@@ -784,14 +835,14 @@ export default function KwitansiIndex({ auth }: { auth: any }) {
                             </SecondaryButton>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-2">
                             <button
                                 onClick={() => processDownloadAll('current', 1)}
                                 className="flex flex-col items-center justify-center p-4 border-2 border-indigo-100 dark:border-indigo-900 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors group"
                             >
-                                <span className="font-semibold text-indigo-600 dark:text-indigo-400 mb-1 group-hover:underline">Download Format 1</span>
+                                <span className="font-semibold text-indigo-600 dark:text-indigo-400 mb-1 group-hover:underline text-sm">Download Format 1</span>
                                 <span className="text-xs text-center text-gray-500 dark:text-gray-400">
-                                    Unduh PDF menggunakan template kwitansi standar
+                                    Unduh PDF standar
                                 </span>
                             </button>
                             
@@ -799,9 +850,19 @@ export default function KwitansiIndex({ auth }: { auth: any }) {
                                 onClick={() => processDownloadAll('current', 2)}
                                 className="flex flex-col items-center justify-center p-4 border-2 border-emerald-100 dark:border-emerald-900 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-colors group"
                             >
-                                <span className="font-semibold text-emerald-600 dark:text-emerald-400 mb-1 group-hover:underline">Download Format 2</span>
+                                <span className="font-semibold text-emerald-600 dark:text-emerald-400 mb-1 group-hover:underline text-sm">Download Format 2</span>
                                 <span className="text-xs text-center text-gray-500 dark:text-gray-400">
-                                    Unduh PDF menggunakan template kwitansi baru
+                                    Unduh PDF alternatif
+                                </span>
+                            </button>
+
+                            <button
+                                onClick={() => processDownloadAll('current', 3)}
+                                className="flex flex-col items-center justify-center p-4 border-2 border-orange-100 dark:border-orange-900 rounded-lg hover:bg-orange-50 dark:hover:bg-orange-900/30 transition-colors group"
+                            >
+                                <span className="font-semibold text-orange-600 dark:text-orange-400 mb-1 group-hover:underline text-sm">Download Format 3</span>
+                                <span className="text-xs text-center text-gray-500 dark:text-gray-400">
+                                    Unduh PDF BOSP
                                 </span>
                             </button>
                         </div>

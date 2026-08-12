@@ -44,6 +44,14 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
     const [periodeRealisasi, setPeriodeRealisasi] = useState(bulan);
     const [jenisLaporanRealisasi, setJenisLaporanRealisasi] = useState('bulanan');
 
+    const [bhpData, setBhpData] = useState<any>(null);
+    const [periodeBhp, setPeriodeBhp] = useState(bulan);
+    const [jenisLaporanBhp, setJenisLaporanBhp] = useState('bulanan');
+
+    const [bhmData, setBhmData] = useState<any>(null);
+    const [periodeBhm, setPeriodeBhm] = useState(bulan);
+    const [jenisLaporanBhm, setJenisLaporanBhm] = useState('bulanan');
+
     const [rekRealisasiData, setRekRealisasiData] = useState<any>(null);
     const [faseRekRealisasi, setFaseRekRealisasi] = useState('Tahunan');
     const [showPrintRekRealisasiModal, setShowPrintRekRealisasiModal] = useState(false);
@@ -56,6 +64,8 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
     const [showPrintBkpRegModal, setShowPrintBkpRegModal] = useState(false);
     const [showPrintBkpBaModal, setShowPrintBkpBaModal] = useState(false);
     const [showPrintRealisasiModal, setShowPrintRealisasiModal] = useState(false);
+    const [showPrintBhpModal, setShowPrintBhpModal] = useState(false);
+    const [showPrintBhmModal, setShowPrintBhmModal] = useState(false);
     const [showCheckStsModal, setShowCheckStsModal] = useState(false);
     const [showTrkSaldoAwalModal, setShowTrkSaldoAwalModal] = useState(false);
 
@@ -84,8 +94,12 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
             fetchRealisasiData();
         } else if (activeTab === 'rek_realisasi' && tahun) {
             fetchRekRealisasiData();
+        } else if (activeTab === 'bhp' && tahun) {
+            fetchBhpData();
+        } else if (activeTab === 'bhm' && tahun) {
+            fetchBhmData();
         }
-    }, [activeTab, tahun, bulanBank, bulanPembantu, bulanUmum, bulanPajak, bulanRob, bulanReg, bulanBa, periodeRealisasi, jenisLaporanRealisasi, faseRekRealisasi]);
+    }, [activeTab, tahun, bulanBank, bulanPembantu, bulanUmum, bulanPajak, bulanRob, bulanReg, bulanBa, periodeRealisasi, jenisLaporanRealisasi, faseRekRealisasi, periodeBhp, jenisLaporanBhp, periodeBhm, jenisLaporanBhm]);
 
     const fetchRealisasiData = async () => {
         setIsLoading(true);
@@ -100,6 +114,42 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
             }
         } catch (error) {
             console.error("Error fetching Realisasi data:", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const fetchBhpData = async () => {
+        setIsLoading(true);
+        try {
+            const response = await axios.get(route('api.bhp.data', {
+                tahun,
+                periode: periodeBhp,
+                jenis_laporan: jenisLaporanBhp
+            }));
+            if (response.data.success) {
+                setBhpData(response.data);
+            }
+        } catch (error) {
+            console.error("Error fetching BHP data:", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const fetchBhmData = async () => {
+        setIsLoading(true);
+        try {
+            const response = await axios.get(route('api.bhm.data', {
+                tahun,
+                periode: periodeBhm,
+                jenis_laporan: jenisLaporanBhm
+            }));
+            if (response.data.success) {
+                setBhmData(response.data);
+            }
+        } catch (error) {
+            console.error("Error fetching BHM data:", error);
         } finally {
             setIsLoading(false);
         }
@@ -239,7 +289,9 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
         { id: 'reg', label: 'REG' },
         { id: 'ba', label: 'Berita Acara' },
         { id: 'realisasi', label: 'Realisasi' },
-        { id: 'rek_realisasi', label: 'Rek. Realisasi' }
+        { id: 'rek_realisasi', label: 'Rek. Realisasi' },
+        { id: 'bhp', label: 'BHP' },
+        { id: 'bhm', label: 'BHM' }
     ];
 
     const handleExportExcelBkpBank = () => {
@@ -368,6 +420,30 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
             tahun,
             periode: settings.period || periodeRealisasi,
             jenis_laporan: jenis,
+            paperSize: settings.paperSize,
+            orientation: settings.orientation,
+            fontSize: settings.fontSize
+        });
+        window.open(url, '_blank');
+    };
+
+    const handlePrintBhp = (settings: PrintSettings) => {
+        const url = route('bhp.cetak', {
+            tahun,
+            periode: periodeBhp,
+            jenis_laporan: jenisLaporanBhp,
+            paperSize: settings.paperSize,
+            orientation: settings.orientation,
+            fontSize: settings.fontSize
+        });
+        window.open(url, '_blank');
+    };
+
+    const handlePrintBhm = (settings: PrintSettings) => {
+        const url = route('bhm.cetak', {
+            tahun,
+            periode: periodeBhm,
+            jenis_laporan: jenisLaporanBhm,
             paperSize: settings.paperSize,
             orientation: settings.orientation,
             fontSize: settings.fontSize
@@ -2382,7 +2458,295 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                             </div>
                         )}
 
-                        {activeTab !== 'bkp_bank' && activeTab !== 'bkp_pembantu' && activeTab !== 'bkp_umum' && activeTab !== 'bkp_pajak' && activeTab !== 'rob' && activeTab !== 'reg' && activeTab !== 'ba' && activeTab !== 'realisasi' && activeTab !== 'rek_realisasi' && (
+                        {activeTab === 'bhp' && (
+                            <div className="mt-6 flex flex-col gap-6 animate-fade-in-up">
+                                <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                                    <div className="flex flex-col md:flex-row items-center gap-4">
+                                        <div className="flex items-center gap-2">
+                                            <label htmlFor="jenisLaporanBhp" className="text-sm font-medium text-gray-700 dark:text-gray-300">Jenis:</label>
+                                            <select
+                                                id="jenisLaporanBhp"
+                                                value={jenisLaporanBhp}
+                                                onChange={(e) => {
+                                                    const newJenis = e.target.value;
+                                                    setJenisLaporanBhp(newJenis);
+                                                    if (newJenis === 'bulanan') {
+                                                        setPeriodeBhp(bulan);
+                                                    } else if (newJenis === 'tahap') {
+                                                        setPeriodeBhp('Tahap 1');
+                                                    } else {
+                                                        setPeriodeBhp('');
+                                                    }
+                                                }}
+                                                className="block w-40 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                            >
+                                                <option value="bulanan">Bulanan</option>
+                                                <option value="tahap">Tahap</option>
+                                                <option value="tahunan">Tahunan</option>
+                                            </select>
+                                        </div>
+
+                                        {jenisLaporanBhp === 'bulanan' && (
+                                            <div className="flex items-center gap-2">
+                                                <label htmlFor="periodeBhp" className="text-sm font-medium text-gray-700 dark:text-gray-300">Bulan:</label>
+                                                <select
+                                                    id="periodeBhp"
+                                                    value={periodeBhp}
+                                                    onChange={(e) => setPeriodeBhp(e.target.value)}
+                                                    className="block w-40 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                                >
+                                                    {monthList.map((m) => (
+                                                        <option key={m} value={m} className="capitalize">{m.charAt(0).toUpperCase() + m.slice(1)}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        )}
+
+                                        {jenisLaporanBhp === 'tahap' && (
+                                            <div className="flex items-center gap-2">
+                                                <label htmlFor="periodeBhpTahap" className="text-sm font-medium text-gray-700 dark:text-gray-300">Tahap:</label>
+                                                <select
+                                                    id="periodeBhpTahap"
+                                                    value={periodeBhp}
+                                                    onChange={(e) => setPeriodeBhp(e.target.value)}
+                                                    className="block w-40 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                                >
+                                                    <option value="Tahap 1">Tahap 1</option>
+                                                    <option value="Tahap 2">Tahap 2</option>
+                                                </select>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <PrimaryButton 
+                                            onClick={() => setShowPrintBhpModal(true)}
+                                            className="bg-indigo-600 hover:bg-indigo-700"
+                                        >
+                                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                            </svg>
+                                            Cetak PDF
+                                        </PrimaryButton>
+                                    </div>
+                                </div>
+
+                                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                                    <div className="p-6 border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
+                                        <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-3">
+                                            <span className="p-2 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 rounded-lg">
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                                            </span>
+                                            Data Barang Habis Pakai (BHP)
+                                        </h3>
+                                    </div>
+
+                                    {isLoading ? (
+                                        <div className="flex justify-center p-12">
+                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                                        </div>
+                                    ) : (
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                                                <thead className="text-xs text-gray-700 uppercase bg-gray-100 dark:bg-gray-700 dark:text-gray-300">
+                                                    <tr>
+                                                        <th className="px-4 py-3 border border-gray-200 dark:border-gray-600">Tanggal</th>
+                                                        <th className="px-4 py-3 border border-gray-200 dark:border-gray-600">Kode Kegiatan</th>
+                                                        <th className="px-4 py-3 border border-gray-200 dark:border-gray-600">Kode Rekening</th>
+                                                        <th className="px-4 py-3 border border-gray-200 dark:border-gray-600">No. Bukti</th>
+                                                        <th className="px-4 py-3 border border-gray-200 dark:border-gray-600">Uraian</th>
+                                                        <th className="px-4 py-3 border border-gray-200 dark:border-gray-600 text-right">Jml Barang</th>
+                                                        <th className="px-4 py-3 border border-gray-200 dark:border-gray-600 text-right">Harga Satuan</th>
+                                                        <th className="px-4 py-3 border border-gray-200 dark:border-gray-600 text-right">Realisasi</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {bhpData?.data && bhpData.data.length > 0 ? (
+                                                        bhpData.data.map((item: any, idx: number) => (
+                                                            <tr key={idx} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                                                                <td className="px-4 py-3 border border-gray-200 dark:border-gray-600 whitespace-nowrap">{item.tanggal}</td>
+                                                                <td className="px-4 py-3 border border-gray-200 dark:border-gray-600">{item.kode_kegiatan}</td>
+                                                                <td className="px-4 py-3 border border-gray-200 dark:border-gray-600">{item.kode_rekening}</td>
+                                                                <td className="px-4 py-3 border border-gray-200 dark:border-gray-600">{item.no_bukti}</td>
+                                                                <td className="px-4 py-3 border border-gray-200 dark:border-gray-600">{item.uraian}</td>
+                                                                <td className="px-4 py-3 border border-gray-200 dark:border-gray-600 text-right">{item.volume}</td>
+                                                                <td className="px-4 py-3 border border-gray-200 dark:border-gray-600 text-right">{formatCurrency(item.harga_satuan)}</td>
+                                                                <td className="px-4 py-3 border border-gray-200 dark:border-gray-600 text-right">{formatCurrency(item.jumlah)}</td>
+                                                            </tr>
+                                                        ))
+                                                    ) : (
+                                                        <tr>
+                                                            <td colSpan={8} className="px-4 py-8 text-center text-gray-500">Data tidak tersedia untuk periode ini</td>
+                                                        </tr>
+                                                    )}
+                                                    {bhpData?.data && bhpData.data.length > 0 && (
+                                                        <tr className="bg-gray-50 dark:bg-gray-700 font-bold border-t-2 border-gray-300 dark:border-gray-600">
+                                                            <td colSpan={7} className="px-4 py-3 text-center text-gray-800 dark:text-gray-200">JUMLAH</td>
+                                                            <td className="px-4 py-3 text-right text-gray-800 dark:text-gray-200">{formatCurrency(bhpData.data.reduce((acc: number, curr: any) => acc + (Number(curr.jumlah) || 0), 0))}</td>
+                                                        </tr>
+                                                    )}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        <PrintSettingsModal
+                            show={showPrintBhpModal}
+                            onClose={() => setShowPrintBhpModal(false)}
+                            onPrint={(settings) => {
+                                handlePrintBhp({ ...settings, period: periodeBhp });
+                                setShowPrintBhpModal(false);
+                            }}
+                            title="Pengaturan Cetak Laporan BHP"
+                        />
+
+                        {activeTab === 'bhm' && (
+                            <div className="mt-6 flex flex-col gap-6 animate-fade-in-up">
+                                <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                                    <div className="flex flex-col md:flex-row items-center gap-4">
+                                        <div className="flex items-center gap-2">
+                                            <label htmlFor="jenisLaporanBhm" className="text-sm font-medium text-gray-700 dark:text-gray-300">Jenis:</label>
+                                            <select
+                                                id="jenisLaporanBhm"
+                                                value={jenisLaporanBhm}
+                                                onChange={(e) => {
+                                                    const newJenis = e.target.value;
+                                                    setJenisLaporanBhm(newJenis);
+                                                    if (newJenis === 'bulanan') {
+                                                        setPeriodeBhm(bulan);
+                                                    } else if (newJenis === 'tahap') {
+                                                        setPeriodeBhm('Tahap 1');
+                                                    } else {
+                                                        setPeriodeBhm('');
+                                                    }
+                                                }}
+                                                className="block w-40 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                            >
+                                                <option value="bulanan">Bulanan</option>
+                                                <option value="tahap">Tahap</option>
+                                                <option value="tahunan">Tahunan</option>
+                                            </select>
+                                        </div>
+
+                                        {jenisLaporanBhm === 'bulanan' && (
+                                            <div className="flex items-center gap-2">
+                                                <label htmlFor="periodeBhm" className="text-sm font-medium text-gray-700 dark:text-gray-300">Bulan:</label>
+                                                <select
+                                                    id="periodeBhm"
+                                                    value={periodeBhm}
+                                                    onChange={(e) => setPeriodeBhm(e.target.value)}
+                                                    className="block w-40 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                                >
+                                                    {monthList.map((m) => (
+                                                        <option key={m} value={m} className="capitalize">{m.charAt(0).toUpperCase() + m.slice(1)}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        )}
+
+                                        {jenisLaporanBhm === 'tahap' && (
+                                            <div className="flex items-center gap-2">
+                                                <label htmlFor="periodeBhmTahap" className="text-sm font-medium text-gray-700 dark:text-gray-300">Tahap:</label>
+                                                <select
+                                                    id="periodeBhmTahap"
+                                                    value={periodeBhm}
+                                                    onChange={(e) => setPeriodeBhm(e.target.value)}
+                                                    className="block w-40 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                                >
+                                                    <option value="Tahap 1">Tahap 1</option>
+                                                    <option value="Tahap 2">Tahap 2</option>
+                                                </select>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <PrimaryButton 
+                                            onClick={() => setShowPrintBhmModal(true)}
+                                            className="bg-indigo-600 hover:bg-indigo-700"
+                                        >
+                                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                            </svg>
+                                            Cetak PDF
+                                        </PrimaryButton>
+                                    </div>
+                                </div>
+
+                                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                                    <div className="p-6 border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
+                                        <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-3">
+                                            <span className="p-2 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 rounded-lg">
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                                            </span>
+                                            Data Barang Modal / Aset (BHM)
+                                        </h3>
+                                    </div>
+
+                                    {isLoading ? (
+                                        <div className="flex justify-center p-12">
+                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                                        </div>
+                                    ) : (
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                                                <thead className="text-xs text-gray-700 uppercase bg-gray-100 dark:bg-gray-700 dark:text-gray-300">
+                                                    <tr>
+                                                        <th className="px-4 py-3 border border-gray-200 dark:border-gray-600">Tanggal</th>
+                                                        <th className="px-4 py-3 border border-gray-200 dark:border-gray-600">Kode Kegiatan</th>
+                                                        <th className="px-4 py-3 border border-gray-200 dark:border-gray-600">Kode Rekening</th>
+                                                        <th className="px-4 py-3 border border-gray-200 dark:border-gray-600">No. Bukti</th>
+                                                        <th className="px-4 py-3 border border-gray-200 dark:border-gray-600">Uraian</th>
+                                                        <th className="px-4 py-3 border border-gray-200 dark:border-gray-600 text-right">Jml Barang</th>
+                                                        <th className="px-4 py-3 border border-gray-200 dark:border-gray-600 text-right">Harga Satuan</th>
+                                                        <th className="px-4 py-3 border border-gray-200 dark:border-gray-600 text-right">Realisasi</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {bhmData?.data && bhmData.data.length > 0 ? (
+                                                        bhmData.data.map((item: any, idx: number) => (
+                                                            <tr key={idx} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                                                                <td className="px-4 py-3 border border-gray-200 dark:border-gray-600 whitespace-nowrap">{item.tanggal}</td>
+                                                                <td className="px-4 py-3 border border-gray-200 dark:border-gray-600">{item.kode_kegiatan}</td>
+                                                                <td className="px-4 py-3 border border-gray-200 dark:border-gray-600">{item.kode_rekening}</td>
+                                                                <td className="px-4 py-3 border border-gray-200 dark:border-gray-600">{item.no_bukti}</td>
+                                                                <td className="px-4 py-3 border border-gray-200 dark:border-gray-600">{item.uraian}</td>
+                                                                <td className="px-4 py-3 border border-gray-200 dark:border-gray-600 text-right">{item.volume}</td>
+                                                                <td className="px-4 py-3 border border-gray-200 dark:border-gray-600 text-right">{formatCurrency(item.harga_satuan)}</td>
+                                                                <td className="px-4 py-3 border border-gray-200 dark:border-gray-600 text-right">{formatCurrency(item.jumlah)}</td>
+                                                            </tr>
+                                                        ))
+                                                    ) : (
+                                                        <tr>
+                                                            <td colSpan={8} className="px-4 py-8 text-center text-gray-500">Data tidak tersedia untuk periode ini</td>
+                                                        </tr>
+                                                    )}
+                                                    {bhmData?.data && bhmData.data.length > 0 && (
+                                                        <tr className="bg-gray-50 dark:bg-gray-700 font-bold border-t-2 border-gray-300 dark:border-gray-600">
+                                                            <td colSpan={7} className="px-4 py-3 text-center text-gray-800 dark:text-gray-200">JUMLAH</td>
+                                                            <td className="px-4 py-3 text-right text-gray-800 dark:text-gray-200">{formatCurrency(bhmData.data.reduce((acc: number, curr: any) => acc + (Number(curr.jumlah) || 0), 0))}</td>
+                                                        </tr>
+                                                    )}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        <PrintSettingsModal
+                            show={showPrintBhmModal}
+                            onClose={() => setShowPrintBhmModal(false)}
+                            onPrint={(settings) => {
+                                handlePrintBhm({ ...settings, period: periodeBhm });
+                                setShowPrintBhmModal(false);
+                            }}
+                            title="Pengaturan Cetak Laporan BHM"
+                        />
+
+                        {activeTab !== 'bkp_bank' && activeTab !== 'bkp_pembantu' && activeTab !== 'bkp_umum' && activeTab !== 'bkp_pajak' && activeTab !== 'rob' && activeTab !== 'reg' && activeTab !== 'ba' && activeTab !== 'realisasi' && activeTab !== 'rek_realisasi' && activeTab !== 'bhp' && activeTab !== 'bhm' && (
                             <div className="text-center py-12 text-gray-500 dark:text-gray-400">
                                 <svg className="w-12 h-12 mx-auto mb-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />

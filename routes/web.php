@@ -268,10 +268,13 @@ Route::middleware('auth')->group(function () {
     
     Route::get('/kwitansi/{id}/preview', [KwitansiController::class, 'previewPdf'])->name('kwitansi.preview');
     Route::get('/kwitansi/{id}/preview2', [KwitansiController::class, 'previewPdf2'])->name('kwitansi.preview2');
+    Route::get('/kwitansi/{id}/preview3', [KwitansiController::class, 'previewPdf3'])->name('kwitansi.preview3');
     Route::get('/kwitansi/{id}/pdf', [KwitansiController::class, 'generatePdf'])->name('kwitansi.pdf');
     Route::get('/kwitansi/{id}/pdf2', [KwitansiController::class, 'generatePdf2'])->name('kwitansi.pdf2');
+    Route::get('/kwitansi/{id}/pdf3', [KwitansiController::class, 'generatePdf3'])->name('kwitansi.pdf3');
     Route::get('/kwitansi/download-all', [KwitansiController::class, 'downloadAll'])->name('kwitansi.download-all');
     Route::get('/kwitansi/download-all2', [KwitansiController::class, 'downloadAll2'])->name('kwitansi.download-all2');
+    Route::get('/kwitansi/download-all3', [KwitansiController::class, 'downloadAll3'])->name('kwitansi.download-all3');
     
     // Resource route MUST come after specific routes to avoid 'download-all' being treated as an ID
     Route::resource('kwitansi', KwitansiController::class);
@@ -317,6 +320,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/api/ba/data', [BeritaAcaraPenutupanController::class, 'getBeritaAcaraData'])->name('api.ba.data');
     Route::get('/api/realisasi/data', [RekapitulasiRealisasiController::class, 'getRealisasiData'])->name('api.realisasi.data');
     Route::get('/api/realisasi/rekening', [RekapitulasiRealisasiController::class, 'getRekapRealisasiPerRekeningData'])->name('api.realisasi.rekening');
+    Route::get('/api/bhp/data', [\App\Http\Controllers\BhpController::class, 'getData'])->name('api.bhp.data');
+    Route::get('/api/bhm/data', [\App\Http\Controllers\BhmController::class, 'getData'])->name('api.bhm.data');
 
     // Printing Routes
     Route::get('/bkp-bank/cetak', [BukuBankController::class, 'generateBkpBankPdf'])->name('bkp-bank.cetak');
@@ -332,6 +337,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/ba/cetak', [BeritaAcaraPenutupanController::class, 'generateBeritaAcaraPdf'])->name('ba.cetak');
     Route::get('/realisasi/cetak', [RekapitulasiRealisasiController::class, 'generatePdf'])->name('realisasi.cetak');
     Route::get('/rek-realisasi/cetak', [RekapitulasiRealisasiController::class, 'generateRekapRealisasiPerRekeningPdf'])->name('rek-realisasi.cetak');
+    Route::get('/bhp/cetak', [\App\Http\Controllers\BhpController::class, 'generatePdf'])->name('bhp.cetak');
+    Route::get('/bhm/cetak', [\App\Http\Controllers\BhmController::class, 'generatePdf'])->name('bhm.cetak');
 
 });
 
