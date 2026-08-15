@@ -705,9 +705,10 @@ export default function Bku({
     const isNoteDuplicate = (noteNumber: string) => {
         if (!noteNumber) return false;
         // Cek di bkuData
-        return (bkuData || []).some((item: any) => 
-            item.id_transaksi === noteNumber || item.nomor_nota === noteNumber
-        );
+        return (bkuData || []).some((item: any) => {
+            if (isEditMode && item.id === editingBkuId) return false;
+            return item.id_transaksi === noteNumber || item.nomor_nota === noteNumber;
+        });
     };
 
     const generateNextBpu = () => {
@@ -1862,7 +1863,7 @@ export default function Bku({
                                     step="0.01"
                                     value={data.persen_pajak}
                                     onChange={(e) => setData('persen_pajak', e.target.value)}
-                                    className="w-full text-gray-900 !text-[10pt]"
+                                    className="w-full text-gray-900 !text-[10pt] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                     placeholder="Isi persen pajak"
                                 />
                             </div>
@@ -1977,7 +1978,7 @@ export default function Bku({
                                     step="0.01"
                                     value={data.persen_pajak_daerah}
                                     onChange={(e) => setData('persen_pajak_daerah', e.target.value)}
-                                    className="w-full text-gray-900 !text-[10pt]"
+                                    className="w-full text-gray-900 !text-[10pt] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 />
                             </div>
                             <div className="space-y-1">
