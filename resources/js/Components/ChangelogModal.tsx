@@ -63,6 +63,7 @@ export default function ChangelogModal() {
                             <li><span className="font-medium">Perbaikan BKP Pajak:</span> Perbaikan Buku Kas Pajak yang tidak menampilkan saldo awal pada saat melakukan setor pajak </li>
                             <li><span className="font-medium">Perbaikan Tambah Pembelanjaan RKAS dan Perubahan:</span> Perbaikan bug pada form kegiatan dan rekening belanja saat tambah belanja pada rkas dan rkas perubahan yang melakukan sisip uraian sebelunya </li>
                             <li><span className="font-medium">Perbaikan Form bulan pada Rkas dan Rkas Perubahan:</span> Perbaikanbug pada form bulan pada rkas dan rkas perubahan saat bulan sudah terpilih maka tidak akan tampil lagi pada pilihan bulan. </li>
+                            <li><span className="font-medium">Perbaikan Pajak PPN:</span> Perbaikan pada perhitungan pajak PPN yang tidak memperhitungkan nilai awal barang dan jasa. </li>
                         </ul>
                     </div>
                 </div>

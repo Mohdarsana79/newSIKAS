@@ -486,7 +486,15 @@ export default function Bku({
 
         // Main Tax
         if (data.has_tax && data.persen_pajak) {
-            const amount = Math.round(totalTransaction * (Number(data.persen_pajak) / 100));
+            let amount = 0;
+            const persen = Number(data.persen_pajak);
+            
+            if (data.pajak === 'PPN') {
+                amount = Math.floor(totalTransaction * (persen / (100 + persen)));
+            } else {
+                amount = Math.floor(totalTransaction * (persen / 100));
+            }
+
             if (data.total_pajak !== amount) {
                 setData('total_pajak', amount);
             }
@@ -496,14 +504,14 @@ export default function Bku({
 
         // Local Tax
         if (data.has_local_tax && data.persen_pajak_daerah) {
-            const amount = Math.round(totalTransaction * (Number(data.persen_pajak_daerah) / 100));
+            const amount = Math.floor(totalTransaction * (Number(data.persen_pajak_daerah) / 100));
             if (data.total_pajak_daerah !== amount) {
                 setData('total_pajak_daerah', amount);
             }
         } else if (!data.has_local_tax && data.total_pajak_daerah !== 0) {
             setData('total_pajak_daerah', 0);
         }
-    }, [data.has_tax, data.persen_pajak, data.has_local_tax, data.persen_pajak_daerah, data.items]);
+    }, [data.has_tax, data.pajak, data.persen_pajak, data.has_local_tax, data.persen_pajak_daerah, data.items]);
 
     // Delete Confirmation State
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -770,30 +778,7 @@ export default function Bku({
         setCurrentStep(prev => Math.max(prev - 1, 1));
     };
 
-    // Dummy logic for items (Placeholder for now)
-    const [activityItems, setActivityItems] = useState([
-        { id: 1, name: 'Pembayaran Rekening Listrik-', maxQty: 2, price: 105000, qty: 1, selected: false }
-    ]);
-    const totalTransaction = 105000;
 
-    // Calculate taxes when percentage changes
-    useEffect(() => {
-        if (data.has_tax) {
-            const amount = Math.round(totalTransaction * (Number(data.persen_pajak) / 100));
-            setData('total_pajak', amount);
-        } else {
-            setData('total_pajak', 0);
-        }
-    }, [data.has_tax, data.persen_pajak]);
-
-    useEffect(() => {
-        if (data.has_local_tax) {
-            const amount = Math.round(totalTransaction * (Number(data.persen_pajak_daerah) / 100));
-            setData('total_pajak_daerah', amount);
-        } else {
-            setData('total_pajak_daerah', 0);
-        }
-    }, [data.has_local_tax, data.persen_pajak_daerah]);
 
     // Handle Currency Format for Tarik/Setor
     const handleCurrencyChange = (e: React.ChangeEvent<HTMLInputElement>, formHandler: any, field: string) => {
