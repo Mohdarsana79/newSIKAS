@@ -57,6 +57,8 @@ Route::get('/', function () {
     ]);
 });
 
+Route::view('/license-invalid', 'errors.license')->name('license.invalid');
+
 Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
 Route::get('/dashboard/data', [DashboardController::class, 'getDashboardNewData'])->middleware(['auth', 'verified'])->name('dashboard.data');
 
@@ -181,6 +183,7 @@ Route::middleware('auth')->group(function () {
         Route::delete('/delete', [DatabaseController::class, 'delete'])->name('delete');
         Route::post('/validate-password', [DatabaseController::class, 'validatePassword'])->name('validate-password');
         Route::post('/reset', [DatabaseController::class, 'reset'])->name('reset');
+        Route::post('/update-npsn', [DatabaseController::class, 'updateNpsn'])->name('update-npsn');
     });
 
     // Integrasi

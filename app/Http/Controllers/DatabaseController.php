@@ -62,7 +62,8 @@ class DatabaseController extends Controller
                 'totalBackupSize' => $this->formatBytes($totalBackupSize),
                 'storagePercentage' => $storagePercentage,
                 'lastBackupDate' => count($backupFiles) > 0 ? $backupFiles[0]['created_at'] : '-'
-            ]
+            ],
+            'currentNpsn' => env('APP_NPSN_CODE', '')
         ]);
     }
 
@@ -471,5 +472,36 @@ class DatabaseController extends Controller
         }
 
         return round($size, $precision) . ' ' . $units[$i];
+    }
+
+    /**
+     * Update NPSN CODE di .env
+     */
+    public function updateNpsn(Request $request)
+    {
+        $request->validate([
+            'npsn_code' => 'required|string|max:255'
+        ]);
+
+        $path = base_path('.env');
+
+        if (file_exists($path)) {
+            $envContent = file_get_contents($path);
+            
+            if (strpos($envContent, 'APP_NPSN_CODE=') !== false) {
+                $envContent = preg_replace(
+                    '/^APP_NPSN_CODE=.*$/m',
+                    'APP_NPSN_CODE=' . $request->npsn_code,
+                    $envContent
+                );
+            } else {
+                // Ensure newline before appending
+                $envContent = rtrim($envContent) . "\nAPP_NPSN_CODE=" . $request->npsn_code . "\n";
+            }
+
+            file_put_contents($path, $envContent);
+        }
+
+        return back()->with('success', 'NPSN berhasil diperbarui');
     }
 }

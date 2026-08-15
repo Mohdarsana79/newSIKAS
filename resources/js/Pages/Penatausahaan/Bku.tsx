@@ -678,10 +678,14 @@ export default function Bku({
     };
 
     const selectToko = (toko: any) => {
-        setData('nama_toko', toko.nama_toko || '');
-        setData('alamat_toko', toko.alamat_toko || '');
-        setData('nomor_telepon', toko.nomor_telepon || '');
-        setData('npwp', toko.npwp || '');
+        setData(prevData => ({
+            ...prevData,
+            nama_toko: toko.nama_toko || '',
+            alamat_toko: toko.alamat_toko || '',
+            nomor_telepon: toko.nomor_telepon || '',
+            npwp: toko.npwp || '',
+            no_npwp: !toko.npwp || toko.npwp === '-' || String(toko.npwp).trim() === ''
+        }));
         setShowTokoDropdown(false);
     };
 

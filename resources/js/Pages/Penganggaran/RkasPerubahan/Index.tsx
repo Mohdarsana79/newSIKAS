@@ -360,6 +360,7 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                 onSuccess: () => {
                     setIsModalOpen(false);
                     reset();
+                    setIsSisipMode(false);
                 },
                 onError: (errors) => {
                     if (errors.message) {
@@ -432,7 +433,13 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                         </div>
                         <div className="flex flex-wrap gap-3">
                             <PrimaryButton
-                                onClick={() => setIsModalOpen(true)}
+                                onClick={() => {
+                                    reset();
+                                    setIsEditMode(false);
+                                    setIsSisipMode(false);
+                                    setEditId(null);
+                                    setIsModalOpen(true);
+                                }}
                                 className="bg-green-600 hover:bg-green-700 focus:ring-green-500 flex items-center gap-2"
                             >
                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -869,9 +876,11 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                                                 disabled={hasSpent}
                                             >
                                                 <option value="">Pilih Bulan</option>
-                                                {monthOptions.map(m => (
-                                                    <option key={m} value={m}>{m}</option>
-                                                ))}
+                                                {monthOptions.map(m => {
+                                                    const isSelectedElsewhere = data.alokasi.some((a, i) => i !== index && a.month === m);
+                                                    if (isSelectedElsewhere) return null;
+                                                    return <option key={m} value={m}>{m}</option>;
+                                                })}
                                             </select>
                                             <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md flex items-center justify-end px-3 text-sm text-gray-600 dark:text-gray-400">
                                                 Rp {new Intl.NumberFormat('id-ID').format(

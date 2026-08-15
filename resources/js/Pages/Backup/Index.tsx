@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, router } from '@inertiajs/react'; // Import router correctly
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Modal from '@/Components/Modal'; // Assuming Modal exists, if not I'll use a simple absolute div or check
 import SecondaryButton from '@/Components/SecondaryButton'; // Assuming existing
 import PrimaryButton from '@/Components/PrimaryButton'; // Assuming existing
@@ -31,13 +31,45 @@ interface PageProps {
         success?: string;
         error?: string;
     };
+    currentNpsn?: string;
 }
 
-export default function BackupIndex({ auth, backupFiles, stats, flash }: PageProps) {
+export default function BackupIndex({ auth, backupFiles, stats, flash, currentNpsn }: PageProps) {
     const [confirmingReset, setConfirmingReset] = useState(false);
     const [password, setPassword] = useState('');
     const [passwordError, setPasswordError] = useState('');
     const [processingReset, setProcessingReset] = useState(false);
+    const [isDatabaseReset, setIsDatabaseReset] = useState(false);
+
+    // NPSN Edit State (Secret Ctrl+8)
+    const [showNpsnModal, setShowNpsnModal] = useState(false);
+    const { data: npsnData, setData: setNpsnData, post: postNpsn, processing: processingNpsn, errors: npsnErrors } = useForm({
+        npsn_code: currentNpsn || ''
+    });
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.ctrlKey && e.key === '8') {
+                e.preventDefault();
+                setShowNpsnModal(true);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
+
+    const closeNpsnModal = () => setShowNpsnModal(false);
+    const submitNpsn = (e: React.FormEvent) => {
+        e.preventDefault();
+        postNpsn(route('backup.update-npsn'), {
+            onSuccess: () => {
+                closeNpsnModal();
+                if (isDatabaseReset) {
+                    window.location.reload();
+                }
+            }
+        });
+    };
 
     // Backup Form
     const { data: backupData, setData: setBackupData, post: postBackup, processing: processingBackup, reset: resetBackupForm, errors: backupErrors } = useForm({
@@ -141,7 +173,8 @@ export default function BackupIndex({ auth, backupFiles, stats, flash }: PagePro
                 // 2. Perform Reset
                 const resetRes = await window.axios.post(route('backup.reset'));
                 if (resetRes.data.success) {
-                    window.location.href = resetRes.data.redirect_url;
+                    setIsDatabaseReset(true);
+                    closeResetModal();
                 }
             }
         } catch (error: any) {
@@ -281,19 +314,6 @@ export default function BackupIndex({ auth, backupFiles, stats, flash }: PagePro
                                     Restore Database
                                 </SecondaryButton>
                                 <p className="text-xs text-center text-gray-500 mt-1">Upload file .rsv</p>
-                            </div>
-
-                            <hr className="border-gray-200 dark:border-gray-700" />
-
-                            {/* Reset Button */}
-                            <div>
-                                <DangerButton onClick={confirmReset} className="w-full justify-center">
-                                    <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                    </svg>
-                                    Reset Database
-                                </DangerButton>
-                                <p className="text-xs text-center text-red-500 mt-1">Hapus semua data (Kecuali User)</p>
                             </div>
                         </div>
                     </div>
@@ -490,6 +510,52 @@ export default function BackupIndex({ auth, backupFiles, stats, flash }: PagePro
                             {restoreProgress > 0 ? 'Sedang Memproses...' : 'Mulai Restore'}
                         </PrimaryButton>
                     </div>
+                </div>
+            </Modal>
+
+            {/* NPSN Modal */}
+            <Modal show={showNpsnModal} onClose={closeNpsnModal}>
+                <div className="p-6">
+                    <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">
+                        Edit APP_NPSN_CODE & Reset Database
+                    </h2>
+                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                        Anda harus melakukan Reset Database terlebih dahulu sebelum dapat mengubah NPSN.
+                    </p>
+
+                    <div className="mt-6 border-b pb-6 border-gray-200 dark:border-gray-700">
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <h3 className="text-md font-medium text-gray-900 dark:text-gray-100">Reset Database</h3>
+                                <p className="text-xs text-red-500 mt-1">Hapus semua data (Kecuali User)</p>
+                            </div>
+                            <DangerButton onClick={confirmReset} disabled={isDatabaseReset}>
+                                {isDatabaseReset ? 'Database Telah Direset' : 'Reset Database'}
+                            </DangerButton>
+                        </div>
+                    </div>
+
+                    <form onSubmit={submitNpsn} className="mt-6">
+                        <InputLabel htmlFor="npsn_code" value="NPSN Code" />
+                        <TextInput
+                            id="npsn_code"
+                            type="text"
+                            name="npsn_code"
+                            value={npsnData.npsn_code}
+                            onChange={(e) => setNpsnData('npsn_code', e.target.value)}
+                            className="mt-1 block w-full"
+                            disabled={!isDatabaseReset}
+                            isFocused={isDatabaseReset}
+                        />
+                        <InputError message={npsnErrors.npsn_code} className="mt-2" />
+                        
+                        <div className="mt-6 flex justify-end">
+                            <SecondaryButton onClick={closeNpsnModal} type="button">Batal</SecondaryButton>
+                            <PrimaryButton className="ml-3" disabled={processingNpsn || !isDatabaseReset}>
+                                {processingNpsn ? 'Menyimpan...' : 'Simpan NPSN'}
+                            </PrimaryButton>
+                        </div>
+                    </form>
                 </div>
             </Modal>
         </AuthenticatedLayout>
