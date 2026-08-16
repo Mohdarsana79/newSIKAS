@@ -272,12 +272,15 @@ Route::middleware('auth')->group(function () {
     Route::get('/kwitansi/{id}/preview', [KwitansiController::class, 'previewPdf'])->name('kwitansi.preview');
     Route::get('/kwitansi/{id}/preview2', [KwitansiController::class, 'previewPdf2'])->name('kwitansi.preview2');
     Route::get('/kwitansi/{id}/preview3', [KwitansiController::class, 'previewPdf3'])->name('kwitansi.preview3');
+    Route::get('/kwitansi/{id}/preview4', [KwitansiController::class, 'previewPdf4'])->name('kwitansi.preview4');
     Route::get('/kwitansi/{id}/pdf', [KwitansiController::class, 'generatePdf'])->name('kwitansi.pdf');
     Route::get('/kwitansi/{id}/pdf2', [KwitansiController::class, 'generatePdf2'])->name('kwitansi.pdf2');
     Route::get('/kwitansi/{id}/pdf3', [KwitansiController::class, 'generatePdf3'])->name('kwitansi.pdf3');
+    Route::get('/kwitansi/{id}/pdf4', [KwitansiController::class, 'generatePdf4'])->name('kwitansi.pdf4');
     Route::get('/kwitansi/download-all', [KwitansiController::class, 'downloadAll'])->name('kwitansi.download-all');
     Route::get('/kwitansi/download-all2', [KwitansiController::class, 'downloadAll2'])->name('kwitansi.download-all2');
     Route::get('/kwitansi/download-all3', [KwitansiController::class, 'downloadAll3'])->name('kwitansi.download-all3');
+    Route::get('/kwitansi/download-all4', [KwitansiController::class, 'downloadAll4'])->name('kwitansi.download-all4');
     
     // Resource route MUST come after specific routes to avoid 'download-all' being treated as an ID
     Route::resource('kwitansi', KwitansiController::class);

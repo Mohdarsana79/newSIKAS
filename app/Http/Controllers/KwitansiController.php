@@ -113,9 +113,11 @@ class KwitansiController extends Controller
                     'preview_url' => route('kwitansi.preview', $kwitansi->id),
                     'preview_url_2' => route('kwitansi.preview2', $kwitansi->id),
                     'preview_url_3' => route('kwitansi.preview3', $kwitansi->id),
+                    'preview_url_4' => route('kwitansi.preview4', $kwitansi->id),
                     'pdf_url' => route('kwitansi.pdf', $kwitansi->id),
                     'pdf_url_2' => route('kwitansi.pdf2', $kwitansi->id),
                     'pdf_url_3' => route('kwitansi.pdf3', $kwitansi->id),
+                    'pdf_url_4' => route('kwitansi.pdf4', $kwitansi->id),
                     'delete_data' => [
                         'id' => $kwitansi->id,
                         'uraian' => $kwitansi->bukuKasUmum->uraian_opsional ?? $kwitansi->bukuKasUmum->uraian
@@ -1365,6 +1367,222 @@ class KwitansiController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Error generating preview PDF 3: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal generate preview PDF: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function generatePdf4($id)
+    {
+        try {
+            $kwitansi = Kwitansi::with([
+                'sekolah',
+                'penganggaran',
+                'kodeKegiatan',
+                'rekeningBelanja',
+                'penerimaanDana',
+                'bukuKasUmum' => function ($query) {
+                    $query->with(['uraianDetails']);
+                },
+                'bkuUraianDetail',
+            ])->findOrFail($id);
+
+            $parsedKode = $this->parseKodeKegiatan($kwitansi->kodeKegiatan);
+
+            $totalAmount = $this->calculateTotalFromUraianDetails($kwitansi->bukuKasUmum);
+            $jumlahUang = $this->convertToText($totalAmount);
+
+            $pajakData = $this->klasifikasiPajak($kwitansi->bukuKasUmum, $totalAmount);
+
+            // Calculate Tahap Roman
+            $bulan = \Carbon\Carbon::parse($kwitansi->bukuKasUmum->tanggal_transaksi)->month;
+            $tahapRoman = $bulan <= 6 ? 'THP-I' : 'THP-II';
+
+            // Get Request Parameters
+            $paperSize = request()->input('paper_size', 'Folio');
+            $fontSize = request()->input('font_size', '11pt');
+            $orientation = request()->input('orientation', 'portrait');
+
+            $data = [
+                'kwitansi' => $kwitansi,
+                'parsedKode' => $parsedKode,
+                'jumlahUangText' => $jumlahUang,
+                'totalAmount' => $totalAmount, 
+                'tanggalLunas' => $this->formatTanggalLunas($kwitansi->bukuKasUmum->tanggal_transaksi),
+                'pajakData' => $pajakData,
+                'sekolah' => $kwitansi->sekolah,
+                'tahapRoman' => $tahapRoman,
+                'fontSize' => $fontSize,
+            ];
+
+            $pdf = PDF::loadView('pelengkap.kwitansi_empat_pdf', $data);
+            $pdf->setPaper($paperSize, $orientation);
+
+            $filename = "Kwitansi_Format_4_{$kwitansi->bukuKasUmum->uraian_opsional}.pdf";
+
+            return $pdf->stream($filename);
+        } catch (\Exception $e) {
+            Log::error('Error generating kwitansi PDF 4: ' . $e->getMessage());
+            return redirect()->route('kwitansi.index')->with('error', 'Gagal generate PDF: ' . $e->getMessage());
+        }
+    }
+
+    public function downloadAll4(Request $request)
+    {
+        try {
+            ini_set('memory_limit', '512M');
+            ini_set('max_execution_time', '300');
+            
+            $query = Kwitansi::with([
+                'sekolah',
+                'penganggaran',
+                'kodeKegiatan',
+                'rekeningBelanja',
+                'penerimaanDana',
+                'bukuKasUmum' => function ($q) {
+                    $q->with(['uraianDetails']);
+                },
+                'bkuUraianDetail',
+            ]);
+
+            $search = $request->input('search');
+            $tahun = $request->input('tahun');
+            $startDate = $request->input('start_date');
+            $endDate = $request->input('end_date');
+
+            if ($search) {
+                $query->whereHas('bukuKasUmum', function ($q) use ($search) {
+                    $q->where('uraian', 'like', '%' . $search . '%')
+                      ->orWhere('uraian_opsional', 'like', '%' . $search . '%');
+                })->orWhereHas('rekeningBelanja', function ($q) use ($search) {
+                    $q->where('kode_rekening', 'like', '%' . $search . '%')
+                      ->orWhere('rincian_objek', 'like', '%' . $search . '%');
+                });
+            }
+
+            if ($tahun) {
+                $query->whereHas('penganggaran', function ($q) use ($tahun) {
+                    $q->where('tahun_anggaran', $tahun);
+                });
+            }
+
+            if ($startDate) {
+                $query->whereHas('bukuKasUmum', function ($q) use ($startDate) {
+                    $q->where('tanggal_transaksi', '>=', $startDate);
+                });
+            }
+
+            if ($endDate) {
+                $query->whereHas('bukuKasUmum', function ($q) use ($endDate) {
+                    $q->where('tanggal_transaksi', '<=', $endDate);
+                });
+            }
+
+            $kwitansis = $query->get();
+
+            if ($kwitansis->isEmpty()) {
+                return redirect()->route('kwitansi.index')->with('error', 'Tidak ada data kwitansi untuk diunduh dengan filter tersebut.');
+            }
+
+            $processedData = [];
+            foreach ($kwitansis as $kwitansi) {
+                $parsedKode = $this->parseKodeKegiatan($kwitansi->kodeKegiatan);
+                $totalAmount = $this->calculateTotalFromUraianDetails($kwitansi->bukuKasUmum);
+                $jumlahUang = $this->convertToText($totalAmount);
+                $pajakData = $this->klasifikasiPajak($kwitansi->bukuKasUmum, $totalAmount);
+                
+                // Calculate Tahap Roman
+                $bulan = \Carbon\Carbon::parse($kwitansi->bukuKasUmum->tanggal_transaksi)->month;
+                $tahapRoman = $bulan <= 6 ? 'THP-I' : 'THP-II';
+
+                $processedData[] = [
+                    'kwitansi' => $kwitansi,
+                    'parsedKode' => $parsedKode,
+                    'jumlahUangText' => $jumlahUang,
+                    'totalAmount' => $totalAmount,
+                    'tanggalLunas' => $this->formatTanggalLunas($kwitansi->bukuKasUmum->tanggal_transaksi),
+                    'pajakData' => $pajakData,
+                    'sekolah' => $kwitansi->sekolah,
+                    'tahapRoman' => $tahapRoman,
+                ];
+            }
+
+            $paperSize = $request->input('paper_size', 'Folio');
+            $fontSize = $request->input('font_size', '11pt');
+            $orientation = $request->input('orientation', 'portrait');
+
+            $data = [
+                'kwitansis' => $processedData,
+                'fontSize' => $fontSize,
+            ];
+
+            $pdf = PDF::loadView('pelengkap.kwitansi_empat_pdf_all', $data);
+            $pdf->setPaper($paperSize, $orientation);
+
+            $filename = "Kwitansi_Format_4_All_" . date('Ymd_His') . ".pdf";
+
+            return $pdf->stream($filename);
+        } catch (\Exception $e) {
+            Log::error('Error downloading all kwitansi 4: ' . $e->getMessage());
+            return redirect()->route('kwitansi.index')
+                ->with('error', 'Gagal mengunduh semua kwitansi: ' . $e->getMessage());
+        }
+    }
+
+    public function previewPdf4($id)
+    {
+        try {
+            $kwitansi = Kwitansi::with([
+                'sekolah',
+                'penganggaran',
+                'kodeKegiatan',
+                'rekeningBelanja',
+                'penerimaanDana',
+                'bukuKasUmum' => function ($query) {
+                    $query->with(['uraianDetails']);
+                },
+                'bkuUraianDetail',
+            ])->findOrFail($id);
+
+            $parsedKode = $this->parseKodeKegiatan($kwitansi->kodeKegiatan);
+            $totalAmount = $this->calculateTotalFromUraianDetails($kwitansi->bukuKasUmum);
+            $jumlahUang = $this->convertToText($totalAmount);
+            $pajakData = $this->klasifikasiPajak($kwitansi->bukuKasUmum, $totalAmount);
+
+            // Calculate Tahap Roman
+            $bulan = \Carbon\Carbon::parse($kwitansi->bukuKasUmum->tanggal_transaksi)->month;
+            $tahapRoman = $bulan <= 6 ? 'THP-I' : 'THP-II';
+
+            // Get Request Parameters
+            $paperSize = request()->input('paper_size', 'Folio');
+            $fontSize = request()->input('font_size', '11pt');
+            $orientation = request()->input('orientation', 'portrait');
+
+            $data = [
+                'kwitansi' => $kwitansi,
+                'parsedKode' => $parsedKode,
+                'jumlahUangText' => $jumlahUang,
+                'totalAmount' => $totalAmount,
+                'tanggalLunas' => $this->formatTanggalLunas($kwitansi->bukuKasUmum->tanggal_transaksi),
+                'pajakData' => $pajakData,
+                'sekolah' => $kwitansi->sekolah,
+                'tahapRoman' => $tahapRoman,
+                'fontSize' => $fontSize,
+            ];
+
+            $pdf = PDF::loadView('pelengkap.kwitansi_empat_pdf', $data);
+            $pdf->setPaper($paperSize, $orientation);
+            
+            $output = $pdf->output();
+
+            return response($output, 200)
+                ->header('Content-Type', 'application/pdf')
+                ->header('Content-Disposition', 'inline; filename="preview_4.pdf"');
+
+        } catch (\Exception $e) {
+            Log::error('Error generating preview PDF 4: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal generate preview PDF: ' . $e->getMessage(),

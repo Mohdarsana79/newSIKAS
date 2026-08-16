@@ -29,9 +29,11 @@ interface KwitansiData {
     preview_url: string;
     preview_url_2: string;
     preview_url_3: string;
+    preview_url_4: string;
     pdf_url: string;
     pdf_url_2: string;
     pdf_url_3: string;
+    pdf_url_4: string;
     delete_data: {
         id: number;
         uraian: string;
@@ -61,16 +63,18 @@ interface YearData {
 const formatOptions = [
     { value: 1, label: 'Format 1' },
     { value: 2, label: 'Format 2' },
-    { value: 3, label: 'Format 3' }
+    { value: 3, label: 'Format 3' },
+    { value: 4, label: 'Format 4' }
 ];
 
-const KwitansiRowActions = ({ item, onPrint, onPreview }: { item: KwitansiData, onPrint: (id: number, format: 1 | 2 | 3) => void, onPreview: (url: string) => void }) => {
-    const [format, setFormat] = useState<1 | 2 | 3>(3);
+const KwitansiRowActions = ({ item, onPrint, onPreview }: { item: KwitansiData, onPrint: (id: number, format: 1 | 2 | 3 | 4) => void, onPreview: (url: string) => void }) => {
+    const [format, setFormat] = useState<1 | 2 | 3 | 4>(3);
     
     const handlePreview = () => {
         let url = item.preview_url;
         if (format === 2) url = item.preview_url_2;
         if (format === 3) url = item.preview_url_3;
+        if (format === 4) url = item.preview_url_4;
         onPreview(url);
     };
 
@@ -80,7 +84,7 @@ const KwitansiRowActions = ({ item, onPrint, onPreview }: { item: KwitansiData, 
                 <Select
                     options={formatOptions}
                     value={formatOptions.find(opt => opt.value === format)}
-                    onChange={(selectedOption) => setFormat(selectedOption?.value as 1 | 2 | 3)}
+                    onChange={(selectedOption) => setFormat(selectedOption?.value as 1 | 2 | 3 | 4)}
                     menuPortalTarget={document.body}
                     styles={{
                         menuPortal: base => ({ ...base, zIndex: 9999 }),
@@ -168,7 +172,7 @@ export default function KwitansiIndex({ auth }: { auth: any }) {
     // Print Settings Modal State
     const [showPrintSettings, setShowPrintSettings] = useState(false);
     const [selectedKwitansiId, setSelectedKwitansiId] = useState<number | null>(null);
-    const [selectedKwitansiType, setSelectedKwitansiType] = useState<1 | 2 | 3>(1);
+    const [selectedKwitansiType, setSelectedKwitansiType] = useState<1 | 2 | 3 | 4>(1);
 
     // PDF Preview Modal State
     const [showPreviewModal, setShowPreviewModal] = useState(false);
@@ -412,7 +416,7 @@ export default function KwitansiIndex({ auth }: { auth: any }) {
         setConfirmingDownload(true);
     };
 
-    const processDownloadAll = (mode: 'current' | 'year', type: 1 | 2 | 3) => {
+    const processDownloadAll = (mode: 'current' | 'year', type: 1 | 2 | 3 | 4) => {
         const params = new URLSearchParams();
 
         if (mode === 'current') {
@@ -429,11 +433,12 @@ export default function KwitansiIndex({ auth }: { auth: any }) {
         let targetUrl = route('kwitansi.download-all');
         if (type === 2) targetUrl = route('kwitansi.download-all2');
         if (type === 3) targetUrl = route('kwitansi.download-all3');
+        if (type === 4) targetUrl = route('kwitansi.download-all4');
         window.open(`${targetUrl}?${params.toString()}`, '_blank');
         setConfirmingDownload(false);
     };
 
-    const handlePrintClick = (id: number, type: 1 | 2 | 3) => {
+    const handlePrintClick = (id: number, type: 1 | 2 | 3 | 4) => {
         setSelectedKwitansiId(id);
         setSelectedKwitansiType(type);
         setShowPrintSettings(true);
@@ -444,6 +449,7 @@ export default function KwitansiIndex({ auth }: { auth: any }) {
             let baseUrl = route('kwitansi.pdf', selectedKwitansiId);
             if (selectedKwitansiType === 2) baseUrl = route('kwitansi.pdf2', selectedKwitansiId);
             if (selectedKwitansiType === 3) baseUrl = route('kwitansi.pdf3', selectedKwitansiId);
+            if (selectedKwitansiType === 4) baseUrl = route('kwitansi.pdf4', selectedKwitansiId);
             
             const params = new URLSearchParams({
                 paper_size: settings.paperSize,
@@ -863,6 +869,16 @@ export default function KwitansiIndex({ auth }: { auth: any }) {
                                 <span className="font-semibold text-orange-600 dark:text-orange-400 mb-1 group-hover:underline text-sm">Download Format 3</span>
                                 <span className="text-xs text-center text-gray-500 dark:text-gray-400">
                                     Unduh PDF BOSP
+                                </span>
+                            </button>
+
+                            <button
+                                onClick={() => processDownloadAll('current', 4)}
+                                className="flex flex-col items-center justify-center p-4 border-2 border-red-100 dark:border-red-900 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors group"
+                            >
+                                <span className="font-semibold text-red-600 dark:text-red-400 mb-1 group-hover:underline text-sm">Download Format 4</span>
+                                <span className="text-xs text-center text-gray-500 dark:text-gray-400">
+                                    Unduh PDF tanpa rincian
                                 </span>
                             </button>
                         </div>
