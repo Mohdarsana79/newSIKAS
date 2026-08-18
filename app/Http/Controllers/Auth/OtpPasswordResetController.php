@@ -45,7 +45,9 @@ class OtpPasswordResetController extends Controller
             return response()->json(['message' => 'Kode OTP telah dikirim ke email Anda.']);
         } catch (\Exception $e) {
             report($e);
-            return response()->json(['message' => 'Gagal Mengirim Kode OTP. Pastikan Email Valid.'], 500);
+            return response()->json([
+                'message' => 'Gagal mengirim OTP. Pastikan koneksi internet stabil dan port SMTP tidak diblokir.'
+            ], 422);
         }
     }
 
