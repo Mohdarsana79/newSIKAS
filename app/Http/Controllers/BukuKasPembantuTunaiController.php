@@ -364,7 +364,7 @@ class BukuKasPembantuTunaiController extends Controller
             if ($bku->total_pajak > 0) {
                  $items[] = [
                      'tanggal' => $bku->tanggal_transaksi,
-                     'uraian' => 'Terima Pajak ' . $bku->pajak . ' ' . $bku->persen_pajak . '%' . ' ' . $bku->uraian_opsional,
+                     'uraian' => 'Terima Pajak ' . $bku->pajak . ' ' . ((float)$bku->persen_pajak) . '%' . ' ' . $bku->uraian_opsional,
                      'no_bukti' => $bku->kode_masa_pajak,
                      'kode_rekening' => '-',
                      'penerimaan' => $bku->total_pajak,
@@ -376,7 +376,7 @@ class BukuKasPembantuTunaiController extends Controller
             if ($bku->total_pajak_daerah > 0) {
                  $items[] = [
                      'tanggal' => $bku->tanggal_transaksi,
-                     'uraian' => 'Terima Pajak ' . $bku->pajak_daerah . ' ' . $bku->persen_pajak_daerah . '%' . ' ' . $bku->uraian_opsional,
+                     'uraian' => 'Terima Pajak ' . $bku->pajak_daerah . ' ' . ((float)$bku->persen_pajak_daerah) . '%' . ' ' . $bku->uraian_opsional,
                      'no_bukti' => '-',
                      'kode_rekening' => '-',
                      'penerimaan' => $bku->total_pajak_daerah,
@@ -397,8 +397,8 @@ class BukuKasPembantuTunaiController extends Controller
             if ($bku->total_pajak > 0) {
                 $items[] = [
                     'tanggal' => $bku->tanggal_lapor,
-                    'uraian' => 'Setor Pajak ' . $bku->pajak . ' ' . $bku->persen_pajak . '%' . ' ' . $bku->uraian_opsional,
-                    'no_bukti' => $bku->kode_masa_pajak, 
+                    'uraian' => 'Setor Pajak ' . $bku->pajak . ' ' . ((float)$bku->persen_pajak) . '%' . ' ' . $bku->uraian_opsional,
+                    'no_bukti' => $bku->ntpn, 
                     'kode_rekening' => '-',
                     'penerimaan' => 0,
                     'pengeluaran' => $bku->total_pajak,
@@ -409,7 +409,7 @@ class BukuKasPembantuTunaiController extends Controller
             if ($bku->total_pajak_daerah > 0) {
                 $items[] = [
                     'tanggal' => $bku->tanggal_lapor,
-                    'uraian' => 'Setor Pajak ' . $bku->pajak_daerah . ' ' . $bku->persen_pajak_daerah . '%' . ' ' . $bku->uraian_opsional,
+                    'uraian' => 'Setor Pajak ' . $bku->pajak_daerah . ' ' . ((float)$bku->persen_pajak_daerah) . '%' . ' ' . $bku->uraian_opsional,
                     'no_bukti' => '-',
                     'kode_rekening' => '-',
                     'penerimaan' => 0,

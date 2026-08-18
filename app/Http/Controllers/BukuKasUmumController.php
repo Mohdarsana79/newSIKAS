@@ -1818,7 +1818,8 @@ class BukuKasUmumController extends Controller
 
             // Baris Pajak Pusat (Terima Pajak Saja)
             if ($transaksi->total_pajak > 0) {
-                 $uraianPajak = 'Terima Pajak ' . ($transaksi->pajak ?? '') . ' ' . ($transaksi->persen_pajak ?? '') . '%';
+                 $pct = $transaksi->persen_pajak ? (float)$transaksi->persen_pajak : '';
+                 $uraianPajak = 'Terima Pajak ' . ($transaksi->pajak ?? '') . ' ' . $pct . '%';
                  
                  $rowsData[] = [
                      'tanggal' => $transaksi->tanggal_transaksi,
@@ -1834,7 +1835,8 @@ class BukuKasUmumController extends Controller
             
             // Baris Pajak Daerah (Terima Pajak Saja)
              if ($transaksi->total_pajak_daerah > 0) {
-                 $uraianPajak = 'Terima Pajak Daerah ' . ($transaksi->pajak_daerah ?? '') . ' ' . ($transaksi->persen_pajak_daerah ?? '') . '%';
+                 $pct = $transaksi->persen_pajak_daerah ? (float)$transaksi->persen_pajak_daerah : '';
+                 $uraianPajak = 'Terima Pajak Daerah ' . ($transaksi->pajak_daerah ?? '') . ' ' . $pct . '%';
                  
                  $rowsData[] = [
                      'tanggal' => $transaksi->tanggal_transaksi,
@@ -1860,12 +1862,13 @@ class BukuKasUmumController extends Controller
             
             // Baris Pajak Pusat (Setor Pajak Saja)
             if ($transaksi->total_pajak > 0) {
-                 $uraianPajak = 'Setor Pajak ' . ($transaksi->pajak ?? '') . ' ' . ($transaksi->persen_pajak ?? '') . '%';
+                 $pct = $transaksi->persen_pajak ? (float)$transaksi->persen_pajak : '';
+                 $uraianPajak = 'Setor Pajak ' . ($transaksi->pajak ?? '') . ' ' . $pct . '%';
                  
                  $rowsData[] = [
                      'tanggal' => $transaksi->tanggal_lapor,
                      'kode_rekening' => '-',
-                     'no_bukti' => $transaksi->kode_masa_pajak ?? '-',
+                     'no_bukti' => $transaksi->ntpn ?? '-',
                      'uraian' => $uraianPajak . ' ' . ($transaksi->uraian_opsional ?: $transaksi->uraian),
                      'penerimaan' => 0,
                      'pengeluaran' => $transaksi->total_pajak,
@@ -1876,7 +1879,8 @@ class BukuKasUmumController extends Controller
             
             // Baris Pajak Daerah (Setor Pajak Saja)
              if ($transaksi->total_pajak_daerah > 0) {
-                 $uraianPajak = 'Setor Pajak Daerah ' . ($transaksi->pajak_daerah ?? '') . ' ' . ($transaksi->persen_pajak_daerah ?? '') . '%';
+                 $pct = $transaksi->persen_pajak_daerah ? (float)$transaksi->persen_pajak_daerah : '';
+                 $uraianPajak = 'Setor Pajak Daerah ' . ($transaksi->pajak_daerah ?? '') . ' ' . $pct . '%';
                  
                  $rowsData[] = [
                      'tanggal' => $transaksi->tanggal_lapor,

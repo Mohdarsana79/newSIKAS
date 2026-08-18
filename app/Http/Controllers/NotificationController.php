@@ -156,7 +156,7 @@ class NotificationController extends Controller
                     else $namaPajakPusat = $trx->pajak ?? 'PPN';
 
                     $prefix = $type === 'terima_pajak' ? 'Terima pajak' : 'Setor pajak';
-                    $persen = $trx->persen_pajak ? $trx->persen_pajak . '%' : '';
+                    $persen = $trx->persen_pajak ? ((float)$trx->persen_pajak) . '%' : '';
                     $nominal = number_format($trx->total_pajak, 0, ',', '.');
                     
                     // Format sesuai contoh: Terima pajak pph 21 5% lunas bayar honorarium sebesar Rp.10.000
@@ -174,7 +174,7 @@ class NotificationController extends Controller
                 // Baris Pajak Daerah
                 if ($trx->total_pajak_daerah > 0) {
                     $prefix = $type === 'terima_pajak' ? 'Terima pajak' : 'Setor pajak';
-                    $persen = $trx->persen_pajak_daerah ? $trx->persen_pajak_daerah . '%' : '';
+                    $persen = $trx->persen_pajak_daerah ? ((float)$trx->persen_pajak_daerah) . '%' : '';
                     $nominal = number_format($trx->total_pajak_daerah, 0, ',', '.');
                     
                     $uraianFull = "{$prefix} PB 1 {$persen} {$baseUraian} sebesar Rp. {$nominal}";

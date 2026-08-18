@@ -1966,6 +1966,7 @@ export default function Bku({
                                     onChange={(e) => setData('pajak_daerah', e.target.value)}
                                     className="w-full text-gray-900 border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 !text-[10pt]"
                                 >
+                                    <option value="SPPD">SPPD</option>
                                     <option value="PB1">PB1</option>
                                 </select>
                             </div>

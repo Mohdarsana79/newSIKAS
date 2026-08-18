@@ -1,0 +1,44 @@
+===========================================================
+PANDUAN MENGENKRIPSI FILE .ENV (FITUR LARAVEL ENV:ENCRYPT)
+===========================================================
+
+Fitur enkripsi bawaan Laravel memungkinkan Anda untuk menyandikan file konfigurasi `.env` sehingga aman untuk disimpan di version control (seperti GitHub) atau saat dipindahkan, karena isinya tidak akan bisa dibaca tanpa sebuah kunci (password).
+
+Berikut adalah langkah-langkah penggunaannya:
+
+-----------------------------------------------------------
+1. CARA MENGENKRIPSI FILE .ENV
+-----------------------------------------------------------
+Buka terminal/Command Prompt, pastikan Anda berada di dalam folder proyek (c:\laragon\www\newSIKAS), lalu jalankan perintah berikut:
+
+    php artisan env:encrypt
+
+Output yang akan Anda dapatkan kurang lebih seperti ini:
+
+    Environment successfully encrypted.
+    Key: base64:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx=
+
+-----------------------------------------------------------
+2. PERHATIAN SANGAT PENTING! (SIMPAN KUNCI ANDA)
+-----------------------------------------------------------
+Anda WAJIB menyimpan teks `Key` yang muncul (contoh: base64:xxxx...) di tempat yang sangat aman (misalnya Password Manager atau catatan rahasia). 
+
+Kunci ini adalah satu-satunya "password" untuk bisa membaca atau mengembalikan file `.env` Anda. JIKA KUNCI INI HILANG, FILE .ENV ANDA TIDAK BISA DIKEMBALIKAN!
+
+-----------------------------------------------------------
+3. APA YANG TERJADI SETELAHNYA?
+-----------------------------------------------------------
+- Laravel akan membuat sebuah file baru bernama `.env.encrypted`.
+- Anda sekarang dapat MENGHAPUS file `.env` yang lama dengan aman jika Anda ingin benar-benar menyembunyikan konfigurasi di server.
+- Aplikasi akan otomatis membaca konfigurasi dari file `.env.encrypted` asalkan kunci (Key) diberikan ke environment server.
+
+-----------------------------------------------------------
+4. CARA MENGEMBALIKAN / MENDEKRIPSI (JIKA DIBUTUHKAN)
+-----------------------------------------------------------
+Jika di masa depan Anda ingin mengedit atau melihat kembali file konfigurasi Anda secara normal, Anda bisa mengubah file `.env.encrypted` kembali menjadi file `.env` biasa dengan perintah berikut:
+
+    php artisan env:decrypt --key="KUNCI_YANG_ANDA_SIMPAN_TADI"
+
+(Ganti tulisan di dalam tanda kutip dengan kunci yang sudah Anda simpan pada Langkah 2).
+
+Setelah perintah ini dijalankan, file `.env` asli yang bisa dibaca akan dibuat ulang.

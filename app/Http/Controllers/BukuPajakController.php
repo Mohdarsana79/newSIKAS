@@ -514,10 +514,11 @@ class BukuPajakController extends Controller
 
                 $jumlah = $ppn + $pph21 + $pph22 + $pph23;
                 $uraianPusat = '';
-                if ($pph21 > 0) $uraianPusat = 'Terima Pajak PPh 21 ' . ($transaksi->persen_pajak ?? '') . '% ' . $baseUraian;
-                elseif ($pph22 > 0) $uraianPusat = 'Terima Pajak PPh 22 ' . ($transaksi->persen_pajak ?? '') . '% ' . $baseUraian;
-                elseif ($pph23 > 0) $uraianPusat = 'Terima Pajak PPh 23 ' . ($transaksi->persen_pajak ?? '') . '% ' . $baseUraian;
-                else $uraianPusat = 'Terima Pajak ' . ($transaksi->pajak ?? '') . ' ' . ($transaksi->persen_pajak ?? '') . '% ' . $baseUraian;
+                $pctPusat = $transaksi->persen_pajak ? (float)$transaksi->persen_pajak : '';
+                if ($pph21 > 0) $uraianPusat = 'Terima Pajak PPh 21 ' . $pctPusat . '% ' . $baseUraian;
+                elseif ($pph22 > 0) $uraianPusat = 'Terima Pajak PPh 22 ' . $pctPusat . '% ' . $baseUraian;
+                elseif ($pph23 > 0) $uraianPusat = 'Terima Pajak PPh 23 ' . $pctPusat . '% ' . $baseUraian;
+                else $uraianPusat = 'Terima Pajak ' . ($transaksi->pajak ?? '') . ' ' . $pctPusat . '% ' . $baseUraian;
 
                 $pajakRows[] = [
                     'transaksi' => $transaksi,
@@ -535,7 +536,8 @@ class BukuPajakController extends Controller
             if ($hasPajakDaerah) {
                 $pb1 = $transaksi->total_pajak_daerah;
                 $totalPb1 += $pb1;
-                $uraianDaerah = 'Terima Pajak PB 1 ' . ($transaksi->persen_pajak_daerah ?? '') . '% ' . $baseUraian;
+                $pctDaerah = $transaksi->persen_pajak_daerah ? (float)$transaksi->persen_pajak_daerah : '';
+                $uraianDaerah = 'Terima Pajak PB 1 ' . $pctDaerah . '% ' . $baseUraian;
 
                 $pajakRows[] = [
                     'transaksi' => $transaksi,
@@ -572,16 +574,17 @@ class BukuPajakController extends Controller
 
                 $jumlah = $ppn + $pph21 + $pph22 + $pph23;
                 $uraianPusat = '';
-                if ($pph21 > 0) $uraianPusat = 'Setor Pajak PPh 21 ' . ($transaksi->persen_pajak ?? '') . '% ' . $baseUraian;
-                elseif ($pph22 > 0) $uraianPusat = 'Setor Pajak PPh 22 ' . ($transaksi->persen_pajak ?? '') . '% ' . $baseUraian;
-                elseif ($pph23 > 0) $uraianPusat = 'Setor Pajak PPh 23 ' . ($transaksi->persen_pajak ?? '') . '% ' . $baseUraian;
-                else $uraianPusat = 'Setor Pajak ' . ($transaksi->pajak ?? '') . ' ' . ($transaksi->persen_pajak ?? '') . '% ' . $baseUraian;
+                $pctPusat = $transaksi->persen_pajak ? (float)$transaksi->persen_pajak : '';
+                if ($pph21 > 0) $uraianPusat = 'Setor Pajak PPh 21 ' . $pctPusat . '% ' . $baseUraian;
+                elseif ($pph22 > 0) $uraianPusat = 'Setor Pajak PPh 22 ' . $pctPusat . '% ' . $baseUraian;
+                elseif ($pph23 > 0) $uraianPusat = 'Setor Pajak PPh 23 ' . $pctPusat . '% ' . $baseUraian;
+                else $uraianPusat = 'Setor Pajak ' . ($transaksi->pajak ?? '') . ' ' . $pctPusat . '% ' . $baseUraian;
 
                 $pajakRows[] = [
                     'transaksi' => $transaksi,
                     'tanggal' => $transaksi->tanggal_lapor,
                     'no_kode' => $transaksi->rekeningBelanja->kode_rekening ?? '-',
-                    'no_buku' => $transaksi->kode_masa_pajak ?? $transaksi->id_transaksi,
+                    'no_buku' => $transaksi->ntpn ?? $transaksi->id_transaksi,
                     'uraian' => $uraianPusat,
                     'ppn' => $ppn, 'pph21' => $pph21, 'pph22' => $pph22, 'pph23' => $pph23, 'pb1' => 0,
                     'jumlah' => 0, 
@@ -592,7 +595,8 @@ class BukuPajakController extends Controller
 
             if ($hasPajakDaerah) {
                 $pb1 = $transaksi->total_pajak_daerah;
-                $uraianDaerah = 'Setor Pajak PB 1 ' . ($transaksi->persen_pajak_daerah ?? '') . '% ' . $baseUraian;
+                $pctDaerah = $transaksi->persen_pajak_daerah ? (float)$transaksi->persen_pajak_daerah : '';
+                $uraianDaerah = 'Setor Pajak PB 1 ' . $pctDaerah . '% ' . $baseUraian;
 
                 $pajakRows[] = [
                     'transaksi' => $transaksi,
