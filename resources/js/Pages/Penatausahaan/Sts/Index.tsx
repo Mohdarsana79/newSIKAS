@@ -1,6 +1,7 @@
 
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, usePage, Link } from '@inertiajs/react';
+import useVariantRoute from '@/Hooks/useVariantRoute';
 import { useState, useEffect } from 'react';
 import Modal from '@/Components/Modal';
 import InputLabel from '@/Components/InputLabel';
@@ -14,7 +15,8 @@ import { format } from 'date-fns';
 import { Transition } from '@headlessui/react';
 import Select from 'react-select';
 
-export default function Index({ stsList, penganggaranList }: any) {
+export default function Index({ stsList, penganggaranList, penganggaranFk = 'penganggaran_id' }: any) {
+    const vroute = useVariantRoute();
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
@@ -26,7 +28,7 @@ export default function Index({ stsList, penganggaranList }: any) {
 
     // Forms
     const createForm = useForm({
-        penganggaran_id: '',
+        [penganggaranFk]: '',
         nomor_sts: '',
         jumlah_sts: '',
         jumlah_sts_raw: 0,
@@ -85,7 +87,7 @@ export default function Index({ stsList, penganggaranList }: any) {
         createForm.clearErrors();
         // Default to latest year if available
         if (penganggaranList.length > 0) {
-            createForm.setData('penganggaran_id', penganggaranList[0].id);
+            createForm.setData(penganggaranFk, penganggaranList[0].id);
         }
         setIsCreateModalOpen(true);
     };
@@ -97,7 +99,7 @@ export default function Index({ stsList, penganggaranList }: any) {
             jumlah_sts: data.jumlah_sts_raw
         }));
 
-        createForm.post(route('sts.store'), {
+        createForm.post(vroute('sts.store'), {
             onSuccess: () => {
                 setIsCreateModalOpen(false);
                 createForm.reset();
@@ -124,7 +126,7 @@ export default function Index({ stsList, penganggaranList }: any) {
             jumlah_sts: data.jumlah_sts_raw
         }));
 
-        editForm.put(route('sts.update', selectedSts.id), {
+        editForm.put(vroute('sts.update', selectedSts.id), {
             onSuccess: () => {
                 setIsEditModalOpen(false);
                 editForm.reset();
@@ -149,8 +151,8 @@ export default function Index({ stsList, penganggaranList }: any) {
         e.preventDefault();
 
         const endpoint = paymentForm.data.is_edit
-            ? route('sts.update-bayar', selectedSts.id)
-            : route('sts.bayar', selectedSts.id);
+            ? vroute('sts.update-bayar', selectedSts.id)
+            : vroute('sts.bayar', selectedSts.id);
 
         const method = paymentForm.data.is_edit ? 'put' : 'post';
 
@@ -176,7 +178,7 @@ export default function Index({ stsList, penganggaranList }: any) {
 
     const confirmDelete = () => {
         if (!itemToDelete) return;
-        createForm.delete(route('sts.destroy', itemToDelete), {
+        createForm.delete(vroute('sts.destroy', itemToDelete), {
             onSuccess: () => {
                 setIsDeleteModalOpen(false);
                 setItemToDelete(null);
@@ -339,10 +341,10 @@ export default function Index({ stsList, penganggaranList }: any) {
                                 classNamePrefix="react-select"
                                 options={penganggaranList.map((p: any) => ({ value: p.id, label: p.tahun_anggaran }))}
                                 value={penganggaranList
-                                    .filter((p: any) => p.id == createForm.data.penganggaran_id)
+                                    .filter((p: any) => p.id == createForm.data[penganggaranFk])
                                     .map((p: any) => ({ value: p.id, label: p.tahun_anggaran }))[0] || null
                                 }
-                                onChange={(val: any) => createForm.setData('penganggaran_id', val ? val.value : '')}
+                                onChange={(val: any) => createForm.setData(penganggaranFk, val ? val.value : '')}
                                 placeholder="Pilih Tahun Anggaran..."
                                 isSearchable
                                 isClearable
@@ -384,7 +386,7 @@ export default function Index({ stsList, penganggaranList }: any) {
                                     })
                                 }}
                             />
-                            <InputError message={createForm.errors.penganggaran_id} className="mt-2" />
+                            <InputError message={(createForm.errors as any)[penganggaranFk]} className="mt-2" />
                         </div>
                         <div>
                             <InputLabel htmlFor="nomor_sts" value="Nomor STS" />

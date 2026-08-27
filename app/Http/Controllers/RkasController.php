@@ -11,40 +11,68 @@ use App\Models\Rkas;
 use App\Models\RkasPerubahan;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use App\Config\VariantConfig;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Inertia\Controller;
 use Inertia\Inertia;
 
 class RkasController extends Controller
 {
+    protected ?string $variant;
+    protected ?string $Penganggaran;
+    protected ?string $Rkas;
+    protected ?string $RkasPerubahan;
+    protected ?string $BukuKasUmum;
+    protected ?string $BukuKasUmumUraianDetail;
+
+    public function __construct()
+    {
+        $this->middleware(function ($request, $next) {
+            $this->variant = app()->bound('variant') ? app('variant') : 'reguler';
+            $this->Penganggaran = VariantConfig::getModelClass('penganggaran', $this->variant);
+            $this->Rkas = VariantConfig::getModelClass('rkas', $this->variant);
+            $this->RkasPerubahan = VariantConfig::getModelClass('rkas_perubahan', $this->variant);
+            $this->BukuKasUmum = VariantConfig::getModelClass('bku', $this->variant);
+            $this->BukuKasUmumUraianDetail = VariantConfig::getModelClass('bku_uraian_detail', $this->variant);
+            
+            return $next($request);
+        });
+    }
     public function index(Request $request, $id)
     {
-        $penganggaran = Penganggaran::findOrFail($id);
+        $penganggaran = ($this->Penganggaran)::findOrFail($id);
+        $penganggaran->setAttribute('sumber_dana', \App\Config\VariantConfig::title($this->variant));
         
         $kodeKegiatans = KodeKegiatan::all();
         $rekeningBelanjas = RekeningBelanja::all();
 
         // Get all RKAS items
-        $itemsRaw = Rkas::with(['kodeKegiatan', 'rekeningBelanja'])
-            ->where('penganggaran_id', $penganggaran->id)
+        $itemsRaw = ($this->Rkas)::with(['kodeKegiatan', 'rekeningBelanja'])
+            ->where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
             ->get();
 
         // Calculate Totals
         // $totalBudget = $itemsRaw->sum(fn($i) => $i->jumlah * $i->harga_satuan);
-        $totalTahap1 = Rkas::getTotalTahap1($penganggaran->id);
-        $totalTahap2 = Rkas::getTotalTahap2($penganggaran->id);
+        $totalTahap1 = ($this->Rkas)::getTotalTahap1($penganggaran->id);
+        $totalTahap2 = ($this->Rkas)::getTotalTahap2($penganggaran->id);
         
         $paguAnggaran = $penganggaran->pagu_anggaran;
         $paguHalf = $paguAnggaran / 2;
 
-        $monthMap = array_flip(Rkas::getBulanList());
+        $monthMap = array_flip(($this->Rkas)::getBulanList());
+
+        $bkuModel = new ($this->BukuKasUmum)();
+        $bkuTable = $bkuModel->getTable();
+        $bkuDetailModel = new ($this->BukuKasUmumUraianDetail)();
+        $bkuDetailTable = $bkuDetailModel->getTable();
+        $penganggaranFk = \App\Config\VariantConfig::penganggaranFk($this->variant);
+        $bkuFk = \App\Config\VariantConfig::bkuFk($this->variant);
 
         // Get total spent from BKU directly grouped by unique signature
-        $bkuSpents = \App\Models\BukuKasUmumUraianDetail::selectRaw('buku_kas_umum_uraian_details.kode_kegiatan_id, buku_kas_umum_uraian_details.rekening_belanja_id, LOWER(TRIM(buku_kas_umum_uraian_details.uraian)) as uraian_clean, buku_kas_umum_uraian_details.harga_satuan, SUM(buku_kas_umum_uraian_details.volume) as total_volume')
-            ->join('buku_kas_umums', 'buku_kas_umums.id', '=', 'buku_kas_umum_uraian_details.buku_kas_umum_id')
-            ->where('buku_kas_umums.penganggaran_id', $penganggaran->id)
-            ->groupBy('buku_kas_umum_uraian_details.kode_kegiatan_id', 'buku_kas_umum_uraian_details.rekening_belanja_id', 'uraian_clean', 'buku_kas_umum_uraian_details.harga_satuan')
+        $bkuSpents = ($this->BukuKasUmumUraianDetail)::selectRaw("{$bkuDetailTable}.kode_kegiatan_id, {$bkuDetailTable}.rekening_belanja_id, LOWER(TRIM({$bkuDetailTable}.uraian)) as uraian_clean, {$bkuDetailTable}.harga_satuan, SUM({$bkuDetailTable}.volume) as total_volume")
+            ->join($bkuTable, "{$bkuTable}.id", '=', "{$bkuDetailTable}.{$bkuFk}")
+            ->where("{$bkuTable}.{$penganggaranFk}", $penganggaran->id)
+            ->groupBy("{$bkuDetailTable}.kode_kegiatan_id", "{$bkuDetailTable}.rekening_belanja_id", "uraian_clean", "{$bkuDetailTable}.harga_satuan")
             ->get()
             ->keyBy(function($item) {
                 return $item->kode_kegiatan_id . '|' . $item->rekening_belanja_id . '|' . $item->uraian_clean . '|' . (float)$item->harga_satuan;
@@ -93,7 +121,7 @@ class RkasController extends Controller
         });
 
         // Calculate Month Filters
-        $monthsList = Rkas::getBulanList();
+        $monthsList = ($this->Rkas)::getBulanList();
         $months = collect($monthsList)->map(function($month) use ($itemsRaw) {
             return [
                 'name' => $month,
@@ -102,30 +130,30 @@ class RkasController extends Controller
             ];
         });
 
-        $hasPerubahan = RkasPerubahan::where('penganggaran_id', $id)->exists();
-        $juniBkuClosed = \App\Models\BukuKasUmum::where('penganggaran_id', $id)
+        $hasPerubahan = $this->RkasPerubahan ? ($this->RkasPerubahan)::where(VariantConfig::penganggaranFk($this->variant), $id)->exists() : false;
+        $juniBkuClosed = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $id)
             ->whereMonth('tanggal_transaksi', 6)
             ->where('is_bunga_record', true)
             ->whereNotNull('tanggal_tutup')
             ->exists();
 
-        return Inertia::render('Penganggaran/Rkas/Index', [
+        return $this->renderVariant('Penganggaran/Rkas/Index', [
             'anggaran' => [
                 'id' => $penganggaran->id,
                 'has_perubahan' => $hasPerubahan,
                 'juni_bku_closed' => $juniBkuClosed,
                 'tahun' => (string)$penganggaran->tahun_anggaran,
                 'pagu_total' => number_format($paguAnggaran, 0, ',', '.'),
-                'sumber_dana' => 'BOSP Reguler',
+                'sumber_dana' => \App\Config\VariantConfig::title($this->variant),
                 'status' => 'Aktif',
                 'tahap_1' => [
                     'periode' => 'Januari - Juni', 
-                    'persen' => $paguHalf > 0 ? number_format(($totalTahap1 / $paguHalf) * 100, 2) . '%' : '0.00%',
+                    'persen' => $paguAnggaran > 0 ? number_format(($totalTahap1 / $paguAnggaran) * 100, 2) . '%' : '0.00%',
                     'sisa' => number_format($paguHalf - $totalTahap1, 0, ',', '.')
                 ],
                 'tahap_2' => [
                     'periode' => 'Juli - Desember',
-                    'persen' => $paguHalf > 0 ? number_format(($totalTahap2 / $paguHalf) * 100, 2) . '%' : '0.00%',
+                    'persen' => $paguAnggaran > 0 ? number_format(($totalTahap2 / $paguAnggaran) * 100, 2) . '%' : '0.00%',
                     'sisa' => number_format($paguHalf - $totalTahap2, 0, ',', '.')
                 ]
             ],
@@ -149,17 +177,18 @@ class RkasController extends Controller
 
     public function summary(Request $request, $id)
     {
-        $penganggaran = Penganggaran::with('sekolah')->findOrFail($id);
+        $penganggaran = ($this->Penganggaran)::with('sekolah')->findOrFail($id);
+        $penganggaran->setAttribute('sumber_dana', \App\Config\VariantConfig::title($this->variant));
         
         // Fetch all RKAS data (for Recap and Tahapan - Full Year)
-        $rkasData = Rkas::with(['kodeKegiatan', 'rekeningBelanja'])
-            ->where('penganggaran_id', $id)
+        $rkasData = ($this->Rkas)::with(['kodeKegiatan', 'rekeningBelanja'])
+            ->where(VariantConfig::penganggaranFk($this->variant), $id)
             ->get();
 
         // Fetch Monthly specific data (for Rka Bulanan - Filtered by DB)
         $selectedMonth = $request->input('month', 'Januari');
-        $monthlyRkas = Rkas::with(['kodeKegiatan', 'rekeningBelanja'])
-            ->where('penganggaran_id', $id)
+        $monthlyRkas = ($this->Rkas)::with(['kodeKegiatan', 'rekeningBelanja'])
+            ->where(VariantConfig::penganggaranFk($this->variant), $id)
             ->where('bulan', $selectedMonth)
             ->get();
             
@@ -448,7 +477,7 @@ class RkasController extends Controller
             'jenis_belanja' => $grafikData['jenis_belanja'] ?? []
         ];
 
-        return Inertia::render('Penganggaran/Rkas/Summary', [
+        return $this->renderVariant('Penganggaran/Rkas/Summary', [
             'anggaran' => $penganggaran,
             'groupedData' => $grouped,
             'tahapanData' => $tahapanData,
@@ -486,7 +515,8 @@ class RkasController extends Controller
 
     public function store(Request $request, $id)
     {
-        $penganggaran = Penganggaran::findOrFail($id);
+        $penganggaran = ($this->Penganggaran)::findOrFail($id);
+        $penganggaran->setAttribute('sumber_dana', \App\Config\VariantConfig::title($this->variant));
 
         $request->validate([
             'kegiatan_id' => 'required|exists:kode_kegiatans,id',
@@ -503,7 +533,7 @@ class RkasController extends Controller
         try {
             foreach ($request->alokasi as $alloc) {
                 // Check dupes
-                $exists = Rkas::where('penganggaran_id', $penganggaran->id)
+                $exists = ($this->Rkas)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
                     ->where('kode_id', $request->kegiatan_id)
                     ->where('kode_rekening_id', $request->rekening_id)
                     ->where('bulan', $alloc['month'])
@@ -514,8 +544,8 @@ class RkasController extends Controller
                     throw new \Exception("Data untuk bulan {$alloc['month']} sudah ada.");
                 }
 
-                Rkas::create([
-                    'penganggaran_id' => $penganggaran->id,
+                ($this->Rkas)::create([
+                    VariantConfig::penganggaranFk($this->variant) => $penganggaran->id,
                     'kode_id' => $request->kegiatan_id,
                     'kode_rekening_id' => $request->rekening_id,
                     'uraian' => $request->uraian,
@@ -535,25 +565,19 @@ class RkasController extends Controller
 
     public function getEditData($id)
     {
-        $rkas = Rkas::with(['kodeKegiatan', 'rekeningBelanja'])->findOrFail($id);
+        $rkas = ($this->Rkas)::with(['kodeKegiatan', 'rekeningBelanja'])->findOrFail($id);
         
         // Find all items in the same group (siblings)
-        $siblings = Rkas::where('penganggaran_id', $rkas->penganggaran_id)
+        $siblings = ($this->Rkas)::where(VariantConfig::penganggaranFk($this->variant), $rkas->{VariantConfig::penganggaranFk($this->variant)})
             ->where('kode_id', $rkas->kode_id)
             ->where('kode_rekening_id', $rkas->kode_rekening_id)
             ->where('uraian', $rkas->uraian)
             ->get();
 
         // Calculate FIFO spent per month for frontend validation
-        $bkuSpentVolume = \App\Models\BukuKasUmumUraianDetail::join('buku_kas_umums', 'buku_kas_umums.id', '=', 'buku_kas_umum_uraian_details.buku_kas_umum_id')
-            ->where('buku_kas_umums.penganggaran_id', $rkas->penganggaran_id)
-            ->where('buku_kas_umum_uraian_details.kode_kegiatan_id', $rkas->kode_id)
-            ->where('buku_kas_umum_uraian_details.rekening_belanja_id', $rkas->kode_rekening_id)
-            ->whereRaw('LOWER(TRIM(buku_kas_umum_uraian_details.uraian)) = LOWER(TRIM(?))', [$rkas->uraian])
-            ->where('buku_kas_umum_uraian_details.harga_satuan', $rkas->harga_satuan)
-            ->sum('buku_kas_umum_uraian_details.volume');
+        $bkuSpentVolume = $this->getBkuSpentVolume($rkas);
 
-        $monthMap = array_flip(Rkas::getBulanList());
+        $monthMap = array_flip(($this->Rkas)::getBulanList());
         $sortedItems = $siblings->sortBy(function ($item) use ($monthMap) {
             return $monthMap[$item->bulan] ?? 99;
         });
@@ -595,7 +619,7 @@ class RkasController extends Controller
         // Validation similar to store but we need an identifier to know WHAT to update.
         // We will accept an 'original_id' to find the original group.
         $request->validate([
-            'original_id' => 'required|exists:rkas,id',
+            'original_id' => 'required|exists:' . (new ($this->Rkas))->getTable() . ',id',
             'kegiatan_id' => 'required|exists:kode_kegiatans,id',
             'rekening_id' => 'required|exists:rekening_belanjas,id',
             'uraian' => 'required|string',
@@ -608,15 +632,9 @@ class RkasController extends Controller
 
         DB::beginTransaction();
         try {
-            $original = Rkas::findOrFail($request->original_id);
+            $original = ($this->Rkas)::findOrFail($request->original_id);
             // Validasi BKU
-            $bkuSpentVolume = \App\Models\BukuKasUmumUraianDetail::join('buku_kas_umums', 'buku_kas_umums.id', '=', 'buku_kas_umum_uraian_details.buku_kas_umum_id')
-                ->where('buku_kas_umums.penganggaran_id', $original->penganggaran_id)
-                ->where('buku_kas_umum_uraian_details.kode_kegiatan_id', $original->kode_id)
-                ->where('buku_kas_umum_uraian_details.rekening_belanja_id', $original->kode_rekening_id)
-                ->whereRaw('LOWER(TRIM(buku_kas_umum_uraian_details.uraian)) = LOWER(TRIM(?))', [$original->uraian])
-                ->where('buku_kas_umum_uraian_details.harga_satuan', $original->harga_satuan)
-                ->sum('buku_kas_umum_uraian_details.volume');
+            $bkuSpentVolume = $this->getBkuSpentVolume($original);
 
             if ($bkuSpentVolume > 0) {
                 // Check if signature changed
@@ -629,13 +647,13 @@ class RkasController extends Controller
                 }
 
                 // Hitung FIFO per bulan untuk BKU spent
-                $originalItems = Rkas::where('penganggaran_id', $original->penganggaran_id)
+                $originalItems = ($this->Rkas)::where(VariantConfig::penganggaranFk($this->variant), $original->{VariantConfig::penganggaranFk($this->variant)})
                     ->where('kode_id', $original->kode_id)
                     ->where('kode_rekening_id', $original->kode_rekening_id)
                     ->where('uraian', $original->uraian)
                     ->get();
 
-                $monthMap = array_flip(Rkas::getBulanList());
+                $monthMap = array_flip(($this->Rkas)::getBulanList());
                 $sortedItems = $originalItems->sortBy(function ($item) use ($monthMap) {
                     return $monthMap[$item->bulan] ?? 99;
                 });
@@ -669,7 +687,7 @@ class RkasController extends Controller
             }
             
             // 1. Delete the OLD group
-            Rkas::where('penganggaran_id', $original->penganggaran_id)
+            ($this->Rkas)::where(VariantConfig::penganggaranFk($this->variant), $original->{VariantConfig::penganggaranFk($this->variant)})
                 ->where('kode_id', $original->kode_id)
                 ->where('kode_rekening_id', $original->kode_rekening_id)
                 ->where('uraian', $original->uraian)
@@ -678,8 +696,8 @@ class RkasController extends Controller
             // 2. Create the NEW items (essentially replacing them)
             // Note: We use the original penganggaran_id
             foreach ($request->alokasi as $alloc) {
-                Rkas::create([
-                    'penganggaran_id' => $original->penganggaran_id,
+                ($this->Rkas)::create([
+                    VariantConfig::penganggaranFk($this->variant) => $original->{VariantConfig::penganggaranFk($this->variant)},
                     'kode_id' => $request->kegiatan_id,
                     'kode_rekening_id' => $request->rekening_id,
                     'uraian' => $request->uraian,
@@ -700,10 +718,11 @@ class RkasController extends Controller
 
     public function exportPdf(Request $request, $id)
     {
-        $penganggaran = Penganggaran::with('sekolah')->findOrFail($id);
+        $penganggaran = ($this->Penganggaran)::with('sekolah')->findOrFail($id);
+        $penganggaran->setAttribute('sumber_dana', \App\Config\VariantConfig::title($this->variant));
         
-        $rkasData = Rkas::with(['kodeKegiatan', 'rekeningBelanja'])
-            ->where('penganggaran_id', $id)
+        $rkasData = ($this->Rkas)::with(['kodeKegiatan', 'rekeningBelanja'])
+            ->where(VariantConfig::penganggaranFk($this->variant), $id)
             ->orderBy('kode_id')
             ->get()
             ->groupBy(function ($item) {
@@ -731,10 +750,11 @@ class RkasController extends Controller
 
     public function exportTahapanV1Pdf(Request $request, $id)
     {
-        $penganggaran = Penganggaran::with('sekolah')->findOrFail($id);
+        $penganggaran = ($this->Penganggaran)::with('sekolah')->findOrFail($id);
+        $penganggaran->setAttribute('sumber_dana', \App\Config\VariantConfig::title($this->variant));
         
-        $rkasData = Rkas::with(['kodeKegiatan', 'rekeningBelanja'])
-            ->where('penganggaran_id', $id)
+        $rkasData = ($this->Rkas)::with(['kodeKegiatan', 'rekeningBelanja'])
+            ->where(VariantConfig::penganggaranFk($this->variant), $id)
             ->orderBy('kode_id')
             ->get()
             ->groupBy(function ($item) {
@@ -762,7 +782,8 @@ class RkasController extends Controller
 
     public function exportRekapPdf(Request $request, $id)
     {
-        $penganggaran = Penganggaran::with('sekolah')->findOrFail($id);
+        $penganggaran = ($this->Penganggaran)::with('sekolah')->findOrFail($id);
+        $penganggaran->setAttribute('sumber_dana', \App\Config\VariantConfig::title($this->variant));
         
         $rekapData = $this->getRekapRkas($id);
         
@@ -772,7 +793,7 @@ class RkasController extends Controller
         $pendapatanTahap2 = $totalPendapatan / 2;
         
         // Need raw data for tahap calc
-        $rkasData = Rkas::with(['rekeningBelanja']) ->where('penganggaran_id', $id)->get();
+        $rkasData = ($this->Rkas)::with(['rekeningBelanja']) ->where(VariantConfig::penganggaranFk($this->variant), $id)->get();
         $sem1 = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni'];
         
         $opsItems = $rkasData->filter(fn($i) => str_starts_with($i->rekeningBelanja->kode_rekening ?? '', '5.1'));
@@ -805,7 +826,8 @@ class RkasController extends Controller
 
     public function exportBulananPdf(Request $request, $id)
     {
-        $penganggaran = Penganggaran::with('sekolah')->findOrFail($id);
+        $penganggaran = ($this->Penganggaran)::with('sekolah')->findOrFail($id);
+        $penganggaran->setAttribute('sumber_dana', \App\Config\VariantConfig::title($this->variant));
         $month = $request->input('month', 'Januari');
 
         if ($month === 'all') {
@@ -813,8 +835,8 @@ class RkasController extends Controller
             $allData = [];
 
             // Fetch all data for this budget
-            $allRkas = Rkas::with(['kodeKegiatan', 'rekeningBelanja'])
-                ->where('penganggaran_id', $id)
+            $allRkas = ($this->Rkas)::with(['kodeKegiatan', 'rekeningBelanja'])
+                ->where(VariantConfig::penganggaranFk($this->variant), $id)
                 ->orderBy('kode_id')
                 ->get();
 
@@ -840,8 +862,8 @@ class RkasController extends Controller
             return $pdf->stream('rka_bulanan_all.pdf');
 
         } else {
-            $rkasData = Rkas::with(['kodeKegiatan', 'rekeningBelanja'])
-                ->where('penganggaran_id', $id)
+            $rkasData = ($this->Rkas)::with(['kodeKegiatan', 'rekeningBelanja'])
+                ->where(VariantConfig::penganggaranFk($this->variant), $id)
                 ->where('bulan', $month)
                 ->orderBy('kode_id')
                 ->get()
@@ -867,7 +889,8 @@ class RkasController extends Controller
 
     public function exportLembarKerjaPdf(Request $request, $id)
     {
-        $penganggaran = Penganggaran::with('sekolah')->findOrFail($id);
+        $penganggaran = ($this->Penganggaran)::with('sekolah')->findOrFail($id);
+        $penganggaran->setAttribute('sumber_dana', \App\Config\VariantConfig::title($this->variant));
         
         list($groupedItems, $totals) = $this->prepare221Data($id);
 
@@ -921,26 +944,20 @@ class RkasController extends Controller
     public function destroyGroup(Request $request)
     {
          $request->validate([
-            'id' => 'required|exists:rkas,id',
+            'id' => 'required|exists:' . (new ($this->Rkas))->getTable() . ',id',
         ]);
         
-        $target = Rkas::findOrFail($request->id);
+        $target = ($this->Rkas)::findOrFail($request->id);
         
         // Validasi BKU
-        $bkuSpentVolume = \App\Models\BukuKasUmumUraianDetail::join('buku_kas_umums', 'buku_kas_umums.id', '=', 'buku_kas_umum_uraian_details.buku_kas_umum_id')
-            ->where('buku_kas_umums.penganggaran_id', $target->penganggaran_id)
-            ->where('buku_kas_umum_uraian_details.kode_kegiatan_id', $target->kode_id)
-            ->where('buku_kas_umum_uraian_details.rekening_belanja_id', $target->kode_rekening_id)
-            ->whereRaw('LOWER(TRIM(buku_kas_umum_uraian_details.uraian)) = LOWER(TRIM(?))', [$target->uraian])
-            ->where('buku_kas_umum_uraian_details.harga_satuan', $target->harga_satuan)
-            ->sum('buku_kas_umum_uraian_details.volume');
+        $bkuSpentVolume = $this->getBkuSpentVolume($target);
 
         if ($bkuSpentVolume > 0) {
             return redirect()->back()->withErrors(['message' => 'Tidak Dapat Melakukan Perubahan, Karena Sudah Dibelanjakan Pada BKU. Hapus Belanja Ini Pada BKU Terlebih Dahulu Agar Dapat Melakukan Update Data.']);
         }
 
         // Delete all matches
-        Rkas::where('penganggaran_id', $target->penganggaran_id)
+        ($this->Rkas)::where(VariantConfig::penganggaranFk($this->variant), $target->{VariantConfig::penganggaranFk($this->variant)})
             ->where('kode_id', $target->kode_id)
             ->where('kode_rekening_id', $target->kode_rekening_id)
             ->where('uraian', $target->uraian)
@@ -950,18 +967,34 @@ class RkasController extends Controller
         return redirect()->back()->with('success', 'Data RKAS berhasil dihapus semua.');
     }
 
+    private function getBkuSpentVolume($rkasItem)
+    {
+        $bkuTable = (new ($this->BukuKasUmum))->getTable();
+        $bkuDetailTable = (new ($this->BukuKasUmumUraianDetail))->getTable();
+        $penganggaranFk = VariantConfig::penganggaranFk($this->variant);
+        $bkuFk = VariantConfig::bkuFk($this->variant);
+
+        return ($this->BukuKasUmumUraianDetail)::join($bkuTable, "{$bkuTable}.id", '=', "{$bkuDetailTable}.{$bkuFk}")
+            ->where("{$bkuTable}.{$penganggaranFk}", $rkasItem->{$penganggaranFk})
+            ->where("{$bkuDetailTable}.kode_kegiatan_id", $rkasItem->kode_id)
+            ->where("{$bkuDetailTable}.rekening_belanja_id", $rkasItem->kode_rekening_id)
+            ->whereRaw("LOWER(TRIM({$bkuDetailTable}.uraian)) = LOWER(TRIM(?))", [$rkasItem->uraian])
+            ->where("{$bkuDetailTable}.harga_satuan", $rkasItem->harga_satuan)
+            ->sum("{$bkuDetailTable}.volume");
+    }
+
     // --- LOGIC HELPERS ---
 
     private function calculateTotalTahap1($penganggaranId)
     {
-        return Rkas::where('penganggaran_id', $penganggaranId)
+        return ($this->Rkas)::where(VariantConfig::penganggaranFk($this->variant), $penganggaranId)
             ->whereIn('bulan', ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni'])
             ->sum(DB::raw('jumlah * harga_satuan'));
     }
 
     private function calculateTotalTahap2($penganggaranId)
     {
-        return Rkas::where('penganggaran_id', $penganggaranId)
+        return ($this->Rkas)::where(VariantConfig::penganggaranFk($this->variant), $penganggaranId)
             ->whereIn('bulan', ['Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'])
             ->sum(DB::raw('jumlah * harga_satuan'));
     }
@@ -1030,6 +1063,7 @@ class RkasController extends Controller
                 $key = $item->rekeningBelanja->kode_rekening . '-' . $item->uraian;
                 if (! isset($groupedItems[$key])) {
                     $groupedItems[$key] = [
+                        'kode_rekening_id' => $item->rekeningBelanja->id,
                         'kode_rekening' => $item->rekeningBelanja->kode_rekening,
                         'uraian' => $item->uraian,
                         'program_code' => $kodeSubProgram, // Added for frontend compatibility
@@ -1041,6 +1075,26 @@ class RkasController extends Controller
                         'tahap2' => 0,
                         'tarif' => $item->harga_satuan, // Added alias for frontend compatibility
                         'bulanan' => [], // Initialize monthly breakdown
+                        
+                        // RP Fields
+                        'nama_penerima' => $item->nama_penerima,
+                        'jabatan' => $item->jabatan,
+                        'nomor_rekening' => $item->nomor_rekening,
+                        'bank' => $item->bank,
+                        'ada_npwp' => $item->ada_npwp,
+                        'pot_ppn' => $item->pot_ppn,
+                        'pot_pph23' => $item->pot_pph23,
+                        'pot_pph21' => $item->pot_pph21,
+                        'pot_pph21_narasumber' => $item->pot_pph21_narasumber,
+                        'status_penerima' => $item->status_penerima,
+                        'golongan' => $item->golongan,
+                        
+                        // Tax Flags
+                        'is_ppn' => $item->rekeningBelanja->is_ppn,
+                        'is_pph21' => $item->rekeningBelanja->is_pph21,
+                        'is_pph22' => $item->rekeningBelanja->is_pph22,
+                        'is_pph23' => $item->rekeningBelanja->is_pph23,
+                        'is_pph4' => $item->rekeningBelanja->is_pph4,
                     ];
                 }
 
@@ -1115,9 +1169,9 @@ class RkasController extends Controller
     private function getRekapRkas($penganggaranId)
     {
         try {
-            $penganggaran = Penganggaran::findOrFail($penganggaranId);
-            $rkasData = Rkas::with(['rekeningBelanja'])
-                ->where('penganggaran_id', $penganggaranId)
+            $penganggaran = ($this->Penganggaran)::findOrFail($penganggaranId);
+            $rkasData = ($this->Rkas)::with(['rekeningBelanja'])
+                ->where(VariantConfig::penganggaranFk($this->variant), $penganggaranId)
                 ->get();
 
             // 1. Hitung semua jumlah berdasarkan kode rekening
@@ -1189,8 +1243,8 @@ class RkasController extends Controller
             '5.2.05' => 'BELANJA MODAL ASET TETAP LAINNYA',
         ];
 
-        $rkasDetail = Rkas::with(['rekeningBelanja'])
-            ->where('penganggaran_id', $penganggaranId)
+        $rkasDetail = ($this->Rkas)::with(['rekeningBelanja'])
+            ->where(VariantConfig::penganggaranFk($this->variant), $penganggaranId)
             ->orderBy('kode_rekening_id')
             ->get();
 
@@ -1338,13 +1392,13 @@ class RkasController extends Controller
 
         try {
             // Total pagu anggaran
-            $penganggaran = Penganggaran::find($penganggaranId);
+            $penganggaran = ($this->Penganggaran)::find($penganggaranId);
             $totalPagu = $penganggaran->pagu_anggaran ?? 0;
 
             Log::info('🔍 [GRAFIK_DEBUG] Total pagu anggaran: ' . number_format($totalPagu, 2));
 
             // 1. Hitung anggaran BUKU - BERDASARKAN KODE KEGIATAN
-            $bukuAnggaran = Rkas::where('penganggaran_id', $penganggaranId)
+            $bukuAnggaran = ($this->Rkas)::where(VariantConfig::penganggaranFk($this->variant), $penganggaranId)
                 ->whereHas('kodeKegiatan', function ($query) {
                     // Kode kegiatan yang terkait dengan buku
                     $query->where('kode', 'like', '05.02.%') // Pengembangan Perpustakaan
@@ -1362,7 +1416,7 @@ class RkasController extends Controller
             Log::info('📚 [GRAFIK_DEBUG] Buku anggaran calculated: ' . number_format($bukuAnggaran, 2));
 
             // 2. Hitung anggaran HONOR - BERDASARKAN KODE KEGIATAN
-            $honorAnggaran = Rkas::where('penganggaran_id', $penganggaranId)
+            $honorAnggaran = ($this->Rkas)::where(VariantConfig::penganggaranFk($this->variant), $penganggaranId)
                 ->whereHas('kodeKegiatan', function ($query) {
                     // Kode kegiatan yang terkait dengan honor/gaji
                     $query->where('kode', 'like', '07.12.%') // Pembayaran Honor
@@ -1385,7 +1439,7 @@ class RkasController extends Controller
             Log::info('💰 [GRAFIK_DEBUG] Honor percentage dari 100% pagu: ' . number_format($honorPercentage, 2) . '%');
 
             // 3. Hitung anggaran SARPRAS - BERDASARKAN KODE KEGIATAN (05.08.01.)
-            $sarprasAnggaran = Rkas::where('penganggaran_id', $penganggaranId)
+            $sarprasAnggaran = ($this->Rkas)::where(VariantConfig::penganggaranFk($this->variant), $penganggaranId)
                 ->whereHas('kodeKegiatan', function ($query) {
                     // Kode kegiatan Pemeliharaan Prasarana Lahan, Bangunan dan Ruang
                     $query->where('kode', 'like', '05.08.01%')
@@ -1398,24 +1452,29 @@ class RkasController extends Controller
                     return $item->jumlah * $item->harga_satuan;
                 });
 
-            $sarprasSpent = \DB::table('buku_kas_umum_uraian_details')
-                ->join('buku_kas_umums', 'buku_kas_umums.id', '=', 'buku_kas_umum_uraian_details.buku_kas_umum_id')
-                ->join('kode_kegiatans', 'kode_kegiatans.id', '=', 'buku_kas_umum_uraian_details.kode_kegiatan_id')
-                ->where('buku_kas_umums.penganggaran_id', $penganggaranId)
+            $bkuTable = (new ($this->BukuKasUmum))->getTable();
+            $bkuDetailTable = (new ($this->BukuKasUmumUraianDetail))->getTable();
+            $penganggaranFk = VariantConfig::penganggaranFk($this->variant);
+            $bkuFk = VariantConfig::bkuFk($this->variant);
+
+            $sarprasSpent = \DB::table($bkuDetailTable)
+                ->join($bkuTable, "{$bkuTable}.id", '=', "{$bkuDetailTable}.{$bkuFk}")
+                ->join('kode_kegiatans', 'kode_kegiatans.id', '=', "{$bkuDetailTable}.kode_kegiatan_id")
+                ->where("{$bkuTable}.{$penganggaranFk}", $penganggaranId)
                 ->where(function($q) {
                     $q->where('kode_kegiatans.kode', 'like', '05.08.01%')
                       ->orWhere('kode_kegiatans.kode', 'like', '05.08.03%')
                       ->orWhere('kode_kegiatans.kode', 'like', '05.08.05%')
                       ->orWhere('kode_kegiatans.kode', 'like', '05.08.10%');
                 })
-                ->sum('buku_kas_umum_uraian_details.jumlah');
+                ->sum("{$bkuDetailTable}.jumlah");
 
             Log::info('🏫 [GRAFIK_DEBUG] Sarpras anggaran calculated: ' . number_format($sarprasAnggaran, 2));
             Log::info('🏫 [GRAFIK_DEBUG] Sarpras spent calculated: ' . number_format($sarprasSpent, 2));
             Log::info('🏫 [GRAFIK_DEBUG] Sarpras percentage: ' . ($totalPagu > 0 ? number_format(($sarprasAnggaran / $totalPagu) * 100, 2) : 0) . '%');
 
             // 4. Data untuk grafik jenis belanja lainnya - BERDASARKAN REKENING BELANJA SAJA
-            $jenisBelanjaData = Rkas::where('penganggaran_id', $penganggaranId)
+            $jenisBelanjaData = ($this->Rkas)::where(VariantConfig::penganggaranFk($this->variant), $penganggaranId)
                 ->with(['kodeKegiatan', 'rekeningBelanja'])
                 ->get()
                 ->groupBy(function ($item) {
@@ -1540,6 +1599,14 @@ class RkasController extends Controller
      */
     public function checkPreviousYearPerubahan(Request $request)
     {
+        if (!$this->RkasPerubahan) {
+            return response()->json([
+                'success' => false,
+                'has_previous_perubahan' => false,
+                'message' => 'Fitur salin RKAS Perubahan tidak tersedia untuk varian ini'
+            ]);
+        }
+
         try {
             Log::info('🔍 [CHECK PREVIOUS PERUBAHAN] Checking for year: ' . $request->input('tahun'));
 
@@ -1558,7 +1625,7 @@ class RkasController extends Controller
             Log::info('🔍 [CHECK PREVIOUS PERUBAHAN] Previous year: ' . $previousYear);
 
             // Cek apakah ada data penganggaran tahun sebelumnya
-            $previousPenganggaran = Penganggaran::where('tahun_anggaran', $previousYear)->first();
+            $previousPenganggaran = ($this->Penganggaran)::where('tahun_anggaran', $previousYear)->first();
 
             if (!$previousPenganggaran) {
                 Log::info('🔍 [CHECK PREVIOUS PERUBAHAN] No penganggaran found for year: ' . $previousYear);
@@ -1572,7 +1639,7 @@ class RkasController extends Controller
             Log::info('🔍 [CHECK PREVIOUS PERUBAHAN] Penganggaran found, ID: ' . $previousPenganggaran->id);
 
             // Cek apakah ada RKAS Perubahan tahun sebelumnya
-            $hasPreviousPerubahan = RkasPerubahan::where('penganggaran_id', $previousPenganggaran->id)->exists();
+            $hasPreviousPerubahan = ($this->RkasPerubahan)::where(VariantConfig::penganggaranFk($this->variant), $previousPenganggaran->id)->exists();
 
             Log::info('🔍 [CHECK PREVIOUS PERUBAHAN] Has previous perubahan: ' . ($hasPreviousPerubahan ? 'YES' : 'NO'));
 
@@ -1601,6 +1668,13 @@ class RkasController extends Controller
      */
     public function copyPreviousYearPerubahan(Request $request)
     {
+        if (!$this->RkasPerubahan) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Fitur salin RKAS Perubahan tidak tersedia untuk varian ini'
+            ]);
+        }
+
         try {
             DB::beginTransaction();
 
@@ -1616,8 +1690,8 @@ class RkasController extends Controller
             $previousYear = $currentYear - 1;
 
             // Dapatkan data penganggaran
-            $previousPenganggaran = Penganggaran::where('tahun_anggaran', $previousYear)->first();
-            $currentPenganggaran = Penganggaran::where('tahun_anggaran', $currentYear)->first();
+            $previousPenganggaran = ($this->Penganggaran)::where('tahun_anggaran', $previousYear)->first();
+            $currentPenganggaran = ($this->Penganggaran)::where('tahun_anggaran', $currentYear)->first();
 
             if (!$previousPenganggaran || !$currentPenganggaran) {
                 return response()->json([
@@ -1627,7 +1701,7 @@ class RkasController extends Controller
             }
 
             // Ambil semua data RKAS Perubahan tahun sebelumnya
-            $previousPerubahanData = RkasPerubahan::where('penganggaran_id', $previousPenganggaran->id)->get();
+            $previousPerubahanData = ($this->RkasPerubahan)::where(VariantConfig::penganggaranFk($this->variant), $previousPenganggaran->id)->get();
 
             if ($previousPerubahanData->isEmpty()) {
                 return response()->json([
@@ -1640,7 +1714,7 @@ class RkasController extends Controller
 
             foreach ($previousPerubahanData as $previousData) {
                 // Cek apakah data sudah ada di tahun ini (berdasarkan kriteria unik)
-                $exists = Rkas::where('penganggaran_id', $currentPenganggaran->id)
+                $exists = ($this->Rkas)::where(VariantConfig::penganggaranFk($this->variant), $currentPenganggaran->id)
                     ->where('kode_id', $previousData->kode_id)
                     ->where('kode_rekening_id', $previousData->kode_rekening_id)
                     ->where('uraian', $previousData->uraian)
@@ -1649,8 +1723,8 @@ class RkasController extends Controller
 
                 if (!$exists) {
                     // Salin data ke RKAS tahun berjalan
-                    Rkas::create([
-                        'penganggaran_id' => $currentPenganggaran->id,
+                    ($this->Rkas)::create([
+                        VariantConfig::penganggaranFk($this->variant) => $currentPenganggaran->id,
                         'kode_id' => $previousData->kode_id,
                         'kode_rekening_id' => $previousData->kode_rekening_id,
                         'uraian' => $previousData->uraian,
@@ -1689,10 +1763,11 @@ class RkasController extends Controller
 
     public function exportExcelTahapan(Request $request, $id)
     {
-        $penganggaran = Penganggaran::with('sekolah')->findOrFail($id);
+        $penganggaran = ($this->Penganggaran)::with('sekolah')->findOrFail($id);
+        $penganggaran->setAttribute('sumber_dana', \App\Config\VariantConfig::title($this->variant));
 
-        $rkasData = Rkas::with(['kodeKegiatan', 'rekeningBelanja'])
-            ->where('penganggaran_id', $id)
+        $rkasData = ($this->Rkas)::with(['kodeKegiatan', 'rekeningBelanja'])
+            ->where(VariantConfig::penganggaranFk($this->variant), $id)
             ->orderBy('kode_id')
             ->get()
             ->groupBy(function ($item) {
@@ -1722,10 +1797,11 @@ class RkasController extends Controller
 
     public function exportExcelTahapanV1(Request $request, $id)
     {
-        $penganggaran = Penganggaran::with('sekolah')->findOrFail($id);
+        $penganggaran = ($this->Penganggaran)::with('sekolah')->findOrFail($id);
+        $penganggaran->setAttribute('sumber_dana', \App\Config\VariantConfig::title($this->variant));
         
-        $rkasData = Rkas::with(['kodeKegiatan', 'rekeningBelanja'])
-            ->where('penganggaran_id', $id)
+        $rkasData = ($this->Rkas)::with(['kodeKegiatan', 'rekeningBelanja'])
+            ->where(VariantConfig::penganggaranFk($this->variant), $id)
             ->orderBy('kode_id')
             ->get()
             ->groupBy(function ($item) {
@@ -1755,11 +1831,12 @@ class RkasController extends Controller
 
     public function exportRincianPdf(Request $request, $id)
     {
-        $penganggaran = Penganggaran::with('sekolah')->findOrFail($id);
+        $penganggaran = ($this->Penganggaran)::with('sekolah')->findOrFail($id);
+        $penganggaran->setAttribute('sumber_dana', \App\Config\VariantConfig::title($this->variant));
         $tahap = $request->input('tahap', 'tahunan');
         
-        $query = Rkas::with(['kodeKegiatan', 'rekeningBelanja'])
-            ->where('penganggaran_id', $id);
+        $query = ($this->Rkas)::with(['kodeKegiatan', 'rekeningBelanja'])
+            ->where(VariantConfig::penganggaranFk($this->variant), $id);
 
         if ($tahap === '1') {
             $query->whereIn('bulan', ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni']);
@@ -1785,11 +1862,12 @@ class RkasController extends Controller
 
     public function exportRincianExcel(Request $request, $id)
     {
-        $penganggaran = Penganggaran::with('sekolah')->findOrFail($id);
+        $penganggaran = ($this->Penganggaran)::with('sekolah')->findOrFail($id);
+        $penganggaran->setAttribute('sumber_dana', \App\Config\VariantConfig::title($this->variant));
         $tahap = $request->input('tahap', 'tahunan');
 
-        $query = Rkas::with(['kodeKegiatan', 'rekeningBelanja'])
-            ->where('penganggaran_id', $id);
+        $query = ($this->Rkas)::with(['kodeKegiatan', 'rekeningBelanja'])
+            ->where(VariantConfig::penganggaranFk($this->variant), $id);
 
         if ($tahap === '1') {
             $query->whereIn('bulan', ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni']);
@@ -1814,5 +1892,173 @@ class RkasController extends Controller
         return response($html)
             ->header('Content-Type', 'application/vnd.ms-excel')
             ->header('Content-Disposition', 'attachment; filename="rka_rincian_' . $penganggaran->tahun_anggaran . '.xls"');
+    }
+    public function exportAlurKasPdf(Request $request, $id)
+    {
+        $penganggaran = ($this->Penganggaran)::with('sekolah')->findOrFail($id);
+        $penganggaran->setAttribute('sumber_dana', \App\Config\VariantConfig::title($this->variant));
+        
+        $rkasData = ($this->Rkas)::with(['kodeKegiatan', 'rekeningBelanja'])
+            ->where(VariantConfig::penganggaranFk($this->variant), $id)
+            ->orderBy('kode_id')
+            ->get()
+            ->groupBy(function ($item) {
+                return optional($item->kodeKegiatan)->kode;
+            })
+            ->filter(fn($group, $key) => !is_null($key));
+            
+        $tahapanData = $this->kelolaDataRkas($rkasData);
+
+        $pdf = Pdf::loadView('laporan.alur_kas', [
+            'anggaran' => $penganggaran->toArray(),
+            'tahapanData' => $tahapanData,
+            'paper_size' => $request->paper_size ?? 'A4',
+            'orientation' => $request->orientation ?? 'landscape',
+            'font_size' => $request->font_size ?? '10pt',
+            'is_excel' => false
+        ]);
+
+        return $pdf->setPaper($request->paper_size ?? 'A4', $request->orientation ?? 'landscape')
+                   ->stream('alur_kas.pdf');
+    }
+
+    public function exportAlurKasExcel(Request $request, $id)
+    {
+        $penganggaran = ($this->Penganggaran)::with('sekolah')->findOrFail($id);
+        $penganggaran->setAttribute('sumber_dana', \App\Config\VariantConfig::title($this->variant));
+        
+        $rkasData = ($this->Rkas)::with(['kodeKegiatan', 'rekeningBelanja'])
+            ->where(VariantConfig::penganggaranFk($this->variant), $id)
+            ->orderBy('kode_id')
+            ->get()
+            ->groupBy(function ($item) {
+                return optional($item->kodeKegiatan)->kode;
+            })
+            ->filter(fn($group, $key) => !is_null($key));
+            
+        $tahapanData = $this->kelolaDataRkas($rkasData);
+
+        $html = view('laporan.alur_kas', [
+            'anggaran' => $penganggaran->toArray(),
+            'tahapanData' => $tahapanData,
+            'paper_size' => $request->paper_size ?? 'A4',
+            'orientation' => $request->orientation ?? 'landscape',
+            'font_size' => $request->font_size ?? '10pt',
+            'is_excel' => true
+        ])->render();
+
+        return response($html)
+            ->header('Content-Type', 'application/vnd.ms-excel')
+            ->header('Content-Disposition', 'attachment; filename="alur_kas_' . $penganggaran->tahun_anggaran . '.xls"');
+    }
+
+    public function exportRpPdf(Request $request, $id)
+    {
+        $penganggaran = ($this->Penganggaran)::with('sekolah')->findOrFail($id);
+        $penganggaran->setAttribute('sumber_dana', \App\Config\VariantConfig::title($this->variant));
+        
+        $rkasData = ($this->Rkas)::with(['kodeKegiatan', 'rekeningBelanja'])
+            ->where(VariantConfig::penganggaranFk($this->variant), $id)
+            ->orderBy('kode_id')
+            ->get()
+            ->groupBy(function ($item) {
+                return optional($item->kodeKegiatan)->kode;
+            })
+            ->filter(fn($group, $key) => !is_null($key));
+            
+        $tahapanData = $this->kelolaDataRkas($rkasData);
+
+        $tahap = $request->tahap ?? 1;
+
+        $pdf = Pdf::loadView('laporan.rincian_pencairan', [
+            'anggaran' => $penganggaran->toArray(),
+            'tahapanData' => $tahapanData,
+            'tahap' => $tahap,
+            'paper_size' => $request->paper_size ?? 'A4',
+            'orientation' => $request->orientation ?? 'landscape',
+            'font_size' => $request->font_size ?? '10pt',
+            'is_excel' => false
+        ])->setPaper($request->paper_size ?? 'A4', $request->orientation ?? 'landscape');
+
+        return $pdf->stream('rincian_pencairan_tahap' . $tahap . '_' . $penganggaran->tahun_anggaran . '.pdf');
+    }
+
+    public function exportRpExcel(Request $request, $id)
+    {
+        $penganggaran = ($this->Penganggaran)::with('sekolah')->findOrFail($id);
+        $penganggaran->setAttribute('sumber_dana', \App\Config\VariantConfig::title($this->variant));
+        
+        $rkasData = ($this->Rkas)::with(['kodeKegiatan', 'rekeningBelanja'])
+            ->where(VariantConfig::penganggaranFk($this->variant), $id)
+            ->orderBy('kode_id')
+            ->get()
+            ->groupBy(function ($item) {
+                return optional($item->kodeKegiatan)->kode;
+            })
+            ->filter(fn($group, $key) => !is_null($key));
+            
+        $tahapanData = $this->kelolaDataRkas($rkasData);
+
+        $tahap = $request->tahap ?? 1;
+
+        $html = view('laporan.rincian_pencairan_excel', [
+            'anggaran' => $penganggaran->toArray(),
+            'tahapanData' => $tahapanData,
+            'tahap' => $tahap,
+            'is_excel' => true
+        ])->render();
+
+        return response($html)
+            ->header('Content-Type', 'application/vnd.ms-excel')
+            ->header('Content-Disposition', 'attachment; filename="rincian_pencairan_tahap' . $tahap . '_' . $penganggaran->tahun_anggaran . '.xls"');
+    }
+
+    public function updateRincianPencairan(Request $request, $id)
+    {
+        $request->validate([
+            'uraian' => 'required|string',
+            'kode_rekening_id' => 'required|exists:rekening_belanjas,id',
+            'nama_penerima' => 'nullable|string',
+            'jabatan' => 'nullable|string',
+            'nomor_rekening' => 'nullable|string',
+            'bank' => 'nullable|string',
+            'ada_npwp' => 'boolean',
+            'pot_ppn' => 'nullable|numeric',
+            'pot_pph23' => 'nullable|numeric',
+            'pot_pph21' => 'nullable|numeric',
+            'status_penerima' => 'nullable|in:pns,non_asn',
+            'golongan' => 'nullable|in:I,II,III,IV',
+        ]);
+
+        ($this->Rkas)::where(\App\Config\VariantConfig::penganggaranFk($this->variant), $id)
+            ->whereRaw('TRIM(uraian) = TRIM(?)', [$request->uraian])
+            ->where('kode_rekening_id', $request->kode_rekening_id)
+            ->update([
+                'nama_penerima' => $request->nama_penerima,
+                'jabatan' => $request->jabatan,
+                'nomor_rekening' => $request->nomor_rekening,
+                'bank' => $request->bank,
+                'ada_npwp' => $request->ada_npwp ? 1 : 0,
+                'pot_ppn' => $request->pot_ppn,
+                'pot_pph23' => $request->pot_pph23,
+                'pot_pph21' => $request->pot_pph21,
+                'status_penerima' => $request->status_penerima,
+                'golongan' => $request->golongan,
+            ]);
+
+        return redirect()->back()->with('success', 'Rincian pencairan berhasil disimpan.');
+    }
+
+    protected function renderVariant($component, $props = [])
+
+    {
+        $var = $this->variant ?? (request()->route() ? (request()->route()->parameter('variant') ?? request()->get('_variant', 'reguler')) : 'reguler');
+        if (app()->bound('variant')) {
+            $var = app('variant');
+        }
+        return \Inertia\Inertia::render(VariantConfig::pagePrefix($var) . $component, array_merge($props, [
+            'variant' => $var,
+            'routePrefix' => VariantConfig::routePrefix($var)
+        ]));
     }
 }

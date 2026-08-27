@@ -3,6 +3,7 @@ import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
 import { registerLocale } from "react-datepicker";
 import { id } from 'date-fns/locale/id';
+import { useForm, usePage } from '@inertiajs/react';
 import axios from 'axios';
 import Select from 'react-select';
 import Modal from '@/Components/Modal';
@@ -11,6 +12,7 @@ import TextInput from '@/Components/TextInput';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import DangerButton from '@/Components/DangerButton';
+import useVariantRoute from '@/Hooks/useVariantRoute';
 
 registerLocale('id', id);
 
@@ -41,6 +43,8 @@ interface LphData {
 }
 
 export default function LphTab() {
+    const vroute = useVariantRoute();
+    const penganggaranFk = usePage<any>().props.penganggaranFk || 'penganggaran_id';
     const [data, setData] = useState<LphData[]>([]);
     const [search, setSearch] = useState('');
     const [page, setPage] = useState(1);
@@ -104,7 +108,7 @@ export default function LphTab() {
 
     const fetchAvailableYears = async () => {
         try {
-            const response = await axios.get('/fitur-pelengkap/api/lph/tahun');
+            const response = await axios.get(vroute('api.lph.tahun'));
             const years = response.data;
             setAvailableYears(years);
 
@@ -129,7 +133,7 @@ export default function LphTab() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const response = await axios.get('/fitur-pelengkap/api/lph', {
+            const response = await axios.get(vroute('api.lph.index'), {
                 params: { search, page }
             });
             setData(response.data.data);
@@ -144,7 +148,7 @@ export default function LphTab() {
     const handleCalculate = async () => {
         setIsCalculating(true);
         try {
-            const response = await axios.get('/fitur-pelengkap/api/lph/calculate', {
+            const response = await axios.get(vroute('api.lph.calculate'), {
                 params: {
                     tahun_anggaran: formData.tahun_anggaran,
                     semester: formData.semester
@@ -155,7 +159,7 @@ export default function LphTab() {
                 ...prev,
                 ...response.data,
                 rekap_per_rekening: response.data.rekap_per_rekening || [],
-                penganggaran_id: response.data.penganggaran_id
+                penganggaran_id: response.data[penganggaranFk]
             }));
             showToast('Data berhasil dihitung.', 'success');
         } catch (error: any) {
@@ -169,11 +173,15 @@ export default function LphTab() {
         e.preventDefault();
         setIsSaving(true);
         try {
+            const payload = {
+                ...formData,
+                [penganggaranFk]: formData.penganggaran_id
+            };
             if (formData.id) {
-                await axios.put(`/fitur-pelengkap/api/lph/${formData.id}`, formData);
+                await axios.put(vroute('api.lph.update', formData.id), payload);
                 showToast('Data LPH berhasil diperbarui.', 'success');
             } else {
-                await axios.post('/fitur-pelengkap/api/lph', formData);
+                await axios.post(vroute('api.lph.store'), payload);
                 showToast('Data LPH berhasil disimpan.', 'success');
             }
             setIsAddModalOpen(false);
@@ -205,7 +213,7 @@ export default function LphTab() {
     const confirmDelete = async () => {
         if (!itemToDelete) return;
         try {
-            await axios.delete(`/fitur-pelengkap/api/lph/${itemToDelete}`);
+            await axios.delete(vroute('api.lph.destroy', itemToDelete));
             fetchData();
             setIsDeleteModalOpen(false);
             setItemToDelete(null);
@@ -317,7 +325,7 @@ export default function LphTab() {
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                         <div className="flex items-center space-x-2">
                                             <button
-                                                onClick={() => { setSelectedPdfUrl(`/laporan/lph/${item.id}/pdf`); setIsPreviewModalOpen(true); }}
+                                                onClick={() => { setSelectedPdfUrl(vroute('laporan.lph.pdf', item.id)); setIsPreviewModalOpen(true); }}
                                                 className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-200"
                                                 title="Preview PDF"
                                             >

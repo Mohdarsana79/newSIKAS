@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Penganggaran;
 use Illuminate\Http\Request;
+use App\Config\VariantConfig;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
@@ -15,28 +16,51 @@ use App\Models\RekeningBelanja;
 
 class PenganggaranController extends Controller
 {
+    protected string $variant;
+    protected string $Penganggaran;
+    protected string $Rkas;
+    protected ?string $RkasPerubahan = null;
+    protected string $BukuKasUmum;
+
+    public function __construct()
+    {
+        $this->middleware(function ($request, $next) {
+            $this->variant = app()->bound('variant') ? app('variant') : 'reguler';
+            $this->Penganggaran = VariantConfig::getModelClass('penganggaran', $this->variant);
+            $this->Rkas = VariantConfig::getModelClass('rkas', $this->variant);
+            try {
+                $this->RkasPerubahan = VariantConfig::getModelClass('rkas_perubahan', $this->variant);
+            } catch (\InvalidArgumentException $e) {
+                $this->RkasPerubahan = null;
+            }
+            $this->BukuKasUmum = VariantConfig::getModelClass('bku', $this->variant);
+            
+            return $next($request);
+        });
+    }
     /**
      * Display a listing of the resource.
      */
     public function index()
     {
-        $anggarans = Penganggaran::orderBy('tahun_anggaran', 'desc')->get();
-        // $availableYears = Penganggaran::select('tahun_anggaran')->distinct()->orderBy('tahun_anggaran', 'desc')->pluck('tahun_anggaran');
+        $anggarans = ($this->Penganggaran)::orderBy('tahun_anggaran', 'desc')->get();
+        // $availableYears = ($this->Penganggaran)::select('tahun_anggaran')->distinct()->orderBy('tahun_anggaran', 'desc')->pluck('tahun_anggaran');
 
         $items = collect();
+        $variantTitle = VariantConfig::title($this->variant);
 
         foreach ($anggarans as $anggaran) {
             // Check existence
-            $hasPerubahan = RkasPerubahan::where('penganggaran_id', $anggaran->id)->exists();
-            $hasBkuReguler = \App\Models\BukuKasUmum::where('penganggaran_id', $anggaran->id)->exists();
-            $hasBkuPerubahan = \App\Models\BukuKasUmum::where('penganggaran_id', $anggaran->id)
+            $hasPerubahan = $this->RkasPerubahan ? ($this->RkasPerubahan)::where(VariantConfig::penganggaranFk($this->variant), $anggaran->id)->exists() : false;
+            $hasBkuReguler = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $anggaran->id)->exists();
+            $hasBkuPerubahan = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $anggaran->id)
                 ->whereMonth('tanggal_transaksi', '>=', 7)
                 ->exists();
 
             // 1. Add Regular Item
             $items->push([
                 'id' => $anggaran->id,
-                'title' => 'RKAS BOSP Reguler ' . $anggaran->tahun_anggaran,
+                'title' => "RKAS {$variantTitle} " . $anggaran->tahun_anggaran,
                 'pagu' => 'Rp ' . number_format($anggaran->pagu_anggaran, 0, ',', '.'),
                 'status' => 'regular',
                 'has_perubahan' => $hasPerubahan, // Flag to disable button / hide edit
@@ -48,7 +72,7 @@ class PenganggaranController extends Controller
             if ($hasPerubahan) {
                 $items->push([
                     'id' => $anggaran->id, // Same ID, will use status to change route
-                    'title' => 'RKAS Perubahan ' . $anggaran->tahun_anggaran,
+                    'title' => "RKAS Perubahan {$variantTitle} " . $anggaran->tahun_anggaran,
                     'pagu' => 'Rp ' . number_format($anggaran->pagu_anggaran, 0, ',', '.'),
                     'status' => 'perubahan',
                     'has_perubahan' => true,
@@ -60,7 +84,7 @@ class PenganggaranController extends Controller
 
         $canCreate = SekolahProfile::exists() && KodeKegiatan::exists() && RekeningBelanja::exists();
 
-        return Inertia::render('Penganggaran/Index', [
+        return $this->renderVariant('Penganggaran/Index', [
              'items' => $items,
              'anggarans' => $anggarans, // passing raw data too if needed
              'can_create' => $canCreate
@@ -89,7 +113,7 @@ class PenganggaranController extends Controller
         // Format angka sebelum disimpan
         $pagu = preg_replace('/[^\d]/', '', $request->pagu_anggaran);
 
-        Penganggaran::create([
+        ($this->Penganggaran)::create([
             'pagu_anggaran' => $pagu,
             'tahun_anggaran' => $request->tahun_anggaran,
             'kepala_sekolah' => $request->kepala_sekolah,
@@ -101,7 +125,7 @@ class PenganggaranController extends Controller
             'komite' => $request->komite,
             'tanggal_sk_kepala_sekolah' => $request->tanggal_sk_kepala_sekolah,
             'tanggal_sk_bendahara' => $request->tanggal_sk_bendahara,
-            'sekolah_id' => \App\Models\SekolahProfile::first()->id ?? null,
+            'sekolah_id' => \App\Models\SekolahProfile::query()->first()->id ?? null,
         ]);
 
         return redirect()->back()->with('success', 'Data anggaran berhasil ditambahkan');
@@ -126,7 +150,7 @@ class PenganggaranController extends Controller
             'tanggal_sk_bendahara' => 'required|date',
         ]);
 
-        $penganggaran = Penganggaran::findOrFail($id);
+        $penganggaran = ($this->Penganggaran)::findOrFail($id);
 
         // Format angka sebelum disimpan
         $pagu = preg_replace('/[^\d]/', '', $request->pagu_anggaran);
@@ -153,10 +177,10 @@ class PenganggaranController extends Controller
      */
     public function destroy($id)
     {
-        $penganggaran = Penganggaran::findOrFail($id);
+        $penganggaran = ($this->Penganggaran)::findOrFail($id);
 
         // Validasi BKU
-        $hasBku = \App\Models\BukuKasUmum::where('penganggaran_id', $id)->exists();
+        $hasBku = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $id)->exists();
         if ($hasBku) {
             return redirect()->back()->with('error', 'Penganggaran tidak dapat di hapus karena sudah ada data belanja pada BKU, anda perlu menghapus data bku pada penganggaran ini untuk dapat menghapus penganggaran ini');
         }
@@ -172,7 +196,7 @@ class PenganggaranController extends Controller
             'tanggal_cetak' => 'required|date',
         ]);
 
-        $penganggaran = Penganggaran::findOrFail($id);
+        $penganggaran = ($this->Penganggaran)::findOrFail($id);
         $penganggaran->update([
             'tanggal_cetak' => $request->tanggal_cetak
         ]);
@@ -186,11 +210,23 @@ class PenganggaranController extends Controller
             'tanggal_perubahan' => 'required|date',
         ]);
 
-        $penganggaran = Penganggaran::findOrFail($id);
+        $penganggaran = ($this->Penganggaran)::findOrFail($id);
         $penganggaran->update([
             'tanggal_perubahan' => $request->tanggal_perubahan
         ]);
 
         return redirect()->back()->with('success', 'Tanggal perubahan berhasil diperbarui');
+    }
+
+    protected function renderVariant($component, $props = [])
+    {
+        $var = $this->variant ?? (request()->route() ? (request()->route()->parameter('variant') ?? request()->get('_variant', 'reguler')) : 'reguler');
+        if (app()->bound('variant')) {
+            $var = app('variant');
+        }
+        return \Inertia\Inertia::render(VariantConfig::pagePrefix($var) . $component, array_merge($props, [
+            'variant' => $var,
+            'routePrefix' => VariantConfig::routePrefix($var)
+        ]));
     }
 }

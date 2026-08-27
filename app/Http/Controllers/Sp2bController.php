@@ -7,6 +7,7 @@ use App\Models\Penganggaran;
 use App\Models\BukuKasUmum;
 use App\Models\PenerimaanDana;
 use Illuminate\Http\Request;
+use App\Config\VariantConfig;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -15,9 +16,27 @@ use Illuminate\Validation\Rule;
 
 class Sp2bController extends Controller
 {
+    protected string $variant;
+    protected string $Penganggaran;
+    protected string $PenerimaanDana;
+    protected string $BukuKasUmum;
+    protected string $Sp2b;
+
+    public function __construct()
+    {
+        $this->middleware(function ($request, $next) {
+            $this->variant = app()->bound('variant') ? app('variant') : 'reguler';
+            $this->Penganggaran = VariantConfig::getModelClass('penganggaran', $this->variant);
+            $this->PenerimaanDana = VariantConfig::getModelClass('penerimaan_dana', $this->variant);
+            $this->BukuKasUmum = VariantConfig::getModelClass('bku', $this->variant);
+            $this->Sp2b = VariantConfig::getModelClass('sp2b', $this->variant);
+
+            return $next($request);
+        });
+    }
     public function index(Request $request)
     {
-        $query = Sp2b::with(['penganggaran']);
+        $query = ($this->Sp2b)::with(['penganggaran']);
 
         if ($request->has('search')) {
             $search = $request->search;
@@ -31,14 +50,14 @@ class Sp2bController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'penganggaran_id' => 'required|exists:penganggarans,id',
+            VariantConfig::penganggaranFk($this->variant) => 'required|exists:' . (new $this->Penganggaran)->getTable() . ',id',
             'jenis_periode' => 'required|in:bulan,tahap',
             'bulan' => 'required_if:jenis_periode,bulan',
             'nomor_sp2b' => [
                 'required',
                 'string',
-                Rule::unique('sp2bs')->where(function ($query) use ($request) {
-                    $q = $query->where('penganggaran_id', $request->penganggaran_id)
+                Rule::unique((new $this->Sp2b)->getTable())->where(function ($query) use ($request) {
+                    $q = $query->where(VariantConfig::penganggaranFk($this->variant), $request->{VariantConfig::penganggaranFk($this->variant)})
                                ->where('jenis_periode', $request->jenis_periode);
                     if ($request->jenis_periode == 'bulan') {
                         return $q->where('bulan', $request->bulan);
@@ -62,24 +81,24 @@ class Sp2bController extends Controller
             'nomor_sp2b.unique' => 'SP2B Tahap Tersebut Sudah Ada',
         ]);
 
-        Sp2b::create($validated);
+        ($this->Sp2b)::create($validated);
 
         return response()->json(['success' => true]);
     }
 
     public function update(Request $request, $id)
     {
-        $sp2b = Sp2b::findOrFail($id);
+        $sp2b = ($this->Sp2b)::findOrFail($id);
         
         $validated = $request->validate([
-            'penganggaran_id' => 'required|exists:penganggarans,id',
+            VariantConfig::penganggaranFk($this->variant) => 'required|exists:' . (new $this->Penganggaran)->getTable() . ',id',
             'jenis_periode' => 'required|in:bulan,tahap',
             'bulan' => 'required_if:jenis_periode,bulan',
             'nomor_sp2b' => [
                 'required',
                 'string',
-                Rule::unique('sp2bs')->ignore($id)->where(function ($query) use ($request) {
-                    $q = $query->where('penganggaran_id', $request->penganggaran_id)
+                Rule::unique((new $this->Sp2b)->getTable())->ignore($id)->where(function ($query) use ($request) {
+                    $q = $query->where(VariantConfig::penganggaranFk($this->variant), $request->{VariantConfig::penganggaranFk($this->variant)})
                                ->where('jenis_periode', $request->jenis_periode);
                     if ($request->jenis_periode == 'bulan') {
                         return $q->where('bulan', $request->bulan);
@@ -110,14 +129,14 @@ class Sp2bController extends Controller
 
     public function destroy($id)
     {
-        Sp2b::findOrFail($id)->delete();
+        ($this->Sp2b)::findOrFail($id)->delete();
         return response()->json(['success' => true]);
     }
 
     public function getTahunAnggaran()
     {
         $sekolahId = auth()->user()->sekolah_id ?? 1;
-        $tahuns = Penganggaran::where('sekolah_id', $sekolahId)
+        $tahuns = ($this->Penganggaran)::where('sekolah_id', $sekolahId)
             ->select('id', 'tahun_anggaran')
             ->orderBy('tahun_anggaran', 'desc')
             ->get();
@@ -134,7 +153,7 @@ class Sp2bController extends Controller
             $bulan = $request->bulan;
             $sekolahId = auth()->user()->sekolah_id ?? 1;
 
-            $penganggaran = Penganggaran::where('sekolah_id', $sekolahId)
+            $penganggaran = ($this->Penganggaran)::where('sekolah_id', $sekolahId)
                 ->where('tahun_anggaran', $tahun)
                 ->first();
 
@@ -156,15 +175,18 @@ class Sp2bController extends Controller
 
                 // Tambahkan saldo awal dari penerimaan dana jika bulan 1
                 if ($bulan == 1) {
-                    $penerimaanAwal = PenerimaanDana::where('penganggaran_id', $penganggaran->id)
-                        ->where('sumber_dana', 'Bosp Reguler Tahap 1')
-                        ->first();
-                    if ($penerimaanAwal && $penerimaanAwal->saldo_awal) {
-                        $saldoAwal += $penerimaanAwal->saldo_awal;
+                    $tahap1Option = \App\Config\VariantConfig::sumberDanaTahap1($this->variant);
+                    if ($tahap1Option) {
+                        $penerimaanAwal = ($this->PenerimaanDana)::where(\App\Config\VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
+                            ->where('sumber_dana', $tahap1Option)
+                            ->first();
+                        if ($penerimaanAwal && $penerimaanAwal->saldo_awal) {
+                            $saldoAwal += $penerimaanAwal->saldo_awal;
+                        }
                     }
                 }
 
-                $pendapatan = PenerimaanDana::where('penganggaran_id', $penganggaran->id)
+                $pendapatan = ($this->PenerimaanDana)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
                     ->whereMonth('tanggal_terima', $bulan)
                     ->sum('jumlah_dana');
 
@@ -182,27 +204,45 @@ class Sp2bController extends Controller
 
                 // Tambahkan Saldo Awal (Luncuran) jika Tahap 1
                 if ($tahap == '1') {
-                    $penerimaanAwal = PenerimaanDana::where('penganggaran_id', $penganggaran->id)
-                        ->where('sumber_dana', 'Bosp Reguler Tahap 1')
-                        ->first();
-                    if ($penerimaanAwal && $penerimaanAwal->saldo_awal) {
-                        $saldoAwal += $penerimaanAwal->saldo_awal;
+                    $tahap1Option = \App\Config\VariantConfig::sumberDanaTahap1($this->variant);
+                    if ($tahap1Option) {
+                        $penerimaanAwal = ($this->PenerimaanDana)::where(\App\Config\VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
+                            ->where('sumber_dana', $tahap1Option)
+                            ->first();
+                        if ($penerimaanAwal && $penerimaanAwal->saldo_awal) {
+                            $saldoAwal += $penerimaanAwal->saldo_awal;
+                        }
                     }
                 }
 
                 // Pendapatan during this Tahap
-                $pendapatan = PenerimaanDana::where('penganggaran_id', $penganggaran->id)
+                $pendapatan = ($this->PenerimaanDana)::where(\App\Config\VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
                     ->where(function($q) use ($tahap) {
-                        if ($tahap == '1') {
-                            $q->where('sumber_dana', 'like', '%Tahap 1%')->orWhere('sumber_dana', 'like', '%Tahap I%');
+                        if (in_array($this->variant, ['silpa', 'kinerja_silpa'])) {
+                            // Untuk SiLPA, pendapatan masuk ke periode saat tanggal_terimanya berada
+                            // SP2B/LPH biasanya mengecek berdasar nama tahap untuk Reguler, 
+                            // tapi untuk SiLPA cukup kita izinkan semua (karena cuma 1 pencairan).
+                            // Tapi agar tidak double di tahap 2, kita bisa memfilter berdasarkan tanggal jika dibutuhkan
+                            // Namun dalam prakteknya untuk SP2B, filter by name adalah standar yang dibuat sebelumnya.
+                            // Kita terima saja semua SiLPA jika tahap 1 (kebanyakan SiLPA dicatat di awal tahun).
+                            if ($tahap == '1') {
+                                $q->whereNotNull('sumber_dana'); // Terima semua untuk SiLPA di Tahap 1
+                            } else {
+                                // Tahap 2: Bisa saja dicatat di Juli ke atas.
+                                $q->whereMonth('tanggal_terima', '>=', 7);
+                            }
                         } else {
-                            $q->where('sumber_dana', 'like', '%Tahap 2%')->orWhere('sumber_dana', 'like', '%Tahap II%');
+                            if ($tahap == '1') {
+                                $q->where('sumber_dana', 'like', '%Tahap 1%')->orWhere('sumber_dana', 'like', '%Tahap I%');
+                            } else {
+                                $q->where('sumber_dana', 'like', '%Tahap 2%')->orWhere('sumber_dana', 'like', '%Tahap II%');
+                            }
                         }
                     })->sum('jumlah_dana');
             }
 
             // Pengeluaran
-            $bkuExpenses = BukuKasUmum::where('penganggaran_id', $penganggaran->id)
+            $bkuExpenses = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
                 ->whereDate('tanggal_transaksi', '>=', $startDate)
                 ->whereDate('tanggal_transaksi', '<=', $endDate)
                 ->whereNotNull('rekening_belanja_id')
@@ -251,7 +291,7 @@ class Sp2bController extends Controller
                 'belanja_modal_aset_tetap_lainnya' => $bm_aset,
                 'belanja_modal_tanah_bangunan' => $bm_tanah,
                 'saldo_akhir' => $saldoAkhir,
-                'penganggaran_id' => $penganggaran->id
+                VariantConfig::penganggaranFk($this->variant) => $penganggaran->id
             ]);
 
         } catch (\Exception $e) {
@@ -261,7 +301,7 @@ class Sp2bController extends Controller
 
     public function generatePdf($id)
     {
-        $sp2b = Sp2b::with(['penganggaran'])->findOrFail($id);
+        $sp2b = ($this->Sp2b)::with(['penganggaran'])->findOrFail($id);
         $penganggaran = $sp2b->penganggaran;
         $sekolah = \App\Models\SekolahProfile::find($penganggaran->sekolah_id);
 
@@ -281,6 +321,7 @@ class Sp2bController extends Controller
         }
 
         $data = [
+                'sumberDana' => \App\Config\VariantConfig::title($this->variant),
             'sp2b' => $sp2b,
             'sekolah' => $sekolah,
             'penganggaran' => $penganggaran,
@@ -302,5 +343,17 @@ class Sp2bController extends Controller
         }
 
         return $pdf->stream('sp2b.pdf');
+    }
+
+    protected function renderVariant($component, $props = [])
+    {
+        $var = $this->variant ?? (request()->route() ? (request()->route()->parameter('variant') ?? request()->get('_variant', 'reguler')) : 'reguler');
+        if (app()->bound('variant')) {
+            $var = app('variant');
+        }
+        return \Inertia\Inertia::render(VariantConfig::pagePrefix($var) . $component, array_merge($props, [
+            'variant' => $var,
+            'routePrefix' => VariantConfig::routePrefix($var)
+        ]));
     }
 }

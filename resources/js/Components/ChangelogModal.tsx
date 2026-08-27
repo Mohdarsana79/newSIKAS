@@ -29,7 +29,7 @@ export default function ChangelogModal() {
                         Informasi Rilis
                     </h2>
                     <span className="bg-indigo-100 text-indigo-800 text-sm font-semibold px-3 py-1 rounded-full dark:bg-indigo-900 dark:text-indigo-300">
-                        SIKAS V.2026.14
+                        SIKAS V.2026.19
                     </span>
                 </div>
 
@@ -46,6 +46,11 @@ export default function ChangelogModal() {
                             <li><span className="font-medium">Penambahan Rekapitulasi Barang Habis Pakai (BHP):</span> Penambahan format Rekapitulasi Belanja Dana BOSP (Barang Habis Pakai)</li>
                             <li><span className="font-medium">Penambahan Rekapitulasi Belanja Dana BOSP (Barang Modal / Aset):</span> Penambahan format Rekapitulasi Belanja Dana BOSP (Barang Modal / Aset)</li>
                             <li><span className="font-medium">Penambahan Format Kwitan 3:</span> Penambahan format kwitansi pembayaran pada fitur kwitansi</li>
+                            <li><span className="font-medium">Penambahan BOSP Kinerja:</span> Penambahan fitur BOSP Kinerja pada halaman Rencana Kerja Anggaran Sekolah.</li>
+                            <li><span className="font-medium">Penambahan SiLPA BOSP Reguler:</span> Penambahan fitur SiLPA BOSP Reguler pada halaman Rencana Kerja Anggaran Sekolah.</li>
+                            <li><span className="font-medium">Penambahan SiLPA BOSP Kinerja:</span> Penambahan fitur SiLPA BOSP Kinerja pada halaman Rencana Kerja Anggaran Sekolah.</li>
+                            <li><span className="font-medium">Penambahan Perol Rincian Pencairan:</span> Penambahan fitur Perol Rincian Pencairan Pada Rencana Kerja Anggaran Sekolah.</li>
+                            <li><span className="font-medium">Penambahan Alur Kas:</span> Penambahan fitur Alur KasPada Rencana Kerja Anggaran Sekolah.</li>
                         </ul>
                     </div>
 
@@ -64,6 +69,7 @@ export default function ChangelogModal() {
                             <li><span className="font-medium">Perbaikan Tambah Pembelanjaan RKAS dan Perubahan:</span> Perbaikan bug pada form kegiatan dan rekening belanja saat tambah belanja pada rkas dan rkas perubahan yang melakukan sisip uraian sebelunya </li>
                             <li><span className="font-medium">Perbaikan Form bulan pada Rkas dan Rkas Perubahan:</span> Perbaikanbug pada form bulan pada rkas dan rkas perubahan saat bulan sudah terpilih maka tidak akan tampil lagi pada pilihan bulan. </li>
                             <li><span className="font-medium">Perbaikan Pajak PPN:</span> Perbaikan pada perhitungan pajak PPN yang tidak memperhitungkan nilai awal barang dan jasa. </li>
+                            <li><span className="font-medium">Perbaikan Optimalisasi Aplikasi:</span> Perbaikan Optimalisasi Aplikasi untuk penggunaan yang lebih lancar. </li>
                         </ul>
                     </div>
                 </div>

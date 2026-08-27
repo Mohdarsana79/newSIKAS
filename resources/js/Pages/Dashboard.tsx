@@ -15,6 +15,7 @@ interface DashboardProps {
     penganggaran: any;
     tahunAktif: any;
     availableYears: any;
+    activeVariant: string;
     auth: any;
 }
 
@@ -25,9 +26,11 @@ export default function Dashboard({
     pemanfaatanAnggaran: initialPemanfaatan,
     perbandinganLimaTahun: initialPerbandingan,
     tahunAktif,
-    availableYears
+    availableYears,
+    activeVariant
 }: DashboardProps) {
     const [year, setYear] = useState(tahunAktif || new Date().getFullYear().toString());
+    const [variant, setVariant] = useState(activeVariant || 'reguler');
     const [isDarkMode, setIsDarkMode] = useState(false);
     const [loading, setLoading] = useState(false);
     const [isSyncing, setIsSyncing] = useState(false);
@@ -38,6 +41,7 @@ export default function Dashboard({
     const [chartProgram, setChartProgram] = useState(initialChartProgram);
     const [pemanfaatan, setPemanfaatan] = useState(initialPemanfaatan);
     const [perbandingan, setPerbandingan] = useState(initialPerbandingan);
+    const [availableYearsList, setAvailableYearsList] = useState(availableYears);
 
     useEffect(() => {
         const checkDarkMode = () => setIsDarkMode(document.documentElement.classList.contains('dark'));
@@ -48,18 +52,24 @@ export default function Dashboard({
     }, []);
 
     // Fetch data when year changes
-    const fetchDashboardData = async (selectedYear: string) => {
+    const fetchDashboardData = async (selectedYear: string, selectedVariant: string) => {
         if (loading) return;
 
         try {
             setLoading(true);
-            const response = await axios.get(route('dashboard.data'), { params: { tahun: selectedYear } });
+            const response = await axios.get(route('dashboard.data'), { params: { tahun: selectedYear, variant: selectedVariant } });
             if (response.data.success) {
                 setStatistik(response.data.statistik);
                 setGrafikTahunan(response.data.grafik_realisasi_tahunan);
                 setChartProgram(response.data.chart_realisasi_program);
                 setPemanfaatan(response.data.pemanfaatan_anggaran);
                 setPerbandingan(response.data.perbandingan_lima_tahun);
+                if (response.data.available_years) {
+                    setAvailableYearsList(response.data.available_years);
+                }
+                if (response.data.tahun) {
+                    setYear(response.data.tahun.toString());
+                }
             }
         } catch (error) {
             console.error('Error fetching dashboard data:', error);
@@ -71,27 +81,37 @@ export default function Dashboard({
     const handleYearChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const newYear = e.target.value;
         setYear(newYear);
-        fetchDashboardData(newYear);
+        fetchDashboardData(newYear, variant);
+    };
+
+    const handleVariantChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const newVariant = e.target.value;
+        setVariant(newVariant);
+        fetchDashboardData(year, newVariant);
     };
 
     const chartTheme = { mode: isDarkMode ? 'dark' : 'light' } as const;
     
     // Helper format currency singkat (T / M / JT)
-    const formatShortCurrency = (value: number | undefined | null) => {
+    const formatShortCurrency = (value: any) => {
         if (value === undefined || value === null) return 'Rp. 0';
         
-        if (value >= 1000000000000) {
-            return 'Rp. ' + (value / 1000000000000).toLocaleString('id-ID', { maximumFractionDigits: 1 }) + ' T';
-        } else if (value >= 1000000000) {
-            return 'Rp. ' + (value / 1000000000).toLocaleString('id-ID', { maximumFractionDigits: 1 }) + ' M';
-        } else if (value >= 1000000) {
-            return 'Rp. ' + (value / 1000000).toLocaleString('id-ID', { maximumFractionDigits: 1 }) + ' JT';
+        const numValue = Number(value);
+        if (isNaN(numValue)) return 'Rp. 0';
+        
+        if (numValue >= 1000000000000) {
+            return 'Rp. ' + (numValue / 1000000000000).toLocaleString('id-ID', { maximumFractionDigits: 1 }) + ' T';
+        } else if (numValue >= 1000000000) {
+            return 'Rp. ' + (numValue / 1000000000).toLocaleString('id-ID', { maximumFractionDigits: 1 }) + ' M';
+        } else if (numValue >= 1000000) {
+            return 'Rp. ' + (numValue / 1000000).toLocaleString('id-ID', { maximumFractionDigits: 1 }) + ' JT';
         }
-        return 'Rp. ' + value.toLocaleString('id-ID');
+        return 'Rp. ' + numValue.toLocaleString('id-ID');
     };
 
-    const formatFullCurrency = (value: number | undefined | null) => {
-        return 'Rp ' + (value || 0).toLocaleString('id-ID');
+    const formatFullCurrency = (value: any) => {
+        const numValue = Number(value) || 0;
+        return 'Rp ' + numValue.toLocaleString('id-ID');
     };
 
     // 1. Chart Realisasi Bulanan
@@ -160,12 +180,23 @@ export default function Dashboard({
                         {loading && <span className="text-sm text-gray-500 animate-pulse">Memuat data...</span>}
                         
                         <select
+                            value={variant}
+                            onChange={handleVariantChange}
+                            className="rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 h-10 px-4 py-1 font-bold"
+                        >
+                            <option value="reguler">BOSP Reguler</option>
+                            <option value="kinerja">BOSP Kinerja</option>
+                            <option value="silpa">SiLPA BOSP Reguler</option>
+                            <option value="kinerja_silpa">SiLPA BOSP Kinerja</option>
+                        </select>
+
+                        <select
                             value={year}
                             onChange={handleYearChange}
                             className="rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 h-10 px-4 py-1 font-bold"
                         >
-                            {availableYears && availableYears.length > 0 ? (
-                                availableYears.map((y: any) => (
+                            {availableYearsList && availableYearsList.length > 0 ? (
+                                availableYearsList.map((y: any) => (
                                     <option key={y} value={y}>{y}</option>
                                 ))
                             ) : (

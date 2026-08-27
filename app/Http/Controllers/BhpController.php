@@ -7,11 +7,26 @@ use App\Models\Penganggaran;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use App\Config\VariantConfig;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class BhpController extends Controller
 {
+    protected string $variant;
+    protected string $Penganggaran;
+    protected string $BukuKasUmum;
+
+    public function __construct()
+    {
+        $this->middleware(function ($request, $next) {
+            $this->variant = app()->bound('variant') ? app('variant') : 'reguler';
+            $this->Penganggaran = VariantConfig::getModelClass('penganggaran', $this->variant);
+            $this->BukuKasUmum = VariantConfig::getModelClass('bku', $this->variant);
+
+            return $next($request);
+        });
+    }
     /**
      * Get BHP (Barang Habis Pakai) data for the frontend table
      */
@@ -20,14 +35,14 @@ class BhpController extends Controller
         try {
             $tahun = $request->get('tahun');
             if (!$tahun) {
-                $penganggaranAktif = Penganggaran::orderBy('tahun_anggaran', 'desc')->first();
+                $penganggaranAktif = ($this->Penganggaran)::orderBy('tahun_anggaran', 'desc')->first();
                 $tahun = $penganggaranAktif ? $penganggaranAktif->tahun_anggaran : date('Y');
             }
 
             $periode = $request->get('periode', 'Januari');
             $jenisLaporan = $request->get('jenis_laporan', 'bulanan');
 
-            $penganggaran = Penganggaran::where('tahun_anggaran', $tahun)->first();
+            $penganggaran = ($this->Penganggaran)::where('tahun_anggaran', $tahun)->first();
 
             if (!$penganggaran) {
                 return response()->json([
@@ -66,11 +81,11 @@ class BhpController extends Controller
             $jenisLaporan = $request->get('jenis_laporan', 'bulanan');
 
             if (!$tahun) {
-                $penganggaranAktif = Penganggaran::orderBy('tahun_anggaran', 'desc')->first();
+                $penganggaranAktif = ($this->Penganggaran)::orderBy('tahun_anggaran', 'desc')->first();
                 $tahun = $penganggaranAktif ? $penganggaranAktif->tahun_anggaran : date('Y');
             }
 
-            $penganggaran = Penganggaran::where('tahun_anggaran', $tahun)->first();
+            $penganggaran = ($this->Penganggaran)::where('tahun_anggaran', $tahun)->first();
             if (!$penganggaran) {
                 return redirect()->back()->with('error', 'Data tahun ' . $tahun . ' tidak ditemukan.');
             }
@@ -143,7 +158,7 @@ class BhpController extends Controller
     private function getBhpTransactions($penganggaranId, $tahun, $bulanTarget)
     {
         // Get BKU with '5.1.02.01.01' code (Barang Habis Pakai)
-        $transaksis = BukuKasUmum::where('penganggaran_id', $penganggaranId)
+        $transaksis = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $penganggaranId)
             ->whereYear('tanggal_transaksi', $tahun)
             ->whereIn(DB::raw('EXTRACT(MONTH FROM tanggal_transaksi)'), $bulanTarget)
             ->where('is_bunga_record', false)
@@ -240,5 +255,17 @@ class BhpController extends Controller
             9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember',
         ];
         return $bulan[$number] ?? 'Januari';
+    }
+
+    protected function renderVariant($component, $props = [])
+    {
+        $var = $this->variant ?? (request()->route() ? (request()->route()->parameter('variant') ?? request()->get('_variant', 'reguler')) : 'reguler');
+        if (app()->bound('variant')) {
+            $var = app('variant');
+        }
+        return \Inertia\Inertia::render(VariantConfig::pagePrefix($var) . $component, array_merge($props, [
+            'variant' => $var,
+            'routePrefix' => VariantConfig::routePrefix($var)
+        ]));
     }
 }

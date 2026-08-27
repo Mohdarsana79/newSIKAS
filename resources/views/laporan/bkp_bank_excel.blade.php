@@ -41,14 +41,14 @@
     @foreach($reportData as $index => $report)
     
     @if($index > 0)
-        <tr><td colspan="8"></td></tr>
-        <tr><td colspan="8"></td></tr>
+        <tr><td colspan="7"></td></tr>
+        <tr><td colspan="7"></td></tr>
     @endif
 
     <div class="header">
         <table>
-            <tr><td colspan="8" class="text-center bold">BUKU KAS PEMBANTU BANK</td></tr>
-            <tr><td colspan="8" class="text-center bold">BULAN : {{ strtoupper($report['bulan']) }} TAHUN : {{ $report['tahun'] }}</td></tr>
+            <tr><td colspan="7" class="text-center bold">BUKU KAS PEMBANTU BANK</td></tr>
+            <tr><td colspan="7" class="text-center bold">BULAN : {{ strtoupper($report['bulan']) }} TAHUN : {{ $report['tahun'] }}</td></tr>
         </table>
     </div>
 
@@ -56,32 +56,32 @@
         <tr>
             <td colspan="2">NPSN</td>
             <td>: {{ $report['sekolah']['npsn'] }}</td>
-            <td colspan="5"></td>
+            <td colspan="4"></td>
         </tr>
         <tr>
             <td colspan="2">Nama Sekolah</td>
             <td>: {{ $report['sekolah']['nama_sekolah'] }}</td>
-            <td colspan="5"></td>
+            <td colspan="4"></td>
         </tr>
         <tr>
             <td colspan="2">Desa/Kecamatan</td>
             <td>: {{ $report['sekolah']['alamat'] ?? ($report['sekolah']['kelurahan_desa'] . ' / ' . $report['sekolah']['kecamatan']) }}</td>
-            <td colspan="5"></td>
+            <td colspan="4"></td>
         </tr>
         <tr>
             <td colspan="2">Kabupaten / Kota</td>
             <td>: {{ $report['sekolah']['kabupaten'] }}</td>
-            <td colspan="5"></td>
+            <td colspan="4"></td>
         </tr>
         <tr>
             <td colspan="2">Provinsi</td>
             <td>: {{ $report['sekolah']['provinsi'] }}</td>
-            <td colspan="5"></td>
+            <td colspan="4"></td>
         </tr>
         <tr>
             <td colspan="2">Sumber Dana</td>
             <td>: BOSP Reguler</td>
-            <td colspan="5"></td>
+            <td colspan="4"></td>
         </tr>
     </table>
 
@@ -91,7 +91,6 @@
         <thead>
             <tr>
                 <th style="border: 1px solid black; background-color: #d3d3d3; text-align: center; font-weight: bold;">TANGGAL</th>
-                <th style="border: 1px solid black; background-color: #d3d3d3; text-align: center; font-weight: bold;">KODE KEGIATAN</th>
                 <th style="border: 1px solid black; background-color: #d3d3d3; text-align: center; font-weight: bold;">KODE REKENING</th>
                 <th style="border: 1px solid black; background-color: #d3d3d3; text-align: center; font-weight: bold;">NO. BUKTI</th>
                 <th style="border: 1px solid black; background-color: #d3d3d3; text-align: center; font-weight: bold;">URAIAN</th>
@@ -107,14 +106,12 @@
                 <td class="text-center" style="background-color: #f0f0f0;">5</td>
                 <td class="text-center" style="background-color: #f0f0f0;">6</td>
                 <td class="text-center" style="background-color: #f0f0f0;">7</td>
-                <td class="text-center" style="background-color: #f0f0f0;">8</td>
             </tr>
         </thead>
         <tbody>
             {{-- Saldo Awal --}}
             <tr>
                 <td class="text-center">{{ '01-' . $report['bulanAngkaStr'] . '-' . $report['tahun'] }}</td>
-                <td></td>
                 <td></td>
                 <td></td>
                 <td>
@@ -138,7 +135,6 @@
                 @endphp
                 <tr>
                     <td class="text-center">{{ \Carbon\Carbon::parse($item['tanggal'])->format('d-m-Y') }}</td>
-                    <td class="text-center">{{ $item['kode_kegiatan'] }}</td>
                     <td class="text-center">{{ $item['kode_rekening'] }}</td>
                     <td class="text-center">{{ $item['no_bukti'] }}</td>
                     <td>{{ $item['uraian'] }}</td>
@@ -149,7 +145,7 @@
             @endforeach
 
             <tr class="bold">
-                <td colspan="5" style="border: 1px solid black; font-weight: bold;">Jumlah</td>
+                <td colspan="4" style="border: 1px solid black; font-weight: bold;">Jumlah</td>
                 <td class="text-right" style="border: 1px solid black; font-weight: bold;">{{ number_format($report['data']['saldo_awal'] + collect($report['items'])->sum('penerimaan'), 0, '.', ',') }}</td>
                 <td class="text-right" style="border: 1px solid black; font-weight: bold;">{{ number_format(collect($report['items'])->sum('pengeluaran'), 0, '.', ',') }}</td>
                 <td class="text-right" style="border: 1px solid black; font-weight: bold;">{{ number_format(($report['data']['saldo_awal'] + collect($report['items'])->sum('penerimaan')) - collect($report['items'])->sum('pengeluaran'), 0, '.', ',') }}</td>
@@ -161,7 +157,7 @@
 
     <table>
         <tr>
-            <td colspan="8">
+            <td colspan="7">
                 Pada hari ini {{ $report['tanggalCetakFormatted'] }}, Buku Kas Bank Ditutup dengan keadaan/posisi buku sebagai berikut :<br>
                 <strong>Saldo Bank : Rp. {{ number_format(($report['data']['saldo_awal'] + collect($report['items'])->sum('penerimaan')) - collect($report['items'])->sum('pengeluaran'), 0, '.', ',') }}</strong>
             </td>
@@ -179,7 +175,7 @@
                 <span style="text-decoration: underline; font-weight: bold;">{{ $report['kepala_sekolah']['nama'] ?? '...................' }}</span><br>
                 NIP. {{ $report['kepala_sekolah']['nip'] ?? '...................' }}
             </td>
-            <td colspan="4" class="text-center">
+            <td colspan="3" class="text-center">
                 Kec. {{ $report['sekolah']['kecamatan'] }}, {{ $report['tanggalCetakDOB'] }}<br>
                 Bendahara,
                 <br/><br/><br/><br/>

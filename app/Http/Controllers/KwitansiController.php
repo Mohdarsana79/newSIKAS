@@ -10,16 +10,37 @@ use App\Models\Penganggaran;
 use App\Models\SekolahProfile;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use App\Config\VariantConfig;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 
 class KwitansiController extends Controller
 {
+    protected string $variant;
+    protected string $Penganggaran;
+    protected string $PenerimaanDana;
+    protected string $BukuKasUmum;
+    protected string $BukuKasUmumUraianDetail;
+    protected string $Kwitansi;
+
+    public function __construct()
+    {
+        $this->middleware(function ($request, $next) {
+            $this->variant = app()->bound('variant') ? app('variant') : 'reguler';
+            $this->Penganggaran = VariantConfig::getModelClass('penganggaran', $this->variant);
+            $this->PenerimaanDana = VariantConfig::getModelClass('penerimaan_dana', $this->variant);
+            $this->BukuKasUmum = VariantConfig::getModelClass('bku', $this->variant);
+            $this->BukuKasUmumUraianDetail = VariantConfig::getModelClass('bku_uraian_detail', $this->variant);
+            $this->Kwitansi = VariantConfig::getModelClass('kwitansi', $this->variant);
+
+            return $next($request);
+        });
+    }
     public function getTahunAnggaran()
     {
         try {
-            $tahunAnggaran = Penganggaran::select('id', 'tahun_anggaran')
+            $tahunAnggaran = ($this->Penganggaran)::select('id', 'tahun_anggaran')
                 ->orderBy('tahun_anggaran', 'desc')
                 ->get()
                 ->map(function ($penganggaran) {
@@ -45,7 +66,7 @@ class KwitansiController extends Controller
 
     public function index(Request $request)
     {
-        return Inertia::render('FiturPelengkap/Kwitansi/Index');
+        return $this->renderVariant('FiturPelengkap/Kwitansi/Index');
     }
 
     public function search(Request $request)
@@ -57,7 +78,7 @@ class KwitansiController extends Controller
             $endDate = $request->input('end_date', '');
 
             // Query dengan filter tahun
-            $query = Kwitansi::with([
+            $query = ($this->Kwitansi)::with([
                 'penganggaran',
                 'kodeKegiatan',
                 'rekeningBelanja',
@@ -65,10 +86,10 @@ class KwitansiController extends Controller
             ]);
 
             if ($tahun && is_numeric($tahun)) {
-                $query->where('penganggaran_id', $tahun);
+                $query->where(VariantConfig::penganggaranFk($this->variant), $tahun);
             } elseif ($tahun && strlen($tahun) == 4) {
-                 $p = Penganggaran::where('tahun_anggaran', $tahun)->first();
-                 if ($p) $query->where('penganggaran_id', $p->id);
+                 $p = ($this->Penganggaran)::where('tahun_anggaran', $tahun)->first();
+                 if ($p) $query->where(VariantConfig::penganggaranFk($this->variant), $p->id);
             }
 
             // Filter berdasarkan tanggal
@@ -110,14 +131,14 @@ class KwitansiController extends Controller
                     'uraian' => $kwitansi->bukuKasUmum->uraian_opsional ?? $kwitansi->bukuKasUmum->uraian,
                     'tanggal' => \Carbon\Carbon::parse($kwitansi->bukuKasUmum->tanggal_transaksi)->format('d/m/Y'),
                     'jumlah' => 'Rp ' . number_format($kwitansi->bukuKasUmum->total_transaksi_kotor, 0, ',', '.'),
-                    'preview_url' => route('kwitansi.preview', $kwitansi->id),
-                    'preview_url_2' => route('kwitansi.preview2', $kwitansi->id),
-                    'preview_url_3' => route('kwitansi.preview3', $kwitansi->id),
-                    'preview_url_4' => route('kwitansi.preview4', $kwitansi->id),
-                    'pdf_url' => route('kwitansi.pdf', $kwitansi->id),
-                    'pdf_url_2' => route('kwitansi.pdf2', $kwitansi->id),
-                    'pdf_url_3' => route('kwitansi.pdf3', $kwitansi->id),
-                    'pdf_url_4' => route('kwitansi.pdf4', $kwitansi->id),
+                    'preview_url' => route(VariantConfig::routeName($this->variant, 'kwitansi.preview'), $kwitansi->id),
+                    'preview_url_2' => route(VariantConfig::routeName($this->variant, 'kwitansi.preview2'), $kwitansi->id),
+                    'preview_url_3' => route(VariantConfig::routeName($this->variant, 'kwitansi.preview3'), $kwitansi->id),
+                    'preview_url_4' => route(VariantConfig::routeName($this->variant, 'kwitansi.preview4'), $kwitansi->id),
+                    'pdf_url' => route(VariantConfig::routeName($this->variant, 'kwitansi.pdf'), $kwitansi->id),
+                    'pdf_url_2' => route(VariantConfig::routeName($this->variant, 'kwitansi.pdf2'), $kwitansi->id),
+                    'pdf_url_3' => route(VariantConfig::routeName($this->variant, 'kwitansi.pdf3'), $kwitansi->id),
+                    'pdf_url_4' => route(VariantConfig::routeName($this->variant, 'kwitansi.pdf4'), $kwitansi->id),
                     'delete_data' => [
                         'id' => $kwitansi->id,
                         'uraian' => $kwitansi->bukuKasUmum->uraian_opsional ?? $kwitansi->bukuKasUmum->uraian
@@ -168,14 +189,14 @@ class KwitansiController extends Controller
     {
         try {
             $validated = $request->validate([
-                'buku_kas_umum_id' => 'required|exists:buku_kas_umums,id',
+                VariantConfig::bkuFk($this->variant) => 'required|exists:' . (new $this->BukuKasUmum)->getTable() . ',id',
                 'bku_uraian_detail_id' => 'required|exists:buku_kas_umum_uraian_details,id',
             ]);
 
-            $bukuKasUmum = BukuKasUmum::with(['penganggaran.sekolah', 'kodeKegiatan', 'rekeningBelanja'])->find($validated['buku_kas_umum_id']);
-            $bkuUraianDetail = BukuKasUmumUraianDetail::find($validated['bku_uraian_detail_id']);
+            $bukuKasUmum = ($this->BukuKasUmum)::with(['penganggaran.sekolah', 'kodeKegiatan', 'rekeningBelanja'])->find($validated[VariantConfig::bkuFk($this->variant)]);
+            $bkuUraianDetail = ($this->BukuKasUmumUraianDetail)::find($validated['bku_uraian_detail_id']);
 
-            $existingKwitansi = Kwitansi::where('bku_uraian_detail_id', $validated['bku_uraian_detail_id'])->first();
+            $existingKwitansi = ($this->Kwitansi)::where('bku_uraian_detail_id', $validated['bku_uraian_detail_id'])->first();
 
             if ($existingKwitansi) {
                 return response()->json([
@@ -184,7 +205,7 @@ class KwitansiController extends Controller
                 ], 422);
             }
 
-            $penerimaanDana = PenerimaanDana::where('penganggaran_id', $bukuKasUmum->penganggaran_id)->first();
+            $penerimaanDana = ($this->PenerimaanDana)::where(VariantConfig::penganggaranFk($this->variant), $bukuKasUmum->{VariantConfig::penganggaranFk($this->variant)})->first();
 
             if (! $penerimaanDana) {
                 return response()->json([
@@ -207,14 +228,14 @@ class KwitansiController extends Controller
                 }
             }
 
-            $kwitansi = Kwitansi::create([
+            $kwitansi = ($this->Kwitansi)::create([
                 'sekolah_id' => $sekolahId,
-                'penganggaran_id' => $bukuKasUmum->penganggaran_id,
+                VariantConfig::penganggaranFk($this->variant) => $bukuKasUmum->{VariantConfig::penganggaranFk($this->variant)},
                 'kode_kegiatan_id' => $bukuKasUmum->kode_kegiatan_id,
                 'kode_rekening_id' => $bukuKasUmum->rekening_belanja_id,
-                'penerimaan_dana_id' => $penerimaanDana->id,
-                'buku_kas_umum_id' => $bukuKasUmum->id,
-                'bku_uraian_detail_id' => $bkuUraianDetail->id,
+                VariantConfig::penerimaanDanaFk($this->variant) => $penerimaanDana->id,
+                VariantConfig::bkuFk($this->variant) => $bukuKasUmum->id,
+                VariantConfig::bkuUraianDetailFk($this->variant) => $bkuUraianDetail->id,
             ]);
 
             return response()->json([
@@ -285,7 +306,7 @@ class KwitansiController extends Controller
     public function generatePdf($id)
     {
         try {
-            $kwitansi = Kwitansi::with([
+            $kwitansi = ($this->Kwitansi)::with([
                 'sekolah',
                 'penganggaran',
                 'kodeKegiatan',
@@ -314,6 +335,7 @@ class KwitansiController extends Controller
             $orientation = request()->input('orientation', 'portrait');
 
             $data = [
+                'sumberDana' => \App\Config\VariantConfig::title($this->variant),
                 'kwitansi' => $kwitansi,
                 'parsedKode' => $parsedKode,
                 'jumlahUangText' => $jumlahUang,
@@ -345,7 +367,7 @@ class KwitansiController extends Controller
             $startDate = $request->input('start_date', '');
             $endDate = $request->input('end_date', '');
 
-            $query = Kwitansi::with([
+            $query = ($this->Kwitansi)::with([
                 'sekolah',
                 'penganggaran',
                 'kodeKegiatan',
@@ -358,7 +380,7 @@ class KwitansiController extends Controller
             ]);
 
             if ($tahun) {
-                $query->where('penganggaran_id', $tahun);
+                $query->where(VariantConfig::penganggaranFk($this->variant), $tahun);
             }
 
             if ($startDate) {
@@ -419,6 +441,7 @@ class KwitansiController extends Controller
             $orientation = request()->input('orientation', 'portrait');
 
             $data = [
+                'sumberDana' => \App\Config\VariantConfig::title($this->variant),
                 'kwitansis' => $kwitansiData,
                 'totalKwitansi' => $kwitansis->count(),
                 'tanggalDownload' => now()->format('d/m/Y H:i'),
@@ -452,7 +475,7 @@ class KwitansiController extends Controller
         $parts[] = $count . 'data';
 
         if ($tahun) {
-            $tahunSelect = \App\Models\Penganggaran::find($tahun);
+            $tahunSelect = ($this->Penganggaran)::find($tahun);
             if ($tahunSelect) {
                 $parts[] = 'Tahun_' . $tahunSelect->tahun_anggaran;
             }
@@ -544,7 +567,7 @@ class KwitansiController extends Controller
     public function previewPdf($id)
     {
         try {
-            $kwitansi = Kwitansi::with([
+            $kwitansi = ($this->Kwitansi)::with([
                 'sekolah',
                 'penganggaran',
                 'kodeKegiatan',
@@ -571,6 +594,7 @@ class KwitansiController extends Controller
             $orientation = request()->input('orientation', 'portrait');
 
             $data = [
+                'sumberDana' => \App\Config\VariantConfig::title($this->variant),
                 'kwitansi' => $kwitansi,
                 'parsedKode' => $parsedKode,
                 'jumlahUangText' => $jumlahUang,
@@ -600,7 +624,7 @@ class KwitansiController extends Controller
     public function generatePdf2($id)
     {
         try {
-            $kwitansi = Kwitansi::with([
+            $kwitansi = ($this->Kwitansi)::with([
                 'sekolah',
                 'penganggaran',
                 'kodeKegiatan',
@@ -629,6 +653,7 @@ class KwitansiController extends Controller
             $orientation = request()->input('orientation', 'portrait');
 
             $data = [
+                'sumberDana' => \App\Config\VariantConfig::title($this->variant),
                 'kwitansi' => $kwitansi,
                 'parsedKode' => $parsedKode,
                 'jumlahUangText' => $jumlahUang,
@@ -660,7 +685,7 @@ class KwitansiController extends Controller
             $startDate = $request->input('start_date', '');
             $endDate = $request->input('end_date', '');
 
-            $query = Kwitansi::with([
+            $query = ($this->Kwitansi)::with([
                 'sekolah',
                 'penganggaran',
                 'kodeKegiatan',
@@ -673,7 +698,7 @@ class KwitansiController extends Controller
             ]);
 
             if ($tahun) {
-                $query->where('penganggaran_id', $tahun);
+                $query->where(VariantConfig::penganggaranFk($this->variant), $tahun);
             }
 
             if ($startDate) {
@@ -734,6 +759,7 @@ class KwitansiController extends Controller
             $orientation = request()->input('orientation', 'portrait');
 
             $data = [
+                'sumberDana' => \App\Config\VariantConfig::title($this->variant),
                 'kwitansis' => $kwitansiData,
                 'totalKwitansi' => $kwitansis->count(),
                 'tanggalDownload' => now()->format('d/m/Y H:i'),
@@ -763,7 +789,7 @@ class KwitansiController extends Controller
     public function previewPdf2($id)
     {
         try {
-            $kwitansi = Kwitansi::with([
+            $kwitansi = ($this->Kwitansi)::with([
                 'sekolah',
                 'penganggaran',
                 'kodeKegiatan',
@@ -790,6 +816,7 @@ class KwitansiController extends Controller
             $orientation = request()->input('orientation', 'portrait');
 
             $data = [
+                'sumberDana' => \App\Config\VariantConfig::title($this->variant),
                 'kwitansi' => $kwitansi,
                 'parsedKode' => $parsedKode,
                 'jumlahUangText' => $jumlahUang,
@@ -819,7 +846,7 @@ class KwitansiController extends Controller
     public function destroy($id)
     {
         try {
-            $kwitansi = Kwitansi::with(['bukuKasUmum'])->find($id);
+            $kwitansi = ($this->Kwitansi)::with(['bukuKasUmum'])->find($id);
 
             if (! $kwitansi) {
                 return response()->json([
@@ -849,11 +876,11 @@ class KwitansiController extends Controller
         try {
             $tahun = $request->input('tahun');
             
-            $query = BukuKasUmum::whereDoesntHave('kwitansi')
+            $query = ($this->BukuKasUmum)::whereDoesntHave('kwitansi')
                 ->where('is_bunga_record', false);
 
             if ($tahun) {
-                $query->where('penganggaran_id', $tahun);
+                $query->where(VariantConfig::penganggaranFk($this->variant), $tahun);
             }
 
             $availableCount = $query->count();
@@ -887,7 +914,7 @@ class KwitansiController extends Controller
             
             Log::info("Starting batch generation chunk with limit {$limit} offset {$offset}");
 
-            $query = BukuKasUmum::with([
+            $query = ($this->BukuKasUmum)::with([
                 'penganggaran.sekolah',
                 'kodeKegiatan',
                 'rekeningBelanja',
@@ -898,7 +925,7 @@ class KwitansiController extends Controller
                 ->orderBy('id');
             
             if ($tahun) {
-                $query->where('penganggaran_id', $tahun);
+                $query->where(VariantConfig::penganggaranFk($this->variant), $tahun);
             }
             
             $totalWithoutKwitansi = $query->count(); // Count total matching query
@@ -947,7 +974,7 @@ class KwitansiController extends Controller
     private function processSingleItem($bukuKasUmum)
     {
         $itemResult = [
-            'buku_kas_umum_id' => $bukuKasUmum->id,
+            VariantConfig::bkuFk($this->variant) => $bukuKasUmum->id,
             'kode_rekening' => $bukuKasUmum->rekeningBelanja->kode_rekening ?? '-',
             'uraian' => $bukuKasUmum->uraian_opsional ?? $bukuKasUmum->uraian,
             'status' => 'pending',
@@ -955,10 +982,10 @@ class KwitansiController extends Controller
         ];
 
         try {
-            $existingKwitansi = Kwitansi::where('buku_kas_umum_id', $bukuKasUmum->id)->first();
+            $existingKwitansi = ($this->Kwitansi)::where(VariantConfig::bkuFk($this->variant), $bukuKasUmum->id)->first();
 
             if (!$existingKwitansi) {
-                $penerimaanDana = PenerimaanDana::where('penganggaran_id', $bukuKasUmum->penganggaran_id)->first();
+                $penerimaanDana = ($this->PenerimaanDana)::where(VariantConfig::penganggaranFk($this->variant), $bukuKasUmum->{VariantConfig::penganggaranFk($this->variant)})->first();
 
                 if ($penerimaanDana) {
                     $sekolahId = $bukuKasUmum->penganggaran->sekolah_id;
@@ -978,15 +1005,15 @@ class KwitansiController extends Controller
                         $bkuUraianDetail = $bukuKasUmum->uraianDetails->first();
 
                         if ($bkuUraianDetail) {
-                            Kwitansi::create([
+                            ($this->Kwitansi)::create([
                                 'sekolah_id' => $sekolahId,
-                                'penganggaran_id' => $bukuKasUmum->penganggaran_id,
+                                VariantConfig::penganggaranFk($this->variant) => $bukuKasUmum->{VariantConfig::penganggaranFk($this->variant)},
                                 'kode_kegiatan_id' => $bukuKasUmum->kode_kegiatan_id,
                                 'kode_rekening_id' => $bukuKasUmum->rekening_belanja_id, // Map from BKU's rekening_belanja_id
-                                'penerimaan_dana_id' => $penerimaanDana->id,
-                                'buku_kas_umum_id' => $bukuKasUmum->id,
+                                VariantConfig::penerimaanDanaFk($this->variant) => $penerimaanDana->id,
+                                VariantConfig::bkuFk($this->variant) => $bukuKasUmum->id,
                                 // Make sure 'bku_uraian_detail_id' matches migration
-                                'bku_uraian_detail_id' => $bkuUraianDetail->id,
+                                VariantConfig::bkuUraianDetailFk($this->variant) => $bkuUraianDetail->id,
                             ]);
                             $itemResult['status'] = 'success';
                             $itemResult['message'] = 'Kwitansi berhasil dibuat';
@@ -1018,7 +1045,7 @@ class KwitansiController extends Controller
     {
         try {
 
-            $totalKwitansi = Kwitansi::count();
+            $totalKwitansi = ($this->Kwitansi)::count();
 
             if ($totalKwitansi === 0) {
                 return response()->json([
@@ -1027,7 +1054,7 @@ class KwitansiController extends Controller
                 ], 404);
             }
 
-            $deletedCount = Kwitansi::query()->delete();
+            $deletedCount = ($this->Kwitansi)::query()->delete();
 
             return response()->json([
                 'success' => true,
@@ -1049,11 +1076,11 @@ class KwitansiController extends Controller
     public function debugDataCount()
     {
         try {
-            $totalBukuKasUmum = BukuKasUmum::where('is_bunga_record', false)->count();
-            $totalWithoutKwitansi = BukuKasUmum::whereDoesntHave('kwitansi')
+            $totalBukuKasUmum = ($this->BukuKasUmum)::where('is_bunga_record', false)->count();
+            $totalWithoutKwitansi = ($this->BukuKasUmum)::whereDoesntHave('kwitansi')
                 ->where('is_bunga_record', false)
                 ->count();
-            $totalWithKwitansi = BukuKasUmum::whereHas('kwitansi')
+            $totalWithKwitansi = ($this->BukuKasUmum)::whereHas('kwitansi')
                 ->where('is_bunga_record', false)
                 ->count();
 
@@ -1161,7 +1188,7 @@ class KwitansiController extends Controller
     public function generatePdf3($id)
     {
         try {
-            $kwitansi = Kwitansi::with([
+            $kwitansi = ($this->Kwitansi)::with([
                 'sekolah',
                 'penganggaran',
                 'kodeKegiatan',
@@ -1190,6 +1217,7 @@ class KwitansiController extends Controller
             $orientation = request()->input('orientation', 'portrait');
 
             $data = [
+                'sumberDana' => \App\Config\VariantConfig::title($this->variant),
                 'kwitansi' => $kwitansi,
                 'parsedKode' => $parsedKode,
                 'jumlahUangText' => $jumlahUang,
@@ -1219,7 +1247,7 @@ class KwitansiController extends Controller
             ini_set('memory_limit', '512M');
             ini_set('max_execution_time', '300');
             
-            $query = Kwitansi::with([
+            $query = ($this->Kwitansi)::with([
                 'sekolah',
                 'penganggaran',
                 'kodeKegiatan',
@@ -1298,6 +1326,7 @@ class KwitansiController extends Controller
             $orientation = $request->input('orientation', 'portrait');
 
             $data = [
+                'sumberDana' => \App\Config\VariantConfig::title($this->variant),
                 'kwitansis' => $processedData,
                 'fontSize' => $fontSize,
             ];
@@ -1318,7 +1347,7 @@ class KwitansiController extends Controller
     public function previewPdf3($id)
     {
         try {
-            $kwitansi = Kwitansi::with([
+            $kwitansi = ($this->Kwitansi)::with([
                 'sekolah',
                 'penganggaran',
                 'kodeKegiatan',
@@ -1345,6 +1374,7 @@ class KwitansiController extends Controller
             $orientation = request()->input('orientation', 'portrait');
 
             $data = [
+                'sumberDana' => \App\Config\VariantConfig::title($this->variant),
                 'kwitansi' => $kwitansi,
                 'parsedKode' => $parsedKode,
                 'jumlahUangText' => $jumlahUang,
@@ -1377,7 +1407,7 @@ class KwitansiController extends Controller
     public function generatePdf4($id)
     {
         try {
-            $kwitansi = Kwitansi::with([
+            $kwitansi = ($this->Kwitansi)::with([
                 'sekolah',
                 'penganggaran',
                 'kodeKegiatan',
@@ -1406,6 +1436,7 @@ class KwitansiController extends Controller
             $orientation = request()->input('orientation', 'portrait');
 
             $data = [
+                'sumberDana' => \App\Config\VariantConfig::title($this->variant),
                 'kwitansi' => $kwitansi,
                 'parsedKode' => $parsedKode,
                 'jumlahUangText' => $jumlahUang,
@@ -1435,7 +1466,7 @@ class KwitansiController extends Controller
             ini_set('memory_limit', '512M');
             ini_set('max_execution_time', '300');
             
-            $query = Kwitansi::with([
+            $query = ($this->Kwitansi)::with([
                 'sekolah',
                 'penganggaran',
                 'kodeKegiatan',
@@ -1514,6 +1545,7 @@ class KwitansiController extends Controller
             $orientation = $request->input('orientation', 'portrait');
 
             $data = [
+                'sumberDana' => \App\Config\VariantConfig::title($this->variant),
                 'kwitansis' => $processedData,
                 'fontSize' => $fontSize,
             ];
@@ -1534,7 +1566,7 @@ class KwitansiController extends Controller
     public function previewPdf4($id)
     {
         try {
-            $kwitansi = Kwitansi::with([
+            $kwitansi = ($this->Kwitansi)::with([
                 'sekolah',
                 'penganggaran',
                 'kodeKegiatan',
@@ -1561,6 +1593,7 @@ class KwitansiController extends Controller
             $orientation = request()->input('orientation', 'portrait');
 
             $data = [
+                'sumberDana' => \App\Config\VariantConfig::title($this->variant),
                 'kwitansi' => $kwitansi,
                 'parsedKode' => $parsedKode,
                 'jumlahUangText' => $jumlahUang,
@@ -1588,5 +1621,17 @@ class KwitansiController extends Controller
                 'message' => 'Gagal generate preview PDF: ' . $e->getMessage(),
             ], 500);
         }
+    }
+
+    protected function renderVariant($component, $props = [])
+    {
+        $var = $this->variant ?? (request()->route() ? (request()->route()->parameter('variant') ?? request()->get('_variant', 'reguler')) : 'reguler');
+        if (app()->bound('variant')) {
+            $var = app('variant');
+        }
+        return \Inertia\Inertia::render(VariantConfig::pagePrefix($var) . $component, array_merge($props, [
+            'variant' => $var,
+            'routePrefix' => VariantConfig::routePrefix($var)
+        ]));
     }
 }

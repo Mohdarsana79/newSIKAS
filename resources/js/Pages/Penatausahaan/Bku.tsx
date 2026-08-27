@@ -1,5 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm, router } from '@inertiajs/react';
+import useVariantRoute from '@/Hooks/useVariantRoute';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import Modal from '@/Components/Modal';
 import InputLabel from '@/Components/InputLabel';
@@ -51,6 +52,10 @@ interface BkuProps {
     lastNoteNumber?: string;
     closing_date?: string;
     auth: any;
+    variant?: string;
+    routePrefix?: string;
+    penganggaranFk?: string;
+    allUsedNotes: any[];
 }
 
 export default function Bku({
@@ -75,8 +80,11 @@ export default function Bku({
     rkasItems, // Receive rkasItems prop
     lastNoteNumber,
     closing_date,
-    auth
+    auth,
+    allUsedNotes,
+    penganggaranFk = 'penganggaran_id'
 }: BkuProps) {
+    const vroute = useVariantRoute();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditMode, setIsEditMode] = useState(false);
     const [editingBkuId, setEditingBkuId] = useState<number | null>(null);
@@ -89,6 +97,7 @@ export default function Bku({
     const [isReportingTax, setIsReportingTax] = useState(false);
     const [alamatTokoError, setAlamatTokoError] = useState('');
     const [tanggalTransaksiError, setTanggalTransaksiError] = useState('');
+    const [jenisTransaksiError, setJenisTransaksiError] = useState('');
     const [npwpError, setNpwpError] = useState('');
 
     // Search State
@@ -98,13 +107,13 @@ export default function Bku({
     // Form handling for BKU (Spending) - Defined early for dependency usage
     const { data, setData, post, put, processing, errors, reset, transform } = useForm({
         // Common
-        penganggaran_id: penganggaran.id,
+        [penganggaranFk]: penganggaran.id,
         bulan: bulan,
 
         // Step 1
         is_siplah: false,
         tanggal_transaksi: '',
-        jenis_transaksi: 'Tunai',
+        jenis_transaksi: '',
         no_entity: false,
         nama_toko: '',
         nama_penerima_pembayaran: '',
@@ -162,6 +171,12 @@ export default function Bku({
     const [showTokoDropdown, setShowTokoDropdown] = useState(false);
     const [isSearchingToko, setIsSearchingToko] = useState(false);
     const tokoSearchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // Search Penerima Pembayaran State
+    const [penerimaResults, setPenerimaResults] = useState<any[]>([]);
+    const [showPenerimaDropdown, setShowPenerimaDropdown] = useState(false);
+    const [isSearchingPenerima, setIsSearchingPenerima] = useState(false);
+    const penerimaSearchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // Tax Automation State
     const [statusPegawai, setStatusPegawai] = useState<'ASN' | 'Non-ASN' | ''>('');
@@ -230,7 +245,7 @@ export default function Bku({
             if (isEditMode && editingBkuId) {
                 params.exclude_bku_id = editingBkuId;
             }
-            axios.get(route('api.bku.kegiatan-rekening'), { params })
+            axios.get(vroute('api.bku.kegiatan-rekening'), { params })
                 .then(res => {
                     if (res.data.success) {
                         setFetchedActivities(res.data.kegiatan_list);
@@ -254,7 +269,7 @@ export default function Bku({
             if (isEditMode && editingBkuId) {
                 params.exclude_bku_id = editingBkuId;
             }
-            axios.get(route('api.bku.uraian', { tahun, bulan, rekeningId: selectedAccountId }), {
+            axios.get(vroute('api.bku.uraian', { tahun, bulan, rekeningId: selectedAccountId }), {
                 params: params
             })
                 .then(res => {
@@ -348,7 +363,7 @@ export default function Bku({
 
         if (isChecked) {
             availableRkasItems.forEach(item => {
-                if (!newItems.some(i => i.rkas_id === item.id)) {
+                if (!newItems.some(i => Number(i.rkas_id) === Number(item.id))) {
                     newItems.push({
                         rkas_id: item.id,
                         uraian: item.uraian,
@@ -370,7 +385,7 @@ export default function Bku({
 
     const updateItemField = (rkasId: number, field: string, value: any) => {
         const newItems = data.items.map(item => {
-            if (item.rkas_id === rkasId) {
+            if (Number(item.rkas_id) === Number(rkasId)) {
                 const updatedItem = { ...item, [field]: value };
                 // Auto calc total
                 if (field === 'volume' || field === 'harga_satuan') {
@@ -552,21 +567,21 @@ export default function Bku({
 
     // Form handling for Penarikan Tunai
     const tarikForm = useForm({
-        penganggaran_id: penganggaran.id,
+        [penganggaranFk]: penganggaran.id,
         tanggal_penarikan: '',
         jumlah_penarikan: '',
     });
 
     // Form handling for Setor Tunai
     const setorForm = useForm({
-        penganggaran_id: penganggaran.id,
+        [penganggaranFk]: penganggaran.id,
         tanggal_setor: '',
         jumlah_setor: '',
     });
 
     // Form handling for Tutup BKU
     const tutupForm = useForm({
-        penganggaran_id: penganggaran.id,
+        [penganggaranFk]: penganggaran.id,
         bulan: bulan,
         bunga_bank: '',
         pajak_bunga: '',
@@ -666,7 +681,7 @@ export default function Bku({
 
         tokoSearchRef.current = setTimeout(() => {
             console.log("Searching toko for:", value);
-            axios.get(route('api.bku.search-toko', { q: value }))
+            axios.get(vroute('api.bku.search-toko', { q: value }))
                 .then(res => {
                     console.log("Search response:", res.data);
                     if (res.data.success) {
@@ -686,7 +701,7 @@ export default function Bku({
     };
 
     const selectToko = (toko: any) => {
-        setData(prevData => ({
+        setData((prevData: any) => ({
             ...prevData,
             nama_toko: toko.nama_toko || '',
             alamat_toko: toko.alamat_toko || '',
@@ -702,10 +717,62 @@ export default function Bku({
         setShowTokoDropdown(false);
     };
 
+    // Search Penerima Pembayaran Handler (debounced)
+    const handleSearchPenerima = (value: string) => {
+        setData('nama_penerima_pembayaran', value);
+        
+        if (penerimaSearchRef.current) {
+            clearTimeout(penerimaSearchRef.current);
+        }
+
+        if (value.trim().length < 2) {
+            setPenerimaResults([]);
+            setShowPenerimaDropdown(false);
+            return;
+        }
+
+        setShowPenerimaDropdown(true);
+        setIsSearchingPenerima(true);
+
+        penerimaSearchRef.current = setTimeout(() => {
+            axios.get(vroute('api.bku.search-penerima', { q: value }))
+                .then(res => {
+                    if (res.data.success) {
+                        setPenerimaResults(res.data.data || []);
+                    } else {
+                        setPenerimaResults([]);
+                    }
+                })
+                .catch(err => {
+                    console.error("Search error:", err.response || err);
+                    setPenerimaResults([]);
+                })
+                .finally(() => {
+                    setIsSearchingPenerima(false);
+                });
+        }, 500);
+    };
+
+    const selectPenerima = (penerima: any) => {
+        setData({
+            ...data,
+            nama_penerima_pembayaran: penerima.nama_penerima_pembayaran || '',
+            alamat_toko: penerima.alamat_toko || '',
+            npwp: penerima.npwp || '',
+            no_npwp: !penerima.npwp || penerima.npwp === '-' || String(penerima.npwp).trim() === ''
+        });
+        setShowPenerimaDropdown(false);
+    };
+
+    const addNewPenerima = () => {
+        setShowPenerimaDropdown(false);
+    };
+
+
     const isNoteDuplicate = (noteNumber: string) => {
         if (!noteNumber) return false;
-        // Cek di bkuData
-        return (bkuData || []).some((item: any) => {
+        // Cek di seluruh transaksi (allUsedNotes) bukan hanya bkuData bulan ini
+        return (allUsedNotes || []).some((item: any) => {
             if (isEditMode && item.id === editingBkuId) return false;
             return item.id_transaksi === noteNumber || item.nomor_nota === noteNumber;
         });
@@ -731,6 +798,13 @@ export default function Bku({
                 setTanggalTransaksiError('Wajib di isi');
                 setTimeout(() => {
                     const element = document.getElementById('tanggal_transaksi');
+                    if (element) element.focus();
+                }, 0);
+                return;
+            } else if (!data.jenis_transaksi) {
+                setJenisTransaksiError('Wajib pilih jenis transaksi');
+                setTimeout(() => {
+                    const element = document.getElementById('jenis_transaksi');
                     if (element) element.focus();
                 }, 0);
                 return;
@@ -823,7 +897,7 @@ export default function Bku({
             jumlah_penarikan: amount
         }));
 
-        tarikForm.post(route('penarikan-tunai.store'), {
+        tarikForm.post(vroute('penarikan-tunai.store'), {
             onSuccess: () => {
                 setIsTarikTunaiOpen(false);
                 tarikForm.reset();
@@ -849,7 +923,7 @@ export default function Bku({
             jumlah_setor: String(amount) // Send as string or number depending on backend, usually numbers are fine but form helpers sometimes prefer matching types. Backend expects numeric.
         }));
 
-        setorForm.post(route('setor-tunai.store'), {
+        setorForm.post(vroute('setor-tunai.store'), {
             onSuccess: () => {
                 setIsSetorTunaiOpen(false);
                 setorForm.reset();
@@ -870,7 +944,7 @@ export default function Bku({
             pajak_bunga: pajakBungaRaw,
         }));
 
-        tutupForm.post(route('bku.tutup'), {
+        tutupForm.post(vroute('bku.tutup'), {
             onSuccess: () => {
                 setIsTutupBkuOpen(false);
                 tutupForm.reset();
@@ -945,7 +1019,7 @@ export default function Bku({
         });
 
         if (isEditMode && editingBkuId) {
-            put(route('bku.update', editingBkuId), {
+            put(vroute('bku.update', editingBkuId), {
                 onSuccess: () => {
                     setIsModalOpen(false);
                     setIsEditMode(false);
@@ -959,7 +1033,7 @@ export default function Bku({
                 preserveScroll: true,
             });
         } else {
-            post(route('bku.store'), {
+            post(vroute('bku.store'), {
                 onSuccess: () => {
                     setIsModalOpen(false);
                     reset();
@@ -979,8 +1053,8 @@ export default function Bku({
 
     const confirmReopen = () => {
         setIsReopening(true);
-        router.post(route('bku.reopen'), {
-            penganggaran_id: penganggaran.id,
+        router.post(vroute('bku.reopen'), {
+            [penganggaranFk]: penganggaran.id,
             bulan: bulan
         }, {
             onSuccess: () => {
@@ -1011,7 +1085,7 @@ export default function Bku({
         if (!selectedBkuIdForPajak) return;
 
         setIsReportingTax(true);
-        router.post(route('bku.lapor-pajak', selectedBkuIdForPajak), {
+        router.post(vroute('bku.lapor-pajak', selectedBkuIdForPajak), {
             tanggal_lapor: data.tanggal_lapor,
             kode_masa_pajak: data.kode_masa_pajak,
             ntpn: data.ntpn
@@ -1157,7 +1231,7 @@ export default function Bku({
         setDetailUraian(item.uraian_opsional || '');
 
         const mappedItems = details.map((d: any) => ({
-            rkas_id: d.rkas_id || d.rkas_perubahan_id,
+            rkas_id: Number(d.rkas_id || d.rkas_perubahan_id || d.kinerja_rkas_id || d.kinerja_rkas_perubahan_id || d.silpa_rkas_id || d.kinerja_silpa_rkas_id),
             uraian: d.uraian,
             volume: Number(d.volume || 0),
             sisa_volume_limit: Number(d.volume || 0),
@@ -1171,11 +1245,11 @@ export default function Bku({
         const isNoEntity = !!(item.nama_penerima_pembayaran && !item.nama_toko);
 
         setData({
-            penganggaran_id: penganggaran.id,
+            [penganggaranFk]: penganggaran.id,
             bulan: bulan,
             is_siplah: false,
             tanggal_transaksi: item.tanggal_transaksi ? String(item.tanggal_transaksi).split(' ')[0] : '',
-            jenis_transaksi: item.jenis_transaksi ? (item.jenis_transaksi.toLowerCase() === 'tunai' ? 'Tunai' : 'Nontunai') : 'Tunai',
+            jenis_transaksi: item.jenis_transaksi ? (item.jenis_transaksi.toLowerCase() === 'tunai' ? 'Tunai' : 'Nontunai') : '',
             no_entity: isNoEntity,
             nama_toko: item.nama_toko || '',
             nama_penerima_pembayaran: item.nama_penerima_pembayaran || '',
@@ -1226,7 +1300,7 @@ export default function Bku({
         const { id, type } = itemToDelete;
 
         if (type === 'penarikan') {
-            router.delete(route('penarikan-tunai.destroy', id), {
+            router.delete(vroute('penarikan-tunai.destroy', id), {
                 preserveScroll: true,
                 onSuccess: () => {
                     setIsDeleteModalOpen(false);
@@ -1238,7 +1312,7 @@ export default function Bku({
                 }
             });
         } else if (type === 'penerimaan') {
-            router.delete(route('penerimaan-dana.destroy', id), {
+            router.delete(vroute('penerimaan-dana.destroy', id), {
                 preserveScroll: true,
                 onSuccess: () => {
                     setIsDeleteModalOpen(false);
@@ -1250,7 +1324,7 @@ export default function Bku({
                 }
             });
         } else if (type === 'setor') {
-            router.delete(route('setor-tunai.destroy', id), {
+            router.delete(vroute('setor-tunai.destroy', id), {
                 preserveScroll: true,
                 onSuccess: () => {
                     setIsDeleteModalOpen(false);
@@ -1262,7 +1336,7 @@ export default function Bku({
                 }
             });
         } else {
-            router.delete(route('bku.destroy', id), {
+            router.delete(vroute('bku.destroy', id), {
                 preserveScroll: true,
                 onSuccess: () => {
                     setIsDeleteModalOpen(false);
@@ -1279,8 +1353,8 @@ export default function Bku({
 
     const confirmDeleteAllBku = () => {
         setIsDeletingAll(true);
-        router.post(route('bku.destroy-period'), {
-            penganggaran_id: penganggaran.id,
+        router.post(vroute('bku.destroy-period'), {
+            [penganggaranFk]: penganggaran.id,
             bulan: bulan
         }, {
             onSuccess: () => {
@@ -1344,13 +1418,19 @@ export default function Bku({
                 <div>
                     <InputLabel value="Jenis Transaksi" className="!text-[10pt] ms-2 me-2" />
                     <select
+                        id="jenis_transaksi"
                         value={data.jenis_transaksi}
-                        onChange={(e) => setData('jenis_transaksi', e.target.value)}
-                        className="mt-1 block w-full text-gray-900 border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm !text-[10pt]"
+                        onChange={(e) => {
+                            setData('jenis_transaksi', e.target.value);
+                            if (e.target.value) setJenisTransaksiError('');
+                        }}
+                        className={`mt-1 block w-full text-gray-900 border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm !text-[10pt] ${jenisTransaksiError ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
                     >
+                        <option value=''>Pilih Jenis Transaksi</option>
                         <option value="Tunai">Tunai ({formatCurrency(saldoTunai)})</option>
                         <option value="Nontunai">Nontunai ({formatCurrency(saldoNonTunai)})</option>
                     </select>
+                    <InputError message={jenisTransaksiError} className="mt-2" />
                 </div>
             </div>
 
@@ -1369,17 +1449,71 @@ export default function Bku({
                     <>
                         <InputLabel value="Nama Penerima Pembayaran" className="!text-[10pt]" />
                         <div className="relative mt-1">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <svg className="h-4 w-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                                </svg>
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
+                                {isSearchingPenerima ? (
+                                    <svg className="animate-spin h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                    </svg>
+                                ) : (
+                                    <svg className="h-4 w-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                                    </svg>
+                                )}
                             </div>
                             <TextInput
                                 className="pl-9 block w-full text-gray-900 !text-[10pt]"
                                 value={data.nama_penerima_pembayaran}
-                                onChange={(e) => setData('nama_penerima_pembayaran', e.target.value)}
-                                placeholder="Nama orang yang menerima pembayaran"
+                                onChange={(e) => handleSearchPenerima(e.target.value)}
+                                onFocus={() => { if (data.nama_penerima_pembayaran.trim().length >= 2) setShowPenerimaDropdown(true); }}
+                                onBlur={() => setTimeout(() => setShowPenerimaDropdown(false), 200)}
+                                placeholder="Cari atau ketik nama penerima pembayaran"
+                                autoComplete="off"
                             />
+
+                            {/* Dropdown Results */}
+                            {showPenerimaDropdown && (
+                                <div className="absolute z-50 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                                    {isSearchingPenerima ? (
+                                        <div className="p-3 text-center text-[10pt] text-gray-500">Mencari...</div>
+                                    ) : penerimaResults.length > 0 ? (
+                                        <>
+                                            {penerimaResults.map((penerima, idx) => (
+                                                <button
+                                                    key={idx}
+                                                    type="button"
+                                                    onMouseDown={(e) => { e.preventDefault(); selectPenerima(penerima); }}
+                                                    className="w-full text-left px-3 py-2 hover:bg-blue-50 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700 last:border-b-0 transition-colors"
+                                                >
+                                                    <div className="font-medium text-gray-900 dark:text-gray-100 text-[10pt]">
+                                                        {penerima.nama_penerima_pembayaran}
+                                                    </div>
+                                                </button>
+                                            ))}
+                                        </>
+                                    ) : data.nama_penerima_pembayaran.trim().length >= 2 ? (
+                                        <button
+                                            type="button"
+                                            onMouseDown={(e) => { e.preventDefault(); addNewPenerima(); }}
+                                            className="w-full text-left px-3 py-2 hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors"
+                                        >
+                                            <div className="text-[10pt] text-blue-600 dark:text-blue-400 font-medium flex items-center gap-2">
+                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                                </svg>
+                                                Gunakan "{data.nama_penerima_pembayaran}"
+                                            </div>
+                                            <div className="text-[9pt] text-gray-500 mt-0.5">
+                                                Penerima baru akan disimpan
+                                            </div>
+                                        </button>
+                                    ) : (
+                                        <div className="p-3 text-center text-[10pt] text-gray-500">
+                                            Ketik minimal 2 huruf untuk mencari
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </>
                 ) : (
@@ -1517,8 +1651,8 @@ export default function Bku({
     );
 
     const renderStep2 = () => {
-        const isSelected = (rkasId: number) => data.items.some(i => i.rkas_id === rkasId);
-        const getItem = (rkasId: number) => data.items.find(i => i.rkas_id === rkasId);
+        const isSelected = (rkasId: number) => data.items.some(i => Number(i.rkas_id) === Number(rkasId));
+        const getItem = (rkasId: number) => data.items.find(i => Number(i.rkas_id) === Number(rkasId));
 
         return (
             <div className="space-y-4">
@@ -1636,7 +1770,7 @@ export default function Bku({
                                         <input
                                             type="checkbox"
                                             className="rounded border-gray-300 text-cyan-500 shadow-sm focus:ring-cyan-500 mr-2"
-                                            checked={availableRkasItems.length > 0 && availableRkasItems.every(item => data.items.some(i => i.rkas_id === item.id))}
+                                            checked={availableRkasItems.length > 0 && availableRkasItems.every(item => data.items.some(i => Number(i.rkas_id) === Number(item.id)))}
                                             onChange={(e) => handleSelectAll(e.target.checked)}
                                         />
                                         <span className="text-[10pt] font-bold">Pilih semua uraian</span>
@@ -2055,7 +2189,7 @@ export default function Bku({
                 {/* Back Button */}
                 <div className="mb-4">
                     <Link
-                        href={route('penatausahaan.index')}
+                        href={vroute('penatausahaan.index')}
                         className="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium text-[10pt] transition-colors"
                     >
                         <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -2146,7 +2280,7 @@ export default function Bku({
                                 </button>
                             )}
                             <Link
-                                href={route('penatausahaan.rekapitulasi', { tahun, bulan: bulan.toLowerCase() })}
+                                href={vroute('penatausahaan.rekapitulasi', { tahun, bulan: bulan.toLowerCase() })}
                                 className="inline-flex items-center px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md font-semibold text-[10pt] text-gray-700 dark:text-gray-300 uppercase tracking-widest shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none transition ease-in-out duration-150"
                             >
                                 <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">

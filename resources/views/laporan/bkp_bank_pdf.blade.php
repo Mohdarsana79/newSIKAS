@@ -108,7 +108,7 @@
         <tr>
             <td class="meta-label">Sumber Dana</td>
             <td>:</td>
-            <td>BOSP Reguler</td>
+            <td>{{ $sumberDana ?? 'BOSP Reguler' }}</td>
         </tr>
     </table>
 
@@ -116,7 +116,6 @@
         <thead>
             <tr>
                 <th>TANGGAL</th>
-                <th>KODE KEGIATAN</th>
                 <th>KODE REKENING</th>
                 <th>NO. BUKTI</th>
                 <th>URAIAN</th>
@@ -132,14 +131,12 @@
                 <td class="text-center">5</td>
                 <td class="text-center">6</td>
                 <td class="text-center">7</td>
-                <td class="text-center">8</td>
             </tr>
         </thead>
         <tbody>
             {{-- Saldo Awal --}}
             <tr>
                 <td class="text-center">01-{{ $report['bulanAngkaStr'] }}-{{ $report['tahun'] }}</td>
-                <td></td>
                 <td></td>
                 <td></td>
                 <td>
@@ -163,7 +160,6 @@
                 @endphp
                 <tr>
                     <td class="text-center">{{ \Carbon\Carbon::parse($item['tanggal'])->format('d-m-Y') }}</td>
-                    <td class="text-center">{{ $item['kode_kegiatan'] }}</td>
                     <td class="text-center">{{ $item['kode_rekening'] }}</td>
                     <td class="text-center">{{ $item['no_bukti'] }}</td>
                     <td>{{ $item['uraian'] }}</td>
@@ -174,7 +170,7 @@
             @endforeach
 
             <tr class="bold">
-                <td colspan="5">Jumlah</td>
+                <td colspan="4">Jumlah</td>
                 <td class="text-right">{{ number_format($report['data']['saldo_awal'] + collect($report['items'])->sum('penerimaan'), 0, ',', '.') }}</td>
                 <td class="text-right">{{ number_format(collect($report['items'])->sum('pengeluaran'), 0, ',', '.') }}</td>
                 <td class="text-right">{{ number_format(($report['data']['saldo_awal'] + collect($report['items'])->sum('penerimaan')) - collect($report['items'])->sum('pengeluaran'), 0, ',', '.') }}</td>

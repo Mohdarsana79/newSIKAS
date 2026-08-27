@@ -2,13 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Penganggaran;
-use App\Models\BukuKasUmum;
-use App\Models\PenerimaanDana;
-use App\Models\RekeningBelanja;
-use App\Models\KodeKegiatan;
+use App\Config\VariantConfig;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 
@@ -22,13 +17,22 @@ class DashboardController extends Controller
         try {
             // Ambil tahun aktif (bisa dari session atau default tahun terbaru)
             $tahunAktif = request()->get('tahun') ?? date('Y');
+            
+            // Ambil varian
+            $variant = request()->get('variant', VariantConfig::REGULER);
+            if (!VariantConfig::isValid($variant)) {
+                $variant = VariantConfig::REGULER;
+            }
+
+            // Dapatkan model Penganggaran sesuai varian
+            $penganggaranClass = VariantConfig::getModelClass('penganggaran', $variant);
 
             // Ambil data penganggaran untuk tahun aktif
-            $penganggaran = Penganggaran::where('tahun_anggaran', $tahunAktif)->first();
+            $penganggaran = $penganggaranClass::where('tahun_anggaran', $tahunAktif)->first();
 
             // Jika tidak ada data penganggaran, ambil yang paling baru
             if (!$penganggaran) {
-                $penganggaran = Penganggaran::orderBy('tahun_anggaran', 'desc')->first();
+                $penganggaran = $penganggaranClass::orderBy('tahun_anggaran', 'desc')->first();
                 if ($penganggaran) {
                     $tahunAktif = $penganggaran->tahun_anggaran;
                 } else {
@@ -41,45 +45,47 @@ class DashboardController extends Controller
                         'perbandinganLimaTahun' => [],
                         'penganggaran' => null,
                         'tahunAktif' => $tahunAktif,
-                        'availableYears' => []
+                        'availableYears' => [],
+                        'activeVariant' => $variant
                     ]);
                 }
             }
 
             // Hitung statistik utama
-            $statistik = $this->hitungStatistikDashboard($penganggaran->id, $tahunAktif);
+            $statistik = $this->hitungStatistikDashboard($penganggaran->id, $tahunAktif, $variant);
 
             // Data untuk grafik realisasi per tahun
-            $grafikRealisasiTahunan = $this->getGrafikRealisasiTahunan($tahunAktif);
+            $grafikRealisasiTahunan = $this->getGrafikRealisasiTahunan($tahunAktif, $variant);
 
             // Data untuk chart realisasi program
-            $chartRealisasiProgram = $this->getChartRealisasiProgram($penganggaran->id, $tahunAktif);
+            $chartRealisasiProgram = $this->getChartRealisasiProgram($penganggaran->id, $tahunAktif, $variant);
 
             // Data untuk pemanfaatan anggaran 8 SNP
-            $pemanfaatanAnggaran = $this->getPemanfaatanAnggaran($penganggaran->id, $tahunAktif);
+            $pemanfaatanAnggaran = $this->getPemanfaatanAnggaran($penganggaran->id, $tahunAktif, $variant);
 
             // Data perbandingan 5 tahun
-            $perbandinganLimaTahun = $this->getPerbandinganLimaTahun($tahunAktif);
+            $perbandinganLimaTahun = $this->getPerbandinganLimaTahun($tahunAktif, $variant);
 
             // List tahun yang tersedia untuk dropdown
-            $availableYears = Penganggaran::select('tahun_anggaran')
+            $availableYears = $penganggaranClass::select('tahun_anggaran')
                 ->distinct()
                 ->orderBy('tahun_anggaran', 'desc')
                 ->pluck('tahun_anggaran');
 
-            return Inertia::render('Dashboard', compact(
-                'statistik',
-                'grafikRealisasiTahunan',
-                'chartRealisasiProgram',
-                'pemanfaatanAnggaran',
-                'perbandinganLimaTahun',
-                'penganggaran',
-                'tahunAktif',
-                'availableYears'
-            ));
+            return Inertia::render('Dashboard', [
+                'statistik' => $statistik,
+                'grafikRealisasiTahunan' => $grafikRealisasiTahunan,
+                'chartRealisasiProgram' => $chartRealisasiProgram,
+                'pemanfaatanAnggaran' => $pemanfaatanAnggaran,
+                'perbandinganLimaTahun' => $perbandinganLimaTahun,
+                'penganggaran' => $penganggaran,
+                'tahunAktif' => $tahunAktif,
+                'availableYears' => $availableYears,
+                'activeVariant' => $variant
+            ]);
         } catch (\Exception $e) {
             Log::error('Error loading dashboard: ' . $e->getMessage());
-            return redirect()->route('penganggaran.index')
+            return redirect()->route('dashboard')
                 ->with('error', 'Gagal memuat dashboard: ' . $e->getMessage());
         }
     }
@@ -114,15 +120,19 @@ class DashboardController extends Controller
     /**
      * Hitung statistik utama untuk dashboard
      */
-    private function hitungStatistikDashboard($penganggaranId, $tahun)
+    private function hitungStatistikDashboard($penganggaranId, $tahun, $variant)
     {
         try {
+            $penganggaranClass = VariantConfig::getModelClass('penganggaran', $variant);
+            $bkuClass = VariantConfig::getModelClass('bku', $variant);
+            $penerimaanClass = VariantConfig::getModelClass('penerimaan_dana', $variant);
+
             // 1. Pagu Anggaran
-            $penganggaran = Penganggaran::find($penganggaranId);
+            $penganggaran = $penganggaranClass::find($penganggaranId);
             $paguAnggaran = $penganggaran ? $penganggaran->pagu_anggaran : 0;
 
             // 2. Total Realisasi - dari BukuKasUmum
-            $totalRealisasi = BukuKasUmum::where('penganggaran_id', $penganggaranId)
+            $totalRealisasi = $bkuClass::where(VariantConfig::penganggaranFk($variant), $penganggaranId)
                 ->whereYear('tanggal_transaksi', $tahun)
                 ->where('is_bunga_record', false)
                 ->sum('total_transaksi_kotor');
@@ -137,12 +147,13 @@ class DashboardController extends Controller
             $persentaseRealisasi = ($paguAnggaran > 0) ? ($totalRealisasi / $paguAnggaran) * 100 : 0;
 
             // 6. Total Penerimaan Dana
-            $totalPenerimaan = PenerimaanDana::where('penganggaran_id', $penganggaranId)
+            $tahap1 = VariantConfig::sumberDanaTahap1($variant);
+            $totalPenerimaan = $penerimaanClass::where(VariantConfig::penganggaranFk($variant), $penganggaranId)
                 ->whereYear('tanggal_terima', $tahun)
                 ->get()
-                ->sum(function ($penerimaan) {
+                ->sum(function ($penerimaan) use ($tahap1) {
                     $total = $penerimaan->jumlah_dana;
-                    if ($penerimaan->sumber_dana === 'Bosp Reguler Tahap 1' && $penerimaan->saldo_awal) {
+                    if ($tahap1 && $penerimaan->sumber_dana === $tahap1 && $penerimaan->saldo_awal) {
                         $total += $penerimaan->saldo_awal;
                     }
                     return $total;
@@ -184,10 +195,13 @@ class DashboardController extends Controller
     /**
      * Data untuk grafik realisasi per bulan dalam tahun anggaran
      */
-    private function getGrafikRealisasiTahunan($tahunAktif)
+    private function getGrafikRealisasiTahunan($tahunAktif, $variant)
     {
         try {
-            $penganggaran = Penganggaran::where('tahun_anggaran', $tahunAktif)->first();
+            $penganggaranClass = VariantConfig::getModelClass('penganggaran', $variant);
+            $bkuClass = VariantConfig::getModelClass('bku', $variant);
+
+            $penganggaran = $penganggaranClass::where('tahun_anggaran', $tahunAktif)->first();
 
             if (!$penganggaran) {
                 return [
@@ -204,7 +218,7 @@ class DashboardController extends Controller
 
             // Hitung realisasi per bulan
             for ($bulan = 1; $bulan <= 12; $bulan++) {
-                $realisasiBulan = BukuKasUmum::where('penganggaran_id', $penganggaran->id)
+                $realisasiBulan = $bkuClass::where(VariantConfig::penganggaranFk($variant), $penganggaran->id)
                     ->whereYear('tanggal_transaksi', $tahunAktif)
                     ->whereMonth('tanggal_transaksi', $bulan)
                     ->where('is_bunga_record', false)
@@ -232,11 +246,13 @@ class DashboardController extends Controller
     /**
      * Data untuk pemanfaatan anggaran 8 SNP - UNTUK PIE CHART
      */
-    private function getPemanfaatanAnggaran($penganggaranId, $tahun)
+    private function getPemanfaatanAnggaran($penganggaranId, $tahun, $variant)
     {
         try {
+            $bkuClass = VariantConfig::getModelClass('bku', $variant);
+
             // Ambil data langsung dari BukuKasUmum dan kelompokkan berdasarkan program
-            $realisasiPerProgram = BukuKasUmum::where('penganggaran_id', $penganggaranId)
+            $realisasiPerProgram = $bkuClass::where(VariantConfig::penganggaranFk($variant), $penganggaranId)
                 ->whereYear('tanggal_transaksi', $tahun)
                 ->where('is_bunga_record', false)
                 ->with('kodeKegiatan')
@@ -294,16 +310,19 @@ class DashboardController extends Controller
     /**
      * Data perbandingan 5 tahun terakhir - DIPERBAIKI UNTUK TOOLTIP
      */
-    private function getPerbandinganLimaTahun($tahunDipilih)
+    private function getPerbandinganLimaTahun($tahunDipilih, $variant)
     {
         try {
+            $penganggaranClass = VariantConfig::getModelClass('penganggaran', $variant);
+            $bkuClass = VariantConfig::getModelClass('bku', $variant);
+
             $tahunMulai = $tahunDipilih - 4;
             $tahunAkhir = $tahunDipilih;
 
             $dataPerbandingan = [];
 
             // Ambil semua data penganggaran untuk 5 tahun terakhir
-            $penganggaranLimaTahun = Penganggaran::whereBetween('tahun_anggaran', [$tahunMulai, $tahunAkhir])
+            $penganggaranLimaTahun = $penganggaranClass::whereBetween('tahun_anggaran', [$tahunMulai, $tahunAkhir])
                 ->orderBy('tahun_anggaran', 'asc')
                 ->get()
                 ->keyBy('tahun_anggaran');
@@ -314,7 +333,7 @@ class DashboardController extends Controller
 
                 if ($penganggaran) {
                     // Hitung realisasi dari BukuKasUmum untuk tahun tersebut
-                    $realisasi = BukuKasUmum::where('penganggaran_id', $penganggaran->id)
+                    $realisasi = $bkuClass::where(VariantConfig::penganggaranFk($variant), $penganggaran->id)
                         ->whereYear('tanggal_transaksi', $tahun) // PASTIKAN tahun transaksi sesuai
                         ->where('is_bunga_record', false)
                         ->sum('total_transaksi_kotor');
@@ -332,7 +351,7 @@ class DashboardController extends Controller
                         'realisasi_display' => $this->formatRupiahDisplay($realisasi),
                         'pagu_anggaran' => $pagu,
                         'pagu_display' => $this->formatRupiahDisplay($pagu),
-                        'penganggaran_id' => $penganggaran->id,
+                        VariantConfig::penganggaranFk($variant) => $penganggaran->id,
                         'data_tersedia' => true
                     ];
                 } else {
@@ -345,7 +364,7 @@ class DashboardController extends Controller
                         'realisasi_display' => '0',
                         'pagu_anggaran' => 0,
                         'pagu_display' => '0',
-                        'penganggaran_id' => null,
+                        VariantConfig::penganggaranFk($variant) => null,
                         'data_tersedia' => false
                     ];
                 }
@@ -361,11 +380,13 @@ class DashboardController extends Controller
     /**
      * Data untuk chart realisasi program (pie chart)
      */
-    private function getChartRealisasiProgram($penganggaranId, $tahun)
+    private function getChartRealisasiProgram($penganggaranId, $tahun, $variant)
     {
         try {
+            $bkuClass = VariantConfig::getModelClass('bku', $variant);
+
             // Ambil data realisasi per program/kegiatan
-            $realisasiPerProgram = BukuKasUmum::where('penganggaran_id', $penganggaranId)
+            $realisasiPerProgram = $bkuClass::where(VariantConfig::penganggaranFk($variant), $penganggaranId)
                 ->whereYear('tanggal_transaksi', $tahun)
                 ->where('is_bunga_record', false)
                 ->with('kodeKegiatan')
@@ -458,21 +479,48 @@ class DashboardController extends Controller
     {
         try {
             $tahun = $request->get('tahun', date('Y'));
+            $variant = $request->get('variant', VariantConfig::REGULER);
+            
+            if (!VariantConfig::isValid($variant)) {
+                $variant = VariantConfig::REGULER;
+            }
 
-            $penganggaran = Penganggaran::where('tahun_anggaran', $tahun)->first();
+            $penganggaranClass = VariantConfig::getModelClass('penganggaran', $variant);
+            $penganggaran = $penganggaranClass::where('tahun_anggaran', $tahun)->first();
+
+            // Jika tidak ada data penganggaran untuk tahun yang diminta, ambil yang paling baru
+            if (!$penganggaran) {
+                $penganggaran = $penganggaranClass::orderBy('tahun_anggaran', 'desc')->first();
+                if ($penganggaran) {
+                    $tahun = $penganggaran->tahun_anggaran;
+                }
+            }
+
+            $availableYears = $penganggaranClass::select('tahun_anggaran')
+                ->distinct()
+                ->orderBy('tahun_anggaran', 'desc')
+                ->pluck('tahun_anggaran');
 
             if (!$penganggaran) {
                  return response()->json([
-                    'success' => false,
-                    'message' => 'Data penganggaran tidak ditemukan untuk tahun ' . $tahun
-                ], 404);
+                    'success' => true,
+                    'statistik' => $this->getDefaultStatistics(),
+                    'grafik_realisasi_tahunan' => ['categories' => [], 'realisasi_data' => [], 'pagu_total' => 0],
+                    'chart_realisasi_program' => [],
+                    'pemanfaatan_anggaran' => [],
+                    'perbandingan_lima_tahun' => [],
+                    'tahun' => $tahun,
+                    'variant' => $variant,
+                    'available_years' => $availableYears,
+                    'message' => 'Data penganggaran tidak ditemukan untuk tahun ' . $tahun . ' pada varian ini.'
+                ]);
             }
 
-            $statistik = $this->hitungStatistikDashboard($penganggaran->id, $tahun);
-            $grafikRealisasiTahunan = $this->getGrafikRealisasiTahunan($tahun);
-            $chartRealisasiProgram = $this->getChartRealisasiProgram($penganggaran->id, $tahun);
-            $pemanfaatanAnggaran = $this->getPemanfaatanAnggaran($penganggaran->id, $tahun);
-            $perbandinganLimaTahun = $this->getPerbandinganLimaTahun($tahun);
+            $statistik = $this->hitungStatistikDashboard($penganggaran->id, $tahun, $variant);
+            $grafikRealisasiTahunan = $this->getGrafikRealisasiTahunan($tahun, $variant);
+            $chartRealisasiProgram = $this->getChartRealisasiProgram($penganggaran->id, $tahun, $variant);
+            $pemanfaatanAnggaran = $this->getPemanfaatanAnggaran($penganggaran->id, $tahun, $variant);
+            $perbandinganLimaTahun = $this->getPerbandinganLimaTahun($tahun, $variant);
 
             // Format data untuk dashboard baru
             $formattedData = [
@@ -482,7 +530,9 @@ class DashboardController extends Controller
                 'chart_realisasi_program' => $chartRealisasiProgram,
                 'pemanfaatan_anggaran' => $pemanfaatanAnggaran,
                 'perbandingan_lima_tahun' => $perbandinganLimaTahun,
-                'tahun' => $tahun
+                'tahun' => $tahun,
+                'variant' => $variant,
+                'available_years' => $availableYears
             ];
 
             return response()->json($formattedData);

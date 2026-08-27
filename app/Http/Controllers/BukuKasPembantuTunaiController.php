@@ -10,6 +10,7 @@ use App\Models\SekolahProfile as Sekolah;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use App\Config\VariantConfig;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
@@ -20,9 +21,26 @@ class BukuKasPembantuTunaiController extends Controller
 {
     protected $bukuKasService;
 
+        protected string $variant;
+    protected string $Penganggaran;
+    protected string $BukuKasUmum;
+    protected string $PenarikanTunai;
+    protected string $SetorTunai;
+
     public function __construct(BukuKasService $bukuKasService)
     {
+
         $this->bukuKasService = $bukuKasService;
+
+        $this->middleware(function ($request, $next) {
+            $this->variant = app()->bound('variant') ? app('variant') : 'reguler';
+            $this->Penganggaran = VariantConfig::getModelClass('penganggaran', $this->variant);
+            $this->BukuKasUmum = VariantConfig::getModelClass('bku', $this->variant);
+            $this->PenarikanTunai = VariantConfig::getModelClass('penarikan_tunai', $this->variant);
+            $this->SetorTunai = VariantConfig::getModelClass('setor_tunai', $this->variant);
+
+            return $next($request);
+        });
     }
     /**
      * Get tanggal penarikan tunai terakhir untuk penganggaran tertentu
@@ -30,7 +48,7 @@ class BukuKasPembantuTunaiController extends Controller
     public function getTanggalPenarikanTunai($penganggaran_id)
     {
         try {
-            Log::info('Getting tanggal penarikan for penganggaran:', ['penganggaran_id' => $penganggaran_id]);
+            Log::info('Getting tanggal penarikan for penganggaran:', [VariantConfig::penganggaranFk($this->variant) => $penganggaran_id]);
 
             // Validasi penganggaran_id
             if (!is_numeric($penganggaran_id)) {
@@ -40,7 +58,7 @@ class BukuKasPembantuTunaiController extends Controller
                 ], 400);
             }
 
-            $penarikanTerakhir = PenarikanTunai::query()->where('penganggaran_id', $penganggaran_id)
+            $penarikanTerakhir = ($this->PenarikanTunai)::query()->where(VariantConfig::penganggaranFk($this->variant), $penganggaran_id)
                 ->orderBy('tanggal_penarikan', 'desc')
                 ->first();
 
@@ -55,7 +73,7 @@ class BukuKasPembantuTunaiController extends Controller
                     'tanggal_penarikan' => $penarikanTerakhir->tanggal_penarikan->format('Y-m-d'),
                     'formatted_date' => $penarikanTerakhir->tanggal_penarikan->format('d F Y'),
                     'debug' => [
-                        'penganggaran_id' => $penganggaran_id,
+                        VariantConfig::penganggaranFk($this->variant) => $penganggaran_id,
                         'found' => true,
                     ],
                 ]);
@@ -66,7 +84,7 @@ class BukuKasPembantuTunaiController extends Controller
                 'tanggal_penarikan' => null,
                 'formatted_date' => null,
                 'debug' => [
-                    'penganggaran_id' => $penganggaran_id,
+                    VariantConfig::penganggaranFk($this->variant) => $penganggaran_id,
                     'found' => false,
                 ],
             ]);
@@ -78,7 +96,7 @@ class BukuKasPembantuTunaiController extends Controller
                 'success' => false,
                 'message' => 'Gagal mengambil data tanggal penarikan: ' . $e->getMessage(),
                 'debug' => [
-                    'penganggaran_id' => $penganggaran_id,
+                    VariantConfig::penganggaranFk($this->variant) => $penganggaran_id,
                     'error' => $e->getMessage(),
                 ],
             ], 500);
@@ -254,26 +272,26 @@ class BukuKasPembantuTunaiController extends Controller
      */
     public function getBkpPembantuDataInternal($tahun, $bulan) 
     {
-         $penganggaran = Penganggaran::query()->where('tahun_anggaran', $tahun)->first();
+         $penganggaran = ($this->Penganggaran)::query()->where('tahun_anggaran', $tahun)->first();
          if (!$penganggaran) return null;
 
          $bulanAngka = $this->convertBulanToNumber($bulan);
          
          // Reuse the logic from getBkpPembantuData but return array
          // Copying essential parts
-         $penarikanTunais = PenarikanTunai::query()->where('penganggaran_id', $penganggaran->id)
+         $penarikanTunais = ($this->PenarikanTunai)::query()->where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
                 ->whereMonth('tanggal_penarikan', $bulanAngka)
                 ->whereYear('tanggal_penarikan', $tahun)
                 ->orderBy('tanggal_penarikan', 'asc')
                 ->get();
 
-        $setorTunais = SetorTunai::query()->where('penganggaran_id', $penganggaran->id)
+        $setorTunais = ($this->SetorTunai)::query()->where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
             ->whereMonth('tanggal_setor', $bulanAngka)
             ->whereYear('tanggal_setor', $tahun)
             ->orderBy('tanggal_setor', 'asc')
             ->get();
 
-        $bkuDataTunai = BukuKasUmum::query()->where('penganggaran_id', $penganggaran->id)
+        $bkuDataTunai = ($this->BukuKasUmum)::query()->where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
             ->whereMonth('tanggal_transaksi', $bulanAngka)
             ->whereYear('tanggal_transaksi', $tahun)
             ->where('is_bunga_record', false)
@@ -284,7 +302,7 @@ class BukuKasPembantuTunaiController extends Controller
             ->orderBy('id', 'asc')
             ->get();
 
-        $bkuPajakDisetorTunai = BukuKasUmum::query()->where('penganggaran_id', $penganggaran->id)
+        $bkuPajakDisetorTunai = ($this->BukuKasUmum)::query()->where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
             ->whereMonth('tanggal_lapor', $bulanAngka)
             ->whereYear('tanggal_lapor', $tahun)
             ->whereNotNull('ntpn')
@@ -332,6 +350,19 @@ class BukuKasPembantuTunaiController extends Controller
         $totalPenarikanTunai = $penarikanTunais->sum('jumlah_penarikan');
 
         $blockCounter = 100;
+
+        foreach ($penarikanTunais as $p) {
+            $items[] = [
+                'tanggal' => $p->tanggal_penarikan,
+                'uraian' => 'Tarik Tunai',
+                'no_bukti' => '',
+                'kode_rekening' => '-',
+                'penerimaan' => $p->jumlah_penarikan,
+                'pengeluaran' => 0,
+                'sort_order' => 4,
+                'group_id' => 0
+            ];
+        }
 
         foreach ($setorTunais as $s) {
             $items[] = [
@@ -527,5 +558,17 @@ class BukuKasPembantuTunaiController extends Controller
     {
         $tanggalAkhirBulan = $this->getTanggalAkhirBulan($tahun, $bulan);
         return $tanggalAkhirBulan->locale('id')->translatedFormat('j F Y');
+    }
+
+    protected function renderVariant($component, $props = [])
+    {
+        $var = $this->variant ?? (request()->route() ? (request()->route()->parameter('variant') ?? request()->get('_variant', 'reguler')) : 'reguler');
+        if (app()->bound('variant')) {
+            $var = app('variant');
+        }
+        return \Inertia\Inertia::render(VariantConfig::pagePrefix($var) . $component, array_merge($props, [
+            'variant' => $var,
+            'routePrefix' => VariantConfig::routePrefix($var)
+        ]));
     }
 }

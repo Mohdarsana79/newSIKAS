@@ -7,6 +7,7 @@ import CurrencyInput from '@/Components/CurrencyInput';
 import DatePicker from '@/Components/DatePicker'; // Assuming you have this or use standard input type="date"
 import axios from 'axios';
 import { useForm } from '@inertiajs/react';
+import useVariantRoute from '@/Hooks/useVariantRoute';
 
 interface TrkSaldoAwalModalProps {
     show: boolean;
@@ -16,6 +17,7 @@ interface TrkSaldoAwalModalProps {
 }
 
 export default function TrkSaldoAwalModal({ show, onClose, tahun, onSuccess }: TrkSaldoAwalModalProps) {
+    const vroute = useVariantRoute();
     const [isLoading, setIsLoading] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
 
@@ -33,7 +35,7 @@ export default function TrkSaldoAwalModal({ show, onClose, tahun, onSuccess }: T
     const fetchData = async () => {
         setIsLoading(true);
         try {
-            const response = await axios.get(route('api.bku.trk-saldo-awal.get', tahun));
+            const response = await axios.get(vroute('api.bku.trk-saldo-awal.get', tahun));
             if (response.data.success) {
                 const data = response.data.data;
                 setIsTrk(data.is_trk_saldo_awal);
@@ -51,7 +53,7 @@ export default function TrkSaldoAwalModal({ show, onClose, tahun, onSuccess }: T
     const handleSave = async () => {
         setIsSaving(true);
         try {
-            await axios.post(route('api.bku.trk-saldo-awal.save'), {
+            await axios.post(vroute('api.bku.trk-saldo-awal.save'), {
                 tahun: tahun,
                 is_trk_saldo_awal: isTrk,
                 tanggal_trk_saldo_awal: isTrk ? tanggal : null,

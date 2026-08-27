@@ -66,9 +66,10 @@ interface Props extends Record<string, unknown> {
     months: MonthFilter[];
     kegiatanOptions: Option[];
     rekeningOptions: Option[];
+    routePrefix?: string;
 }
 
-export default function Index({ auth, anggaran, items, months, kegiatanOptions, rekeningOptions }: PageProps<Props>) {
+export default function Index({ auth, anggaran, items, months, kegiatanOptions, rekeningOptions, routePrefix = '' }: PageProps<Props>) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
     const [isDetailModal2Open, setIsDetailModal2Open] = useState(false);
@@ -104,7 +105,7 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
             // I must add route first or use manual URL.
             // I'll assume I'll add the route `rkas-perubahan.logs` in web.php in next step or now.
             // Let's use manual URL for safety or assume route name 'rkas-perubahan.logs'.
-            const response = await axios.get(`/rkas-perubahan/${anggaran.id}/logs`);
+            const response = await axios.get(route(`${routePrefix || ''}rkas-perubahan.logs`, anggaran.id));
             setLogs(response.data.data);
             setIsLogsModalOpen(true);
         } catch (error) {
@@ -114,7 +115,7 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
 
     const handleDetail = async (id: number) => {
         try {
-            const response = await axios.get(route('rkas-perubahan.show', id));
+            const response = await axios.get(route(`${routePrefix}rkas-perubahan.show`, id));
             const data = response.data.data; // Adjusted for API response likely structure
 
             setItemDetailData({
@@ -198,7 +199,7 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
 
     const handleEdit = async (id: number) => {
         try {
-            const response = await axios.get(route('rkas-perubahan.edit', id));
+            const response = await axios.get(route(`${routePrefix}rkas-perubahan.edit`, id));
             const editData = response.data.data;
 
             // Transform backend data to form structure
@@ -234,7 +235,7 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
     const handleSisip = async (id: number) => {
         try {
             // For Sisip, we might still fetch basic info but clear allocation
-            const response = await axios.get(route('rkas-perubahan.edit', id));
+            const response = await axios.get(route(`${routePrefix}rkas-perubahan.edit`, id));
             const editData = response.data.data;
 
             setData({
@@ -270,7 +271,7 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
         if (!editId) return;
 
         // Dalam RKAS Perubahan, seluruh bulan (Tahap 1 maupun Tahap 2) dapat dihapus selama belum dibelanjakan di BKU
-        router.delete(route('rkas-perubahan.destroy-all', editId), {
+        router.delete(route(`${routePrefix}rkas-perubahan.destroy-all`, editId), {
             onStart: () => setIsDeleting(true),
             onFinish: () => setIsDeleting(false),
             onSuccess: () => {
@@ -337,7 +338,7 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
         };
 
         if (isEditMode && editId) {
-            router.put(route('rkas-perubahan.update', editId), payload, {
+            router.put(route(`${routePrefix}rkas-perubahan.update`, editId), payload, {
                 onStart: () => setIsSubmitting(true),
                 onFinish: () => setIsSubmitting(false),
                 onSuccess: () => {
@@ -354,7 +355,7 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                 }
             });
         } else {
-            router.post(route('rkas-perubahan.store'), payload, {
+            router.post(route(`${routePrefix}rkas-perubahan.store`), payload, {
                 onStart: () => setIsSubmitting(true),
                 onFinish: () => setIsSubmitting(false),
                 onSuccess: () => {
@@ -422,7 +423,7 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm">
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                         <div>
-                            <Link href={route('penganggaran.index')} className="inline-flex items-center text-sm text-cyan-500 font-medium mb-2 hover:underline">
+                            <Link href={route(`${routePrefix}penganggaran.index`)} className="inline-flex items-center text-sm text-cyan-500 font-medium mb-2 hover:underline">
                                 <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                                 </svg>
@@ -474,7 +475,7 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                                 Rekaman Perubahan
                             </button>
 
-                            <Link href={route('rkas-perubahan.summary', anggaran.id)} className="bg-indigo-600 text-white hover:bg-indigo-700 px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 shadow-sm">
+                            <Link href={route(`${routePrefix}rkas-perubahan.summary`, anggaran.id)} className="bg-indigo-600 text-white hover:bg-indigo-700 px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 shadow-sm">
                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                                 </svg>

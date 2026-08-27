@@ -53,7 +53,7 @@
     </div>
     
     <p style="text-align: justify; margin-top: 10px;">
-        Saya yang bertanda tangan dibawah ini menyatakan bahwa bertanggung jawab secara formal dan material atas kebenaran realisasi penerimaan dan pengeluaran Dana BOSP Reguler serta kebenaran perhitungan dan setoran pajak yang telah dipungut atas penggunaan Dana BOSP Reguler pada Semester {{ $sptj->tahap }} tahun anggaran {{ $sptj->penganggaran->tahun_anggaran }} dengan rincian sebagai berikut:
+        Saya yang bertanda tangan dibawah ini menyatakan bahwa bertanggung jawab secara formal dan material atas kebenaran realisasi penerimaan dan pengeluaran Dana {{ $sumberDana ?? 'BOSP Reguler' }} serta kebenaran perhitungan dan setoran pajak yang telah dipungut atas penggunaan Dana {{ $sumberDana ?? 'BOSP Reguler' }} pada Semester {{ $sptj->tahap }} tahun anggaran {{ $sptj->penganggaran->tahun_anggaran }} dengan rincian sebagai berikut:
     </p>
     <p style="text-align: center;">Nomor : {{ $sptj->nomor_sptj }}</p>
 
@@ -96,7 +96,7 @@
         <!-- A -->
         <tr>
             <td style="width: 30px; text-align: center;">A.</td>
-            <td colspan="2">Saldo Awal Dana BOSP Reguler</td>
+            <td colspan="2">Saldo Awal Dana {{ $sumberDana ?? 'BOSP Reguler' }}</td>
             <td style="width: 10px;">:</td>
             <td style="width: 30px;">Rp</td>
             <td class="amount-col">-</td>
@@ -105,7 +105,7 @@
         <!-- B -->
         <tr>
             <td style="text-align: center;">B.</td>
-            <td colspan="5">Penerimaan Dana BOSP Reguler</td>
+            <td colspan="5">Penerimaan Dana {{ $sumberDana ?? 'BOSP Reguler' }}</td>
         </tr>
         <tr>
             <td></td>
@@ -138,7 +138,7 @@
         <!-- C -->
         <tr>
             <td style="text-align: center;">C.</td>
-            <td colspan="5">Pengeluaran Dana BOSP Reguler</td>
+            <td colspan="5">Pengeluaran Dana {{ $sumberDana ?? 'BOSP Reguler' }}</td>
         </tr>
         <tr>
             <td></td>
@@ -171,7 +171,7 @@
         <!-- D -->
         <tr>
             <td style="text-align: center;">D.</td>
-            <td colspan="5">Sisa Dana BOSP Reguler</td>
+            <td colspan="5">Sisa Dana {{ $sumberDana ?? 'BOSP Reguler' }}</td>
         </tr>
         <tr>
             <td></td>

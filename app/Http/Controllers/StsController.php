@@ -2,18 +2,35 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use App\Config\VariantConfig;
 use App\Models\Sts;
-use App\Models\Penganggaran;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class StsController extends Controller
 {
+    protected string $variant;
+
+    protected string $Penganggaran;
+
+    protected string $Sts;
+
+    public function __construct()
+    {
+        $this->middleware(function ($request, $next) {
+            $this->variant = app()->bound('variant') ? app('variant') : 'reguler';
+            $this->Penganggaran = VariantConfig::getModelClass('penganggaran', $this->variant);
+            $this->Sts = VariantConfig::getModelClass('sts', $this->variant);
+
+            return $next($request);
+        });
+    }
+
     // Index - Menampilkan semua data STS
     public function index()
     {
-        $sts = Sts::with('penganggaran')
+        $sts = ($this->Sts)::with('penganggaran')
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -47,13 +64,13 @@ class StsController extends Controller
                 'badge' => $badge,
                 'sisa' => $sisa,
                 'sisa_formatted' => number_format($sisa, 0, ',', '.'),
-                'penganggaran_id' => $item->penganggaran_id
+                VariantConfig::penganggaranFk($this->variant) => $item->{VariantConfig::penganggaranFk($this->variant)},
             ];
         });
 
-        return Inertia::render('Penatausahaan/Sts/Index', [
+        return $this->renderVariant('Penatausahaan/Sts/Index', [
             'stsList' => $formattedSts,
-            'penganggaranList' => Penganggaran::select('id', 'tahun_anggaran')->orderBy('tahun_anggaran', 'desc')->get()
+            'penganggaranList' => ($this->Penganggaran)::select('id', 'tahun_anggaran')->orderBy('tahun_anggaran', 'desc')->get(),
         ]);
     }
 
@@ -61,25 +78,27 @@ class StsController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'penganggaran_id' => 'required|exists:penganggarans,id',
-            'nomor_sts' => 'required|string|max:100|unique:status_sts_giros,nomor_sts',
+            VariantConfig::penganggaranFk($this->variant) => 'required|exists:'.(new $this->Penganggaran)->getTable().',id',
+            'nomor_sts' => 'required|string|max:100|unique:'.(new $this->Sts)->getTable().',nomor_sts',
             'jumlah_sts' => 'required|numeric|min:0',
         ]);
 
         DB::beginTransaction();
         try {
-            $sts = Sts::create([
-                'penganggaran_id' => $validated['penganggaran_id'],
+            $sts = ($this->Sts)::create([
+                VariantConfig::penganggaranFk($this->variant) => $validated[VariantConfig::penganggaranFk($this->variant)],
                 'nomor_sts' => $validated['nomor_sts'],
                 'jumlah_sts' => $validated['jumlah_sts'],
                 'jumlah_bayar' => 0,
             ]);
 
             DB::commit();
+
             return redirect()->back()->with('success', 'STS berhasil ditambahkan');
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->back()->with('error', 'Gagal menambahkan STS: ' . $e->getMessage());
+
+            return redirect()->back()->with('error', 'Gagal menambahkan STS: '.$e->getMessage());
         }
     }
 
@@ -87,13 +106,13 @@ class StsController extends Controller
     public function update(Request $request, $id)
     {
         $validated = $request->validate([
-            'nomor_sts' => 'required|string|max:100|unique:status_sts_giros,nomor_sts,' . $id,
+            'nomor_sts' => 'required|string|max:100|unique:'.(new $this->Sts)->getTable().',nomor_sts,'.$id,
             'jumlah_sts' => 'required|numeric|min:0',
         ]);
 
         DB::beginTransaction();
         try {
-            $sts = Sts::findOrFail($id);
+            $sts = ($this->Sts)::findOrFail($id);
 
             // Jika mengupdate jumlah STS, validasi bahwa jumlah tidak kurang dari yang sudah dibayar
             if ($request->has('jumlah_sts') && $request->jumlah_sts < $sts->jumlah_bayar) {
@@ -106,10 +125,12 @@ class StsController extends Controller
             ]);
 
             DB::commit();
+
             return redirect()->back()->with('success', 'STS berhasil diupdate');
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->back()->with('error', 'Gagal mengupdate STS: ' . $e->getMessage());
+
+            return redirect()->back()->with('error', 'Gagal mengupdate STS: '.$e->getMessage());
         }
     }
 
@@ -123,12 +144,12 @@ class StsController extends Controller
 
         DB::beginTransaction();
         try {
-            $sts = Sts::findOrFail($id);
+            $sts = ($this->Sts)::findOrFail($id);
 
             $jumlahBisaDibayar = $sts->jumlah_sts - $sts->jumlah_bayar;
 
             if ($validated['jumlah_bayar'] > $jumlahBisaDibayar) {
-                return redirect()->back()->with('error', 'Jumlah pembayaran melebihi sisa tagihan. Sisa yang bisa dibayar: ' . number_format($jumlahBisaDibayar, 0, ',', '.'));
+                return redirect()->back()->with('error', 'Jumlah pembayaran melebihi sisa tagihan. Sisa yang bisa dibayar: '.number_format($jumlahBisaDibayar, 0, ',', '.'));
             }
 
             $sts->update([
@@ -137,10 +158,12 @@ class StsController extends Controller
             ]);
 
             DB::commit();
+
             return redirect()->back()->with('success', 'Pembayaran berhasil diproses');
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->back()->with('error', 'Gagal memproses pembayaran: ' . $e->getMessage());
+
+            return redirect()->back()->with('error', 'Gagal memproses pembayaran: '.$e->getMessage());
         }
     }
 
@@ -154,7 +177,7 @@ class StsController extends Controller
 
         DB::beginTransaction();
         try {
-            $sts = Sts::findOrFail($id);
+            $sts = ($this->Sts)::findOrFail($id);
 
             if ($validated['jumlah_bayar'] > $sts->jumlah_sts) {
                 return redirect()->back()->with('error', 'Jumlah pembayaran tidak boleh melebihi total STS');
@@ -166,10 +189,12 @@ class StsController extends Controller
             ]);
 
             DB::commit();
+
             return redirect()->back()->with('success', 'Pembayaran berhasil diupdate');
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->back()->with('error', 'Gagal mengupdate pembayaran: ' . $e->getMessage());
+
+            return redirect()->back()->with('error', 'Gagal mengupdate pembayaran: '.$e->getMessage());
         }
     }
 
@@ -178,42 +203,44 @@ class StsController extends Controller
     {
         DB::beginTransaction();
         try {
-            $sts = Sts::findOrFail($id);
+            $sts = ($this->Sts)::findOrFail($id);
             $sts->delete();
 
             DB::commit();
+
             return redirect()->back()->with('success', 'STS berhasil dihapus');
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->back()->with('error', 'Gagal menghapus STS: ' . $e->getMessage());
+
+            return redirect()->back()->with('error', 'Gagal menghapus STS: '.$e->getMessage());
         }
     }
 
     // Get STS by ID untuk modal edit
     public function show($id)
     {
-        $sts = Sts::with('penganggaran')->findOrFail($id);
+        $sts = ($this->Sts)::with('penganggaran')->findOrFail($id);
 
         return response()->json([
             'success' => true,
             'data' => [
                 'id' => $sts->id,
-                'penganggaran_id' => $sts->penganggaran_id,
+                VariantConfig::penganggaranFk($this->variant) => $sts->{VariantConfig::penganggaranFk($this->variant)},
                 'nomor_sts' => $sts->nomor_sts,
                 'jumlah_sts' => $sts->jumlah_sts,
                 'jumlah_bayar' => $sts->jumlah_bayar,
                 'tahun_anggaran' => $sts->penganggaran ? $sts->penganggaran->tahun_anggaran : null,
-            ]
+            ],
         ]);
     }
 
     public function getByTahun($tahun)
     {
-        $sts = Sts::whereHas('penganggaran', function ($q) use ($tahun) {
+        $sts = ($this->Sts)::whereHas('penganggaran', function ($q) use ($tahun) {
             $q->where('tahun_anggaran', $tahun);
         })
-        ->orderBy('created_at', 'desc')
-        ->get();
+            ->orderBy('created_at', 'desc')
+            ->get();
 
         return response()->json([
             'success' => true,
@@ -224,9 +251,9 @@ class StsController extends Controller
                     'jumlah_sts' => $item->jumlah_sts,
                     'jumlah_bayar' => $item->jumlah_bayar,
                     'tanggal_bayar' => $item->tanggal_bayar,
-                    'is_checked' => (boolean) $item->is_bkp,
+                    'is_checked' => (bool) $item->is_bkp,
                 ];
-            })
+            }),
         ]);
     }
 
@@ -234,50 +261,70 @@ class StsController extends Controller
     {
         $request->validate([
             'sts_ids' => 'required|array',
-            'sts_ids.*' => 'exists:status_sts_giros,id',
+            'sts_ids.*' => 'exists:'.(new $this->Sts)->getTable().',id',
             'bulan' => 'required|string', // Bulan context from View
             'tahun' => 'required|string',
-            'is_checked' => 'required|boolean' // True to add, False to remove
+            'is_checked' => 'required|boolean', // True to add, False to remove
         ]);
 
         try {
             DB::beginTransaction();
-            
+
             // Logic:
             // Just updated is_bkp flag.
-            
+
             if ($request->is_checked) {
-                 Sts::whereIn('id', $request->sts_ids)->update([
-                    'is_bkp' => true
-                 ]);
-                 $msg = 'STS berhasil ditambahkan ke Buku Bank';
+                ($this->Sts)::whereIn('id', $request->sts_ids)->update([
+                    'is_bkp' => true,
+                ]);
+                $msg = 'STS berhasil ditambahkan ke Buku Bank';
             } else {
-                 Sts::whereIn('id', $request->sts_ids)->update([
-                    'is_bkp' => false
-                 ]);
-                 $msg = 'STS berhasil dihapus dari Buku Bank';
+                ($this->Sts)::whereIn('id', $request->sts_ids)->update([
+                    'is_bkp' => false,
+                ]);
+                $msg = 'STS berhasil dihapus dari Buku Bank';
             }
 
             DB::commit();
+
             return response()->json(['success' => true, 'message' => $msg]);
 
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
 
     public function getAvailableYears()
     {
-        $years = Sts::join('penganggarans', 'status_sts_giros.penganggaran_id', '=', 'penganggarans.id')
-            ->select('penganggarans.tahun_anggaran')
+        $stsTable = (new $this->Sts)->getTable();
+        $penganggaranTable = (new $this->Penganggaran)->getTable();
+        $fk = VariantConfig::penganggaranFk($this->variant);
+
+        $years = ($this->Sts)::join($penganggaranTable, $stsTable.'.'.$fk, '=', $penganggaranTable.'.id')
+            ->select($penganggaranTable.'.tahun_anggaran')
             ->distinct()
-            ->orderBy('penganggarans.tahun_anggaran', 'desc')
-            ->pluck('penganggarans.tahun_anggaran');
+            ->orderBy($penganggaranTable.'.tahun_anggaran', 'desc')
+            ->pluck($penganggaranTable.'.tahun_anggaran');
 
         return response()->json([
             'success' => true,
-            'data' => $years
+            'data' => $years,
         ]);
+    }
+
+    protected function renderVariant($component, $props = [])
+    {
+        $var = $this->variant ?? (request()->route() ? (request()->route()->parameter('variant') ?? request()->get('_variant', 'reguler')) : 'reguler');
+        if (app()->bound('variant')) {
+            $var = app('variant');
+        }
+
+        return Inertia::render(VariantConfig::pagePrefix($var).$component, array_merge($props, [
+            'variant' => $var,
+            'routePrefix' => VariantConfig::routePrefix($var),
+            'penganggaranFk' => VariantConfig::penganggaranFk($var),
+        ]));
     }
 }

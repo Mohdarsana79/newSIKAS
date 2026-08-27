@@ -1,6 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link, useForm } from '@inertiajs/react';
-import { useState } from 'react';
+import { Head, Link, useForm, router, usePage } from '@inertiajs/react';
+import { useState, useEffect } from 'react';
+import useVariantRoute from '@/Hooks/useVariantRoute';
 
 import Modal from '@/Components/Modal';
 import InputLabel from '@/Components/InputLabel';
@@ -11,10 +12,18 @@ import InputError from '@/Components/InputError';
 import DatePicker from '@/Components/DatePicker';
 import { format } from 'date-fns';
 import axios from 'axios';
-import { useEffect } from 'react';
 
 export default function Index({ tahunList, penganggaranList, statusPerTahun, tahun }: any) {
-    const [activeTab, setActiveTab] = useState('BOSP Reguler');
+    const vroute = useVariantRoute();
+    const pageProps = usePage<any>().props;
+    const routePrefix = pageProps.routePrefix || '';
+    const sumberDanaOptions: string[] = pageProps.sumberDanaOptions || [];
+    const sumberDanaTahap1: string | null = pageProps.sumberDanaTahap1 || null;
+    
+    let activeTab = 'BOSP Reguler';
+    if (routePrefix === 'silpa-') activeTab = 'SiLPA BOSP Reguler';
+    else if (routePrefix === 'kinerja-') activeTab = 'BOSP Kinerja';
+    else if (routePrefix === 'kinerja-silpa-') activeTab = 'SiLPA BOSP Kinerja';
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [showCreateForm, setShowCreateForm] = useState(false);
     const [penerimaanData, setPenerimaanData] = useState([]);
@@ -41,7 +50,7 @@ export default function Index({ tahunList, penganggaranList, statusPerTahun, tah
 
     const fetchPenganggaranId = async (selectedTahun: any) => {
         try {
-            const response = await axios.get(route('penatausahaan.get-id'), {
+            const response = await axios.get(vroute('penatausahaan.get-id'), {
                 params: { tahun: selectedTahun }
             });
             if (response.data.penganggaran_id) {
@@ -57,7 +66,7 @@ export default function Index({ tahunList, penganggaranList, statusPerTahun, tah
         if (!penganggaranId) return;
         setLoading(true);
         try {
-            const response = await axios.get(route('penatausahaan.get-data', penganggaranId));
+            const response = await axios.get(vroute('penatausahaan.get-data', penganggaranId));
             setPenerimaanData(response.data);
         } catch (error) {
             console.error("Error fetching penerimaan data:", error);
@@ -109,7 +118,7 @@ export default function Index({ tahunList, penganggaranList, statusPerTahun, tah
 
     const submitPenerimaan = (e: any) => {
         e.preventDefault();
-        post(route('penerimaan-dana.store'), {
+        post(vroute('penerimaan-dana.store'), {
             onSuccess: () => {
                 setShowCreateForm(false);
                 fetchPenerimaanData(currentPenganggaranId);
@@ -163,8 +172,8 @@ export default function Index({ tahunList, penganggaranList, statusPerTahun, tah
 
     const tabs = [
         'BOSP Reguler',
-        'BOSP Daerah',
         'BOSP Kinerja',
+        'SiLPA BOSP Reguler',
         'SiLPA BOSP Kinerja',
         'Lainnya',
     ];
@@ -193,7 +202,17 @@ export default function Index({ tahunList, penganggaranList, statusPerTahun, tah
                         {tabs.map((tab: any) => (
                             <button
                                 key={tab}
-                                onClick={() => setActiveTab(tab)}
+                                onClick={() => {
+                                    if (tab === 'BOSP Reguler') {
+                                        router.visit(route('penatausahaan.index'));
+                                    } else if (tab === 'BOSP Kinerja') {
+                                        router.visit(route('kinerja-penatausahaan.index'));
+                                    } else if (tab === 'SiLPA BOSP Reguler') {
+                                        router.visit(route('silpa-penatausahaan.index'));
+                                    } else if (tab === 'SiLPA BOSP Kinerja') {
+                                        router.visit(route('kinerja-silpa-penatausahaan.index'));
+                                    }
+                                }}
                                 className={`
                                     relative px-6 py-2.5 rounded-lg text-sm font-bold transition-all duration-300 ease-in-out
                                     ${activeTab === tab
@@ -225,7 +244,6 @@ export default function Index({ tahunList, penganggaranList, statusPerTahun, tah
                         </div>
 
                         {/* Content for BOSP Reguler: Accordion List */}
-                        {activeTab === 'BOSP Reguler' ? (
                             <div className="space-y-3">
                                 {penganggaranList && penganggaranList.length > 0 ? (
                                     penganggaranList.map((item: any) => (
@@ -253,17 +271,6 @@ export default function Index({ tahunList, penganggaranList, statusPerTahun, tah
                                     </div>
                                 )}
                             </div>
-                        ) : (
-                            <div className="flex flex-col items-center justify-center py-12 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-                                <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-full mb-4">
-                                    <svg className="w-10 h-10 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-                                    </svg>
-                                </div>
-                                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-1">Fitur Belum Tersedia</h3>
-                                <p className="text-gray-500 dark:text-gray-400 text-sm">Modul {activeTab} sedang dalam tahap pengembangan.</p>
-                            </div>
-                        )}
                     </div>
                 </div>
             </div>
@@ -359,13 +366,14 @@ export default function Index({ tahunList, penganggaranList, statusPerTahun, tah
                                             required
                                         >
                                             <option value="">Pilih Sumber Dana</option>
-                                            <option value="Bosp Reguler Tahap 1">Bosp Reguler Tahap 1</option>
-                                            <option value="Bosp Reguler Tahap 2">Bosp Reguler Tahap 2</option>
+                                            {sumberDanaOptions.map((opt: string) => (
+                                                <option key={opt} value={opt}>{opt}</option>
+                                            ))}
                                         </select>
                                         <InputError message={errors.sumber_dana} className="mt-2" />
                                     </div>
 
-                                    {data.sumber_dana === 'Bosp Reguler Tahap 1' && (
+                                    {data.sumber_dana && (
                                         <>
                                             <div className="grid grid-cols-2 gap-4">
                                                 <div>
@@ -386,7 +394,7 @@ export default function Index({ tahunList, penganggaranList, statusPerTahun, tah
                                                     <InputLabel htmlFor="jumlah_dana" value="Jumlah Dana" />
                                                     <TextInput
                                                         id="jumlah_dana"
-                                                        type="text" // using text to handle formatting if needed, or number
+                                                        type="text"
                                                         className="mt-1 block w-full text-gray-900"
                                                         value={data.jumlah_dana}
                                                         onChange={(e: any) => handleCurrencyChange(e, 'jumlah_dana')}
@@ -397,67 +405,37 @@ export default function Index({ tahunList, penganggaranList, statusPerTahun, tah
                                                 </div>
                                             </div>
 
-                                            <div className="grid grid-cols-2 gap-4 border-t border-gray-200 dark:border-gray-700 pt-4">
-                                                <div>
-                                                    <InputLabel htmlFor="tanggal_saldo_awal" value="Tanggal Saldo Awal" />
-                                                    <DatePicker
-                                                        value={data.tanggal_saldo_awal}
-                                                        onChange={(date) => setData('tanggal_saldo_awal', date ? format(date, 'yyyy-MM-dd') : '')}
-                                                        className="mt-1"
-                                                        placeholder="Pilih Tanggal Saldo Awal"
-                                                        minDate={penganggaranList?.find((p: any) => p.id === currentPenganggaranId)?.tahun_anggaran ? new Date(parseInt(penganggaranList.find((p: any) => p.id === currentPenganggaranId).tahun_anggaran), 0, 1) : undefined}
-                                                        maxDate={penganggaranList?.find((p: any) => p.id === currentPenganggaranId)?.tahun_anggaran ? new Date(parseInt(penganggaranList.find((p: any) => p.id === currentPenganggaranId).tahun_anggaran), 11, 31) : undefined}
-                                                        startMonth={penganggaranList?.find((p: any) => p.id === currentPenganggaranId)?.tahun_anggaran ? new Date(parseInt(penganggaranList.find((p: any) => p.id === currentPenganggaranId).tahun_anggaran), 0) : undefined}
-                                                        endMonth={penganggaranList?.find((p: any) => p.id === currentPenganggaranId)?.tahun_anggaran ? new Date(parseInt(penganggaranList.find((p: any) => p.id === currentPenganggaranId).tahun_anggaran), 11) : undefined}
-                                                    />
-                                                    <InputError message={errors.tanggal_saldo_awal} className="mt-2" />
+                                            {sumberDanaTahap1 && data.sumber_dana === sumberDanaTahap1 && (
+                                                <div className="grid grid-cols-2 gap-4 border-t border-gray-200 dark:border-gray-700 pt-4">
+                                                    <div>
+                                                        <InputLabel htmlFor="tanggal_saldo_awal" value="Tanggal Saldo Awal" />
+                                                        <DatePicker
+                                                            value={data.tanggal_saldo_awal}
+                                                            onChange={(date) => setData('tanggal_saldo_awal', date ? format(date, 'yyyy-MM-dd') : '')}
+                                                            className="mt-1"
+                                                            placeholder="Pilih Tanggal Saldo Awal"
+                                                            minDate={penganggaranList?.find((p: any) => p.id === currentPenganggaranId)?.tahun_anggaran ? new Date(parseInt(penganggaranList.find((p: any) => p.id === currentPenganggaranId).tahun_anggaran), 0, 1) : undefined}
+                                                            maxDate={penganggaranList?.find((p: any) => p.id === currentPenganggaranId)?.tahun_anggaran ? new Date(parseInt(penganggaranList.find((p: any) => p.id === currentPenganggaranId).tahun_anggaran), 11, 31) : undefined}
+                                                            startMonth={penganggaranList?.find((p: any) => p.id === currentPenganggaranId)?.tahun_anggaran ? new Date(parseInt(penganggaranList.find((p: any) => p.id === currentPenganggaranId).tahun_anggaran), 0) : undefined}
+                                                            endMonth={penganggaranList?.find((p: any) => p.id === currentPenganggaranId)?.tahun_anggaran ? new Date(parseInt(penganggaranList.find((p: any) => p.id === currentPenganggaranId).tahun_anggaran), 11) : undefined}
+                                                        />
+                                                        <InputError message={errors.tanggal_saldo_awal} className="mt-2" />
+                                                    </div>
+                                                    <div>
+                                                        <InputLabel htmlFor="saldo_awal" value="Jumlah Saldo Awal" />
+                                                        <TextInput
+                                                            id="saldo_awal"
+                                                            type="text"
+                                                            className="mt-1 block w-full text-gray-900"
+                                                            value={data.saldo_awal}
+                                                            onChange={(e: any) => handleCurrencyChange(e, 'saldo_awal')}
+                                                            placeholder="Rp 0"
+                                                        />
+                                                        <InputError message={errors.saldo_awal} className="mt-2" />
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <InputLabel htmlFor="saldo_awal" value="Jumlah Saldo Awal" />
-                                                    <TextInput
-                                                        id="saldo_awal"
-                                                        type="text"
-                                                        className="mt-1 block w-full text-gray-900"
-                                                        value={data.saldo_awal}
-                                                        onChange={(e: any) => handleCurrencyChange(e, 'saldo_awal')}
-                                                        placeholder="Rp 0"
-                                                    />
-                                                    <InputError message={errors.saldo_awal} className="mt-2" />
-                                                </div>
-                                            </div>
+                                            )}
                                         </>
-                                    )}
-
-                                    {data.sumber_dana === 'Bosp Reguler Tahap 2' && (
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div>
-                                                <InputLabel htmlFor="tanggal_terima" value="Tanggal Terima" />
-                                                <DatePicker
-                                                    value={data.tanggal_terima}
-                                                    onChange={(date) => setData('tanggal_terima', date ? format(date, 'yyyy-MM-dd') : '')}
-                                                    className="mt-1"
-                                                    placeholder="Pilih Tanggal Terima"
-                                                    minDate={penganggaranList?.find((p: any) => p.id === currentPenganggaranId)?.tahun_anggaran ? new Date(parseInt(penganggaranList.find((p: any) => p.id === currentPenganggaranId).tahun_anggaran), 0, 1) : undefined}
-                                                    maxDate={penganggaranList?.find((p: any) => p.id === currentPenganggaranId)?.tahun_anggaran ? new Date(parseInt(penganggaranList.find((p: any) => p.id === currentPenganggaranId).tahun_anggaran), 11, 31) : undefined}
-                                                    startMonth={penganggaranList?.find((p: any) => p.id === currentPenganggaranId)?.tahun_anggaran ? new Date(parseInt(penganggaranList.find((p: any) => p.id === currentPenganggaranId).tahun_anggaran), 0) : undefined}
-                                                    endMonth={penganggaranList?.find((p: any) => p.id === currentPenganggaranId)?.tahun_anggaran ? new Date(parseInt(penganggaranList.find((p: any) => p.id === currentPenganggaranId).tahun_anggaran), 11) : undefined}
-                                                />
-                                                <InputError message={errors.tanggal_terima} className="mt-2" />
-                                            </div>
-                                            <div>
-                                                <InputLabel htmlFor="jumlah_dana" value="Jumlah Dana" />
-                                                <TextInput
-                                                    id="jumlah_dana"
-                                                    type="text"
-                                                    className="mt-1 block w-full text-gray-900"
-                                                    value={data.jumlah_dana}
-                                                    onChange={(e: any) => handleCurrencyChange(e, 'jumlah_dana')}
-                                                    placeholder="Rp 0"
-                                                    required
-                                                />
-                                                <InputError message={errors.jumlah_dana} className="mt-2" />
-                                            </div>
-                                        </div>
                                     )}
                                 </div>
 
@@ -497,6 +475,7 @@ export default function Index({ tahunList, penganggaranList, statusPerTahun, tah
 }
 
 const YearAccordionItem = ({ item, months, statusPerTahun, activeTab, onOpenModal, onValidation }: any) => {
+    const vroute = useVariantRoute();
     const [isOpen, setIsOpen] = useState(false);
 
     useEffect(() => {
@@ -536,12 +515,10 @@ const YearAccordionItem = ({ item, months, statusPerTahun, activeTab, onOpenModa
                     {/* Header with Buttons INSIDE Accordion */}
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                         <h4 className="text-lg font-bold text-gray-800 dark:text-gray-100 hidden md:block">
-                            {/* Intentionally header might be redundant here if user wants a clean list, but user said "ada card bulan tombol cetak dan tambah". 
-                               We can keep it clean or add a sub-guidance. Let's keep buttons prominent. */}
                         </h4>
                         <div className="flex items-center gap-3 w-full md:w-auto">
                             <Link
-                                href={route('penatausahaan.rekapitulasi', { tahun: item.tahun_anggaran, bulan: 'januari' })}
+                                href={vroute('penatausahaan.rekapitulasi', { tahun: item.tahun_anggaran, bulan: 'januari' })}
                                 className="flex-1 md:flex-none inline-flex justify-center items-center px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md font-semibold text-xs text-gray-700 dark:text-gray-300 uppercase tracking-widest shadow-sm hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150"
                             >
                                 <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -562,7 +539,7 @@ const YearAccordionItem = ({ item, months, statusPerTahun, activeTab, onOpenModa
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        {months.map((month: any) => {
+                        {months.map((month: any, monthIndex: number) => {
                             const status = statusPerTahun?.[item.tahun_anggaran]?.[month] || 'disabled'; // Default to disabled if unknown
                             const isDisabled = status === 'disabled';
 
@@ -582,7 +559,7 @@ const YearAccordionItem = ({ item, months, statusPerTahun, activeTab, onOpenModa
                             return (
                                 <Link
                                     key={month}
-                                    href={isDisabled ? '#' : route('penatausahaan.bku', { tahun: item.tahun_anggaran, bulan: month })}
+                                    href={isDisabled ? '#' : vroute('penatausahaan.bku', { tahun: item.tahun_anggaran, bulan: month })}
                                     className={`group relative bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 flex flex-col items-center justify-center shadow-sm hover:shadow-md transition-all duration-200 
                                             ${isDisabled
                                             ? 'opacity-50 cursor-not-allowed grayscale'

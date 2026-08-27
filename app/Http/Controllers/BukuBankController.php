@@ -11,12 +11,33 @@ use App\Models\SekolahProfile as Sekolah; // Adjusted Model Name
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use App\Config\VariantConfig;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\BkpBankExport;
 
 class BukuBankController extends Controller
 {
+    protected string $variant;
+    protected string $Penganggaran;
+    protected string $PenerimaanDana;
+    protected string $BukuKasUmum;
+    protected string $PenarikanTunai;
+    protected string $Sts;
+
+    public function __construct()
+    {
+        $this->middleware(function ($request, $next) {
+            $this->variant = app()->bound('variant') ? app('variant') : 'reguler';
+            $this->Penganggaran = VariantConfig::getModelClass('penganggaran', $this->variant);
+            $this->PenerimaanDana = VariantConfig::getModelClass('penerimaan_dana', $this->variant);
+            $this->BukuKasUmum = VariantConfig::getModelClass('bku', $this->variant);
+            $this->PenarikanTunai = VariantConfig::getModelClass('penarikan_tunai', $this->variant);
+            $this->Sts = VariantConfig::getModelClass('sts', $this->variant);
+
+            return $next($request);
+        });
+    }
     /**
      * Get data BKP Bank (digunakan oleh AJAX)
      */
@@ -202,7 +223,7 @@ class BukuBankController extends Controller
      */
     public function getTrkSaldoAwal($tahun) 
     {
-        $penganggaran = Penganggaran::where('tahun_anggaran', $tahun)->first();
+        $penganggaran = ($this->Penganggaran)::where('tahun_anggaran', $tahun)->first();
         if (!$penganggaran) {
             return response()->json(['success' => false, 'message' => 'Tahun anggaran tidak ditemukan']);
         }
@@ -230,7 +251,7 @@ class BukuBankController extends Controller
         ]);
 
         try {
-            $penganggaran = Penganggaran::where('tahun_anggaran', $request->tahun)->first();
+            $penganggaran = ($this->Penganggaran)::where('tahun_anggaran', $request->tahun)->first();
             if (!$penganggaran) return response()->json(['success' => false, 'message' => 'Penganggaran not found'], 404);
 
             $penganggaran->is_trk_saldo_awal = $request->is_trk_saldo_awal;
@@ -255,7 +276,7 @@ class BukuBankController extends Controller
      */
     private function getBkpBankDataInternal($tahun, $bulan)
     {
-        $penganggaran = Penganggaran::where('tahun_anggaran', $tahun)->first();
+        $penganggaran = ($this->Penganggaran)::where('tahun_anggaran', $tahun)->first();
 
         if (!$penganggaran) {
             return null;
@@ -283,7 +304,7 @@ class BukuBankController extends Controller
         }
 
         // Ambil data penerimaan dana
-        $penerimaanDanas = PenerimaanDana::where('penganggaran_id', $penganggaran->id)
+        $penerimaanDanas = ($this->PenerimaanDana)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
             ->whereMonth('tanggal_terima', '>=', $bulanAwal)
             ->whereMonth('tanggal_terima', '<=', $bulanAkhir)
             ->whereYear('tanggal_terima', $tahun)
@@ -291,7 +312,7 @@ class BukuBankController extends Controller
             ->get();
 
         // Ambil data penarikan tunai
-        $penarikanTunais = PenarikanTunai::where('penganggaran_id', $penganggaran->id)
+        $penarikanTunais = ($this->PenarikanTunai)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
             ->whereMonth('tanggal_penarikan', '>=', $bulanAwal)
             ->whereMonth('tanggal_penarikan', '<=', $bulanAkhir)
             ->whereYear('tanggal_penarikan', $tahun)
@@ -299,7 +320,7 @@ class BukuBankController extends Controller
             ->get();
 
         // Ambil data bunga bank
-        $bungaRecords = BukuKasUmum::where('penganggaran_id', $penganggaran->id)
+        $bungaRecords = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
             ->whereMonth('tanggal_transaksi', '>=', $bulanAwal)
             ->whereMonth('tanggal_transaksi', '<=', $bulanAkhir)
             ->whereYear('tanggal_transaksi', $tahun)
@@ -309,7 +330,7 @@ class BukuBankController extends Controller
 
         // Ambil data STS yang masuk Buku Bank
         // Ambil data STS yang masuk Buku Bank
-        $stsRecords = Sts::where('penganggaran_id', $penganggaran->id)
+        $stsRecords = ($this->Sts)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
             ->where('is_bkp', true)
             ->whereMonth('tanggal_bayar', '>=', $bulanAwal)
             ->whereMonth('tanggal_bayar', '<=', $bulanAkhir)
@@ -333,7 +354,7 @@ class BukuBankController extends Controller
         }
 
         // Ambil data belanja NON-TUNAI bulan ini
-        $belanjaNonTunai = BukuKasUmum::where('penganggaran_id', $penganggaran->id)
+        $belanjaNonTunai = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
             ->where('is_bunga_record', false)
             ->where('jenis_transaksi', 'non-tunai')
             ->whereMonth('tanggal_transaksi', '>=', $bulanAwal)
@@ -374,7 +395,8 @@ class BukuBankController extends Controller
         }
 
         // Ambil list belanja NON-TUNAI untuk item
-        $belanjaNonTunaiList = BukuKasUmum::where('penganggaran_id', $penganggaran->id)
+        $belanjaNonTunaiList = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
+            ->with(['kodeKegiatan', 'rekeningBelanja'])
             ->where('is_bunga_record', false)
             ->where('jenis_transaksi', 'non-tunai')
             ->whereMonth('tanggal_transaksi', '>=', $bulanAwal)
@@ -385,10 +407,10 @@ class BukuBankController extends Controller
         foreach ($belanjaNonTunaiList as $bnt) {
              $items[] = [
                 'tanggal' => $bnt->tanggal_transaksi,
-                'uraian' => 'Pembayaran Belanja ' . ($bnt->uraian ?? 'Non Tunai'),
-                'no_bukti' => $bnt->no_bukti,
-                'kode_kegiatan' => '',
-                'kode_rekening' => '',
+                'uraian' => $bnt->uraian ?? 'Non Tunai',
+                'no_bukti' => $bnt->id_transaksi ?? $bnt->nomor_nota ?? '-',
+                'kode_kegiatan' => $bnt->kodeKegiatan->kode ?? '-',
+                'kode_rekening' => $bnt->rekeningBelanja->kode_rekening ?? '-',
                 'penerimaan' => 0,
                 'pengeluaran' => $bnt->total_transaksi_kotor, // Assuming total_transaksi_kotor is the full amount deduced from bank
                 'type' => 'belanja_non_tunai'
@@ -435,7 +457,7 @@ class BukuBankController extends Controller
                 'uraian' => 'Bunga Bank Bulan ' . Carbon::parse($bungaRecord->tanggal_transaksi)->locale('id')->isoFormat('MMMM'),
                 'no_bukti' => '',
                 'kode_kegiatan' => '',
-                'kode_rekening' => '',
+                'kode_rekening' => '299',
                 'penerimaan' => $bungaRecord->bunga_bank,
                 'pengeluaran' => 0,
                 'type' => 'bunga'
@@ -446,7 +468,7 @@ class BukuBankController extends Controller
                 'uraian' => 'Pajak Bunga Bulan ' . Carbon::parse($bungaRecord->tanggal_transaksi)->locale('id')->isoFormat('MMMM'),
                 'no_bukti' => '',
                 'kode_kegiatan' => '',
-                'kode_rekening' => '',
+                'kode_rekening' => '199',
                 'penerimaan' => 0,
                 'pengeluaran' => $bungaRecord->pajak_bunga_bank,
                 'type' => 'pajak_bunga'
@@ -468,7 +490,29 @@ class BukuBankController extends Controller
         
         // Sort items
         usort($items, function($a, $b) {
-            return strtotime($a['tanggal']) - strtotime($b['tanggal']);
+            $timeDiff = strtotime($a['tanggal']) - strtotime($b['tanggal']);
+            if ($timeDiff !== 0) {
+                return $timeDiff;
+            }
+            
+            // Prioritas sorting jika tanggal sama:
+            // 1. Penerimaan Dana ('penerimaan')
+            // 2. Bunga Bank ('bunga')
+            // 3. Lain-lain (Pengeluaran)
+            $priority = [
+                'penerimaan' => 1,
+                'bunga' => 2,
+                'trk_saldo_awal' => 3,
+                'belanja_non_tunai' => 4,
+                'penarikan' => 5,
+                'pajak_bunga' => 6,
+                'sts' => 7,
+            ];
+            
+            $pA = $priority[$a['type']] ?? 99;
+            $pB = $priority[$b['type']] ?? 99;
+            
+            return $pA - $pB;
         });
 
         return [
@@ -487,7 +531,7 @@ class BukuBankController extends Controller
                 'total_pengeluaran' => $totalPengeluaran,
                 'has_saldo_awal_tahun_lalu' => $hasSaldoAwalTahunLalu,
                 'is_trk_saldo_awal_year' => (bool)$penganggaran->is_trk_saldo_awal,
-                'has_sts_year' => Sts::where('penganggaran_id', $penganggaran->id)->exists()
+                'has_sts_year' => ($this->Sts)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)->exists()
             ],
             'sekolah' => [
                 'nama_sekolah' => $penganggaran->sekolah->nama_sekolah,
@@ -531,7 +575,7 @@ class BukuBankController extends Controller
             if ($bulanTarget == 1) return 0;
 
             // Hitung total penerimaan dana sampai bulan sebelumnya
-            $penerimaanDanas = PenerimaanDana::where('penganggaran_id', $penganggaran_id)
+            $penerimaanDanas = ($this->PenerimaanDana)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran_id)
                 ->whereRaw('EXTRACT(MONTH FROM tanggal_terima) < ?', [$bulanTarget])
                 ->get();
 
@@ -544,38 +588,38 @@ class BukuBankController extends Controller
             });
 
             // Hitung total penarikan tunai sampai bulan sebelumnya
-            $totalPenarikan = PenarikanTunai::where('penganggaran_id', $penganggaran_id)
+            $totalPenarikan = ($this->PenarikanTunai)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran_id)
                 ->whereRaw('EXTRACT(MONTH FROM tanggal_penarikan) < ?', [$bulanTarget])
                 ->sum('jumlah_penarikan');
 
             // Hitung bunga bank sampai bulan sebelumnya
-            $totalBunga = BukuKasUmum::where('penganggaran_id', $penganggaran_id)
+            $totalBunga = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran_id)
                 ->where('is_bunga_record', true)
                 ->whereRaw('EXTRACT(MONTH FROM tanggal_transaksi) < ?', [$bulanTarget])
                 ->sum('bunga_bank');
 
             // Hitung pajak bunga sampai bulan sebelumnya
-            $totalPajakBunga = BukuKasUmum::where('penganggaran_id', $penganggaran_id)
+            $totalPajakBunga = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran_id)
                 ->where('is_bunga_record', true)
                 ->whereRaw('EXTRACT(MONTH FROM tanggal_transaksi) < ?', [$bulanTarget])
                 ->sum('pajak_bunga_bank');
 
             // Hitung total belanja NON-TUNAI sampai bulan sebelumnya
-            $totalBelanjaNonTunai = BukuKasUmum::where('penganggaran_id', $penganggaran_id)
+            $totalBelanjaNonTunai = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran_id)
                 ->where('is_bunga_record', false)
                 ->where('jenis_transaksi', 'non-tunai')
                 ->whereRaw('EXTRACT(MONTH FROM tanggal_transaksi) < ?', [$bulanTarget])
                 ->sum('total_transaksi_kotor');
 
             // Hitung STS sampai bulan sebelumnya
-            $totalStsSebelumnya = Sts::where('penganggaran_id', $penganggaran_id)
+            $totalStsSebelumnya = ($this->Sts)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran_id)
                 ->where('is_bkp', true)
                 ->whereRaw('EXTRACT(MONTH FROM tanggal_bayar) < ?', [$bulanTarget])
                 ->sum('jumlah_bayar');
 
             // Hitung TRK Saldo Awal sampai bulan sebelumnya
             $totalTrkSebelumnya = 0;
-            $penganggaran = Penganggaran::find($penganggaran_id);
+            $penganggaran = ($this->Penganggaran)::find($penganggaran_id);
             if ($penganggaran && $penganggaran->is_trk_saldo_awal && $penganggaran->tanggal_trk_saldo_awal) {
                 $tglTrk = Carbon::parse($penganggaran->tanggal_trk_saldo_awal);
                 if ($tglTrk->year == $penganggaran->tahun_anggaran && $tglTrk->month < $bulanTarget) {
@@ -596,5 +640,17 @@ class BukuBankController extends Controller
             Log::error('Error hitungSaldoBankSebelumBulan: ' . $e->getMessage());
             return 0;
         }
+    }
+
+    protected function renderVariant($component, $props = [])
+    {
+        $var = $this->variant ?? (request()->route() ? (request()->route()->parameter('variant') ?? request()->get('_variant', 'reguler')) : 'reguler');
+        if (app()->bound('variant')) {
+            $var = app('variant');
+        }
+        return \Inertia\Inertia::render(VariantConfig::pagePrefix($var) . $component, array_merge($props, [
+            'variant' => $var,
+            'routePrefix' => VariantConfig::routePrefix($var)
+        ]));
     }
 }

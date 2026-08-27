@@ -8,11 +8,30 @@ use App\Models\Penganggaran;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use App\Config\VariantConfig;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class RekapitulasiRealisasiController extends Controller
 {
+    protected string $variant;
+    protected string $Penganggaran;
+    protected string $PenerimaanDana;
+    protected string $BukuKasUmum;
+    protected string $Sts;
+
+    public function __construct()
+    {
+        $this->middleware(function ($request, $next) {
+            $this->variant = app()->bound('variant') ? app('variant') : 'reguler';
+            $this->Penganggaran = VariantConfig::getModelClass('penganggaran', $this->variant);
+            $this->PenerimaanDana = VariantConfig::getModelClass('penerimaan_dana', $this->variant);
+            $this->BukuKasUmum = VariantConfig::getModelClass('bku', $this->variant);
+            $this->Sts = VariantConfig::getModelClass('sts', $this->variant);
+
+            return $next($request);
+        });
+    }
     /**
      * Get realisasi data per rekening belanja for specific columns
      */
@@ -22,11 +41,11 @@ class RekapitulasiRealisasiController extends Controller
     private function getRekapRealisasiPerRekeningInternal($tahun, $faseTarget = 'Tahunan')
     {
         if (!$tahun) {
-            $penganggaranAktif = Penganggaran::orderBy('tahun_anggaran', 'desc')->first();
+            $penganggaranAktif = ($this->Penganggaran)::orderBy('tahun_anggaran', 'desc')->first();
             $tahun = $penganggaranAktif ? $penganggaranAktif->tahun_anggaran : date('Y');
         }
 
-        $penganggaran = Penganggaran::where('tahun_anggaran', $tahun)->first();
+        $penganggaran = ($this->Penganggaran)::where('tahun_anggaran', $tahun)->first();
         if (!$penganggaran) {
             return null;
         }
@@ -41,7 +60,7 @@ class RekapitulasiRealisasiController extends Controller
         }
 
         // Fetch BKU transactions with Account Codes
-        $transaksi = BukuKasUmum::where('penganggaran_id', $penganggaranId)
+        $transaksi = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $penganggaranId)
             ->whereYear('tanggal_transaksi', $tahun)
             ->whereIn(DB::raw('EXTRACT(MONTH FROM tanggal_transaksi)'), $bulanTarget)
             ->where('is_bunga_record', false)
@@ -63,8 +82,8 @@ class RekapitulasiRealisasiController extends Controller
             if (strpos($kode, '5.1.02.01') === 0) {
                 $pakaiHabis += $jumlah;
             }
-            // 2. Barang & Jasa: 5.1.02.02 dan 5.1.02.04
-            elseif (strpos($kode, '5.1.02.02') === 0 || strpos($kode, '5.1.02.04') === 0) {
+            // 2. Barang & Jasa: 5.1.02.02, 5.1.02.03, dan 5.1.02.04
+            elseif (strpos($kode, '5.1.02.02') === 0 || strpos($kode, '5.1.02.03') === 0 || strpos($kode, '5.1.02.04') === 0) {
                 $barangJasa += $jumlah;
             }
             // 3. Peralatan dan Mesin: 5.2.02
@@ -361,7 +380,7 @@ class RekapitulasiRealisasiController extends Controller
 
             // Jika tahun tidak ada di request, cari dari penganggaran aktif
             if (! $tahun) {
-                $penganggaranAktif = Penganggaran::orderBy('tahun_anggaran', 'desc')->first();
+                $penganggaranAktif = ($this->Penganggaran)::orderBy('tahun_anggaran', 'desc')->first();
                 if ($penganggaranAktif) {
                     $tahun = $penganggaranAktif->tahun_anggaran;
                 } else {
@@ -379,7 +398,7 @@ class RekapitulasiRealisasiController extends Controller
                 'source' => $request->has('tahun') ? 'request' : 'auto',
             ]);
 
-            $penganggaran = Penganggaran::where('tahun_anggaran', $tahun)->first();
+            $penganggaran = ($this->Penganggaran)::where('tahun_anggaran', $tahun)->first();
 
             if (! $penganggaran) {
                 return response()->json([
@@ -441,7 +460,7 @@ class RekapitulasiRealisasiController extends Controller
             }
 
             // Hitung total penerimaan sampai bulan sebelumnya
-            $totalPenerimaanSebelumnya = PenerimaanDana::where('penganggaran_id', $penganggaranId)
+            $totalPenerimaanSebelumnya = ($this->PenerimaanDana)::where(VariantConfig::penganggaranFk($this->variant), $penganggaranId)
                 ->whereYear('tanggal_terima', $tahun)
                 ->whereIn(DB::raw('EXTRACT(MONTH FROM tanggal_terima)'), $bulanSebelumnya)
                 ->get()
@@ -455,14 +474,14 @@ class RekapitulasiRealisasiController extends Controller
                 });
 
             // Hitung total realisasi sampai bulan sebelumnya
-            $totalRealisasiSebelumnya = BukuKasUmum::where('penganggaran_id', $penganggaranId)
+            $totalRealisasiSebelumnya = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $penganggaranId)
                 ->whereIn(DB::raw('EXTRACT(MONTH FROM tanggal_transaksi)'), $bulanSebelumnya)
                 ->whereYear('tanggal_transaksi', $tahun)
                 ->where('is_bunga_record', false)
                 ->sum('total_transaksi_kotor');
 
             // Hitung STS sampai bulan sebelumnya
-            $totalStsSebelumnya = \App\Models\Sts::where('penganggaran_id', $penganggaranId)
+            $totalStsSebelumnya = ($this->Sts)::where(VariantConfig::penganggaranFk($this->variant), $penganggaranId)
                 ->whereYear('tanggal_bayar', $tahun)
                 ->whereIn(DB::raw('EXTRACT(MONTH FROM tanggal_bayar)'), $bulanSebelumnya)
                 ->where('is_bkp', true)
@@ -470,7 +489,7 @@ class RekapitulasiRealisasiController extends Controller
 
             // Hitung TRK Saldo Awal (jika ada di bulan sebelumnya)
             $totalTrkSebelumnya = 0;
-            $penganggaran = Penganggaran::find($penganggaranId);
+            $penganggaran = ($this->Penganggaran)::find($penganggaranId);
             if ($penganggaran && $penganggaran->is_trk_saldo_awal && $penganggaran->tanggal_trk_saldo_awal) {
                  $tglTrk = Carbon::parse($penganggaran->tanggal_trk_saldo_awal);
                  if ($tglTrk->year == $tahun && in_array($tglTrk->month, $bulanSebelumnya)) {
@@ -543,7 +562,7 @@ class RekapitulasiRealisasiController extends Controller
     private function hitungTotalPenerimaanPeriodeIni($penganggaranId, $tahun, $bulanTarget)
     {
         try {
-            $penerimaanDanas = PenerimaanDana::where('penganggaran_id', $penganggaranId)
+            $penerimaanDanas = ($this->PenerimaanDana)::where(VariantConfig::penganggaranFk($this->variant), $penganggaranId)
                 ->whereYear('tanggal_terima', $tahun)
                 ->whereIn(DB::raw('EXTRACT(MONTH FROM tanggal_terima)'), $bulanTarget)
                 ->get();
@@ -561,7 +580,7 @@ class RekapitulasiRealisasiController extends Controller
 
 
             // Hitung STS periode ini
-            $totalSts = \App\Models\Sts::where('penganggaran_id', $penganggaranId)
+            $totalSts = ($this->Sts)::where(VariantConfig::penganggaranFk($this->variant), $penganggaranId)
                 ->whereYear('tanggal_bayar', $tahun)
                 ->whereIn(DB::raw('EXTRACT(MONTH FROM tanggal_bayar)'), $bulanTarget)
                 ->where('is_bkp', true)
@@ -569,7 +588,7 @@ class RekapitulasiRealisasiController extends Controller
 
             // Hitung TRK Saldo Awal (jika ada di periode ini)
             $totalTrk = 0;
-            $penganggaran = Penganggaran::find($penganggaranId);
+            $penganggaran = ($this->Penganggaran)::find($penganggaranId);
             if ($penganggaran && $penganggaran->is_trk_saldo_awal && $penganggaran->tanggal_trk_saldo_awal) {
                  $tglTrk = Carbon::parse($penganggaran->tanggal_trk_saldo_awal);
                  if ($tglTrk->year == $tahun && in_array($tglTrk->month, $bulanTarget)) {
@@ -589,7 +608,7 @@ class RekapitulasiRealisasiController extends Controller
     {
         try {
             Log::info('=== HITUNG REALISASI DENGAN MAPPING KODE ===', [
-                'penganggaran_id' => $penganggaranId,
+                VariantConfig::penganggaranFk($this->variant) => $penganggaranId,
                 'tahun' => $tahun,
                 'bulan_target' => $bulanTarget,
             ]);
@@ -617,7 +636,7 @@ class RekapitulasiRealisasiController extends Controller
             }
 
             // Ambil data transaksi BKU
-            $transaksiBku = BukuKasUmum::where('penganggaran_id', $penganggaranId)
+            $transaksiBku = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $penganggaranId)
                 ->whereIn(DB::raw('EXTRACT(MONTH FROM tanggal_transaksi)'), $bulanTarget)
                 ->whereYear('tanggal_transaksi', $tahun)
                 ->where('is_bunga_record', false)
@@ -799,7 +818,7 @@ class RekapitulasiRealisasiController extends Controller
     {
         try {
             Log::info('=== HITUNG REALISASI DARI DATA AKTUAL ===', [
-                'penganggaran_id' => $penganggaranId,
+                VariantConfig::penganggaranFk($this->variant) => $penganggaranId,
                 'tahun' => $tahun,
                 'bulan_target' => $bulanTarget,
             ]);
@@ -906,7 +925,7 @@ class RekapitulasiRealisasiController extends Controller
             ];
 
             // Ambil semua transaksi BKU untuk periode target
-            $transaksiBku = BukuKasUmum::where('penganggaran_id', $penganggaranId)
+            $transaksiBku = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $penganggaranId)
                 ->whereIn(DB::raw('EXTRACT(MONTH FROM tanggal_transaksi)'), $bulanTarget)
                 ->whereYear('tanggal_transaksi', $tahun)
                 ->where('is_bunga_record', false)
@@ -1061,7 +1080,7 @@ class RekapitulasiRealisasiController extends Controller
     private function hitungTotalDanaTersedia($penganggaranId, $tahun, $bulanTarget)
     {
         try {
-            $penerimaanDanas = PenerimaanDana::where('penganggaran_id', $penganggaranId)
+            $penerimaanDanas = ($this->PenerimaanDana)::where(VariantConfig::penganggaranFk($this->variant), $penganggaranId)
                 ->whereYear('tanggal_terima', $tahun)
                 ->whereIn(DB::raw('EXTRACT(MONTH FROM tanggal_terima)'), $bulanTarget)
                 ->get();
@@ -1099,7 +1118,7 @@ class RekapitulasiRealisasiController extends Controller
                 'jenis_laporan' => $jenisLaporan,
             ]);
 
-            $penganggaran = Penganggaran::where('tahun_anggaran', $tahun)->first();
+            $penganggaran = ($this->Penganggaran)::where('tahun_anggaran', $tahun)->first();
 
             if (! $penganggaran) {
                 return response()->json(['error' => 'Data penganggaran tidak ditemukan'], 404);
@@ -1222,7 +1241,7 @@ class RekapitulasiRealisasiController extends Controller
     public function generateRealisasiPdfForRekapan($tahun, $bulan)
     {
         try {
-            $penganggaran = Penganggaran::where('tahun_anggaran', $tahun)->first();
+            $penganggaran = ($this->Penganggaran)::where('tahun_anggaran', $tahun)->first();
 
             if (! $penganggaran) {
                 return response()->json(['error' => 'Data penganggaran tidak ditemukan'], 404);
@@ -1313,5 +1332,17 @@ class RekapitulasiRealisasiController extends Controller
          $tahun = $request->input('tahun');
          $periode = $request->input('periode') ?? $request->input('bulan');
          return $this->generateRealisasiPdf($request, $tahun, $periode);
+    }
+
+    protected function renderVariant($component, $props = [])
+    {
+        $var = $this->variant ?? (request()->route() ? (request()->route()->parameter('variant') ?? request()->get('_variant', 'reguler')) : 'reguler');
+        if (app()->bound('variant')) {
+            $var = app('variant');
+        }
+        return \Inertia\Inertia::render(VariantConfig::pagePrefix($var) . $component, array_merge($props, [
+            'variant' => $var,
+            'routePrefix' => VariantConfig::routePrefix($var)
+        ]));
     }
 }

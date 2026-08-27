@@ -9,17 +9,36 @@ use App\Models\SekolahProfile; // CHANGED
 use App\Models\TandaTerima;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use App\Config\VariantConfig;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 
 class TandaTerimaController extends Controller
 {
+    protected string $variant;
+    protected string $Penganggaran;
+    protected string $PenerimaanDana;
+    protected string $BukuKasUmum;
+    protected string $TandaTerima;
+
+    public function __construct()
+    {
+        $this->middleware(function ($request, $next) {
+            $this->variant = app()->bound('variant') ? app('variant') : 'reguler';
+            $this->Penganggaran = VariantConfig::getModelClass('penganggaran', $this->variant);
+            $this->PenerimaanDana = VariantConfig::getModelClass('penerimaan_dana', $this->variant);
+            $this->BukuKasUmum = VariantConfig::getModelClass('bku', $this->variant);
+            $this->TandaTerima = VariantConfig::getModelClass('tanda_terima', $this->variant);
+
+            return $next($request);
+        });
+    }
     // Method untuk mendapatkan tahun anggaran (internal)
     private function getTahunAnggaranData()
     {
         try {
-            $tahunAnggaran = Penganggaran::select('id', 'tahun_anggaran')
+            $tahunAnggaran = ($this->Penganggaran)::select('id', 'tahun_anggaran')
                 ->orderBy('tahun_anggaran', 'desc')
                 ->get()
                 ->map(function ($penganggaran) {
@@ -58,7 +77,7 @@ class TandaTerimaController extends Controller
 
     public function index(Request $request)
     {
-        return Inertia::render('FiturPelengkap/TandaTerima/Index');
+        return $this->renderVariant('FiturPelengkap/TandaTerima/Index');
     }
 
     public function search(Request $request)
@@ -70,7 +89,7 @@ class TandaTerimaController extends Controller
             $endDate = $request->input('end_date', '');
 
             // Query dengan filter tahun
-            $query = TandaTerima::with([
+            $query = ($this->TandaTerima)::with([
                 'penganggaran',
                 'kodeKegiatan',
                 'rekeningBelanja',
@@ -79,7 +98,7 @@ class TandaTerimaController extends Controller
 
             // Filter berdasarkan tahun jika dipilih
             if ($tahun) {
-                $query->where('penganggaran_id', $tahun);
+                $query->where(VariantConfig::penganggaranFk($this->variant), $tahun);
             }
 
             // Filter berdasarkan tanggal
@@ -121,9 +140,9 @@ class TandaTerimaController extends Controller
                     'uraian' => $tandaTerima->bukuKasUmum->uraian_opsional ?? $tandaTerima->bukuKasUmum->uraian,
                     'tanggal' => \Carbon\Carbon::parse($tandaTerima->bukuKasUmum->tanggal_transaksi)->format('d/m/Y'),
                     'jumlah' => 'Rp ' . number_format($tandaTerima->bukuKasUmum->total_transaksi_kotor, 0, ',', '.'),
-                    'preview_url' => route('tanda-terima.preview', $tandaTerima->id),
-                    'pdf_url' => route('tanda-terima.pdf', $tandaTerima->id),
-                    // 'delete_url' => route('tanda-terima.destroy', $tandaTerima->id),
+                    'preview_url' => route(VariantConfig::routeName($this->variant, 'tanda-terima.preview'), $tandaTerima->id),
+                    'pdf_url' => route(VariantConfig::routeName($this->variant, 'tanda-terima.pdf'), $tandaTerima->id),
+                    // 'delete_url' => route(VariantConfig::routeName($this->variant, 'tanda-terima.destroy'), $tandaTerima->id),
                     'delete_data' => [
                         'id' => $tandaTerima->id,
                         'uraian' => $tandaTerima->bukuKasUmum->uraian_opsional ?? $tandaTerima->bukuKasUmum->uraian,
@@ -172,7 +191,7 @@ class TandaTerimaController extends Controller
             $year = $request->input('year');
             
             // Only count records that have REQUIRED fields for TandaTerima
-            $query = BukuKasUmum::whereDoesntHave('tandaTerima')
+            $query = ($this->BukuKasUmum)::whereDoesntHave('tandaTerima')
                 ->where('is_bunga_record', false)
                 ->whereNotNull('nama_penerima_pembayaran')
                 ->where('nama_penerima_pembayaran', '!=', '')
@@ -181,7 +200,7 @@ class TandaTerimaController extends Controller
             
             if ($year) {
                 // Assuming year is penganggaran_id based on frontend
-                $query->where('penganggaran_id', $year);
+                $query->where(VariantConfig::penganggaranFk($this->variant), $year);
             }
 
             $availableCount = $query->count();
@@ -212,7 +231,7 @@ class TandaTerimaController extends Controller
             $offset = $request->input('offset', 0);
             $year = $request->input('tahun'); // Get year filter
 
-            $baseQuery = BukuKasUmum::whereDoesntHave('tandaTerima')
+            $baseQuery = ($this->BukuKasUmum)::whereDoesntHave('tandaTerima')
                 ->where('is_bunga_record', false)
                 ->whereNotNull('nama_penerima_pembayaran')
                 ->where('nama_penerima_pembayaran', '!=', '')
@@ -220,7 +239,7 @@ class TandaTerimaController extends Controller
                 ->whereNotNull('rekening_belanja_id');
                 
             if ($year) {
-                $baseQuery->where('penganggaran_id', $year);
+                $baseQuery->where(VariantConfig::penganggaranFk($this->variant), $year);
             }
 
             $totalWithoutTandaTerima = $baseQuery->count();
@@ -245,7 +264,7 @@ class TandaTerimaController extends Controller
             }
 
             // Re-apply filters for fetching batch
-            $query = BukuKasUmum::with([
+            $query = ($this->BukuKasUmum)::with([
                 'penganggaran',
                 'kodeKegiatan',
                 'rekeningBelanja',
@@ -259,7 +278,7 @@ class TandaTerimaController extends Controller
                 ->orderBy('id');
             
             if ($year) {
-                $query->where('penganggaran_id', $year);
+                $query->where(VariantConfig::penganggaranFk($this->variant), $year);
             }
             
             $bukuKasUmums = $query->skip($offset)->limit(50)->get();
@@ -291,7 +310,7 @@ class TandaTerimaController extends Controller
             try {
                 foreach ($bukuKasUmums as $bukuKasUmum) {
                     try {
-                        $existing = TandaTerima::where('buku_kas_umum_id', $bukuKasUmum->id)->first();
+                        $existing = ($this->TandaTerima)::where(VariantConfig::bkuFk($this->variant), $bukuKasUmum->id)->first();
                         if (!$existing) {
                             if (empty($bukuKasUmum->nama_penerima_pembayaran)) {
                                 Log::warning("Skipping BKU ID {$bukuKasUmum->id}: No receiver name");
@@ -305,11 +324,11 @@ class TandaTerimaController extends Controller
                                 $failed++; $processed++; continue;
                             }
 
-                            $penerimaanDana = PenerimaanDana::where('penganggaran_id', $bukuKasUmum->penganggaran_id)->first();
+                            $penerimaanDana = ($this->PenerimaanDana)::where(VariantConfig::penganggaranFk($this->variant), $bukuKasUmum->{VariantConfig::penganggaranFk($this->variant)})->first();
                             if (!$penerimaanDana) {
                                 // Fallback logic from user code
-                                $penerimaanDana = PenerimaanDana::create([
-                                    'penganggaran_id' => $bukuKasUmum->penganggaran_id,
+                                $penerimaanDana = ($this->PenerimaanDana)::create([
+                                    VariantConfig::penganggaranFk($this->variant) => $bukuKasUmum->{VariantConfig::penganggaranFk($this->variant)},
                                     'sumber_dana' => 'BOSP Reguler',
                                     'jumlah_dana' => 0,
                                     'tanggal_terima' => now(),
@@ -321,13 +340,13 @@ class TandaTerimaController extends Controller
                                 $failed++; $processed++; continue;
                             }
 
-                            TandaTerima::create([
+                            ($this->TandaTerima)::create([
                                 'sekolah_id' => $sekolahId,
-                                'penganggaran_id' => $bukuKasUmum->penganggaran_id,
+                                VariantConfig::penganggaranFk($this->variant) => $bukuKasUmum->{VariantConfig::penganggaranFk($this->variant)},
                                 'kode_kegiatan_id' => $bukuKasUmum->kode_kegiatan_id,
                                 'kode_rekening_id' => $bukuKasUmum->rekening_belanja_id,
-                                'penerimaan_dana_id' => $penerimaanDana->id,
-                                'buku_kas_umum_id' => $bukuKasUmum->id,
+                                VariantConfig::penerimaanDanaFk($this->variant) => $penerimaanDana->id,
+                                VariantConfig::bkuFk($this->variant) => $bukuKasUmum->id,
                             ]);
                             $success++;
                         }
@@ -351,7 +370,7 @@ class TandaTerimaController extends Controller
                  $progress = min(100, (int) round(($totalProcessedSoFar / $totalWithoutTandaTerima) * 100));
             }
 
-            $remainingQuery = BukuKasUmum::whereDoesntHave('tandaTerima')
+            $remainingQuery = ($this->BukuKasUmum)::whereDoesntHave('tandaTerima')
                 ->where('is_bunga_record', false)
                 ->whereNotNull('nama_penerima_pembayaran')
                 ->where('nama_penerima_pembayaran', '!=', '')
@@ -359,7 +378,7 @@ class TandaTerimaController extends Controller
                 ->whereNotNull('rekening_belanja_id');
             
             if ($year) {
-                $remainingQuery->where('penganggaran_id', $year);
+                $remainingQuery->where(VariantConfig::penganggaranFk($this->variant), $year);
             }
             $remainingAfterProcess = $remainingQuery->count();
 
@@ -388,7 +407,7 @@ class TandaTerimaController extends Controller
     public function destroy($id)
     {
         try {
-            $tandaTerima = TandaTerima::with(['bukuKasUmum'])->find($id);
+            $tandaTerima = ($this->TandaTerima)::with(['bukuKasUmum'])->find($id);
 
             if (! $tandaTerima) {
                 return response()->json(['success' => false, 'message' => 'Data tidak ditemukan'], 404);
@@ -410,7 +429,7 @@ class TandaTerimaController extends Controller
     public function deleteAll(Request $request)
     {
          try {
-             $deletedCount = TandaTerima::query()->delete();
+             $deletedCount = ($this->TandaTerima)::query()->delete();
              return response()->json([
                 'success' => true,
                 'message' => "Berhasil menghapus {$deletedCount} data tanda terima",
@@ -423,7 +442,7 @@ class TandaTerimaController extends Controller
     public function generatePdf(Request $request, $id)
     {
         try {
-            $tandaTerima = TandaTerima::with([
+            $tandaTerima = ($this->TandaTerima)::with([
                 'sekolah',
                 'penganggaran',
                 'kodeKegiatan',
@@ -446,6 +465,7 @@ class TandaTerimaController extends Controller
             $orientation = $request->input('orientation', 'landscape');
 
             $data = [
+                'sumberDana' => \App\Config\VariantConfig::title($this->variant),
                 'tandaTerima' => $tandaTerima,
                 'kodeKegiatan' => $kodeKegiatan,
                 'rekeningBelanja' => $rekeningBelanja,
@@ -496,7 +516,7 @@ class TandaTerimaController extends Controller
             $fontSize = $request->input('font_size', '10pt');
             $orientation = $request->input('orientation', 'landscape');
 
-             $query = TandaTerima::with([
+             $query = ($this->TandaTerima)::with([
                 'sekolah',
                 'penganggaran',
                 'kodeKegiatan',
@@ -505,7 +525,7 @@ class TandaTerimaController extends Controller
                 'bukuKasUmum.uraianDetails',
             ]);
 
-            if ($tahun) $query->where('penganggaran_id', $tahun);
+            if ($tahun) $query->where(VariantConfig::penganggaranFk($this->variant), $tahun);
              if ($startDate) {
                 $query->whereHas('bukuKasUmum', function ($q) use ($startDate) {
                     $q->whereDate('tanggal_transaksi', '>=', $startDate);
@@ -557,6 +577,7 @@ class TandaTerimaController extends Controller
              }
 
              $data = [
+                'sumberDana' => \App\Config\VariantConfig::title($this->variant),
                  'tandaTerimas' => $tandaTerimaData,
                  'totalTandaTerima' => count($tandaTerimaData),
                  'tanggalDownload' => now()->format('d/m/Y H:i'),
@@ -667,5 +688,17 @@ class TandaTerimaController extends Controller
 
         $tanggalObj = \Carbon\Carbon::parse($tanggal);
         return "Lunas Bayar, {$tanggalObj->format('d')} " . ($bulanIndonesia[$tanggalObj->format('F')] ?? '') . " {$tanggalObj->format('Y')}";
+    }
+
+    protected function renderVariant($component, $props = [])
+    {
+        $var = $this->variant ?? (request()->route() ? (request()->route()->parameter('variant') ?? request()->get('_variant', 'reguler')) : 'reguler');
+        if (app()->bound('variant')) {
+            $var = app('variant');
+        }
+        return \Inertia\Inertia::render(VariantConfig::pagePrefix($var) . $component, array_merge($props, [
+            'variant' => $var,
+            'routePrefix' => VariantConfig::routePrefix($var)
+        ]));
     }
 }

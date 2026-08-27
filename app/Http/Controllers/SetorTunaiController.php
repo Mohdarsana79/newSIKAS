@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Config\VariantConfig;
+
 use App\Models\SetorTunai;
 use App\Models\Penganggaran;
 use App\Models\PenarikanTunai;
@@ -27,7 +29,7 @@ class SetorTunaiController extends Controller
         
         // Validasi sederhana
         $request->validate([
-            'penganggaran_id' => 'required|exists:penganggarans,id',
+            VariantConfig::penganggaranFk($this->variant) => 'required|exists:' . (new $this->Penganggaran)->getTable() . ',id',
             'tanggal_setor' => 'required|date',
             'jumlah_setor' => 'required|numeric|min:1'
         ]);
@@ -36,7 +38,7 @@ class SetorTunaiController extends Controller
             // Hitung saldo tunai
             
             // Hitung saldo tunai
-            $saldoTunai = $this->hitungSaldoTunai($request->penganggaran_id);
+            $saldoTunai = $this->hitungSaldoTunai($request->{VariantConfig::penganggaranFk($this->variant)});
             
             // Validasi saldo
             if ($request->jumlah_setor > $saldoTunai) {
@@ -45,7 +47,7 @@ class SetorTunaiController extends Controller
 
             // Simpan data
             $setorTunai = SetorTunai::create([
-                'penganggaran_id' => $request->penganggaran_id,
+                VariantConfig::penganggaranFk($this->variant) => $request->{VariantConfig::penganggaranFk($this->variant)},
                 'tanggal_setor' => $request->tanggal_setor,
                 'jumlah_setor' => $request->jumlah_setor,
             ]);
@@ -114,15 +116,15 @@ class SetorTunaiController extends Controller
         try {
             // Query langsung tanpa model untuk debugging
             $totalPenarikan = DB::table('penarikan_tunais')
-                ->where('penganggaran_id', $penganggaran_id)
+                ->where(VariantConfig::penganggaranFk($this->variant), $penganggaran_id)
                 ->sum('jumlah_penarikan');
             
             $totalSetor = DB::table('setor_tunais')
-                ->where('penganggaran_id', $penganggaran_id)
+                ->where(VariantConfig::penganggaranFk($this->variant), $penganggaran_id)
                 ->sum('jumlah_setor');
             
             $totalBelanjaTunai = DB::table('buku_kas_umums')
-                ->where('penganggaran_id', $penganggaran_id)
+                ->where(VariantConfig::penganggaranFk($this->variant), $penganggaran_id)
                 ->where('jenis_transaksi', 'tunai')
                 ->where('is_bunga_record', false)
                 ->sum('total_transaksi_kotor');
@@ -130,7 +132,7 @@ class SetorTunaiController extends Controller
             $saldoTunai = $totalPenarikan - $totalSetor - $totalBelanjaTunai;
             
             Log::info('Perhitungan saldo tunai:', [
-                'penganggaran_id' => $penganggaran_id,
+                VariantConfig::penganggaranFk($this->variant) => $penganggaran_id,
                 'total_penarikan' => $totalPenarikan,
                 'total_setor' => $totalSetor,
                 'total_belanja_tunai' => $totalBelanjaTunai,

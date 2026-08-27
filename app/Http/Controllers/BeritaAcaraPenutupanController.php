@@ -12,6 +12,7 @@ use App\Models\PenarikanTunai;
 use App\Models\SetorTunai;
 use App\Models\BukuKasUmum;
 use Illuminate\Http\Request;
+use App\Config\VariantConfig;
 use App\Services\BukuKasService;
 use Illuminate\Support\Facades\Log;
 
@@ -19,9 +20,28 @@ class BeritaAcaraPenutupanController extends Controller
 {
     protected $bukuKasService;
 
+        protected string $variant;
+    protected string $Penganggaran;
+    protected string $PenerimaanDana;
+    protected string $BukuKasUmum;
+    protected string $PenarikanTunai;
+    protected string $SetorTunai;
+
     public function __construct(BukuKasService $bukuKasService)
     {
+
         $this->bukuKasService = $bukuKasService;
+
+        $this->middleware(function ($request, $next) {
+            $this->variant = app()->bound('variant') ? app('variant') : 'reguler';
+            $this->Penganggaran = VariantConfig::getModelClass('penganggaran', $this->variant);
+            $this->PenerimaanDana = VariantConfig::getModelClass('penerimaan_dana', $this->variant);
+            $this->BukuKasUmum = VariantConfig::getModelClass('bku', $this->variant);
+            $this->PenarikanTunai = VariantConfig::getModelClass('penarikan_tunai', $this->variant);
+            $this->SetorTunai = VariantConfig::getModelClass('setor_tunai', $this->variant);
+
+            return $next($request);
+        });
     }
 
     // Ganti semua pemanggilan method dengan service
@@ -77,7 +97,7 @@ class BeritaAcaraPenutupanController extends Controller
     {
         try {
             Log::info('=== GENERATE BERITA ACARA HTML ===', [
-                'penganggaran_id' => $penganggaran->id,
+                VariantConfig::penganggaranFk($this->variant) => $penganggaran->id,
                 'tahun' => $tahun,
                 'bulan' => $bulan,
                 'bulan_angka' => $bulanAngka
@@ -114,7 +134,7 @@ class BeritaAcaraPenutupanController extends Controller
     public function getDataForBeritaAcara($penganggaran_id, $tahun, $bulan, $bulanAngka)
     {
         try {
-            $penganggaran = Penganggaran::find($penganggaran_id);
+            $penganggaran = ($this->Penganggaran)::find($penganggaran_id);
             $sekolah = SekolahProfile::first();
 
             if (!$penganggaran || !$sekolah) {
@@ -126,7 +146,7 @@ class BeritaAcaraPenutupanController extends Controller
             $tanggalAkhirBulan = Carbon::create($tahun, $bulanAngka, 1)->endOfMonth();
             
             // Check for BKU closing date
-            $bungaRecord = BukuKasUmum::where('penganggaran_id', $penganggaran_id)
+            $bungaRecord = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran_id)
                 ->whereMonth('tanggal_transaksi', $bulanAngka)
                 ->whereYear('tanggal_transaksi', $tahun)
                 ->where('is_bunga_record', true)
@@ -139,7 +159,7 @@ class BeritaAcaraPenutupanController extends Controller
             $namaHariAkhirBulan = $this->getNamaHariIndonesia($actualDate->dayOfWeek);
 
             Log::info('=== MEMULAI PERHITUNGAN BERITA ACARA ===', [
-                'penganggaran_id' => $penganggaran_id,
+                VariantConfig::penganggaranFk($this->variant) => $penganggaran_id,
                 'tahun' => $tahun,
                 'bulan' => $bulan,
                 'bulan_angka' => $bulanAngka,
@@ -249,30 +269,30 @@ class BeritaAcaraPenutupanController extends Controller
     {
         try {
             Log::info('=== MULAI PERHITUNGAN SALDO BUKU DARI BKP UMUM ===', [
-                'penganggaran_id' => $penganggaran_id,
+                VariantConfig::penganggaranFk($this->variant) => $penganggaran_id,
                 'tahun' => $tahun,
                 'bulan' => $bulan,
                 'bulan_angka' => $bulanAngka
             ]);
 
             // Ambil semua data yang diperlukan untuk BKP Umum
-            $penerimaanDanas = PenerimaanDana::where('penganggaran_id', $penganggaran_id)
+            $penerimaanDanas = ($this->PenerimaanDana)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran_id)
                 ->orderBy('tanggal_terima', 'asc')
                 ->get();
 
-            $penarikanTunais = PenarikanTunai::where('penganggaran_id', $penganggaran_id)
+            $penarikanTunais = ($this->PenarikanTunai)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran_id)
                 ->whereMonth('tanggal_penarikan', $bulanAngka)
                 ->whereYear('tanggal_penarikan', $tahun)
                 ->orderBy('tanggal_penarikan', 'asc')
                 ->get();
 
-            $setorTunais = SetorTunai::where('penganggaran_id', $penganggaran_id)
+            $setorTunais = ($this->SetorTunai)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran_id)
                 ->whereMonth('tanggal_setor', $bulanAngka)
                 ->whereYear('tanggal_setor', $tahun)
                 ->orderBy('tanggal_setor', 'asc')
                 ->get();
 
-            $bkuData = BukuKasUmum::where('penganggaran_id', $penganggaran_id)
+            $bkuData = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran_id)
                 ->whereMonth('tanggal_transaksi', $bulanAngka)
                 ->whereYear('tanggal_transaksi', $tahun)
                 ->where('is_bunga_record', false)
@@ -280,7 +300,7 @@ class BeritaAcaraPenutupanController extends Controller
                 ->orderBy('tanggal_transaksi', 'asc')
                 ->get();
 
-            $bungaRecord = BukuKasUmum::where('penganggaran_id', $penganggaran_id)
+            $bungaRecord = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran_id)
                 ->whereMonth('tanggal_transaksi', $bulanAngka)
                 ->whereYear('tanggal_transaksi', $tahun)
                 ->where('is_bunga_record', true)
@@ -451,7 +471,7 @@ class BeritaAcaraPenutupanController extends Controller
             $tahun = $request->query('tahun');
             $bulanInput = $request->query('bulan');
 
-            $penganggaran = Penganggaran::where('tahun_anggaran', $tahun)->with('sekolah')->first();
+            $penganggaran = ($this->Penganggaran)::where('tahun_anggaran', $tahun)->with('sekolah')->first();
 
             if (!$penganggaran) {
                 return response()->json(['error' => 'Data penganggaran tidak ditemukan'], 404);
@@ -521,7 +541,7 @@ class BeritaAcaraPenutupanController extends Controller
         try {
             $tahun = $request->input('tahun');
             $bulan = $request->input('bulan');
-            $penganggaran = Penganggaran::where('tahun_anggaran', $tahun)->with('sekolah')->first();
+            $penganggaran = ($this->Penganggaran)::where('tahun_anggaran', $tahun)->with('sekolah')->first();
 
             if (!$penganggaran) {
                 return response()->json([
@@ -580,5 +600,17 @@ class BeritaAcaraPenutupanController extends Controller
         ];
 
         return $bulanList[$bulan] ?? 1;
+    }
+
+    protected function renderVariant($component, $props = [])
+    {
+        $var = $this->variant ?? (request()->route() ? (request()->route()->parameter('variant') ?? request()->get('_variant', 'reguler')) : 'reguler');
+        if (app()->bound('variant')) {
+            $var = app('variant');
+        }
+        return \Inertia\Inertia::render(VariantConfig::pagePrefix($var) . $component, array_merge($props, [
+            'variant' => $var,
+            'routePrefix' => VariantConfig::routePrefix($var)
+        ]));
     }
 }

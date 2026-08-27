@@ -119,7 +119,7 @@
             <tr>
                 <td style="width: 120px;">Sumber Dana</td>
                 <td style="width: 10px;">:</td>
-                <td style="width: 200px;">BOSP Reguler</td>
+                <td style="width: 200px;">{{ $sumberDana ?? 'BOSP Reguler' }}</td>
                 <td style="width: 180px; text-align: right; padding-right: 10px;">No</td>
                 <td>
                     <div style="border-top: 1px solid #000; border-bottom: 1px solid #000; padding: 2px 0; display: inline-block;">
@@ -192,7 +192,7 @@
             <tr>
                 <td style="width: 140px;">Sudah terima dari</td>
                 <td style="width: 10px;">:</td>
-                <td>Bendahara Dana BOSP {{ ucwords(strtolower($kwitansi->sekolah->nama_sekolah ?? '-')) }}</td>
+                <td>Bendahara Dana {{ $sumberDana ?? 'BOSP Reguler' }} {{ ucwords(strtolower($kwitansi->sekolah->nama_sekolah ?? '-')) }}</td>
             </tr>
             <tr>
                 <td>Uang sebanyak</td>
@@ -249,7 +249,7 @@
             <tr>
                 <td>
                     {{ $tanggalLunas ?? '-' }}<br>
-                    Bendahara BOSP
+                    Bendahara {{ $sumberDana ?? 'BOSP Reguler' }}
                     <br><br><br><br><br><br>
                     <b>{{ $kwitansi->penganggaran->bendahara }}</b><br>
                     <span style="font-size: 9pt;">NIP. {{ $kwitansi->penganggaran->nip_bendahara }}</span>

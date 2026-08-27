@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Config\VariantConfig;
+
 use App\Models\PenarikanTunai;
 use App\Models\SetorTunai;
 use App\Models\Penganggaran;
@@ -19,7 +21,7 @@ class PenarikanTunaiController extends Controller
         }
 
         $request->validate([
-            'penganggaran_id' => 'required|exists:penganggarans,id',
+            VariantConfig::penganggaranFk($this->variant) => 'required|exists:' . (new $this->Penganggaran)->getTable() . ',id',
             'tanggal_penarikan' => 'required|date',
             'jumlah_penarikan' => 'required|numeric|min:1'
         ]);
@@ -29,14 +31,14 @@ class PenarikanTunaiController extends Controller
 
 
             // Cek apakah dana tersedia cukup
-            $totalDanaTersedia = $this->hitungTotalDanaTersedia($request->penganggaran_id);
+            $totalDanaTersedia = $this->hitungTotalDanaTersedia($request->{VariantConfig::penganggaranFk($this->variant)});
 
             if ($request->jumlah_penarikan > $totalDanaTersedia) {
                 return redirect()->back()->withErrors(['jumlah_penarikan' => 'Saldo tidak mencukupi untuk penarikan ini']);
             }
 
             PenarikanTunai::create([
-                'penganggaran_id' => $request->penganggaran_id,
+                VariantConfig::penganggaranFk($this->variant) => $request->{VariantConfig::penganggaranFk($this->variant)},
                 'tanggal_penarikan' => $request->tanggal_penarikan,
                 'jumlah_penarikan' => $request->jumlah_penarikan,
             ]);
@@ -63,7 +65,7 @@ class PenarikanTunaiController extends Controller
 
     private function hitungTotalDanaTersedia($penganggaran_id)
     {
-        $penerimaanDanas = \App\Models\PenerimaanDana::where('penganggaran_id', $penganggaran_id)->get();
+        $penerimaanDanas = \App\Models\PenerimaanDana::where(VariantConfig::penganggaranFk($this->variant), $penganggaran_id)->get();
 
         $totalDana = 0;
         foreach ($penerimaanDanas as $penerimaan) {
@@ -74,8 +76,8 @@ class PenarikanTunaiController extends Controller
         }
 
         // Kurangi dengan total penarikan yang sudah dilakukan
-        $totalPenarikan = PenarikanTunai::where('penganggaran_id', $penganggaran_id)->sum('jumlah_penarikan');
-        $totalSetor = SetorTunai::where('penganggaran_id', $penganggaran_id)->sum('jumlah_setor');
+        $totalPenarikan = PenarikanTunai::where(VariantConfig::penganggaranFk($this->variant), $penganggaran_id)->sum('jumlah_penarikan');
+        $totalSetor = SetorTunai::where(VariantConfig::penganggaranFk($this->variant), $penganggaran_id)->sum('jumlah_setor');
 
         return $totalDana - $totalPenarikan + $totalSetor;
     }

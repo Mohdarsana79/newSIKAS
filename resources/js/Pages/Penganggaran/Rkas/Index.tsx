@@ -61,9 +61,11 @@ interface Props extends Record<string, unknown> {
     months: MonthFilter[];
     kegiatanOptions: Option[];
     rekeningOptions: Option[];
+    variant?: string;
+    routePrefix?: string;
 }
 
-export default function Index({ auth, anggaran, items, months, kegiatanOptions, rekeningOptions }: PageProps<Props>) {
+export default function Index({ auth, anggaran, items, months, kegiatanOptions, rekeningOptions, variant, routePrefix }: PageProps<Props>) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
     const [isDetailModal2Open, setIsDetailModal2Open] = useState(false);
@@ -85,7 +87,7 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
 
     const handleCopyPreviousYear = async () => {
         try {
-            const response = await axios.post(route('rkas.check-previous-perubahan'), {
+            const response = await axios.post(route(`${routePrefix || ''}rkas.check-previous-perubahan`), {
                 tahun: anggaran.tahun
             });
 
@@ -105,7 +107,7 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
     const confirmCopy = async () => {
         setIsCopying(true);
         try {
-            const response = await axios.post(route('rkas.copy-previous-perubahan'), {
+            const response = await axios.post(route(`${routePrefix || ''}rkas.copy-previous-perubahan`), {
                 tahun_anggaran: anggaran.tahun
             });
 
@@ -141,7 +143,7 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
 
     const handlePerubahanClick = () => {
         if (anggaran.has_perubahan) {
-            router.visit(route('rkas-perubahan.index', anggaran.id));
+            router.visit(route(`${routePrefix || ''}rkas-perubahan.index`, anggaran.id));
         } else {
             if (!anggaran.juni_bku_closed) {
                 setAlertMessage("Tombol RKAS perubahan akan aktif jika BKU bulan juni sudah di tutup");
@@ -153,7 +155,7 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
     };
 
     const confirmPerubahan = () => {
-        router.post(route('rkas-perubahan.salin'), {
+        router.post(route(`${routePrefix || ''}rkas-perubahan.salin`), {
             penganggaran_id: anggaran.id
         }, {
             onStart: () => setIsProcessingPerubahan(true),
@@ -161,14 +163,14 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
             onSuccess: () => {
                 setIsPerubahanModalOpen(false);
                 // Optional: Redirect to Rkas Perubahan View immediately
-                router.visit(route('rkas-perubahan.index', anggaran.id));
+                router.visit(route(`${routePrefix || ''}rkas-perubahan.index`, anggaran.id));
             }
         });
     };
 
     const handleDetail = async (id: number) => {
         try {
-            const response = await axios.get(route('rkas.getEditData', id));
+            const response = await axios.get(route(`${routePrefix || ''}rkas.getEditData`, id));
             const data = response.data;
 
             setItemDetailData({
@@ -252,7 +254,7 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
 
     const handleEdit = async (id: number) => {
         try {
-            const response = await axios.get(route('rkas.getEditData', id));
+            const response = await axios.get(route(`${routePrefix || ''}rkas.getEditData`, id));
             const editData = response.data;
 
             setData({
@@ -276,7 +278,7 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
 
     const handleSisip = async (id: number) => {
         try {
-            const response = await axios.get(route('rkas.getEditData', id));
+            const response = await axios.get(route(`${routePrefix || ''}rkas.getEditData`, id));
             const editData = response.data;
 
             setData({
@@ -311,7 +313,7 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
     const confirmDelete = () => {
         if (!editId) return;
 
-        router.delete(route('rkas.destroyGroup'), {
+        router.delete(route(`${routePrefix || ''}rkas.destroyGroup`), {
             data: { id: editId },
             onStart: () => setIsDeleting(true),
             onFinish: () => setIsDeleting(false),
@@ -362,7 +364,7 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
         }
 
         if (isEditMode && editId) {
-            router.post(route('rkas.updateGroup'), {
+            router.post(route(`${routePrefix || ''}rkas.updateGroup`), {
                 ...data,
                 original_id: editId
             } as any, {
@@ -382,7 +384,7 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                 }
             });
         } else {
-            post(route('rkas.store', anggaran.id), {
+            post(route(`${routePrefix || ''}rkas.store`, anggaran.id), {
                 onSuccess: () => {
                     setIsModalOpen(false);
                     reset();
@@ -449,7 +451,7 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm">
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                         <div>
-                            <Link href={route('penganggaran.index')} className="inline-flex items-center text-sm text-cyan-500 font-medium mb-2 hover:underline">
+                            <Link href={route(`${routePrefix || ''}penganggaran.index`)} className="inline-flex items-center text-sm text-cyan-500 font-medium mb-2 hover:underline">
                                 <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                                 </svg>
@@ -476,7 +478,7 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                                         </svg>
                                         Tambah
                                     </PrimaryButton>
-                                    {items.length === 0 && (
+                                    {items.length === 0 && (variant === 'reguler' || variant === 'kinerja' || variant === undefined) && (
                                         <button
                                             onClick={handleCopyPreviousYear}
                                             className="bg-indigo-600 hover:bg-indigo-700 text-white focus:ring-indigo-500 flex items-center gap-2 px-4 py-2 rounded-md font-semibold text-xs uppercase tracking-widest hover:bg-gray-700 active:bg-gray-900 focus:outline-none focus:border-gray-900 focus:ring ring-gray-300 disabled:opacity-25 transition ease-in-out duration-150"
@@ -489,22 +491,24 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                                     )}
                                 </>
                             )}
-                            <button
-                                onClick={handlePerubahanClick}
-                                className={`flex items-center gap-1 text-sm font-medium px-3 py-2 ${anggaran.has_perubahan ? 'text-orange-600 hover:text-orange-700 bg-orange-50 rounded-md border border-orange-200' : 'text-gray-500 hover:text-gray-700'}`}
-                            >
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                </svg>
-                                {anggaran.has_perubahan ? 'Lihat Perubahan' : 'Buat Perubahan'}
-                            </button>
+                            {(variant === 'reguler' || variant === 'kinerja' || variant === undefined) && (
+                                <button
+                                    onClick={handlePerubahanClick}
+                                    className={`flex items-center gap-1 text-sm font-medium px-3 py-2 ${anggaran.has_perubahan ? 'text-orange-600 hover:text-orange-700 bg-orange-50 rounded-md border border-orange-200' : 'text-gray-500 hover:text-gray-700'}`}
+                                >
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                    </svg>
+                                    {anggaran.has_perubahan ? 'Lihat Perubahan' : 'Buat Perubahan'}
+                                </button>
+                            )}
                             {/* <button className="text-gray-500 hover:text-gray-700 flex items-center gap-1 text-sm font-medium px-3 py-2">
                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                                 </svg>
                                 Pergeseran
                             </button> */}
-                            <Link href={route('rkas.summary', anggaran.id)} className="bg-indigo-600 text-white hover:bg-indigo-700 px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 shadow-sm">
+                            <Link href={route(`${routePrefix || ''}rkas.summary`, anggaran.id)} className="bg-indigo-600 text-white hover:bg-indigo-700 px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 shadow-sm">
                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                                 </svg>

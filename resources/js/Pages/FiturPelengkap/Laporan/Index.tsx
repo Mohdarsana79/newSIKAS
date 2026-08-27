@@ -1,103 +1,81 @@
 import React, { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head } from '@inertiajs/react';
-import SpmthTab from './components/SpmthTab';
-import SptjTab from './components/SptjTab';
-import Sp2bTab from './components/Sp2bTab';
-import LphTab from './components/LphTab';
+import { Head, router, usePage } from '@inertiajs/react';
+import useVariantRoute from '@/Hooks/useVariantRoute';
+import TabReguler from './TabReguler';
 
-interface LaporanProps {
-    auth: {
-        user: any;
-    };
-}
-
-export default function Index({ auth }: LaporanProps) {
-    const [activeTab, setActiveTab] = useState('SPMTH');
-
-    const tabs = [
-        { id: 'SPMTH', label: 'SPMTH' },
-        { id: 'SPTJ', label: 'SPTJ' },
-        { id: 'SP2B', label: 'SP2B' },
-        { id: 'LPH', label: 'LPH' },
-    ];
-
-    const renderContent = () => {
-        switch (activeTab) {
-            case 'SPMTH':
-                return <SpmthTab />;
-            case 'SPTJ':
-                return <SptjTab />;
-            case 'SP2B':
-                return <Sp2bTab />;
-            case 'LPH':
-                return <LphTab />;
-            default:
-                return null;
-        }
-    };
+export default function Index({ auth }: { auth: any }) {
+    const vroute = useVariantRoute();
+    const routePrefix = usePage<any>().props.routePrefix || '';
+    
+    let activeTab = 'reguler';
+    if (routePrefix === 'silpa-') activeTab = 'silpa';
+    else if (routePrefix === 'kinerja-') activeTab = 'kinerja';
+    else if (routePrefix === 'kinerja-silpa-') activeTab = 'kinerja_silpa';
 
     return (
-        <AuthenticatedLayout
-            header={<h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">Menu Laporan</h2>}
-        >
-            <Head title="Laporan & SPJ" />
-
-            <div className="py-8 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <AuthenticatedLayout>
+            <Head title="Manajemen Laporan" />
+            
+            <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    {/* Header Section */}
-                    <div className="mb-8">
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Laporan & Pertanggungjawaban</h1>
-                        <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                            Kelola dokumen SPMTH, SPTJ, SP2B, dan laporan keuangan lainnya dalam satu tempat.
-                        </p>
-                    </div>
-
-                    {/* Modern Tabs */}
-                    <div className="mb-6 flex space-x-2 bg-white dark:bg-gray-800 p-1.5 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-x-auto">
-                        {tabs.map((tab) => (
-                            <button
-                                key={tab.id}
-                                onClick={() => setActiveTab(tab.id)}
-                                className={`
-                                        flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 whitespace-nowrap
-                                        ${activeTab === tab.id
-                                        ? 'bg-blue-600 text-white shadow-md transform scale-[1.02]'
-                                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
-                                    }
-                                    `}
-                            >
-                                {tab.id === 'SPMTH' && (
-                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                    </svg>
-                                )}
-                                {tab.id === 'LPH' && (
-                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                    </svg>
-                                )}
-                                {tab.id === 'SPTJ' && (
-                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z" />
-                                    </svg>
-                                )}
-                                {tab.id === 'SP2B' && (
-                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                    </svg>
-                                )}
-                                {tab.label}
-                            </button>
-                        ))}
-                    </div>
-
-                    {/* Content Area */}
-                    <div className="transition-all duration-300 ease-in-out">
-                        {renderContent()}
+                    <div className="flex space-x-2 py-3 overflow-x-auto">
+                        <button
+                            onClick={() => {
+                                if (activeTab !== 'reguler') router.visit(route('laporan.index'));
+                            }}
+                            className={`flex items-center px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
+                                activeTab === 'reguler'
+                                    ? 'bg-blue-50 text-blue-700 shadow-sm ring-1 ring-inset ring-blue-700/10 dark:bg-blue-900/30 dark:text-blue-400 dark:ring-blue-400/20'
+                                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800/50 dark:hover:text-gray-300'
+                            }`}
+                        >
+                            BOSP Reguler
+                        </button>
+                        <button
+                            onClick={() => {
+                                if (activeTab !== 'kinerja') router.visit(route('kinerja-laporan.index'));
+                            }}
+                            className={`flex items-center px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
+                                activeTab === 'kinerja'
+                                    ? 'bg-blue-50 text-blue-700 shadow-sm ring-1 ring-inset ring-blue-700/10 dark:bg-blue-900/30 dark:text-blue-400 dark:ring-blue-400/20'
+                                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800/50 dark:hover:text-gray-300'
+                            }`}
+                        >
+                            BOSP Kinerja
+                        </button>
+                        <button
+                            onClick={() => {
+                                if (activeTab !== 'silpa') router.visit(route('silpa-laporan.index'));
+                            }}
+                            className={`flex items-center px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
+                                activeTab === 'silpa'
+                                    ? 'bg-blue-50 text-blue-700 shadow-sm ring-1 ring-inset ring-blue-700/10 dark:bg-blue-900/30 dark:text-blue-400 dark:ring-blue-400/20'
+                                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800/50 dark:hover:text-gray-300'
+                            }`}
+                        >
+                            SiLPA BOSP Reguler
+                        </button>
+                        <button
+                            onClick={() => {
+                                if (activeTab !== 'kinerja_silpa') router.visit(route('kinerja-silpa-laporan.index'));
+                            }}
+                            className={`flex items-center px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
+                                activeTab === 'kinerja_silpa'
+                                    ? 'bg-blue-50 text-blue-700 shadow-sm ring-1 ring-inset ring-blue-700/10 dark:bg-blue-900/30 dark:text-blue-400 dark:ring-blue-400/20'
+                                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800/50 dark:hover:text-gray-300'
+                            }`}
+                        >
+                            SiLPA BOSP Kinerja
+                        </button>
                     </div>
                 </div>
             </div>
+
+            <div className="mt-4">
+                <TabReguler auth={auth} />
+            </div>
+
         </AuthenticatedLayout>
     );
 }

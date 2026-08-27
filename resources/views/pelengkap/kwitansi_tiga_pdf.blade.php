@@ -172,7 +172,7 @@
             <tr>
                 <td style="width: 250px;">Sumber Dana</td>
                 <td style="width: 10px;">:</td>
-                <td style="width: 120px;">BOSP REGULER</td>
+                <td style="width: 120px;">{{ strtoupper($sumberDana ?? 'BOSP REGULER') }}</td>
                 <td rowspan="2" style="text-align: right; vertical-align: top;">
                     <div class="no-box">
                         No. {{ str_pad($kwitansi->bukuKasUmum->id_transaksi ?? $kwitansi->id, 3, '0', STR_PAD_LEFT) }}
@@ -197,7 +197,7 @@
                 <td>{{ $parsedKode['sub_program'] ?? '-' }}</td>
             </tr>
             <tr>
-                <td>Kode Sub Pembiayaan BOSP</td>
+                <td>Kode Sub Pembiayaan {{ $sumberDana ?? 'BOSP Reguler' }}</td>
                 <td>:</td>
                 <td>{{ $parsedKode['kode_uraian'] ?? '-' }}</td>
                 <td>{{ $parsedKode['uraian'] ?? '-' }}</td>
@@ -300,7 +300,7 @@
                 </td>
                 <td>
                     {{ $tanggalLunas ?? '-' }}<br>
-                    Bendahara BOSP
+                    Bendahara {{ $sumberDana ?? 'BOSP Reguler' }}
                     <br><br><br><br><br><br>
                     <b>{{ $kwitansi->penganggaran->bendahara ?? '-' }}</b><br>
                     NIP. {{ $kwitansi->penganggaran->nip_bendahara ?? '-' }}

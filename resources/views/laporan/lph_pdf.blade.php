@@ -74,7 +74,7 @@
 </head>
 <body>
     <div class="header">
-        <div class="title">LAPORAN PENGGUNAAN HIBAH DANA BOSP REGULER</div>
+        <div class="title">LAPORAN PENGGUNAAN HIBAH DANA {{ strtoupper($sumberDana ?? 'BOSP REGULER') }}</div>
         <div class="subtitle">Semester {{ $lph->semester }} Tahun {{ $lph->penganggaran->tahun_anggaran }}</div>
     </div>
     
@@ -112,7 +112,7 @@
     </table>
     
     <p style="margin-bottom: 5px;">
-        Bersama ini kami laporkan realisasi atas penggunaan Dana BOSP Reguler untuk Semester {{ $lph->semester }} tahun {{ $lph->penganggaran->tahun_anggaran }} sebagai berikut:
+        Bersama ini kami laporkan realisasi atas penggunaan Dana {{ $sumberDana ?? 'BOSP Reguler' }} untuk Semester {{ $lph->semester }} tahun {{ $lph->penganggaran->tahun_anggaran }} sebagai berikut:
     </p>
 
     <table class="content-table">
@@ -136,7 +136,7 @@
             </tr>
             <tr>
                 <td></td>
-                <td>:: BOSP Reguler</td>
+                <td>:: {{ $sumberDana ?? 'BOSP Reguler' }}</td>
                 <td class="amount-col">{{ number_format($lph->penerimaan_anggaran, 0, ',', '.') }}</td>
                 <td class="amount-col">{{ number_format($lph->penerimaan_realisasi, 0, ',', '.') }}</td>
                 <td class="amount-col">{{ number_format($lph->penerimaan_selisih, 0, ',', '.') }}</td>
@@ -171,7 +171,7 @@
             </tr>
             <tr>
                 <td></td>
-                <td style="padding-left: 20px;">:: BOSP Reguler</td>
+                <td style="padding-left: 20px;">:: {{ $sumberDana ?? 'BOSP Reguler' }}</td>
                 <td class="amount-col">{{ number_format($lph->belanja_operasi_anggaran, 0, ',', '.') }}</td>
                 <td class="amount-col">{{ number_format($lph->belanja_operasi_realisasi, 0, ',', '.') }}</td>
                 <td class="amount-col">{{ number_format($lph->belanja_operasi_selisih, 0, ',', '.') }}</td>
@@ -196,7 +196,7 @@
             </tr>
             <tr>
                 <td></td>
-                <td style="padding-left: 30px;">:: BOSP Reguler</td>
+                <td style="padding-left: 30px;">:: {{ $sumberDana ?? 'BOSP Reguler' }}</td>
                 <td class="amount-col">{{ number_format($lph->belanja_modal_peralatan_anggaran, 0, ',', '.') }}</td>
                 <td class="amount-col">{{ number_format($lph->belanja_modal_peralatan_realisasi, 0, ',', '.') }}</td>
                 <td class="amount-col">{{ number_format($lph->belanja_modal_peralatan_selisih, 0, ',', '.') }}</td>
@@ -212,7 +212,7 @@
             </tr>
             <tr>
                 <td></td>
-                <td style="padding-left: 30px;">:: BOSP Reguler</td>
+                <td style="padding-left: 30px;">:: {{ $sumberDana ?? 'BOSP Reguler' }}</td>
                 <td class="amount-col">{{ number_format($lph->belanja_modal_aset_anggaran, 0, ',', '.') }}</td>
                 <td class="amount-col">{{ number_format($lph->belanja_modal_aset_realisasi, 0, ',', '.') }}</td>
                 <td class="amount-col">{{ number_format($lph->belanja_modal_aset_selisih, 0, ',', '.') }}</td>

@@ -9,6 +9,7 @@ use App\Models\RkasPerubahan;
 use App\Models\BukuKasUmum;
 use App\Models\PenerimaanDana;
 use Illuminate\Http\Request;
+use App\Config\VariantConfig;
 use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
@@ -17,10 +18,32 @@ use Illuminate\Validation\Rule;
 
 class LphController extends Controller
 {
+    protected ?string $variant;
+    protected ?string $Penganggaran;
+    protected ?string $Rkas;
+    protected ?string $RkasPerubahan;
+    protected ?string $PenerimaanDana;
+    protected ?string $BukuKasUmum;
+    protected ?string $Lph;
+
+    public function __construct()
+    {
+        $this->middleware(function ($request, $next) {
+            $this->variant = app()->bound('variant') ? app('variant') : 'reguler';
+            $this->Penganggaran = VariantConfig::getModelClass('penganggaran', $this->variant);
+            $this->Rkas = VariantConfig::getModelClass('rkas', $this->variant);
+            $this->RkasPerubahan = VariantConfig::getModelClass('rkas_perubahan', $this->variant);
+            $this->PenerimaanDana = VariantConfig::getModelClass('penerimaan_dana', $this->variant);
+            $this->BukuKasUmum = VariantConfig::getModelClass('bku', $this->variant);
+            $this->Lph = VariantConfig::getModelClass('lph', $this->variant);
+
+            return $next($request);
+        });
+    }
     public function index(Request $request)
     {
         $sekolahId = auth()->user()->sekolah_id ?? 1;
-        $query = Lph::with(['penganggaran', 'sekolah'])
+        $query = ($this->Lph)::with(['penganggaran', 'sekolah'])
             ->where('sekolah_id', $sekolahId);
 
         if ($request->has('search') && $request->search != '') {
@@ -41,7 +64,7 @@ class LphController extends Controller
             $semester = $request->semester;
             $sekolahId = auth()->user()->sekolah_id ?? 1;
 
-            $penganggaran = Penganggaran::where('sekolah_id', $sekolahId)
+            $penganggaran = ($this->Penganggaran)::where('sekolah_id', $sekolahId)
                 ->where('tahun_anggaran', $tahun)
                 ->first();
 
@@ -51,7 +74,7 @@ class LphController extends Controller
 
             $data = $this->calculateValues($penganggaran, $semester);
             
-            return response()->json(array_merge(['penganggaran_id' => $penganggaran->id], $data));
+            return response()->json(array_merge([VariantConfig::penganggaranFk($this->variant) => $penganggaran->id], $data));
 
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
@@ -63,36 +86,70 @@ class LphController extends Controller
         $tahun = $penganggaran->tahun_anggaran;
 
         // 1. Penerimaan Dana (Anggaran pada row Penerimaan)
-        $penerimaanRealisasiQuery = PenerimaanDana::where('penganggaran_id', $penganggaran->id);
+        $penerimaanRealisasiQuery = ($this->PenerimaanDana)::where(\App\Config\VariantConfig::penganggaranFk($this->variant), $penganggaran->id);
 
-        if ($semester == '1') {
-             $penerimaanRealisasiQuery->where(function($q) {
-                $q->where('sumber_dana', 'like', "%Tahap 1%")
-                  ->orWhere('sumber_dana', 'like', "%Tahap I%"); 
-            });
+        if (!in_array($this->variant, ['silpa', 'kinerja_silpa'])) {
+            if ($semester == '1') {
+                 $penerimaanRealisasiQuery->where(function($q) {
+                    $q->where('sumber_dana', 'like', "%Tahap 1%")
+                      ->orWhere('sumber_dana', 'like', "%Tahap I%"); 
+                });
+            } else {
+                 $penerimaanRealisasiQuery->where(function($q) {
+                    $q->where('sumber_dana', 'like', "%Tahap 2%")
+                      ->orWhere('sumber_dana', 'like', "%Tahap II%"); 
+                });
+            }
         } else {
-             $penerimaanRealisasiQuery->where(function($q) {
-                $q->where('sumber_dana', 'like', "%Tahap 2%")
-                  ->orWhere('sumber_dana', 'like', "%Tahap II%"); 
-            });
+            // Untuk SiLPA, terima semua jika semester 1. Jika semester 2, filter by month >= 7
+            if ($semester == '2') {
+                 $penerimaanRealisasiQuery->whereMonth('tanggal_terima', '>=', 7);
+            }
         }
         // Total Dana Masuk (Penerimaan Anggaran)
         $totalPenerimaanDana = $penerimaanRealisasiQuery->sum('jumlah_dana');
 
+        // Jika Semester 2, tambahkan Sisa Dana Semester 1 ke Penerimaan Anggaran
+        if ($semester == '2') {
+            $penerimaanSem1Query = ($this->PenerimaanDana)::where(\App\Config\VariantConfig::penganggaranFk($this->variant), $penganggaran->id);
+            
+            if (!in_array($this->variant, ['silpa', 'kinerja_silpa'])) {
+                $penerimaanSem1Query->where(function($q) {
+                    $q->where('sumber_dana', 'like', "%Tahap 1%")
+                      ->orWhere('sumber_dana', 'like', "%Tahap I%"); 
+                });
+            } else {
+                $penerimaanSem1Query->whereMonth('tanggal_terima', '<', 7);
+            }
+            $totalPenerimaanSem1 = $penerimaanSem1Query->sum('jumlah_dana');
+
+            $totalBelanjaSem1 = ($this->BukuKasUmum)::where(\App\Config\VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
+                ->whereDate('tanggal_transaksi', '>=', "$tahun-01-01")
+                ->whereDate('tanggal_transaksi', '<=', "$tahun-06-30")
+                ->whereNotNull('rekening_belanja_id')
+                ->sum('total_transaksi_kotor');
+
+            $sisaDanaSem1 = $totalPenerimaanSem1 - $totalBelanjaSem1;
+            
+            if ($sisaDanaSem1 > 0) {
+                $totalPenerimaanDana += $sisaDanaSem1;
+            }
+        }
+
         // 2. Pengeluaran Anggaran
-        $hasPerubahan = RkasPerubahan::where('penganggaran_id', $penganggaran->id)->exists();
+        $hasPerubahan = $this->RkasPerubahan ? ($this->RkasPerubahan)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)->exists() : false;
 
         $months = $semester == '1' 
             ? ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni'] 
             : ['Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 
         if ($hasPerubahan) {
-            $rkasItems = RkasPerubahan::where('penganggaran_id', $penganggaran->id)
+            $rkasItems = ($this->RkasPerubahan)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
                 ->whereIn('bulan', $months)
                 ->with('rekeningBelanja')
                 ->get();
         } else {
-            $rkasItems = Rkas::where('penganggaran_id', $penganggaran->id)
+            $rkasItems = ($this->Rkas)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
                 ->whereIn('bulan', $months)
                 ->with('rekeningBelanja')
                 ->get();
@@ -115,7 +172,7 @@ class LphController extends Controller
         $startDate = $semester == '1' ? "$tahun-01-01" : "$tahun-07-01"; 
         $endDate = $semester == '1' ? "$tahun-06-30" : "$tahun-12-31";
 
-        $bkuEntries = BukuKasUmum::where('penganggaran_id', $penganggaran->id)
+        $bkuEntries = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
             ->whereDate('tanggal_transaksi', '>=', $startDate)
             ->whereDate('tanggal_transaksi', '<=', $endDate)
             ->whereNotNull('rekening_belanja_id')
@@ -174,11 +231,11 @@ class LphController extends Controller
             'semester' => [
                 'required',
                 'in:1,2',
-                Rule::unique('lphs')->where(function ($query) use ($request) {
-                    return $query->where('penganggaran_id', $request->penganggaran_id);
+                Rule::unique((new $this->Lph)->getTable())->where(function ($query) use ($request) {
+                    return $query->where(VariantConfig::penganggaranFk($this->variant), $request->{VariantConfig::penganggaranFk($this->variant)});
                 })
             ],
-            'penganggaran_id' => 'required|exists:penganggarans,id',
+            VariantConfig::penganggaranFk($this->variant) => 'required|exists:' . (new $this->Penganggaran)->getTable() . ',id',
             'tanggal_lph' => 'nullable|date',
             
             'penerimaan_anggaran' => 'required|numeric',
@@ -201,23 +258,23 @@ class LphController extends Controller
         $validated['belanja_modal_peralatan_selisih'] = $validated['belanja_modal_peralatan_anggaran'] - $validated['belanja_modal_peralatan_realisasi'];
         $validated['belanja_modal_aset_selisih'] = $validated['belanja_modal_aset_anggaran'] - $validated['belanja_modal_aset_realisasi'];
 
-        Lph::create($validated);
+        ($this->Lph)::create($validated);
 
         return response()->json(['success' => true]);
     }
 
     public function update(Request $request, $id)
     {
-        $lph = Lph::findOrFail($id);
+        $lph = ($this->Lph)::findOrFail($id);
         $validated = $request->validate([
             'semester' => [
                 'required',
                 'in:1,2',
-                Rule::unique('lphs')->ignore($id)->where(function ($query) use ($request) {
-                    return $query->where('penganggaran_id', $request->penganggaran_id);
+                Rule::unique((new $this->Lph)->getTable())->ignore($id)->where(function ($query) use ($request) {
+                    return $query->where(VariantConfig::penganggaranFk($this->variant), $request->{VariantConfig::penganggaranFk($this->variant)});
                 })
             ],
-            'penganggaran_id' => 'required|exists:penganggarans,id',
+            VariantConfig::penganggaranFk($this->variant) => 'required|exists:' . (new $this->Penganggaran)->getTable() . ',id',
             'tanggal_lph' => 'nullable|date',
             
             'penerimaan_anggaran' => 'required|numeric',
@@ -247,14 +304,14 @@ class LphController extends Controller
 
     public function destroy($id)
     {
-        Lph::findOrFail($id)->delete();
+        ($this->Lph)::findOrFail($id)->delete();
         return response()->json(['success' => true]);
     }
     
     public function getTahunAnggaran()
     {
         $sekolahId = auth()->user()->sekolah_id ?? 1;
-        $tahuns = Penganggaran::where('sekolah_id', $sekolahId)
+        $tahuns = ($this->Penganggaran)::where('sekolah_id', $sekolahId)
             ->select('id', 'tahun_anggaran')
             ->orderBy('tahun_anggaran', 'desc')
             ->get();
@@ -264,7 +321,7 @@ class LphController extends Controller
 
     public function generatePdf($id)
     {
-        $lph = Lph::with(['sekolah', 'penganggaran'])->findOrFail($id);
+        $lph = ($this->Lph)::with(['sekolah', 'penganggaran'])->findOrFail($id);
         
         // Auto-refresh financial data if it seems empty or outdated
         // This ensures the PDF is always accurate even if the user didn't click "Hitung"
@@ -296,6 +353,7 @@ class LphController extends Controller
         $fontSize = request()->input('font_size', '11pt');
 
         $data = [
+                'sumberDana' => \App\Config\VariantConfig::title($this->variant),
             'lph' => $lph,
             'sekolah' => $lph->sekolah,
             'rekap_per_rekening' => $newData['rekap_per_rekening'] ?? [],
@@ -318,5 +376,17 @@ class LphController extends Controller
         }
 
         return $pdf->stream('lph.pdf');
+    }
+
+    protected function renderVariant($component, $props = [])
+    {
+        $var = $this->variant ?? (request()->route() ? (request()->route()->parameter('variant') ?? request()->get('_variant', 'reguler')) : 'reguler');
+        if (app()->bound('variant')) {
+            $var = app('variant');
+        }
+        return \Inertia\Inertia::render(VariantConfig::pagePrefix($var) . $component, array_merge($props, [
+            'variant' => $var,
+            'routePrefix' => VariantConfig::routePrefix($var)
+        ]));
     }
 }

@@ -3,13 +3,32 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Config\VariantConfig;
 
 use Illuminate\Validation\Rule;
 
 class SpmthController extends Controller
 {
+    protected string $variant;
+    protected string $Penganggaran;
+    protected string $PenerimaanDana;
+    protected string $BukuKasUmum;
+    protected string $Spmth;
+
+    public function __construct()
+    {
+        $this->middleware(function ($request, $next) {
+            $this->variant = app()->bound('variant') ? app('variant') : 'reguler';
+            $this->Penganggaran = VariantConfig::getModelClass('penganggaran', $this->variant);
+            $this->PenerimaanDana = VariantConfig::getModelClass('penerimaan_dana', $this->variant);
+            $this->BukuKasUmum = VariantConfig::getModelClass('bku', $this->variant);
+            $this->Spmth = VariantConfig::getModelClass('spmth', $this->variant);
+
+            return $next($request);
+        });
+    }
     public function index(Request $request) {
-        $query = \App\Models\Spmth::query()
+        $query = ($this->Spmth)::query()
             ->with(['penganggaran', 'sekolah']);
 
         if ($request->has('search')) {
@@ -32,7 +51,7 @@ class SpmthController extends Controller
             $sekolahId = auth()->user()->sekolah_id ?? 1; 
             
             // 1. Get Penganggaran ID for the year/school
-            $penganggaran = \App\Models\Penganggaran::where('sekolah_id', $sekolahId)
+            $penganggaran = ($this->Penganggaran)::where('sekolah_id', $sekolahId)
                 ->where('tahun_anggaran', $tahun)
                 ->first();
 
@@ -45,13 +64,13 @@ class SpmthController extends Controller
             $pagu = $penganggaran->pagu_anggaran;
             
             /* Previous Logic:
-            $pagu = \App\Models\PenerimaanDana::where('penganggaran_id', $penganggaran->id)
+            $pagu = ($this->PenerimaanDana)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
                 ->where('sumber_dana', 'like', "%Tahap $tahap%") 
                 ->sum('jumlah_dana');
             
             if ($pagu == 0) {
                  $months = $tahap == '1' ? [1,2,3,4,5,6] : [7,8,9,10,11,12];
-                 $pagu = \App\Models\PenerimaanDana::where('penganggaran_id', $penganggaran->id)
+                 $pagu = ($this->PenerimaanDana)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
                     ->whereYear('tanggal_terima', $tahun)
                     ->whereIn(\DB::raw('EXTRACT(MONTH FROM tanggal_terima)'), $months)
                     ->sum('jumlah_dana');
@@ -66,7 +85,7 @@ class SpmthController extends Controller
             $realisasiLalu = 0;
             if ($tahap == '2') {
                  // Sum of Sem 1
-                 $realisasiLalu = \App\Models\BukuKasUmum::where('penganggaran_id', $penganggaran->id)
+                 $realisasiLalu = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
                     ->where('is_bunga_record', false)
                     ->whereYear('tanggal_transaksi', $tahun)
                     ->whereIn(\DB::raw('EXTRACT(MONTH FROM tanggal_transaksi)'), [1,2,3,4,5,6])
@@ -75,7 +94,7 @@ class SpmthController extends Controller
 
             // Realisasi Ini (Current Semester)
             $monthsIni = $tahap == '1' ? [1,2,3,4,5,6] : [7,8,9,10,11,12];
-            $realisasiIni = \App\Models\BukuKasUmum::where('penganggaran_id', $penganggaran->id)
+            $realisasiIni = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
                     ->where('is_bunga_record', false)
                     ->whereYear('tanggal_transaksi', $tahun)
                     ->whereIn(\DB::raw('EXTRACT(MONTH FROM tanggal_transaksi)'), $monthsIni)
@@ -84,7 +103,7 @@ class SpmthController extends Controller
             $sisa = $pagu - ($realisasiLalu + $realisasiIni); // Usually Sisa is (Pagu - Total Usage)
             
             return response()->json([
-                'penganggaran_id' => $penganggaran->id,
+                VariantConfig::penganggaranFk($this->variant) => $penganggaran->id,
                 'pagu' => $pagu,
                 'realisasi_lalu' => $realisasiLalu,
                 'realisasi_ini' => $realisasiIni,
@@ -101,13 +120,13 @@ class SpmthController extends Controller
             'nomor_surat' => [
                 'required',
                 'string',
-                Rule::unique('spmths')->where(function ($query) use ($request) {
+                Rule::unique((new $this->Spmth)->getTable())->where(function ($query) use ($request) {
                     return $query->where('tahap', $request->tahap)
-                                 ->where('penganggaran_id', $request->penganggaran_id);
+                                 ->where(VariantConfig::penganggaranFk($this->variant), $request->{VariantConfig::penganggaranFk($this->variant)});
                 })
             ],
             'tahap' => 'required|in:1,2',
-            'penganggaran_id' => 'required|exists:penganggarans,id',
+            VariantConfig::penganggaranFk($this->variant) => 'required|exists:' . (new $this->Penganggaran)->getTable() . ',id',
             'realisasi_lalu' => 'required|numeric',
             'realisasi_ini' => 'required|numeric',
             'sisa' => 'required|numeric',
@@ -118,24 +137,24 @@ class SpmthController extends Controller
 
         $validated['sekolah_id'] = auth()->user()->sekolah_id ?? 1;
 
-        \App\Models\Spmth::create($validated);
+        ($this->Spmth)::create($validated);
 
         return response()->json(['success' => true]);
     }
     
     public function update(Request $request, $id) {
-         $spmth = \App\Models\Spmth::findOrFail($id);
+         $spmth = ($this->Spmth)::findOrFail($id);
          $validated = $request->validate([
             'nomor_surat' => [
                 'required',
                 'string',
-                Rule::unique('spmths')->ignore($id)->where(function ($query) use ($request) {
+                Rule::unique((new $this->Spmth)->getTable())->ignore($id)->where(function ($query) use ($request) {
                     return $query->where('tahap', $request->tahap)
-                                 ->where('penganggaran_id', $request->penganggaran_id);
+                                 ->where(VariantConfig::penganggaranFk($this->variant), $request->{VariantConfig::penganggaranFk($this->variant)});
                 })
             ],
             'tahap' => 'required|in:1,2',
-            'penganggaran_id' => 'required|exists:penganggarans,id',
+            VariantConfig::penganggaranFk($this->variant) => 'required|exists:' . (new $this->Penganggaran)->getTable() . ',id',
             'realisasi_lalu' => 'required|numeric',
             'realisasi_ini' => 'required|numeric',
             'sisa' => 'required|numeric',
@@ -149,17 +168,18 @@ class SpmthController extends Controller
     }
 
     public function destroy($id) {
-        \App\Models\Spmth::findOrFail($id)->delete();
+        ($this->Spmth)::findOrFail($id)->delete();
         return response()->json(['success' => true]);
     }
 
     public function generatePdf($id) {
-        $spmth = \App\Models\Spmth::with(['sekolah', 'penganggaran'])->findOrFail($id);
+        $spmth = ($this->Spmth)::with(['sekolah', 'penganggaran'])->findOrFail($id);
         
         $paperSize = request()->input('paper_size', 'A4');
         $fontSize = request()->input('font_size', '12pt');
 
         $data = [
+                'sumberDana' => \App\Config\VariantConfig::title($this->variant),
             'spmth' => $spmth,
             'sekolah' => $spmth->sekolah,
             'kepala_sekolah' => (object) [
@@ -170,7 +190,7 @@ class SpmthController extends Controller
                 ? \Carbon\Carbon::parse($spmth->tanggal_spmth)->locale('id')->isoFormat('D MMMM Y') 
                 : now()->locale('id')->isoFormat('D MMMM Y'),
             'semester_text' => $spmth->tahap == '1' ? 'Semester I' : 'Semester II',
-            'pagu' => $this->calculatePagu($spmth->penganggaran_id, $spmth->tahap, $spmth->penganggaran->tahun_anggaran),
+            'pagu' => $this->calculatePagu($spmth->{VariantConfig::penganggaranFk($this->variant)}, $spmth->tahap, $spmth->penganggaran->tahun_anggaran),
             'fontSize' => $fontSize,
         ];
 
@@ -188,7 +208,7 @@ class SpmthController extends Controller
 
     public function getTahunAnggaran() {
         $sekolahId = auth()->user()->sekolah_id ?? 1;
-        $tahuns = \App\Models\Penganggaran::where('sekolah_id', $sekolahId)
+        $tahuns = ($this->Penganggaran)::where('sekolah_id', $sekolahId)
             ->select('id', 'tahun_anggaran')
             ->orderBy('tahun_anggaran', 'desc')
             ->get();
@@ -197,7 +217,19 @@ class SpmthController extends Controller
     }
 
     private function calculatePagu($penganggaranId, $tahap, $tahun) {
-        $penganggaran = \App\Models\Penganggaran::find($penganggaranId);
+        $penganggaran = ($this->Penganggaran)::find($penganggaranId);
         return $penganggaran ? $penganggaran->pagu_anggaran : 0;
+    }
+
+    protected function renderVariant($component, $props = [])
+    {
+        $var = $this->variant ?? (request()->route() ? (request()->route()->parameter('variant') ?? request()->get('_variant', 'reguler')) : 'reguler');
+        if (app()->bound('variant')) {
+            $var = app('variant');
+        }
+        return \Inertia\Inertia::render(VariantConfig::pagePrefix($var) . $component, array_merge($props, [
+            'variant' => $var,
+            'routePrefix' => VariantConfig::routePrefix($var)
+        ]));
     }
 }

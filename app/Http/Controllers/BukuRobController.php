@@ -9,15 +9,29 @@ use App\Models\SekolahProfile; // CHANGED FROM Sekolah
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use App\Config\VariantConfig;
 use Illuminate\Support\Facades\Log;
 
 class BukuRobController extends Controller
 {
     protected $bukuKasService;
 
+        protected string $variant;
+    protected string $Penganggaran;
+    protected string $BukuKasUmum;
+
     public function __construct(BukuKasService $bukuKasService)
     {
+
         $this->bukuKasService = $bukuKasService;
+
+        $this->middleware(function ($request, $next) {
+            $this->variant = app()->bound('variant') ? app('variant') : 'reguler';
+            $this->Penganggaran = VariantConfig::getModelClass('penganggaran', $this->variant);
+            $this->BukuKasUmum = VariantConfig::getModelClass('bku', $this->variant);
+
+            return $next($request);
+        });
     }
 
     /**
@@ -28,7 +42,7 @@ class BukuRobController extends Controller
         $tahun = $request->input('tahun');
         $bulan = $request->input('bulan');
         try {
-            $penganggaran = Penganggaran::where('tahun_anggaran', $tahun)
+            $penganggaran = ($this->Penganggaran)::where('tahun_anggaran', $tahun)
                 ->with('sekolah')
                 ->first();
 
@@ -45,7 +59,7 @@ class BukuRobController extends Controller
             $saldoAwal = $this->hitungSaldoAwalRob($penganggaran->id, $tahun, $bulan);
 
             // Fetch BKU Records - FIXED Logic for is_bunga_record
-            $bkuData = BukuKasUmum::where('penganggaran_id', $penganggaran->id)
+            $bkuData = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
                 ->whereMonth('tanggal_transaksi', $bulanAngka)
                 ->whereYear('tanggal_transaksi', $tahun)
                 ->where(function ($query) {
@@ -105,7 +119,7 @@ class BukuRobController extends Controller
             } catch (\Exception $e) {}
 
             // Ambil tanggal tutup BKU jika ada
-            $bungaRecord = BukuKasUmum::where('penganggaran_id', $penganggaran->id)
+            $bungaRecord = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
                 ->whereMonth('tanggal_transaksi', $bulanAngka)
                 ->whereYear('tanggal_transaksi', $tahun)
                 ->where('is_bunga_record', true)
@@ -143,7 +157,7 @@ class BukuRobController extends Controller
             $tahun = $request->query('tahun');
             $bulanInput = $request->query('bulan');
 
-            $penganggaran = Penganggaran::where('tahun_anggaran', $tahun)->first();
+            $penganggaran = ($this->Penganggaran)::where('tahun_anggaran', $tahun)->first();
             if (!$penganggaran) return response()->json(['error' => 'Data penganggaran tidak ditemukan'], 404);
 
             $sekolah = SekolahProfile::first();
@@ -167,7 +181,7 @@ class BukuRobController extends Controller
                 $bulanAngka = $this->convertBulanToNumber($bulan);
                 $saldoAwal = $this->hitungSaldoAwalRob($penganggaran->id, $tahun, $bulan);
 
-                $bkuData = BukuKasUmum::where('penganggaran_id', $penganggaran->id)
+                $bkuData = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
                     ->whereMonth('tanggal_transaksi', $bulanAngka)
                     ->whereYear('tanggal_transaksi', $tahun)
                     ->where(function ($query) {
@@ -213,7 +227,7 @@ class BukuRobController extends Controller
                 }
 
                 // Ambil tanggal tutup BKU jika ada
-                $bungaRecord = BukuKasUmum::where('penganggaran_id', $penganggaran->id)
+                $bungaRecord = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
                     ->whereMonth('tanggal_transaksi', $bulanAngka)
                     ->whereYear('tanggal_transaksi', $tahun)
                     ->where('is_bunga_record', true)
@@ -291,7 +305,7 @@ class BukuRobController extends Controller
             $totalPenerimaan = $this->bukuKasService->hitungTotalDanaTersedia($penganggaran_id);
 
             // Hitung total realisasi sampai bulan sebelumnya
-            $totalRealisasiSampaiBulanSebelumnya = BukuKasUmum::where('penganggaran_id', $penganggaran_id)
+            $totalRealisasiSampaiBulanSebelumnya = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran_id)
                 ->where(function ($query) {
                     $query->where('is_bunga_record', false)->orWhereNull('is_bunga_record');
                 })
@@ -321,5 +335,17 @@ class BukuRobController extends Controller
     private function convertNumberToBulan($angka)
     {
         return $this->bukuKasService->convertNumberToBulan($angka);
+    }
+
+    protected function renderVariant($component, $props = [])
+    {
+        $var = $this->variant ?? (request()->route() ? (request()->route()->parameter('variant') ?? request()->get('_variant', 'reguler')) : 'reguler');
+        if (app()->bound('variant')) {
+            $var = app('variant');
+        }
+        return \Inertia\Inertia::render(VariantConfig::pagePrefix($var) . $component, array_merge($props, [
+            'variant' => $var,
+            'routePrefix' => VariantConfig::routePrefix($var)
+        ]));
     }
 }

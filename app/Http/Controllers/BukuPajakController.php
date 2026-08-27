@@ -9,6 +9,7 @@ use App\Models\SekolahProfile; // Assuming SekolahProfile is the correct model f
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use App\Config\VariantConfig;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
@@ -16,13 +17,27 @@ use App\Exports\BkpPajakExport;
 
 class BukuPajakController extends Controller
 {
+    protected string $variant;
+    protected string $Penganggaran;
+    protected string $BukuKasUmum;
+
+    public function __construct()
+    {
+        $this->middleware(function ($request, $next) {
+            $this->variant = app()->bound('variant') ? app('variant') : 'reguler';
+            $this->Penganggaran = VariantConfig::getModelClass('penganggaran', $this->variant);
+            $this->BukuKasUmum = VariantConfig::getModelClass('bku', $this->variant);
+
+            return $next($request);
+        });
+    }
     /**
      * Get data pajak untuk transaksi tertentu
      */
     public function getDataPajak($id)
     {
         try {
-            $bku = BukuKasUmum::findOrFail($id);
+            $bku = ($this->BukuKasUmum)::findOrFail($id);
 
             return response()->json([
                 'success' => true,
@@ -61,7 +76,7 @@ class BukuPajakController extends Controller
                 'tanggal_lapor.date' => 'Format tanggal tidak valid',
             ]);
 
-            $bku = BukuKasUmum::findOrFail($id);
+            $bku = ($this->BukuKasUmum)::findOrFail($id);
 
             // Update data pajak
             $bku->update([
@@ -104,7 +119,7 @@ class BukuPajakController extends Controller
         $tahun = $request->input('tahun');
         $bulan = $request->input('bulan');
         try {
-            $penganggaran = Penganggaran::where('tahun_anggaran', $tahun)
+            $penganggaran = ($this->Penganggaran)::where('tahun_anggaran', $tahun)
                 ->with('sekolah') // Eager load sekolah
                 ->first();
 
@@ -129,7 +144,7 @@ class BukuPajakController extends Controller
             $totalPb1 = $dataPajak['totalPb1'];
 
             // Ambil tanggal tutup BKU jika ada
-            $bungaRecord = BukuKasUmum::where('penganggaran_id', $penganggaran->id)
+            $bungaRecord = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
                 ->whereMonth('tanggal_transaksi', $bulanAngka)
                 ->whereYear('tanggal_transaksi', $tahun)
                 ->where('is_bunga_record', true)
@@ -208,7 +223,7 @@ class BukuPajakController extends Controller
 
             $reportData = [];
 
-            $penganggaran = Penganggaran::where('tahun_anggaran', $tahun)->with('sekolah')->first();
+            $penganggaran = ($this->Penganggaran)::where('tahun_anggaran', $tahun)->with('sekolah')->first();
             if (!$penganggaran) {
                 return response('Data penganggaran tidak ditemukan', 404);
             }
@@ -251,7 +266,7 @@ class BukuPajakController extends Controller
                 // --- CORE LOGIC END ---
 
                 // Ambil tanggal tutup BKU jika ada
-                $bungaRecord = BukuKasUmum::where('penganggaran_id', $penganggaran->id)
+                $bungaRecord = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
                     ->whereMonth('tanggal_transaksi', $bulanAngka)
                     ->whereYear('tanggal_transaksi', $tahun)
                     ->where('is_bunga_record', true)
@@ -331,7 +346,7 @@ class BukuPajakController extends Controller
 
             $reportData = [];
 
-            $penganggaran = Penganggaran::where('tahun_anggaran', $tahun)->with('sekolah')->first();
+            $penganggaran = ($this->Penganggaran)::where('tahun_anggaran', $tahun)->with('sekolah')->first();
             if (!$penganggaran) {
                 return response('Data penganggaran tidak ditemukan', 404);
             }
@@ -369,7 +384,7 @@ class BukuPajakController extends Controller
                 $totalPb1 = $dataPajak['totalPb1'];
 
                 // Ambil tanggal tutup BKU jika ada
-                $bungaRecord = BukuKasUmum::where('penganggaran_id', $penganggaran->id)
+                $bungaRecord = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
                     ->whereMonth('tanggal_transaksi', $bulanAngka)
                     ->whereYear('tanggal_transaksi', $tahun)
                     ->where('is_bunga_record', true)
@@ -466,7 +481,7 @@ class BukuPajakController extends Controller
     private function siapkanDataRowsBkpPajak($penganggaran, $bulanAngka, $tahun)
     {
         // 1. Terima Pajak (Penerimaan)
-        $bkuPajakDiterima = BukuKasUmum::where('penganggaran_id', $penganggaran->id)
+        $bkuPajakDiterima = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
             ->whereMonth('tanggal_transaksi', $bulanAngka)
             ->whereYear('tanggal_transaksi', $tahun)
             ->where(function ($query) {
@@ -478,7 +493,7 @@ class BukuPajakController extends Controller
             ->get();
 
         // 2. Setor Pajak (Pengeluaran)
-        $bkuPajakDisetor = BukuKasUmum::where('penganggaran_id', $penganggaran->id)
+        $bkuPajakDisetor = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
             ->whereMonth('tanggal_lapor', $bulanAngka)
             ->whereYear('tanggal_lapor', $tahun)
             ->whereNotNull('ntpn')
@@ -654,5 +669,17 @@ class BukuPajakController extends Controller
             'totalPb1' => $totalPb1,
             'saldoAwalPajak' => $saldoAwalPajak
         ];
+    }
+
+    protected function renderVariant($component, $props = [])
+    {
+        $var = $this->variant ?? (request()->route() ? (request()->route()->parameter('variant') ?? request()->get('_variant', 'reguler')) : 'reguler');
+        if (app()->bound('variant')) {
+            $var = app('variant');
+        }
+        return \Inertia\Inertia::render(VariantConfig::pagePrefix($var) . $component, array_merge($props, [
+            'variant' => $var,
+            'routePrefix' => VariantConfig::routePrefix($var)
+        ]));
     }
 }

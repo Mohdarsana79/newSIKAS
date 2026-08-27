@@ -9,15 +9,29 @@ use App\Models\SekolahProfile;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use App\Config\VariantConfig;
 use Illuminate\Support\Facades\Log;
 
 class RegistrasiPenutupanKasController extends Controller
 {
     protected $bukuKasService;
 
+        protected string $variant;
+    protected string $Penganggaran;
+    protected string $BukuKasUmum;
+
     public function __construct(BukuKasService $bukuKasService)
     {
+
         $this->bukuKasService = $bukuKasService;
+
+        $this->middleware(function ($request, $next) {
+            $this->variant = app()->bound('variant') ? app('variant') : 'reguler';
+            $this->Penganggaran = VariantConfig::getModelClass('penganggaran', $this->variant);
+            $this->BukuKasUmum = VariantConfig::getModelClass('bku', $this->variant);
+
+            return $next($request);
+        });
     }
 
     private function getDataFromBkpUmumCalculation($penganggaran_id, $tahun, $bulan, $bulanAngka)
@@ -63,7 +77,7 @@ class RegistrasiPenutupanKasController extends Controller
         $tahun = $request->input('tahun');
         $bulan = $request->input('bulan');
         try {
-            $penganggaran = Penganggaran::where('tahun_anggaran', $tahun)
+            $penganggaran = ($this->Penganggaran)::where('tahun_anggaran', $tahun)
                 ->with('sekolah')
                 ->first();
 
@@ -110,7 +124,7 @@ class RegistrasiPenutupanKasController extends Controller
 
             // Date processing for display
             // Fetch BKU Bunga Record which typically contains closing info
-            $bungaRecord = BukuKasUmum::where('penganggaran_id', $penganggaran->id)
+            $bungaRecord = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
                 ->whereMonth('tanggal_transaksi', $bulanAngka)
                 ->whereYear('tanggal_transaksi', $tahun)
                 ->where('is_bunga_record', true)
@@ -133,16 +147,16 @@ class RegistrasiPenutupanKasController extends Controller
             $bungaRecordLalu = null;
             if ($prevYear == $tahun) {
                  // Same year, use same penganggaran
-                 $bungaRecordLalu = BukuKasUmum::where('penganggaran_id', $penganggaran->id)
+                 $bungaRecordLalu = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
                     ->whereMonth('tanggal_transaksi', $prevMonth)
                     ->whereYear('tanggal_transaksi', $prevYear)
                     ->where('is_bunga_record', true)
                     ->first();
             } else {
                  // Different year, try to find penganggaran for previous year
-                 $penganggaranLalu = Penganggaran::where('tahun_anggaran', $prevYear)->first();
+                 $penganggaranLalu = ($this->Penganggaran)::where('tahun_anggaran', $prevYear)->first();
                  if ($penganggaranLalu) {
-                      $bungaRecordLalu = BukuKasUmum::where('penganggaran_id', $penganggaranLalu->id)
+                      $bungaRecordLalu = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $penganggaranLalu->id)
                         ->whereMonth('tanggal_transaksi', $prevMonth)
                         ->whereYear('tanggal_transaksi', $prevYear)
                         ->where('is_bunga_record', true)
@@ -225,7 +239,7 @@ class RegistrasiPenutupanKasController extends Controller
             $tahun = $request->query('tahun');
             $bulanInput = $request->query('bulan');
 
-            $penganggaran = Penganggaran::where('tahun_anggaran', $tahun)->with('sekolah')->first();
+            $penganggaran = ($this->Penganggaran)::where('tahun_anggaran', $tahun)->with('sekolah')->first();
             if (!$penganggaran) return response()->json(['error' => 'Data penganggaran tidak ditemukan'], 404);
 
             $monthsToProcess = [];
@@ -270,15 +284,15 @@ class RegistrasiPenutupanKasController extends Controller
 
                 $bungaRecordLalu = null;
                 if ($prevYear == $tahun) {
-                     $bungaRecordLalu = BukuKasUmum::where('penganggaran_id', $penganggaran->id)
+                     $bungaRecordLalu = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
                         ->whereMonth('tanggal_transaksi', $prevMonth)
                         ->whereYear('tanggal_transaksi', $prevYear)
                         ->where('is_bunga_record', true)
                         ->first();
                 } else {
-                     $penganggaranLalu = Penganggaran::where('tahun_anggaran', $prevYear)->first();
+                     $penganggaranLalu = ($this->Penganggaran)::where('tahun_anggaran', $prevYear)->first();
                      if ($penganggaranLalu) {
-                          $bungaRecordLalu = BukuKasUmum::where('penganggaran_id', $penganggaranLalu->id)
+                          $bungaRecordLalu = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $penganggaranLalu->id)
                             ->whereMonth('tanggal_transaksi', $prevMonth)
                             ->whereYear('tanggal_transaksi', $prevYear)
                             ->where('is_bunga_record', true)
@@ -292,7 +306,7 @@ class RegistrasiPenutupanKasController extends Controller
                     $tanggalPenutupanLalu = $prevDate->endOfMonth()->locale('id')->translatedFormat('d F Y');
                 }
 
-                $bungaRecord = BukuKasUmum::where('penganggaran_id', $penganggaran->id)
+                $bungaRecord = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
                     ->whereMonth('tanggal_transaksi', $bulanAngka)->whereYear('tanggal_transaksi', $tahun)->where('is_bunga_record', true)
                     ->first();
                 
@@ -357,5 +371,17 @@ class RegistrasiPenutupanKasController extends Controller
             Log::error('Error generating BKP Registrasi PDF: ' . $e->getMessage());
             return response()->json(['error' => 'Gagal generate PDF: ' . $e->getMessage()], 500);
         }
+    }
+
+    protected function renderVariant($component, $props = [])
+    {
+        $var = $this->variant ?? (request()->route() ? (request()->route()->parameter('variant') ?? request()->get('_variant', 'reguler')) : 'reguler');
+        if (app()->bound('variant')) {
+            $var = app('variant');
+        }
+        return \Inertia\Inertia::render(VariantConfig::pagePrefix($var) . $component, array_merge($props, [
+            'variant' => $var,
+            'routePrefix' => VariantConfig::routePrefix($var)
+        ]));
     }
 }

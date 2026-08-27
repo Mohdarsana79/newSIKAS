@@ -3,6 +3,8 @@ import { Head, Link, router } from '@inertiajs/react';
 import PrimaryButton from '@/Components/PrimaryButton';
 import { PageProps } from '@/types';
 import { useState } from 'react';
+import { usePage } from '@inertiajs/react';
+import useVariantRoute from '@/Hooks/useVariantRoute';
 import Modal from '@/Components/Modal';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
@@ -40,9 +42,23 @@ interface Anggaran {
     updated_at: string;
 }
 
-export default function Index({ auth, items, anggarans, can_create }: PageProps<{ items: PenganggaranItem[], anggarans: Anggaran[], can_create: boolean }>) {
+export default function Index({ 
+    auth, 
+    items = [], 
+    anggarans = [], 
+    can_create = false
+}: PageProps<{ items: PenganggaranItem[], anggarans: Anggaran[], can_create: boolean }>) {
+    
+    const vroute = useVariantRoute();
+    const routePrefix = usePage<any>().props.routePrefix || '';
+    
+    let activeTab = 'BOSP Reguler';
+    if (routePrefix === 'silpa-') activeTab = 'SiLPA BOSP Reguler';
+    else if (routePrefix === 'kinerja-') activeTab = 'BOSP Kinerja';
+    else if (routePrefix === 'kinerja-silpa-') activeTab = 'SiLPA BOSP Kinerja';
+
     const tabs = ['BOSP Reguler', 'SiLPA BOSP Reguler', 'BOSP Kinerja', 'SiLPA BOSP Kinerja', 'Lainnya'];
-    const [activeTab, setActiveTab] = useState('BOSP Reguler');
+    
     const [isRestrictionModalOpen, setIsRestrictionModalOpen] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editMode, setEditMode] = useState(false);
@@ -73,7 +89,7 @@ export default function Index({ auth, items, anggarans, can_create }: PageProps<
         e.preventDefault();
 
         if (editMode && editId) {
-            put(route('penganggaran.update', editId), {
+            put(vroute('penganggaran.update', editId), {
                 onSuccess: () => {
                     setIsModalOpen(false);
                     reset();
@@ -82,7 +98,7 @@ export default function Index({ auth, items, anggarans, can_create }: PageProps<
                 },
             });
         } else {
-            post(route('penganggaran.store'), {
+            post(vroute('penganggaran.store'), {
                 onSuccess: () => {
                     setIsModalOpen(false);
                     reset();
@@ -148,7 +164,7 @@ export default function Index({ auth, items, anggarans, can_create }: PageProps<
                 ? 'rkas-perubahan.destroy-penganggaran'
                 : 'penganggaran.destroy';
 
-            router.delete(route(routeName, deleteId), {
+            router.delete(vroute(routeName, deleteId), {
                 onStart: () => setIsDeleting(true),
                 onFinish: () => setIsDeleting(false),
                 onSuccess: () => {
@@ -198,11 +214,16 @@ export default function Index({ auth, items, anggarans, can_create }: PageProps<
                             {tabs.map((tab) => (
                                 <button
                                     key={tab}
-                                    onClick={() => {
+                                    onClick={(e) => {
+                                        e.preventDefault();
                                         if (tab === 'BOSP Reguler') {
                                             router.visit(route('penganggaran.index'));
-                                        } else {
-                                            setActiveTab(tab);
+                                        } else if (tab === 'SiLPA BOSP Reguler') {
+                                            router.visit(route('silpa-penganggaran.index'));
+                                        } else if (tab === 'BOSP Kinerja') {
+                                            router.visit(route('kinerja-penganggaran.index'));
+                                        } else if (tab === 'SiLPA BOSP Kinerja') {
+                                            router.visit(route('kinerja-silpa-penganggaran.index'));
                                         }
                                     }}
                                     className={`
@@ -221,20 +242,7 @@ export default function Index({ auth, items, anggarans, can_create }: PageProps<
 
                     {/* Items List */}
                     <div className="space-y-4">
-                        {activeTab !== 'BOSP Reguler' ? (
-                            <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm transition-all duration-300">
-                                <div className="bg-indigo-50 dark:bg-indigo-900/20 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6">
-                                    <svg className="w-12 h-12 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    </svg>
-                                </div>
-                                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Sedang Dalam Pengembangan</h3>
-                                <p className="text-gray-500 dark:text-gray-400 max-w-sm mx-auto">
-                                    Konten untuk <span className="font-semibold text-indigo-600 dark:text-indigo-400">{activeTab}</span> saat ini masih dalam tahap pengembangan dan akan segera tersedia.
-                                </p>
-                            </div>
-                        ) : items.length === 0 ? (
+                        {items.length === 0 ? (
                             <div className="text-center py-12 bg-gray-50 dark:bg-gray-700/30 rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-700">
                                 <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2h-1" />
@@ -296,7 +304,7 @@ export default function Index({ auth, items, anggarans, can_create }: PageProps<
 
                                             {/* View / Detail Button */}
                                             <Link
-                                                href={item.status === 'perubahan' ? route('rkas-perubahan.index', item.id) : route('rkas.index', item.id)}
+                                                href={item.status === 'perubahan' ? vroute('rkas-perubahan.index', item.id) : vroute('rkas.index', item.id)}
                                                 className={`
                                                         flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-sm
                                                         ${item.status === 'perubahan'
@@ -314,7 +322,7 @@ export default function Index({ auth, items, anggarans, can_create }: PageProps<
 
                                             {/* Summary / Print Button */}
                                             <Link
-                                                href={item.status === 'perubahan' ? route('rkas-perubahan.summary', item.id) : route('rkas.summary', item.id)}
+                                                href={item.status === 'perubahan' ? vroute('rkas-perubahan.summary', item.id) : vroute('rkas.summary', item.id)}
                                                 className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-gray-700 rounded-full transition-colors"
                                                 title="Ringkasan & Cetak"
                                             >
@@ -641,6 +649,9 @@ export default function Index({ auth, items, anggarans, can_create }: PageProps<
                     </div>
                 </div>
             </Modal>
+
+
+
 
         </AuthenticatedLayout>
     );

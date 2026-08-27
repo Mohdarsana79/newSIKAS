@@ -155,9 +155,10 @@ export default function Sidebar({ className = '', isOpen = true, setIsOpen }: { 
                             Penganggaran
                         </NavLink>
 
-                        <NavLink href={route('penatausahaan.index')} active={route().current('penatausahaan.*') && !route().current('sts.*')} isSidebarOpen={isOpen} icon={<IconPenatausahaan />}>
+                                                <NavLink href={route('penatausahaan.index')} active={route().current('penatausahaan.*') && !route().current('sts.*')} isSidebarOpen={isOpen} icon={<IconPenatausahaan />}>
                             Penatausahaan
                         </NavLink>
+                        
 
                         <NavLink href={route('sts.index')} active={route().current('sts.*')} isSidebarOpen={isOpen} icon={<IconSTS />}>
                             Status STS
@@ -469,5 +470,7 @@ const IconPath = () => (
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
     </svg>
 );
+
+
 
 

@@ -3,7 +3,7 @@ import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
 import { registerLocale } from "react-datepicker";
 import { id } from 'date-fns/locale/id';
-import { useForm } from '@inertiajs/react'; // Or simpleaxios
+import { useForm, usePage } from '@inertiajs/react'; // Or simpleaxios
 import axios from 'axios';
 import Select from 'react-select';
 import Modal from '@/Components/Modal'; // Assuming generic Modal exists
@@ -12,6 +12,7 @@ import TextInput from '@/Components/TextInput';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import DangerButton from '@/Components/DangerButton';
+import useVariantRoute from '@/Hooks/useVariantRoute';
 
 registerLocale('id', id);
 
@@ -35,6 +36,8 @@ interface SpmthData {
 
 
 export default function SpmthTab() {
+    const vroute = useVariantRoute();
+    const penganggaranFk = usePage<any>().props.penganggaranFk || 'penganggaran_id';
     const [data, setData] = useState<SpmthData[]>([]);
     const [search, setSearch] = useState('');
     const [page, setPage] = useState(1);
@@ -62,8 +65,8 @@ export default function SpmthTab() {
     };
 
     const handlePrint = () => {
-        const url = `${selectedPdfUrl}?paper_size=${printSettings.paperSize}&font_size=${printSettings.fontSize}`;
-        window.open(url, '_blank');
+        const url = `${vroute('laporan.spmth.pdf', itemToDelete || 0)}?paper_size=${printSettings.paperSize}&font_size=${printSettings.fontSize}`; // Fallback to itemToDelete or whatever state holds the ID. Wait, PDF uses selectedPdfUrl! Let's just append parameters.
+        window.open(`${selectedPdfUrl}?paper_size=${printSettings.paperSize}&font_size=${printSettings.fontSize}`, '_blank');
         setIsPrintSettingsModalOpen(false);
     };
 
@@ -93,7 +96,7 @@ export default function SpmthTab() {
 
     const fetchAvailableYears = async () => {
         try {
-            const response = await axios.get('/fitur-pelengkap/api/spmth/tahun');
+            const response = await axios.get(vroute('api.spmth.tahun'));
             const years = response.data;
             setAvailableYears(years);
 
@@ -121,7 +124,7 @@ export default function SpmthTab() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const response = await axios.get('/fitur-pelengkap/api/spmth', {
+            const response = await axios.get(vroute('api.spmth.index'), {
                 params: { search, page }
             });
             setData(response.data.data);
@@ -136,21 +139,21 @@ export default function SpmthTab() {
     const handleCalculate = async () => {
         setIsCalculating(true);
         try {
-            const response = await axios.get('/fitur-pelengkap/api/spmth/calculate', {
+            const response = await axios.get(vroute('api.spmth.calculate'), {
                 params: {
                     tahun_anggaran: formData.tahun_anggaran,
                     tahap: formData.tahap
                 }
             });
 
-            const { pagu, realisasi_lalu, realisasi_ini, sisa, penganggaran_id } = response.data;
+            const data = response.data;
             setFormData(prev => ({
                 ...prev,
-                pagu,
-                realisasi_lalu,
-                realisasi_ini,
-                sisa,
-                penganggaran_id
+                pagu: data.pagu,
+                realisasi_lalu: data.realisasi_lalu,
+                realisasi_ini: data.realisasi_ini,
+                sisa: data.sisa,
+                penganggaran_id: data[penganggaranFk]
             }));
             showToast('Data berhasil dihitung.', 'success');
         } catch (error: any) {
@@ -164,11 +167,15 @@ export default function SpmthTab() {
         e.preventDefault();
         setIsSaving(true);
         try {
+            const payload = {
+                ...formData,
+                [penganggaranFk]: formData.penganggaran_id
+            };
             if (formData.id) {
-                await axios.put(`/fitur-pelengkap/api/spmth/${formData.id}`, formData);
+                await axios.put(vroute('api.spmth.update', formData.id), payload);
                 showToast('Data SPMTH berhasil diperbarui.', 'success');
             } else {
-                await axios.post('/fitur-pelengkap/api/spmth', formData);
+                await axios.post(vroute('api.spmth.store'), payload);
                 showToast('Data SPMTH berhasil disimpan.', 'success');
             }
             setIsAddModalOpen(false);
@@ -200,7 +207,7 @@ export default function SpmthTab() {
     const confirmDelete = async () => {
         if (!itemToDelete) return;
         try {
-            await axios.delete(`/fitur-pelengkap/api/spmth/${itemToDelete}`);
+            await axios.delete(vroute('api.spmth.destroy', itemToDelete));
             fetchData();
             setIsDeleteModalOpen(false);
             setItemToDelete(null);
@@ -298,7 +305,7 @@ export default function SpmthTab() {
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                         <div className="flex items-center space-x-2">
                                             <button
-                                                onClick={() => { setSelectedPdfUrl(`/laporan/spmth/${item.id}/pdf`); setIsPreviewModalOpen(true); }}
+                                                onClick={() => { setSelectedPdfUrl(vroute('laporan.spmth.pdf', item.id)); setIsPreviewModalOpen(true); }}
                                                 className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-200"
                                                 title="Preview PDF"
                                             >

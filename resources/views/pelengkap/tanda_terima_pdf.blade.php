@@ -238,7 +238,7 @@
                 <tr>
                     <td>Sumber Dana</td>
                     <td>:</td>
-                    <td colspan="2">BOSP Reguler</td>
+                    <td colspan="2">{{ $sumberDana ?? 'BOSP Reguler' }}</td>
                     <td></td>
                 </tr>
             </tbody>>
@@ -302,7 +302,7 @@
                 </td>
                 <td>
                     {{ $tanggalLunas }}<br>
-                    Bendahara BOSP
+                    Bendahara {{ $sumberDana ?? 'BOSP Reguler' }}
                     <div class="signature-name">
                         {{ $tandaTerima->penganggaran->bendahara ?? '-' }}
                     </div>

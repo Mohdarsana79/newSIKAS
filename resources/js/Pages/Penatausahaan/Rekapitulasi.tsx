@@ -1,5 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, usePage, router } from '@inertiajs/react';
+import useVariantRoute from '@/Hooks/useVariantRoute';
 import React, { useState, useEffect } from 'react';
 import PrimaryButton from '@/Components/PrimaryButton';
 import axios from 'axios';
@@ -16,6 +17,7 @@ interface RekapitulasiProps {
 }
 
 export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) {
+    const vroute = useVariantRoute();
     const [activeTab, setActiveTab] = useState('bkp_bank');
     const [bkpBankData, setBkpBankData] = useState<any>(null);
     const [bkpPembantuData, setBkpPembantuData] = useState<any>(null);
@@ -104,7 +106,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
     const fetchRealisasiData = async () => {
         setIsLoading(true);
         try {
-            const response = await axios.get(route('api.realisasi.data', {
+            const response = await axios.get(vroute('api.realisasi.data', {
                 tahun,
                 periode: periodeRealisasi,
                 jenis_laporan: jenisLaporanRealisasi
@@ -122,7 +124,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
     const fetchBhpData = async () => {
         setIsLoading(true);
         try {
-            const response = await axios.get(route('api.bhp.data', {
+            const response = await axios.get(vroute('api.bhp.data', {
                 tahun,
                 periode: periodeBhp,
                 jenis_laporan: jenisLaporanBhp
@@ -140,7 +142,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
     const fetchBhmData = async () => {
         setIsLoading(true);
         try {
-            const response = await axios.get(route('api.bhm.data', {
+            const response = await axios.get(vroute('api.bhm.data', {
                 tahun,
                 periode: periodeBhm,
                 jenis_laporan: jenisLaporanBhm
@@ -158,7 +160,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
     const fetchRekRealisasiData = async () => {
         setIsLoading(true);
         try {
-            const response = await axios.get(route('api.realisasi.rekening', { tahun, fase: faseRekRealisasi }));
+            const response = await axios.get(vroute('api.realisasi.rekening', { tahun, fase: faseRekRealisasi }));
             if (response.data.success) {
                 setRekRealisasiData(response.data.data);
             }
@@ -172,7 +174,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
     const fetchBkpBaData = async () => {
         setIsLoading(true);
         try {
-            const response = await axios.get(route('api.ba.data', { tahun, bulan: bulanBa }));
+            const response = await axios.get(vroute('api.ba.data', { tahun, bulan: bulanBa }));
             if (response.data.success) {
                 setBkpBaData(response.data);
             }
@@ -186,7 +188,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
     const fetchBkpRegData = async () => {
         setIsLoading(true);
         try {
-            const response = await axios.get(route('api.bkp-reg.data', { tahun, bulan: bulanReg }));
+            const response = await axios.get(vroute('api.bkp-reg.data', { tahun, bulan: bulanReg }));
             if (response.data.success) {
                 setBkpRegData(response.data);
             }
@@ -201,7 +203,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
         setIsLoading(true);
         try {
             console.log("Fetching ROB Data for:", { tahun, bulan: bulanRob });
-            const response = await axios.get(route('api.bkp-rob.data', { tahun, bulan: bulanRob }));
+            const response = await axios.get(vroute('api.bkp-rob.data', { tahun, bulan: bulanRob }));
             console.log("ROB Data Response:", response.data);
             if (response.data.success) {
                 setBkpRobData(response.data);
@@ -216,7 +218,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
     const fetchBkpBankData = async () => {
         setIsLoading(true);
         try {
-            const response = await axios.get(route('api.bkp-bank.data', { tahun, bulan: bulanBank }));
+            const response = await axios.get(vroute('api.bkp-bank.data', { tahun, bulan: bulanBank }));
             if (response.data.success) {
                 setBkpBankData(response.data);
             }
@@ -230,7 +232,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
     const fetchBkpPembantuData = async () => {
         setIsLoading(true);
         try {
-            const response = await axios.get(route('api.bkp-pembantu.data', { tahun, bulan: bulanPembantu }));
+            const response = await axios.get(vroute('api.bkp-pembantu.data', { tahun, bulan: bulanPembantu }));
             if (response.data.success) {
                 setBkpPembantuData(response.data);
             }
@@ -244,7 +246,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
     const fetchBkpUmumData = async () => {
         setIsLoading(true);
         try {
-            const response = await axios.get(route('api.bkp-umum.data', { tahun, bulan: bulanUmum }));
+            const response = await axios.get(vroute('api.bkp-umum.data', { tahun, bulan: bulanUmum }));
             if (response.data.success) {
                 setBkpUmumData(response.data);
             }
@@ -260,7 +262,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
     const fetchBkpPajakData = async () => {
         setIsLoading(true);
         try {
-            const response = await axios.get(route('api.bkp-pajak.data', { tahun, bulan: bulanPajak }));
+            const response = await axios.get(vroute('api.bkp-pajak.data', { tahun, bulan: bulanPajak }));
             if (response.data.success) {
                 setBkpPajakData(response.data);
             }
@@ -295,7 +297,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
     ];
 
     const handleExportExcelBkpBank = () => {
-        const url = route('bkp-bank.excel', {
+        const url = vroute('bkp-bank.excel', {
             tahun,
             bulan: bulanBank
         });
@@ -303,7 +305,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
     };
 
     const handlePrintBkpBank = (settings: PrintSettings) => {
-        const url = route('bkp-bank.cetak', {
+        const url = vroute('bkp-bank.cetak', {
             tahun,
             bulan: settings.period || bulanBank, // Use period from settings or fallback
             paperSize: settings.paperSize,
@@ -314,7 +316,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
     };
 
     const handleExportExcelBkpTunai = () => {
-        const url = route('bkp-pembantu.excel', {
+        const url = vroute('bkp-pembantu.excel', {
             tahun: tahun,
             bulan: bulanPembantu
         });
@@ -322,7 +324,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
     };
 
     const handlePrintBkpPembantu = (settings: PrintSettings) => {
-        const url = route('bkp-pembantu.cetak', {
+        const url = vroute('bkp-pembantu.cetak', {
             tahun,
             bulan: settings.period || bulanPembantu,
             paperSize: settings.paperSize,
@@ -333,7 +335,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
     };
 
     const handleExportExcelBkpUmum = () => {
-        const url = route('bkp-umum.excel', {
+        const url = vroute('bkp-umum.excel', {
             tahun: tahun,
             bulan: bulanUmum
         });
@@ -341,7 +343,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
     };
 
     const handlePrintBkpUmum = (settings: PrintSettings) => {
-        const url = route('bkp-umum.cetak', {
+        const url = vroute('bkp-umum.cetak', {
             tahun,
             bulan: settings.period || bulanUmum,
             paperSize: settings.paperSize,
@@ -352,7 +354,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
     };
 
     const handlePrintRekRealisasi = () => {
-        const url = route('rek-realisasi.cetak', {
+        const url = vroute('rek-realisasi.cetak', {
             tahun: tahun,
             fase: faseRekRealisasi
         });
@@ -360,7 +362,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
     };
 
     const handleExportExcelBkpPajak = () => {
-        const url = route('bkp-pajak.excel', {
+        const url = vroute('bkp-pajak.excel', {
             tahun: tahun,
             bulan: bulanPajak
         });
@@ -368,7 +370,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
     };
 
     const handlePrintBkpPajak = (settings: PrintSettings) => {
-        const url = route('bkp-pajak.cetak', {
+        const url = vroute('bkp-pajak.cetak', {
             tahun,
             bulan: settings.period || bulanPajak,
             paperSize: settings.paperSize,
@@ -379,7 +381,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
     };
 
     const handlePrintBkpRob = (settings: PrintSettings) => {
-        const url = route('bkp-rob.cetak', {
+        const url = vroute('bkp-rob.cetak', {
             tahun,
             bulan: settings.period || bulanRob,
             paperSize: settings.paperSize,
@@ -390,7 +392,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
     };
 
     const handlePrintBkpReg = (settings: PrintSettings) => {
-        const url = route('bkp-reg.cetak', {
+        const url = vroute('bkp-reg.cetak', {
             tahun,
             bulan: settings.period || bulanReg,
             paperSize: settings.paperSize,
@@ -401,7 +403,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
     };
 
     const handlePrintBa = (settings: PrintSettings) => {
-        const url = route('ba.cetak', {
+        const url = vroute('ba.cetak', {
             tahun,
             bulan: settings.period || bulanBa,
             paperSize: settings.paperSize,
@@ -416,7 +418,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
         if (settings.period === 'Tahunan') jenis = 'tahunan';
         else if (settings.period?.startsWith?.('Tahap')) jenis = 'tahap';
 
-        const url = route('realisasi.cetak', {
+        const url = vroute('realisasi.cetak', {
             tahun,
             periode: settings.period || periodeRealisasi,
             jenis_laporan: jenis,
@@ -428,7 +430,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
     };
 
     const handlePrintBhp = (settings: PrintSettings) => {
-        const url = route('bhp.cetak', {
+        const url = vroute('bhp.cetak', {
             tahun,
             periode: periodeBhp,
             jenis_laporan: jenisLaporanBhp,
@@ -440,7 +442,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
     };
 
     const handlePrintBhm = (settings: PrintSettings) => {
-        const url = route('bhm.cetak', {
+        const url = vroute('bhm.cetak', {
             tahun,
             periode: periodeBhm,
             jenis_laporan: jenisLaporanBhm,
@@ -618,7 +620,6 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                             <thead>
                                                 <tr className="bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white font-bold text-center">
                                                     <th className="border border-gray-600 p-2 w-24">TANGGAL</th>
-                                                    <th className="border border-gray-600 p-2 w-32">KODE KEGIATAN</th>
                                                     <th className="border border-gray-600 p-2 w-32">KODE REKENING</th>
                                                     <th className="border border-gray-600 p-2 w-24">NO. BUKTI</th>
                                                     <th className="border border-gray-600 p-2">URAIAN</th>
@@ -634,13 +635,12 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                                     <td className="border border-gray-600 p-1">5</td>
                                                     <td className="border border-gray-600 p-1">6</td>
                                                     <td className="border border-gray-600 p-1">7</td>
-                                                    <td className="border border-gray-600 p-1">8</td>
                                                 </tr>
                                             </thead>
                                             <tbody className="text-gray-900 dark:text-gray-100">
                                                 {isLoading ? (
                                                     <tr>
-                                                        <td colSpan={8} className="border border-gray-600 p-8 text-center text-gray-500">
+                                                        <td colSpan={7} className="border border-gray-600 p-8 text-center text-gray-500">
                                                             Memuat data...
                                                         </td>
                                                     </tr>
@@ -685,7 +685,6 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                                                     </td>
                                                                     <td className="border border-gray-600 p-2"></td>
                                                                     <td className="border border-gray-600 p-2"></td>
-                                                                    <td className="border border-gray-600 p-2"></td>
                                                                     <td className="border border-gray-600 p-2 font-medium">
                                                                         {startLabel}
                                                                     </td>
@@ -705,7 +704,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                                                 {/* Transactions */}
                                                                 {items.length === 0 ? (
                                                                     <tr>
-                                                                        <td colSpan={8} className="border border-gray-600 p-8 text-center text-gray-500 italic">
+                                                                        <td colSpan={7} className="border border-gray-600 p-8 text-center text-gray-500 italic">
                                                                             Tidak ada transaksi bulan ini
                                                                         </td>
                                                                     </tr>
@@ -720,7 +719,6 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                                                                 <td className="border border-gray-600 p-2 text-center whitespace-nowrap">
                                                                                     {format(new Date(item.tanggal), 'dd-MM-yyyy')}
                                                                                 </td>
-                                                                                <td className="border border-gray-600 p-2 text-center text-gray-600">{item.kode_kegiatan || ''}</td>
                                                                                 <td className="border border-gray-600 p-2 text-center text-gray-600">{item.kode_rekening || ''}</td>
                                                                                 <td className="border border-gray-600 p-2 text-center text-gray-600">{item.no_bukti || ''}</td>
                                                                                 <td className="border border-gray-600 p-2">{item.uraian}</td>
@@ -739,7 +737,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                                                 )}
                                                                 {/* Footer Totals */}
                                                                 <tr className="bg-gray-100 dark:bg-gray-700 font-bold text-gray-900 dark:text-gray-100">
-                                                                    <td colSpan={5} className="border border-gray-600 p-2 uppercase">Jumlah</td>
+                                                                    <td colSpan={4} className="border border-gray-600 p-2 uppercase">Jumlah</td>
                                                                     <td className="border border-gray-600 p-2 text-right">
                                                                         {(() => {
                                                                             const items = bkpBankData?.items || [];
@@ -969,9 +967,18 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                                                 <td className="border border-gray-600 p-2 text-center text-gray-600">-</td>
                                                                 <td className="border border-gray-600 p-2 font-medium">
                                                                     {(() => {
-                                                                        // Capitalize first letter of month
-                                                                        const capitalizedBulan = bulanUmum.charAt(0).toUpperCase() + bulanUmum.slice(1);
-                                                                        return `Saldo Awal Bulan ${capitalizedBulan} ${tahun}`;
+                                                                        const monthList = ['januari', 'februari', 'maret', 'april', 'mei', 'juni', 'juli', 'agustus', 'september', 'oktober', 'november', 'desember'];
+                                                                        const idx = monthList.indexOf(bulanUmum.toLowerCase());
+                                                                        
+                                                                        if (idx === 0) {
+                                                                            return `Saldo Bank bulan Desember ${parseInt(tahun) - 1}`;
+                                                                        } else if (idx > 0) {
+                                                                            const prevMonth = monthList[idx - 1];
+                                                                            return `Saldo Bank bulan ${prevMonth.charAt(0).toUpperCase() + prevMonth.slice(1)} ${tahun}`;
+                                                                        }
+                                                                        
+                                                                        // Fallback
+                                                                        return `Saldo Bank bulan ${bulanUmum.charAt(0).toUpperCase() + bulanUmum.slice(1)} ${tahun}`;
                                                                     })()}
                                                                 </td>
                                                                 <td className="border border-gray-600 p-2 text-right">
@@ -2106,7 +2113,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                                 <div className="uppercase">{rekRealisasiData?.sekolah?.jenjang_sekolah || '-'}</div>
                                                 <div className="font-semibold">Sumber Dana</div>
                                                 <div>:</div>
-                                                <div>BOS Reguler</div>
+                                                <div>{rekRealisasiData?.penganggaran?.sumber_dana || 'BOSP Reguler'}</div>
                                             </div>
 
                                             {/* Table */}

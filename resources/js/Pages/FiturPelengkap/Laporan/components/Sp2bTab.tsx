@@ -3,6 +3,7 @@ import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
 import { registerLocale } from "react-datepicker";
 import { id } from 'date-fns/locale/id';
+import { useForm, usePage } from '@inertiajs/react';
 import axios from 'axios';
 import Select from 'react-select';
 import Modal from '@/Components/Modal';
@@ -11,6 +12,7 @@ import TextInput from '@/Components/TextInput';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import DangerButton from '@/Components/DangerButton';
+import useVariantRoute from '@/Hooks/useVariantRoute';
 
 registerLocale('id', id);
 
@@ -40,6 +42,8 @@ interface Sp2bData {
 }
 
 export default function Sp2bTab() {
+    const vroute = useVariantRoute();
+    const penganggaranFk = usePage<any>().props.penganggaranFk || 'penganggaran_id';
     const [data, setData] = useState<Sp2bData[]>([]);
     const [search, setSearch] = useState('');
     const [page, setPage] = useState(1);
@@ -100,7 +104,7 @@ export default function Sp2bTab() {
     const handleCalculate = async () => {
         setIsCalculating(true);
         try {
-            const response = await axios.get('/fitur-pelengkap/api/sp2b/calculate', {
+            const response = await axios.get(vroute('api.sp2b.calculate'), {
                 params: {
                     tahun_anggaran: formData.tahun_anggaran,
                     jenis_periode: formData.jenis_periode,
@@ -121,6 +125,7 @@ export default function Sp2bTab() {
                 belanja_modal_aset_tetap_lainnya: response.data.belanja_modal_aset_tetap_lainnya,
                 belanja_modal_tanah_bangunan: response.data.belanja_modal_tanah_bangunan,
                 saldo_akhir: response.data.saldo_akhir,
+                penganggaran_id: response.data[penganggaranFk],
             }));
         } catch (error: any) {
             alert(error.response?.data?.error || 'Gagal menghitung data');
@@ -131,7 +136,7 @@ export default function Sp2bTab() {
 
     const fetchAvailableYears = async () => {
         try {
-            const response = await axios.get('/fitur-pelengkap/api/sp2b/tahun');
+            const response = await axios.get(vroute('api.sp2b.tahun'));
             const years = response.data;
             setAvailableYears(years);
 
@@ -156,7 +161,7 @@ export default function Sp2bTab() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const response = await axios.get('/fitur-pelengkap/api/sp2b', {
+            const response = await axios.get(vroute('api.sp2b.index'), {
                 params: { search, page }
             });
             setData(response.data.data);
@@ -172,10 +177,14 @@ export default function Sp2bTab() {
         e.preventDefault();
         setIsSaving(true);
         try {
+            const payload = {
+                ...formData,
+                [penganggaranFk]: formData.penganggaran_id
+            };
             if (formData.id) {
-                await axios.put(`/fitur-pelengkap/api/sp2b/${formData.id}`, formData);
+                await axios.put(vroute('api.sp2b.update', formData.id), payload);
             } else {
-                await axios.post('/fitur-pelengkap/api/sp2b', formData);
+                await axios.post(vroute('api.sp2b.store'), payload);
             }
             setIsAddModalOpen(false);
             fetchData();
@@ -203,7 +212,7 @@ export default function Sp2bTab() {
     const confirmDelete = async () => {
         if (!itemToDelete) return;
         try {
-            await axios.delete(`/fitur-pelengkap/api/sp2b/${itemToDelete}`);
+            await axios.delete(vroute('api.sp2b.destroy', itemToDelete));
             fetchData();
             setIsDeleteModalOpen(false);
             setItemToDelete(null);
@@ -327,7 +336,7 @@ export default function Sp2bTab() {
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                             <div className="flex items-center space-x-2">
                                                 <button
-                                                    onClick={() => { setSelectedPdfUrl(`/laporan/sp2b/${item.id}/pdf`); setIsPreviewModalOpen(true); }}
+                                                    onClick={() => { setSelectedPdfUrl(vroute('laporan.sp2b.pdf', item.id)); setIsPreviewModalOpen(true); }}
                                                     className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-200"
                                                     title="Preview PDF"
                                                 >

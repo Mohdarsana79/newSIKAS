@@ -392,7 +392,7 @@
                     <tr>
                         <td width="20%"><span class="label-col">Sudah Terima Dari</span></td>
                         <td widht="2%"><span class="label-col">:</span></td>
-                        <td width="78%"><span class="label-col">Bendahara Dana BOSP {{ ucwords(strtolower($kwitansi->sekolah->nama_sekolah ?? '-'))
+                        <td width="78%"><span class="label-col">Bendahara Dana {{ $sumberDana ?? 'BOSP Reguler' }} {{ ucwords(strtolower($kwitansi->sekolah->nama_sekolah ?? '-'))
                         }}</span></td>
                     </tr>
                     <tr>
@@ -509,10 +509,10 @@
             <table style="border: none; border-collapse: collapse; width:100%; text-align:center">
                 <tr>
                     <td>
-                        <!-- Kolom Kiri: Bendahara BOSP -->
+                        <!-- Kolom Kiri: Bendahara {{ $sumberDana ?? 'BOSP Reguler' }} -->
                         <div class="signature-block" style="margin-right: 300px;">
                             <p>{{ $tanggalLunas ?? '-' }}</p>
-                            <p class="role">Bendahara BOSP</p>
+                            <p class="role">Bendahara {{ $sumberDana ?? 'BOSP Reguler' }}</p>
                             <p class="name">{{$kwitansi->penganggaran->bendahara}}</p>
                             <p class="nip">NIP. {{$kwitansi->penganggaran->nip_bendahara}}</p>
                         </div>

@@ -6,6 +6,8 @@ import Chart from 'react-apexcharts';
 import DatePicker from '@/Components/DatePicker';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
+import TabAlurKas from './Partials/TabAlurKas';
+import TabRincianPencairan from '../Rkas/Partials/TabRincianPencairan';
 
 interface SummaryProps extends Record<string, unknown> {
     anggaran: {
@@ -19,7 +21,7 @@ interface SummaryProps extends Record<string, unknown> {
         kepala_sekolah: string;
         nip_kepala_sekolah: string;
         bendahara: string;
-        nip_bendahara: string;
+        nip_bendahara: string; sumber_dana?: string;
         sekolah: {
             nama_sekolah: string;
             npsn: string;
@@ -141,9 +143,10 @@ interface SummaryProps extends Record<string, unknown> {
         pemeliharaan: { value: number; percentage: number; valid: boolean; message: string; };
         jenis_belanja: Array<{ label: string; value: number; percentage: number; }>;
     };
+    routePrefix?: string;
 }
 
-export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaBulananData, rekapData, perTahapData, lembarData, rincianData, grafikData }: PageProps<SummaryProps>) {
+export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaBulananData, rekapData, perTahapData, lembarData, rincianData, grafikData, routePrefix = '' }: PageProps<SummaryProps>) {
     const [activeTab, setActiveTab] = useState('Rka Tahapan');
     const [selectedMonth, setSelectedMonth] = useState('Januari');
     const [isLoading, setIsLoading] = useState(false);
@@ -172,7 +175,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
         setSelectedMonth(month);
         setIsLoading(true);
         router.get(
-            route('rkas-perubahan.summary', { id: anggaran.id }),
+            route(`${routePrefix}rkas-perubahan.summary`, { id: anggaran.id }),
             { month: month },
             {
                 preserveState: true,
@@ -190,13 +193,14 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
     });
 
     const [showPrintModal, setShowPrintModal] = useState(false);
-    const [printTarget, setPrintTarget] = useState<'tahapan' | 'tahapan_v1' | 'rekap' | 'lembar' | 'bulanan' | 'rincian'>('tahapan');
+    const [printTarget, setPrintTarget] = useState<'tahapan' | 'tahapan_v1' | 'rekap' | 'lembar' | 'bulanan' | 'rincian' | 'alur_kas' | 'rp'>('tahapan');
     const [printSettings, setPrintSettings] = useState({
         paperSize: 'A4',
         orientation: 'portrait',
         fontSize: '12pt'
     });
     const [printTahap, setPrintTahap] = useState<'1' | '2' | 'tahunan'>('tahunan');
+    const [rpTahap, setRpTahap] = useState<number>(1);
 
     const handlePrint = (monthOverride?: string) => {
         let routeName = 'rkas-perubahan.export-pdf';
@@ -210,20 +214,25 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
 
         if (printTarget === 'rekap') routeName = 'rkas-perubahan.export-rekap-pdf';
         if (printTarget === 'lembar') routeName = 'rkas-perubahan.export-lembar-kerja-pdf';
+        if (printTarget === 'rp') {
+            routeName = 'rkas-perubahan.export-rp-pdf';
+            params.tahap = rpTahap;
+        }
         if (printTarget === 'tahapan_v1') routeName = 'rkas-perubahan.export-tahapan-v1-pdf';
         if (printTarget === 'rincian') routeName = 'rkas-perubahan.export-rincian-pdf';
+        if (printTarget === 'alur_kas') routeName = 'rkas-perubahan.export-alur-kas-pdf';
 
         if (printTarget === 'bulanan') {
             routeName = 'rkas-perubahan.export-bulanan-pdf';
             params.month = monthOverride || selectedMonth;
         }
 
-        const url = route(routeName, params);
+        const url = route(`${routePrefix}${routeName}`, params);
         window.open(url, '_blank');
         setShowPrintModal(false);
     };
 
-    const handleExportExcel = (target?: string) => {
+    const handleExportExcel = (target?: string, tahapOverride?: number) => {
         const targetToUse = target || printTarget;
         let routeName = 'rkas-perubahan.export-tahapan-excel';
         const params: any = {
@@ -235,9 +244,14 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
         };
 
         if (targetToUse === 'tahapan_v1') routeName = 'rkas-perubahan.export-tahapan-v1-excel';
+        if (targetToUse === 'rp') {
+            routeName = 'rkas-perubahan.export-rp-excel';
+            params.tahap = tahapOverride ?? rpTahap;
+        }
         if (targetToUse === 'rincian') routeName = 'rkas-perubahan.export-rincian-excel';
+        if (targetToUse === 'alur_kas') routeName = 'rkas-perubahan.export-alur-kas-excel';
 
-        const url = route(routeName, params);
+        const url = route(`${routePrefix}${routeName}`, params);
         window.open(url, '_blank');
         setShowPrintModal(false);
     };
@@ -261,17 +275,18 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
 
     const tabs = [
         { name: 'Rka Tahapan', label: 'Rka Tahapan' },
-
         { name: 'Rka Rekap', label: 'Rka Rekap' },
         { name: 'Lembar Kerja 221', label: 'Lembar Kerja 221' },
         { name: 'Rka Bulanan', label: 'Rka Bulanan' },
         { name: 'Rincian Perubahan', label: 'Rincian Perubahan' },
         { name: 'Grafik', label: 'Grafik' },
+        { name: 'Rincian Pencairan', label: 'RP' },
+        { name: 'Alur Kas', label: 'Alur Kas' },
     ];
 
     const handleSaveTanggalCetak = (e: React.FormEvent) => {
         e.preventDefault();
-        patch(route('penganggaran.update-tanggal-perubahan', anggaran.id), {
+        patch(route(`${routePrefix}penganggaran.update-tanggal-perubahan`, anggaran.id), {
             onSuccess: () => {
                 setShowDateModal(false);
             }
@@ -368,7 +383,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                                     Cetak Semua Bulan
                                 </button>
                             )}
-                            {printTarget === 'rincian' && (
+                            {(printTarget === 'rincian' || printTarget === 'alur_kas' || printTarget === 'tahapan' || printTarget === 'rp') && (
                                 <button
                                     onClick={() => handleExportExcel()}
                                     className="bg-green-600 text-white hover:bg-green-700 px-4 py-2 rounded-md text-sm font-medium shadow-sm transition-colors flex items-center gap-2"
@@ -397,7 +412,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                 {/* Header Section */}
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-4">
                     <div>
-                        <Link href={route('rkas-perubahan.index', anggaran.id)} className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 font-medium mb-2">
+                        <Link href={route(`${routePrefix}rkas-perubahan.index`, anggaran.id)} className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 font-medium mb-2">
                             <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                             </svg>
@@ -454,16 +469,6 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                             <div className="space-y-8 animate-fade-in-up">
                                 {/* Action Button */}
                                 <div className="flex justify-end mb-4">
-                                    <a
-                                        href={route('rkas-perubahan.export-tahapan-excel', anggaran.id)}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="bg-green-600 text-white hover:bg-green-700 px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 shadow-sm transition-colors me-2">
-                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                        </svg>
-                                        Export Excel
-                                    </a>
                                     <button
                                         onClick={() => {
                                             setPrintTarget('tahapan');
@@ -529,7 +534,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                                                     <tbody className="divide-y divide-gray-900 dark:divide-gray-600 bg-white dark:bg-gray-800">
                                                         <tr>
                                                             <td className="px-4 py-2 border-r border-gray-900 dark:border-gray-600 font-medium">4.3.1.01.</td>
-                                                            <td className="px-4 py-2 border-r border-gray-900 dark:border-gray-600">BOS Reguler</td>
+                                                            <td className="px-4 py-2 border-r border-gray-900 dark:border-gray-600">{anggaran.sumber_dana || 'BOS Reguler'}</td>
                                                             <td className="px-4 py-2 text-right font-medium">Rp. {formatCurrency(anggaran.pagu_anggaran)}</td>
                                                         </tr>
                                                         <tr className="bg-gray-200 dark:bg-gray-700/50 font-bold border-t border-gray-900 dark:border-gray-600">
@@ -829,7 +834,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                                             <tbody className="divide-y divide-gray-900 dark:divide-gray-600">
                                                 <tr className="divide-x divide-gray-900 dark:divide-gray-600">
                                                     <td className="px-3 py-2 align-top text-gray-900 dark:text-gray-100">4.3.1.01.</td>
-                                                    <td className="px-3 py-2 align-top text-gray-900 dark:text-gray-100">BOS Reguler</td>
+                                                    <td className="px-3 py-2 align-top text-gray-900 dark:text-gray-100">{anggaran.sumber_dana || 'BOS Reguler'}</td>
                                                     <td className="px-3 py-2 text-right align-top text-gray-900 dark:text-gray-100">{formatCurrency(anggaran.pagu_anggaran)}</td>
                                                 </tr>
                                                 <tr className="font-bold border-t-2 border-gray-900 dark:border-gray-500 divide-x divide-gray-900 dark:divide-gray-600">
@@ -1124,7 +1129,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                                                     <tbody className="divide-y divide-gray-900 dark:divide-gray-600 bg-white dark:bg-gray-800">
                                                         <tr>
                                                             <td className="px-4 py-2 border-r border-gray-900 dark:border-gray-600 font-medium">4.3.1.01.</td>
-                                                            <td className="px-4 py-2 border-r border-gray-900 dark:border-gray-600">BOS Reguler</td>
+                                                            <td className="px-4 py-2 border-r border-gray-900 dark:border-gray-600">{anggaran.sumber_dana || 'BOS Reguler'}</td>
                                                             <td className="px-4 py-2 text-right font-medium">{anggaran.pagu_anggaran}</td>
                                                         </tr>
                                                         <tr className="bg-white dark:bg-gray-800 font-bold border-t border-gray-900 dark:border-gray-600">
@@ -1372,6 +1377,14 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                                     </table>
                                 </div>
                             </div>
+                        )}
+
+                        {activeTab === 'Rincian Pencairan' && (
+                            <TabRincianPencairan anggaran={anggaran} tahapanData={tahapanData} variant='rkas_perubahan' onPrint={(target, params) => { if (params?.tahap) setRpTahap(params.tahap); setPrintTarget(target as any); setShowPrintModal(true); }} onExportExcel={(target, params) => handleExportExcel(target, params?.tahap)} />
+                        )}
+                        
+                        {activeTab === 'Alur Kas' && (
+                            <TabAlurKas anggaran={anggaran} tahapanData={tahapanData} months={months} onPrint={(target) => { setPrintTarget(target as any); setShowPrintModal(true); }} />
                         )}
 
                         {/* Other Tabs Placeholders */}

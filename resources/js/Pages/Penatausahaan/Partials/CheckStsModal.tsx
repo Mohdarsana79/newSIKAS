@@ -3,6 +3,7 @@ import Modal from '@/Components/Modal';
 import SecondaryButton from '@/Components/SecondaryButton';
 import PrimaryButton from '@/Components/PrimaryButton';
 import axios from 'axios';
+import useVariantRoute from '@/Hooks/useVariantRoute';
 
 interface CheckStsModalProps {
     show: boolean;
@@ -13,6 +14,7 @@ interface CheckStsModalProps {
 }
 
 export default function CheckStsModal({ show, onClose, currentBulan, currentTahun, onSuccess }: CheckStsModalProps) {
+    const vroute = useVariantRoute();
     const [selectedTahun, setSelectedTahun] = useState(currentTahun);
     const [stsList, setStsList] = useState<any[]>([]);
     const [checkedIds, setCheckedIds] = useState<number[]>([]);
@@ -23,7 +25,7 @@ export default function CheckStsModal({ show, onClose, currentBulan, currentTahu
     // Fetch Available Years on Mount / Show
     useEffect(() => {
         if (show) {
-            axios.get(route('api.sts.years'))
+            axios.get(vroute('api.sts.years'))
                 .then(res => {
                     if (res.data.success) {
                         const years = res.data.data;
@@ -53,7 +55,7 @@ export default function CheckStsModal({ show, onClose, currentBulan, currentTahu
     const fetchStsData = async () => {
         setIsLoading(true);
         try {
-            const response = await axios.get(route('api.sts.by-tahun', selectedTahun));
+            const response = await axios.get(vroute('api.sts.by-tahun', selectedTahun));
             if (response.data.success) {
                 const data = response.data.data;
                 setStsList(data);
@@ -101,7 +103,7 @@ export default function CheckStsModal({ show, onClose, currentBulan, currentTahu
             const idsToRemove = allIds.filter(id => !checkedIds.includes(id));
 
             if (idsToAdd.length > 0) {
-                await axios.post(route('api.sts.add-to-bkp'), {
+                await axios.post(vroute('api.sts.add-to-bkp'), {
                     sts_ids: idsToAdd,
                     bulan: currentBulan,
                     tahun: currentTahun,
@@ -110,7 +112,7 @@ export default function CheckStsModal({ show, onClose, currentBulan, currentTahu
             }
 
             if (idsToRemove.length > 0) {
-                await axios.post(route('api.sts.add-to-bkp'), {
+                await axios.post(vroute('api.sts.add-to-bkp'), {
                     sts_ids: idsToRemove,
                     bulan: currentBulan,
                     tahun: currentTahun,
