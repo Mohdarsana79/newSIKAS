@@ -148,7 +148,11 @@
                 <thead>
                     <tr>
                         <th class="text-center" style="width: 5%;">No.</th>
-                        <th class="text-center" style="width: 80%;">Uraian Rekening</th>
+                        <th class="text-center" style="width: 25%;">Uraian Rekening</th>
+                        <th class="text-center" style="width: 15%;">Bulan</th>
+                        <th class="text-center" style="width: 15%;">Penerima</th>
+                        <th class="text-center" style="width: 10%;">Jabatan</th>
+                        <th class="text-center" style="width: 15%;">Rekening & Bank</th>
                         <th class="text-center" style="width: 15%;">Jumlah Total</th>
                     </tr>
                 </thead>
@@ -157,7 +161,7 @@
                     @foreach ($rincianData as $index => $group)
                         <tr class="bg-orange">
                             <td class="text-center font-bold" style="text-align: center; vertical-align: middle;">{{ $no++ }}</td>
-                            <td class="font-bold">{{ $group['sub_program'] ?? 'Lainnya' }}</td>
+                            <td class="font-bold" colspan="5">{{ $group['sub_program'] ?? 'Lainnya' }}</td>
                             @if ($is_excel ?? false)
                                 <td class="accounting font-bold">{{ number_format($group['total'], 0, '.', ',') }}</td>
                             @else
@@ -168,6 +172,10 @@
                         <tr>
                             <td class="text-center"></td>
                             <td>{{ $item['uraian'] ?? '-' }}</td>
+                            <td>{{ $item['bulan'] ?? '-' }}</td>
+                            <td>{{ $item['nama_penerima'] ?? '-' }}</td>
+                            <td>{{ $item['jabatan'] ?? '-' }}</td>
+                            <td>{{ $item['nomor_rekening'] ?? '-' }} - {{ $item['bank'] ?? '-' }}</td>
                             @if ($is_excel ?? false)
                                 <td class="accounting">{{ number_format($item['jumlah'], 0, '.', ',') }}</td>
                             @else
@@ -182,7 +190,7 @@
                         @php
                             $totalKeseluruhan = collect($rincianData)->sum('total');
                         @endphp
-                        <td colspan="2" class="text-center uppercase">Jumlah Keseluruhan Rincian</td>
+                        <td colspan="6" class="text-center uppercase">Jumlah Keseluruhan Rincian</td>
                         @if ($is_excel ?? false)
                             <td class="accounting">{{ number_format($totalKeseluruhan, 0, '.', ',') }}</td>
                         @else

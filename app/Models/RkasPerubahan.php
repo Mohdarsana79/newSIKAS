@@ -20,7 +20,19 @@ class RkasPerubahan extends Model
         'harga_satuan',
         'bulan',
         'jumlah',
-        'satuan'
+        'satuan',
+        'nama_penerima',
+        'jabatan',
+        'nomor_rekening',
+        'bank',
+        'ada_npwp',
+        'pot_ppn',
+        'pot_pph23',
+        'pot_pph21',
+        'pot_pph21_narasumber',
+        'status_penerima',
+        'golongan',
+        'uraian_gabungan'
     ];
 
     protected $casts = [

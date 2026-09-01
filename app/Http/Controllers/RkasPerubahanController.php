@@ -605,8 +605,19 @@ class RkasPerubahanController extends Controller
 
         $tahapanData = $this->kelolaDataRkas($groupedRkas, $groupedMurni);
         
-        // Data for "Rincian" Tab
-        $rincianData = $this->kelolaDataRincian($rkasData);
+        // Data for "Rincian" Tab (Tahap 1 dari Murni, Tahap 2 dari Perubahan)
+        $rincianGabungan = collect();
+        $rincianGabungan = $rincianGabungan->merge(
+            $rkasMurniData->filter(function($item) {
+                return in_array($item->bulan, ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni']);
+            })
+        );
+        $rincianGabungan = $rincianGabungan->merge(
+            $rkasData->filter(function($item) {
+                return in_array($item->bulan, ['Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']);
+            })
+        );
+        $rincianData = $this->kelolaDataRincian($rincianGabungan);
 
         // 3. Lembar Kerja 221 Data
         $hierarchyNames = [
@@ -767,10 +778,35 @@ class RkasPerubahanController extends Controller
             $subProgram = optional($group->first()->kodeKegiatan)->sub_program ?? 'Lainnya';
             $total = $group->sum(function ($item) { return $item->jumlah * $item->harga_satuan; });
             
-            $items = $group->groupBy('uraian')->map(function ($uraianGroup) {
+            $items = $group->groupBy(function($item) {
+                $tampil = $item->uraian_gabungan ?? $item->uraian;
+                $tahap = in_array($item->bulan, ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni']) ? 1 : 2;
+                return $tampil . '-' . $item->kode_rekening_id . '-Tahap' . $tahap;
+            })->map(function ($uraianGroup) {
+                $first = $uraianGroup->first();
+                $tahap = in_array($first->bulan, ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni']) ? 1 : 2;
                 return [
-                    'uraian' => $uraianGroup->first()->uraian,
-                    'jumlah' => $uraianGroup->sum(function ($item) { return $item->jumlah * $item->harga_satuan; })
+                    'uraian' => $first->uraian_gabungan ?? $first->uraian,
+                    'kode_rekening_id' => $first->kode_rekening_id,
+                    'kode_id' => $first->kode_id,
+                    'kode_rekening' => optional($first->rekeningBelanja)->kode_rekening ?? '',
+                    'kode_kegiatan' => optional($first->kodeKegiatan)->kode ?? '',
+                    'tahap' => $tahap,
+                    'jumlah' => $uraianGroup->sum(function ($item) { return $item->jumlah * $item->harga_satuan; }),
+                    'original_items' => $uraianGroup->map(function($i) { return [
+                        'uraian' => $i->uraian, 
+                        'kode_rekening_id' => $i->kode_rekening_id, 
+                        'kode_id' => $i->kode_id,
+                        'kode_rekening' => optional($i->rekeningBelanja)->kode_rekening ?? '',
+                        'kode_kegiatan' => optional($i->kodeKegiatan)->kode ?? ''
+                    ]; })->unique(function($item) { return $item['uraian'] . '-' . $item['kode_rekening_id'] . '-' . $item['kode_id']; })->values()->all(),
+                    'rkas_ids' => $uraianGroup->pluck('id')->values()->all(),
+                    'bulan_list' => $uraianGroup->pluck('bulan')->filter()->unique()->values()->all(),
+                    'bulan' => implode(', ', $uraianGroup->pluck('bulan')->filter()->unique()->values()->all()),
+                    'nama_penerima' => $first->nama_penerima ?? '-',
+                    'jabatan' => $first->jabatan ?? '-',
+                    'nomor_rekening' => $first->nomor_rekening ?? '-',
+                    'bank' => $first->bank ?? '-'
                 ];
             })->values();
 
@@ -907,9 +943,16 @@ class RkasPerubahanController extends Controller
                 if (!isset($groupedItems[$key])) {
                     $groupedItems[$key] = [
                         'id' => null, 
+                        'kode_id' => $item->kode_id ?? null,
                         'kode_rekening' => $item->rekeningBelanja->kode_rekening ?? '-',
+                        'kode_kegiatan' => $item->kodeKegiatan->kode ?? '-',
                         'program_code' => $item->kodeKegiatan->kode ?? '-',
                         'uraian' => $item->uraian,
+                        'uraian_gabungan' => $item->uraian_gabungan,
+                        'uraian_gabungan_t1' => null,
+                        'uraian_gabungan_t2' => null,
+                        'rkas_ids' => [],
+                        'rkas_ids_per_bulan' => [], // Added for precise Gabung Kegiatan matching
                         'tarif' => $item->harga_satuan,
                         'satuan' => $item->satuan,
                         'volume' => 0,
@@ -929,9 +972,42 @@ class RkasPerubahanController extends Controller
                         'pot_ppn' => $item->pot_ppn,
                         'pot_pph23' => $item->pot_pph23,
                         'pot_pph21' => $item->pot_pph21,
+                        'pot_pph21_narasumber' => $item->pot_pph21_narasumber,
                         'status_penerima' => $item->status_penerima,
                         'golongan' => $item->golongan,
+                        'pot_ppn_t1' => 0,
+                        'pot_ppn_t2' => 0,
+                        'pot_pph23_t1' => 0,
+                        'pot_pph23_t2' => 0,
+                        'pot_pph21_t1' => 0,
+                        'pot_pph21_t2' => 0,
+                        'pot_pph21_narasumber_t1' => 0,
+                        'pot_pph21_narasumber_t2' => 0,
+                        'is_ppn' => (bool) ($item->rekeningBelanja->is_ppn ?? false),
+                        'is_pph21' => (bool) ($item->rekeningBelanja->is_pph21 ?? false),
+                        'is_pph22' => (bool) ($item->rekeningBelanja->is_pph22 ?? false),
+                        'is_pph23' => (bool) ($item->rekeningBelanja->is_pph23 ?? false),
+                        'is_pph4' => (bool) ($item->rekeningBelanja->is_pph4 ?? false),
                     ];
+                } else {
+                    if (empty($groupedItems[$key]['nama_penerima']) && !empty($item->nama_penerima)) {
+                        $groupedItems[$key]['nama_penerima'] = $item->nama_penerima;
+                        $groupedItems[$key]['jabatan'] = $item->jabatan;
+                        $groupedItems[$key]['nomor_rekening'] = $item->nomor_rekening;
+                        $groupedItems[$key]['bank'] = $item->bank;
+                        $groupedItems[$key]['ada_npwp'] = $item->ada_npwp;
+                        $groupedItems[$key]['status_penerima'] = $item->status_penerima;
+                        $groupedItems[$key]['golongan'] = $item->golongan;
+                    }
+                    if (empty($groupedItems[$key]['pot_ppn']) && !empty($item->pot_ppn)) {
+                        $groupedItems[$key]['pot_ppn'] = $item->pot_ppn;
+                    }
+                    if (empty($groupedItems[$key]['pot_pph23']) && !empty($item->pot_pph23)) {
+                        $groupedItems[$key]['pot_pph23'] = $item->pot_pph23;
+                    }
+                    if (empty($groupedItems[$key]['pot_pph21']) && !empty($item->pot_pph21)) {
+                        $groupedItems[$key]['pot_pph21'] = $item->pot_pph21;
+                    }
                 }
 
                 $groupedItems[$key]['volume_murni'] += $item->jumlah;
@@ -945,9 +1021,16 @@ class RkasPerubahanController extends Controller
                 if (!isset($groupedItems[$key])) {
                     $groupedItems[$key] = [
                         'id' => $item->id,
+                        'kode_id' => $item->kode_id ?? null,
                         'kode_rekening' => $item->rekeningBelanja->kode_rekening ?? '-',
+                        'kode_kegiatan' => $item->kodeKegiatan->kode ?? '-',
                         'program_code' => $item->kodeKegiatan->kode ?? '-',
                         'uraian' => $item->uraian,
+                        'uraian_gabungan' => $item->uraian_gabungan,
+                        'uraian_gabungan_t1' => null,
+                        'uraian_gabungan_t2' => null,
+                        'rkas_ids' => [],
+                        'rkas_ids_per_bulan' => [], // Added for precise Gabung Kegiatan matching
                         'tarif' => $item->harga_satuan,
                         'satuan' => $item->satuan,
                         'volume' => 0,
@@ -967,27 +1050,94 @@ class RkasPerubahanController extends Controller
                         'pot_ppn' => $item->pot_ppn,
                         'pot_pph23' => $item->pot_pph23,
                         'pot_pph21' => $item->pot_pph21,
+                        'pot_pph21_narasumber' => $item->pot_pph21_narasumber,
                         'status_penerima' => $item->status_penerima,
                         'golongan' => $item->golongan,
+                        'pot_ppn_t1' => 0,
+                        'pot_ppn_t2' => 0,
+                        'pot_pph23_t1' => 0,
+                        'pot_pph23_t2' => 0,
+                        'pot_pph21_t1' => 0,
+                        'pot_pph21_t2' => 0,
+                        'pot_pph21_narasumber_t1' => 0,
+                        'pot_pph21_narasumber_t2' => 0,
+                        'is_ppn' => (bool) ($item->rekeningBelanja->is_ppn ?? false),
+                        'is_pph21' => (bool) ($item->rekeningBelanja->is_pph21 ?? false),
+                        'is_pph22' => (bool) ($item->rekeningBelanja->is_pph22 ?? false),
+                        'is_pph23' => (bool) ($item->rekeningBelanja->is_pph23 ?? false),
+                        'is_pph4' => (bool) ($item->rekeningBelanja->is_pph4 ?? false),
                     ];
+                } else {
+                    if (empty($groupedItems[$key]['nama_penerima']) && !empty($item->nama_penerima)) {
+                        $groupedItems[$key]['nama_penerima'] = $item->nama_penerima;
+                        $groupedItems[$key]['jabatan'] = $item->jabatan;
+                        $groupedItems[$key]['nomor_rekening'] = $item->nomor_rekening;
+                        $groupedItems[$key]['bank'] = $item->bank;
+                        $groupedItems[$key]['ada_npwp'] = $item->ada_npwp;
+                        $groupedItems[$key]['status_penerima'] = $item->status_penerima;
+                        $groupedItems[$key]['golongan'] = $item->golongan;
+                    }
+                    if (empty($groupedItems[$key]['pot_ppn']) && !empty($item->pot_ppn)) {
+                        $groupedItems[$key]['pot_ppn'] = $item->pot_ppn;
+                    }
+                    if (empty($groupedItems[$key]['pot_pph23']) && !empty($item->pot_pph23)) {
+                        $groupedItems[$key]['pot_pph23'] = $item->pot_pph23;
+                    }
+                    if (empty($groupedItems[$key]['pot_pph21']) && !empty($item->pot_pph21)) {
+                        $groupedItems[$key]['pot_pph21'] = $item->pot_pph21;
+                    }
                 }
 
-                $totalItem = $item->jumlah * $item->harga_satuan;
+                $groupedItems[$key]['rkas_ids'][] = $item->id;
+                if (!isset($groupedItems[$key]['rkas_ids_per_bulan'][$item->bulan])) {
+                    $groupedItems[$key]['rkas_ids_per_bulan'][$item->bulan] = [];
+                }
+                $groupedItems[$key]['rkas_ids_per_bulan'][$item->bulan][] = $item->id;
+
+                $jumlah = $item->jumlah * $item->harga_satuan;
+                $isTahap1 = in_array($item->bulan, ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni']);
                 $bulan = $item->bulan;
 
                 $groupedItems[$key]['volume'] += $item->jumlah;
-                $groupedItems[$key]['jumlah'] += $totalItem;
-                
-                if (in_array($bulan, ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni'])) {
-                    $groupedItems[$key]['tahap1'] += $totalItem;
+                $groupedItems[$key]['jumlah'] += $jumlah;
+
+                if ($isTahap1) {
+                    $groupedItems[$key]['pot_ppn_t1'] += $item->pot_ppn;
+                    $groupedItems[$key]['pot_pph23_t1'] += $item->pot_pph23;
+                    $groupedItems[$key]['pot_pph21_t1'] += $item->pot_pph21;
+                    $groupedItems[$key]['pot_pph21_narasumber_t1'] += $item->pot_pph21_narasumber;
+                    $groupedItems[$key]['tahap1'] += $jumlah;
+                    if (!empty($item->uraian_gabungan)) {
+                        $groupedItems[$key]['uraian_gabungan_t1'] = $item->uraian_gabungan;
+                    }
                 } else {
-                    $groupedItems[$key]['tahap2'] += $totalItem;
+                    $groupedItems[$key]['pot_ppn_t2'] += $item->pot_ppn;
+                    $groupedItems[$key]['pot_pph23_t2'] += $item->pot_pph23;
+                    $groupedItems[$key]['pot_pph21_t2'] += $item->pot_pph21;
+                    $groupedItems[$key]['pot_pph21_narasumber_t2'] += $item->pot_pph21_narasumber;
+                    $groupedItems[$key]['tahap2'] += $jumlah;
+                    if (!empty($item->uraian_gabungan)) {
+                        $groupedItems[$key]['uraian_gabungan_t2'] = $item->uraian_gabungan;
+                    }
                 }
 
-                $groupedItems[$key]['bulanan'][$bulan] = [
-                    'volume' => $item->jumlah,
-                    'total' => $totalItem
-                ];
+                if (!isset($groupedItems[$key]['bulanan'][$bulan])) {
+                    $groupedItems[$key]['bulanan'][$bulan] = [
+                        'volume' => 0,
+                        'total' => 0,
+                        'pot_ppn' => 0,
+                        'pot_pph23' => 0,
+                        'pot_pph21' => 0,
+                        'pot_pph21_narasumber' => 0,
+                    ];
+                }
+                
+                $groupedItems[$key]['bulanan'][$bulan]['volume'] += $item->jumlah;
+                $groupedItems[$key]['bulanan'][$bulan]['total'] += $jumlah;
+                $groupedItems[$key]['bulanan'][$bulan]['pot_ppn'] += $item->pot_ppn;
+                $groupedItems[$key]['bulanan'][$bulan]['pot_pph23'] += $item->pot_pph23;
+                $groupedItems[$key]['bulanan'][$bulan]['pot_pph21'] += $item->pot_pph21;
+                $groupedItems[$key]['bulanan'][$bulan]['pot_pph21_narasumber'] += $item->pot_pph21_narasumber;
             }
 
             $target = &$terorganisir[$kodeProgram]['sub_programs'][$kodeSubProgram]['uraian_programs'][$kodeUraian];
@@ -1459,11 +1609,13 @@ class RkasPerubahanController extends Controller
         $tahapanData = $this->kelolaDataRkas($groupedRkas, $groupedMurni);
 
         $tahap = $request->tahap ?? 1;
+        $bulan = $request->bulan ?? 'Semua';
 
         $pdf = Pdf::loadView('laporan.rincian_pencairan', [
             'anggaran' => $penganggaran->toArray(),
             'tahapanData' => $tahapanData,
             'tahap' => $tahap,
+            'bulan' => $bulan,
             'is_perubahan' => true,
             'paper_size' => $request->paper_size ?? 'A4',
             'orientation' => $request->orientation ?? 'landscape',
@@ -1471,7 +1623,8 @@ class RkasPerubahanController extends Controller
             'is_excel' => false
         ])->setPaper($request->paper_size ?? 'A4', $request->orientation ?? 'landscape');
 
-        return $pdf->stream('rincian_pencairan_perubahan_tahap' . $tahap . '_' . $penganggaran->tahun_anggaran . '.pdf');
+        $filename_bulan = $bulan !== 'Semua' ? '_' . strtolower($bulan) : '';
+        return $pdf->stream('rincian_pencairan_perubahan_tahap' . $tahap . $filename_bulan . '_' . $penganggaran->tahun_anggaran . '.pdf');
     }
 
     public function exportRpExcel(Request $request, $id)
@@ -1498,17 +1651,20 @@ class RkasPerubahanController extends Controller
         $tahapanData = $this->kelolaDataRkas($groupedRkas, $groupedMurni);
 
         $tahap = $request->tahap ?? 1;
+        $bulan = $request->bulan ?? 'Semua';
 
         $html = view('laporan.rincian_pencairan_excel', [
             'anggaran' => $penganggaran->toArray(),
             'tahapanData' => $tahapanData,
             'tahap' => $tahap,
+            'bulan' => $bulan,
             'is_excel' => true
         ])->render();
 
+        $filename_bulan = $bulan !== 'Semua' ? '_' . strtolower($bulan) : '';
         return response($html)
             ->header('Content-Type', 'application/vnd.ms-excel')
-            ->header('Content-Disposition', 'attachment; filename="rincian_pencairan_perubahan_' . $penganggaran->tahun_anggaran . '.xls"');
+            ->header('Content-Disposition', 'attachment; filename="rincian_pencairan_perubahan_tahap' . $tahap . $filename_bulan . '_' . $penganggaran->tahun_anggaran . '.xls"');
     }
 
     public function generatePdfRkaRekap($id, Request $request)
@@ -1754,15 +1910,27 @@ class RkasPerubahanController extends Controller
         $query = ($this->RkasPerubahan)::with(['kodeKegiatan', 'rekeningBelanja'])
             ->where(VariantConfig::penganggaranFk($this->variant), $id);
 
-        if ($tahap === '1') {
-            $query->whereIn('bulan', ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni']);
-        } elseif ($tahap === '2') {
-            $query->whereIn('bulan', ['Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']);
-        }
-
         $rkasData = $query->get();
 
-        $rincianData = $this->kelolaDataRincian($rkasData);
+        $rincianGabungan = collect();
+
+        if ($tahap === '1' || $tahap === 'tahunan') {
+            $rkasMurni = ($this->Rkas)::with(['kodeKegiatan', 'rekeningBelanja'])
+                ->where(VariantConfig::penganggaranFk($this->variant), $id)
+                ->whereIn('bulan', ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni'])
+                ->get();
+            $rincianGabungan = $rincianGabungan->merge($rkasMurni);
+        }
+
+        if ($tahap === '2' || $tahap === 'tahunan') {
+            $rkasPerubahan = ($this->RkasPerubahan)::with(['kodeKegiatan', 'rekeningBelanja'])
+                ->where(VariantConfig::penganggaranFk($this->variant), $id)
+                ->whereIn('bulan', ['Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'])
+                ->get();
+            $rincianGabungan = $rincianGabungan->merge($rkasPerubahan);
+        }
+
+        $rincianData = $this->kelolaDataRincian($rincianGabungan);
 
         $pdf = Pdf::loadView('laporan.rka_rincian_pdf', [
             'anggaran' => $penganggaran->toArray(),
@@ -1785,15 +1953,27 @@ class RkasPerubahanController extends Controller
         $query = ($this->RkasPerubahan)::with(['kodeKegiatan', 'rekeningBelanja'])
             ->where(VariantConfig::penganggaranFk($this->variant), $id);
 
-        if ($tahap === '1') {
-            $query->whereIn('bulan', ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni']);
-        } elseif ($tahap === '2') {
-            $query->whereIn('bulan', ['Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']);
-        }
-
         $rkasData = $query->get();
 
-        $rincianData = $this->kelolaDataRincian($rkasData);
+        $rincianGabungan = collect();
+
+        if ($tahap === '1' || $tahap === 'tahunan') {
+            $rkasMurni = ($this->Rkas)::with(['kodeKegiatan', 'rekeningBelanja'])
+                ->where(VariantConfig::penganggaranFk($this->variant), $id)
+                ->whereIn('bulan', ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni'])
+                ->get();
+            $rincianGabungan = $rincianGabungan->merge($rkasMurni);
+        }
+
+        if ($tahap === '2' || $tahap === 'tahunan') {
+            $rkasPerubahan = ($this->RkasPerubahan)::with(['kodeKegiatan', 'rekeningBelanja'])
+                ->where(VariantConfig::penganggaranFk($this->variant), $id)
+                ->whereIn('bulan', ['Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'])
+                ->get();
+            $rincianGabungan = $rincianGabungan->merge($rkasPerubahan);
+        }
+
+        $rincianData = $this->kelolaDataRincian($rincianGabungan);
 
         $html = view('laporan.rka_rincian_exel', [
             'anggaran' => $penganggaran->toArray(),
@@ -1840,18 +2020,300 @@ class RkasPerubahanController extends Controller
             'golongan' => $request->golongan,
         ];
 
-        ($this->RkasPerubahan)::where(\App\Config\VariantConfig::penganggaranFk($this->variant), $id)
-            ->where('uraian', $request->uraian)
-            ->where('kode_rekening_id', $request->kode_rekening_id)
-            ->update($updateData);
+        // Tentukan bulan mana yang akan diupdate
+        $monthsToUpdate = [];
+        if ($request->filled('bulan') && $request->bulan !== 'Semua') {
+            $monthsToUpdate = [$request->bulan];
+        } else {
+            $tahap = $request->input('tahap', 1);
+            $monthsToUpdate = $tahap == 1 
+                ? ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni'] 
+                : ['Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+        }
 
-        // Also update Murni in case the item wasn't modified in Perubahan
-        ($this->Rkas)::where(\App\Config\VariantConfig::penganggaranFk($this->variant), $id)
-            ->where('uraian', $request->uraian)
+        // 1 & 2. Tentukan baris yang akan diupdate (berdasarkan ID spesifik atau fallback teks uraian)
+        $queryPerubahan = ($this->RkasPerubahan)::where(\App\Config\VariantConfig::penganggaranFk($this->variant), $id);
+
+        if ($request->has('rkas_ids') && is_array($request->rkas_ids) && count($request->rkas_ids) > 0) {
+            $queryPerubahan->whereIn('id', $request->rkas_ids)
+                  ->whereIn('bulan', $monthsToUpdate)
+                  ->orderBy('id', 'asc');
+        } else {
+            // Fallback ke pencocokan teks jika rkas_ids tidak dikirim dari frontend lama
+            $originalUraiansPerubahan = ($this->RkasPerubahan)::where(\App\Config\VariantConfig::penganggaranFk($this->variant), $id)
+                ->where('kode_rekening_id', $request->kode_rekening_id)
+                ->where(function($q) use ($request) {
+                    $q->whereRaw('TRIM(uraian) = TRIM(?)', [$request->uraian])
+                      ->orWhereRaw('TRIM(uraian_gabungan) = TRIM(?)', [$request->uraian]);
+                })
+                ->pluck('uraian')
+                ->toArray();
+
+            if (empty($originalUraiansPerubahan)) {
+                // If not found in Perubahan, just return
+                return redirect()->back();
+            }
+
+            $queryPerubahan->where('kode_rekening_id', $request->kode_rekening_id)
+                  ->whereIn('uraian', $originalUraiansPerubahan)
+                  ->whereIn('bulan', $monthsToUpdate)
+                  ->orderBy('id', 'asc');
+        }
+
+        $itemsToUpdate = $queryPerubahan->get();
+            if ($itemsToUpdate->count() > 0) {
+                // Calculate total pagu for these items to distribute taxes proportionally
+                $totalPagu = $itemsToUpdate->sum(function($item) {
+                    return $item->jumlah * $item->harga_satuan;
+                });
+                
+                $totalPpn = $request->pot_ppn ?? 0;
+                $totalPph23 = $request->pot_pph23 ?? 0;
+                $totalPph21 = $request->pot_pph21 ?? 0;
+                
+                $distributedPpn = 0;
+                $distributedPph23 = 0;
+                $distributedPph21 = 0;
+                
+                $lastIndex = $itemsToUpdate->count() - 1;
+                
+                foreach ($itemsToUpdate as $index => $item) {
+                    $itemUpdate = $updateData; // Assign non-tax fields
+                    
+                    if ($totalPagu > 0) {
+                        if ($index === $lastIndex) {
+                            $itemUpdate['pot_ppn'] = $totalPpn - $distributedPpn;
+                            $itemUpdate['pot_pph23'] = $totalPph23 - $distributedPph23;
+                            $itemUpdate['pot_pph21'] = $totalPph21 - $distributedPph21;
+                        } else {
+                            $ratio = ($item->jumlah * $item->harga_satuan) / $totalPagu;
+                            $itemUpdate['pot_ppn'] = round($totalPpn * $ratio);
+                            $itemUpdate['pot_pph23'] = round($totalPph23 * $ratio);
+                            $itemUpdate['pot_pph21'] = round($totalPph21 * $ratio);
+                            
+                            $distributedPpn += $itemUpdate['pot_ppn'];
+                            $distributedPph23 += $itemUpdate['pot_pph23'];
+                            $distributedPph21 += $itemUpdate['pot_pph21'];
+                        }
+                    } else {
+                        if ($index > 0) {
+                            $itemUpdate['pot_ppn'] = 0;
+                            $itemUpdate['pot_pph23'] = 0;
+                            $itemUpdate['pot_pph21'] = 0;
+                        }
+                    }
+                    $item->update($itemUpdate);
+                }
+            }
+
+        // 3. Lakukan hal yang sama untuk tabel Rkas (Murni)
+        $originalUraiansMurni = ($this->Rkas)::where(\App\Config\VariantConfig::penganggaranFk($this->variant), $id)
             ->where('kode_rekening_id', $request->kode_rekening_id)
-            ->update($updateData);
+            ->where(function($q) use ($request) {
+                $q->whereRaw('TRIM(uraian) = TRIM(?)', [$request->uraian])
+                  ->orWhereRaw('TRIM(uraian_gabungan) = TRIM(?)', [$request->uraian]);
+            })
+            ->pluck('uraian')
+            ->toArray();
+
+        if (!empty($originalUraiansMurni)) {
+            $queryMurni = ($this->Rkas)::where(\App\Config\VariantConfig::penganggaranFk($this->variant), $id)
+                ->where('kode_rekening_id', $request->kode_rekening_id)
+                ->whereIn('uraian', $originalUraiansMurni)
+                ->whereIn('bulan', $monthsToUpdate)
+                ->orderBy('id', 'asc');
+                
+            $itemsMurniToUpdate = $queryMurni->get();
+            if ($itemsMurniToUpdate->count() > 0) {
+                $totalPaguMurni = $itemsMurniToUpdate->sum(function($item) {
+                    return $item->jumlah * $item->harga_satuan;
+                });
+                
+                $totalPpnMurni = $request->pot_ppn ?? 0;
+                $totalPph23Murni = $request->pot_pph23 ?? 0;
+                $totalPph21Murni = $request->pot_pph21 ?? 0;
+                
+                $distributedPpnMurni = 0;
+                $distributedPph23Murni = 0;
+                $distributedPph21Murni = 0;
+                
+                $lastIndexMurni = $itemsMurniToUpdate->count() - 1;
+                
+                foreach ($itemsMurniToUpdate as $index => $item) {
+                    $itemUpdate = $updateData; 
+                    
+                    if ($totalPaguMurni > 0) {
+                        if ($index === $lastIndexMurni) {
+                            $itemUpdate['pot_ppn'] = $totalPpnMurni - $distributedPpnMurni;
+                            $itemUpdate['pot_pph23'] = $totalPph23Murni - $distributedPph23Murni;
+                            $itemUpdate['pot_pph21'] = $totalPph21Murni - $distributedPph21Murni;
+                        } else {
+                            $ratio = ($item->jumlah * $item->harga_satuan) / $totalPaguMurni;
+                            $itemUpdate['pot_ppn'] = round($totalPpnMurni * $ratio);
+                            $itemUpdate['pot_pph23'] = round($totalPph23Murni * $ratio);
+                            $itemUpdate['pot_pph21'] = round($totalPph21Murni * $ratio);
+                            
+                            $distributedPpnMurni += $itemUpdate['pot_ppn'];
+                            $distributedPph23Murni += $itemUpdate['pot_pph23'];
+                            $distributedPph21Murni += $itemUpdate['pot_pph21'];
+                        }
+                    } else {
+                        if ($index > 0) {
+                            $itemUpdate['pot_ppn'] = 0;
+                            $itemUpdate['pot_pph23'] = 0;
+                            $itemUpdate['pot_pph21'] = 0;
+                        }
+                    }
+                    
+                    $item->update($itemUpdate);
+                }
+            }
+        }
 
         return redirect()->back()->with('success', 'Rincian pencairan berhasil disimpan.');
+    }
+
+    public function gabungRincian(Request $request, $id)
+    {
+        $request->validate([
+            'new_uraian' => 'required|string|max:255',
+            'rkas_ids' => 'required|array|min:1',
+            'rkas_ids.*' => 'integer'
+        ]);
+
+        $penganggaran = ($this->Penganggaran)::findOrFail($id);
+        
+        $bkuDetailTable = app($this->BukuKasUmumUraianDetail)->getTable();
+        $bkuTable = app($this->BukuKasUmum)->getTable();
+        $bkuFk = VariantConfig::bkuFk($this->variant);
+        $penganggaranFk = VariantConfig::penganggaranFk($this->variant);
+
+        DB::beginTransaction();
+        try {
+            // Update uraian_gabungan ONLY for the exact selected records in Perubahan
+            ($this->RkasPerubahan)::where(\App\Config\VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
+                ->whereIn('id', $request->rkas_ids)
+                ->update(['uraian_gabungan' => $request->new_uraian]);
+
+            DB::commit();
+            return redirect()->back()->with('success', 'Kegiatan berhasil digabung.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->withErrors(['message' => 'Gagal menggabung kegiatan: ' . $e->getMessage()]);
+        }
+    }
+
+    public function editGabungRincian(Request $request, $id)
+    {
+        $request->validate([
+            'new_uraian_gabungan' => 'required|string|max:255',
+            'rkas_ids' => 'required|array|min:1',
+            'rkas_ids.*' => 'integer'
+        ]);
+
+        $penganggaran = ($this->Penganggaran)::findOrFail($id);
+
+        DB::beginTransaction();
+        try {
+            // Ambil item pertama untuk mendapatkan data referensi (kode rekening & nama lama)
+            $firstItem = ($this->RkasPerubahan)::whereIn('id', $request->rkas_ids)->first();
+            if (!$firstItem && $this->Rkas && class_exists($this->Rkas)) {
+                $firstItem = ($this->Rkas)::whereIn('id', $request->rkas_ids)->first();
+            }
+
+            if ($firstItem && !empty($firstItem->uraian_gabungan)) {
+                $oldUraianGabungan = $firstItem->uraian_gabungan;
+                $kodeRekeningId = $firstItem->kode_rekening_id;
+                // Update in RkasPerubahan
+                ($this->RkasPerubahan)::where(\App\Config\VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
+                    ->where('kode_rekening_id', $kodeRekeningId)
+                    ->where('uraian_gabungan', $oldUraianGabungan)
+                    ->update(['uraian_gabungan' => $request->new_uraian_gabungan]);
+
+                // Update in Rkas
+                if ($this->Rkas && class_exists($this->Rkas)) {
+                    ($this->Rkas)::where(\App\Config\VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
+                        ->where('kode_rekening_id', $kodeRekeningId)
+                        ->where('uraian_gabungan', $oldUraianGabungan)
+                        ->update(['uraian_gabungan' => $request->new_uraian_gabungan]);
+                }
+            } else {
+                // Update in RkasPerubahan
+                ($this->RkasPerubahan)::where(\App\Config\VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
+                    ->where('kode_rekening_id', $kodeRekeningId)
+                    ->where('uraian', $firstItem->uraian)
+                    ->whereNull('uraian_gabungan')
+                    ->update(['uraian_gabungan' => $request->new_uraian_gabungan]);
+
+                // Update in Rkas
+                if ($this->Rkas && class_exists($this->Rkas)) {
+                    ($this->Rkas)::where(\App\Config\VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
+                        ->where('kode_rekening_id', $kodeRekeningId)
+                        ->where('uraian', $firstItem->uraian)
+                        ->whereNull('uraian_gabungan')
+                        ->update(['uraian_gabungan' => $request->new_uraian_gabungan]);
+                }
+            }
+
+            DB::commit();
+            return redirect()->back()->with('success', 'Nama gabungan berhasil diubah.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->withErrors(['message' => 'Gagal mengubah nama gabungan: ' . $e->getMessage()]);
+        }
+    }
+
+    public function ungabungRincian(Request $request, $id)
+    {
+        $request->validate([
+            'rkas_ids' => 'required|array|min:1',
+            'rkas_ids.*' => 'integer'
+        ]);
+
+        $penganggaran = ($this->Penganggaran)::findOrFail($id);
+
+        DB::beginTransaction();
+        try {
+            $firstItem = ($this->RkasPerubahan)::whereIn('id', $request->rkas_ids)->first();
+            if (!$firstItem && $this->Rkas && class_exists($this->Rkas)) {
+                $firstItem = ($this->Rkas)::whereIn('id', $request->rkas_ids)->first();
+            }
+
+            if ($firstItem && !empty($firstItem->uraian_gabungan)) {
+                $oldUraianGabungan = $firstItem->uraian_gabungan;
+                $kodeRekeningId = $firstItem->kode_rekening_id;
+
+                ($this->RkasPerubahan)::where(\App\Config\VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
+                    ->where('kode_rekening_id', $kodeRekeningId)
+                    ->where('uraian_gabungan', $oldUraianGabungan)
+                    ->update([
+                        'uraian_gabungan' => null,
+                        'pot_ppn' => null,
+                        'pot_pph23' => null,
+                        'pot_pph21' => null,
+                        'pot_pph21_narasumber' => null,
+                    ]);
+                    
+                if ($this->Rkas && class_exists($this->Rkas)) {
+                    ($this->Rkas)::where(\App\Config\VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
+                        ->where('kode_rekening_id', $kodeRekeningId)
+                        ->where('uraian_gabungan', $oldUraianGabungan)
+                        ->update([
+                            'uraian_gabungan' => null,
+                            'pot_ppn' => null,
+                            'pot_pph23' => null,
+                            'pot_pph21' => null,
+                            'pot_pph21_narasumber' => null,
+                        ]);
+                }
+            }
+
+            DB::commit();
+            return redirect()->back()->with('success', 'Gabungan kegiatan berhasil dipisahkan.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->withErrors(['message' => 'Gagal memisahkan kegiatan: ' . $e->getMessage()]);
+        }
     }
 
     protected function renderVariant($component, $props = [])

@@ -340,14 +340,14 @@ class TandaTerimaController extends Controller
                                 $failed++; $processed++; continue;
                             }
 
-                            ($this->TandaTerima)::create([
-                                'sekolah_id' => $sekolahId,
-                                VariantConfig::penganggaranFk($this->variant) => $bukuKasUmum->{VariantConfig::penganggaranFk($this->variant)},
-                                'kode_kegiatan_id' => $bukuKasUmum->kode_kegiatan_id,
-                                'kode_rekening_id' => $bukuKasUmum->rekening_belanja_id,
-                                VariantConfig::penerimaanDanaFk($this->variant) => $penerimaanDana->id,
-                                VariantConfig::bkuFk($this->variant) => $bukuKasUmum->id,
-                            ]);
+                            $tandaTerima = new ($this->TandaTerima);
+                            $tandaTerima->sekolah_id = $sekolahId;
+                            $tandaTerima->{VariantConfig::penganggaranFk($this->variant)} = $bukuKasUmum->{VariantConfig::penganggaranFk($this->variant)};
+                            $tandaTerima->kode_kegiatan_id = $bukuKasUmum->kode_kegiatan_id;
+                            $tandaTerima->kode_rekening_id = $bukuKasUmum->rekening_belanja_id;
+                            $tandaTerima->{VariantConfig::penerimaanDanaFk($this->variant)} = $penerimaanDana->id;
+                            $tandaTerima->{VariantConfig::bkuFk($this->variant)} = $bukuKasUmum->id;
+                            $tandaTerima->save();
                             $success++;
                         }
                         $processed++;

@@ -228,15 +228,15 @@ class KwitansiController extends Controller
                 }
             }
 
-            $kwitansi = ($this->Kwitansi)::create([
-                'sekolah_id' => $sekolahId,
-                VariantConfig::penganggaranFk($this->variant) => $bukuKasUmum->{VariantConfig::penganggaranFk($this->variant)},
-                'kode_kegiatan_id' => $bukuKasUmum->kode_kegiatan_id,
-                'kode_rekening_id' => $bukuKasUmum->rekening_belanja_id,
-                VariantConfig::penerimaanDanaFk($this->variant) => $penerimaanDana->id,
-                VariantConfig::bkuFk($this->variant) => $bukuKasUmum->id,
-                VariantConfig::bkuUraianDetailFk($this->variant) => $bkuUraianDetail->id,
-            ]);
+            $kwitansi = new ($this->Kwitansi);
+            $kwitansi->sekolah_id = $sekolahId;
+            $kwitansi->{VariantConfig::penganggaranFk($this->variant)} = $bukuKasUmum->{VariantConfig::penganggaranFk($this->variant)};
+            $kwitansi->kode_kegiatan_id = $bukuKasUmum->kode_kegiatan_id;
+            $kwitansi->kode_rekening_id = $bukuKasUmum->rekening_belanja_id;
+            $kwitansi->{VariantConfig::penerimaanDanaFk($this->variant)} = $penerimaanDana->id;
+            $kwitansi->{VariantConfig::bkuFk($this->variant)} = $bukuKasUmum->id;
+            $kwitansi->{VariantConfig::bkuUraianDetailFk($this->variant)} = $bkuUraianDetail->id;
+            $kwitansi->save();
 
             return response()->json([
                 'success' => true,
@@ -1005,16 +1005,16 @@ class KwitansiController extends Controller
                         $bkuUraianDetail = $bukuKasUmum->uraianDetails->first();
 
                         if ($bkuUraianDetail) {
-                            ($this->Kwitansi)::create([
-                                'sekolah_id' => $sekolahId,
-                                VariantConfig::penganggaranFk($this->variant) => $bukuKasUmum->{VariantConfig::penganggaranFk($this->variant)},
-                                'kode_kegiatan_id' => $bukuKasUmum->kode_kegiatan_id,
-                                'kode_rekening_id' => $bukuKasUmum->rekening_belanja_id, // Map from BKU's rekening_belanja_id
-                                VariantConfig::penerimaanDanaFk($this->variant) => $penerimaanDana->id,
-                                VariantConfig::bkuFk($this->variant) => $bukuKasUmum->id,
-                                // Make sure 'bku_uraian_detail_id' matches migration
-                                VariantConfig::bkuUraianDetailFk($this->variant) => $bkuUraianDetail->id,
-                            ]);
+                            $kwitansi = new ($this->Kwitansi);
+                            $kwitansi->sekolah_id = $sekolahId;
+                            $kwitansi->{VariantConfig::penganggaranFk($this->variant)} = $bukuKasUmum->{VariantConfig::penganggaranFk($this->variant)};
+                            $kwitansi->kode_kegiatan_id = $bukuKasUmum->kode_kegiatan_id;
+                            $kwitansi->kode_rekening_id = $bukuKasUmum->rekening_belanja_id; // Map from BKU's rekening_belanja_id
+                            $kwitansi->{VariantConfig::penerimaanDanaFk($this->variant)} = $penerimaanDana->id;
+                            $kwitansi->{VariantConfig::bkuFk($this->variant)} = $bukuKasUmum->id;
+                            // Make sure 'bku_uraian_detail_id' matches migration
+                            $kwitansi->{VariantConfig::bkuUraianDetailFk($this->variant)} = $bkuUraianDetail->id;
+                            $kwitansi->save();
                             $itemResult['status'] = 'success';
                             $itemResult['message'] = 'Kwitansi berhasil dibuat';
                         } else {

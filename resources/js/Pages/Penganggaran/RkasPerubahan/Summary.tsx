@@ -201,6 +201,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
     });
     const [printTahap, setPrintTahap] = useState<'1' | '2' | 'tahunan'>('tahunan');
     const [rpTahap, setRpTahap] = useState<number>(1);
+    const [rpBulan, setRpBulan] = useState<string>('Semua');
 
     const handlePrint = (monthOverride?: string) => {
         let routeName = 'rkas-perubahan.export-pdf';
@@ -217,6 +218,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
         if (printTarget === 'rp') {
             routeName = 'rkas-perubahan.export-rp-pdf';
             params.tahap = rpTahap;
+            params.bulan = rpBulan;
         }
         if (printTarget === 'tahapan_v1') routeName = 'rkas-perubahan.export-tahapan-v1-pdf';
         if (printTarget === 'rincian') routeName = 'rkas-perubahan.export-rincian-pdf';
@@ -232,7 +234,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
         setShowPrintModal(false);
     };
 
-    const handleExportExcel = (target?: string, tahapOverride?: number) => {
+    const handleExportExcel = (target?: string, tahapOverride?: number, bulanOverride?: string) => {
         const targetToUse = target || printTarget;
         let routeName = 'rkas-perubahan.export-tahapan-excel';
         const params: any = {
@@ -247,6 +249,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
         if (targetToUse === 'rp') {
             routeName = 'rkas-perubahan.export-rp-excel';
             params.tahap = tahapOverride ?? rpTahap;
+            params.bulan = bulanOverride ?? rpBulan;
         }
         if (targetToUse === 'rincian') routeName = 'rkas-perubahan.export-rincian-excel';
         if (targetToUse === 'alur_kas') routeName = 'rkas-perubahan.export-alur-kas-excel';
@@ -1380,7 +1383,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                         )}
 
                         {activeTab === 'Rincian Pencairan' && (
-                            <TabRincianPencairan anggaran={anggaran} tahapanData={tahapanData} variant='rkas_perubahan' onPrint={(target, params) => { if (params?.tahap) setRpTahap(params.tahap); setPrintTarget(target as any); setShowPrintModal(true); }} onExportExcel={(target, params) => handleExportExcel(target, params?.tahap)} />
+                            <TabRincianPencairan anggaran={anggaran} tahapanData={tahapanData} variant='rkas_perubahan' onPrint={(target, params) => { if (params?.tahap) setRpTahap(params.tahap); if (params?.bulan) setRpBulan(params.bulan); setPrintTarget(target as any); setShowPrintModal(true); }} onExportExcel={(target, params) => handleExportExcel(target, params?.tahap, params?.bulan)} />
                         )}
                         
                         {activeTab === 'Alur Kas' && (

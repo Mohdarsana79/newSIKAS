@@ -178,6 +178,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
     const [printTarget, setPrintTarget] = useState<'tahapan' | 'tahapan_v1' | 'rekap' | 'lembar' | 'bulanan' | 'rincian' | 'rp' | 'alur_kas'>('tahapan');
     const [printTahap, setPrintTahap] = useState<'1' | '2' | 'tahunan'>('tahunan');
     const [rpTahap, setRpTahap] = useState<number>(1);
+    const [rpBulan, setRpBulan] = useState<string>('Semua');
     const [printSettings, setPrintSettings] = useState({
         paperSize: 'A4',
         orientation: 'portrait',
@@ -190,7 +191,8 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
             id: anggaran.id,
             paper_size: printSettings.paperSize,
             orientation: printSettings.orientation,
-            font_size: printSettings.fontSize
+            font_size: printSettings.fontSize,
+            tahap: printTahap
         };
 
         if (printTarget === 'rekap') routeName = 'rkas.export-rekap-pdf';
@@ -203,6 +205,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
         if (printTarget === 'rp') {
             routeName = 'rkas.export-rp-pdf';
             params.tahap = rpTahap;
+            params.bulan = rpBulan;
         }
         if (printTarget === 'alur_kas') routeName = 'rkas.export-alur-kas-pdf';
         if (printTarget === 'bulanan') {
@@ -215,14 +218,15 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
         setShowPrintModal(false);
     };
 
-    const handleExportExcel = (target?: string, tahapOverride?: number) => {
+    const handleExportExcel = (target?: string, tahapOverride?: number, bulanOverride?: string) => {
         const targetToUse = target || printTarget;
         let routeName = 'rkas.export-tahapan-excel';
         const params: any = {
             id: anggaran.id,
+            tahap: printTahap,
             paper_size: printSettings.paperSize,
             orientation: printSettings.orientation,
-            font_size: printSettings.fontSize
+            font_size: printSettings.fontSize,
         };
 
         if (targetToUse === 'tahapan_v1') routeName = 'rkas.export-tahapan-v1-excel';
@@ -233,6 +237,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
         if (targetToUse === 'rp') {
             routeName = 'rkas.export-rp-excel';
             params.tahap = tahapOverride ?? rpTahap;
+            params.bulan = bulanOverride ?? rpBulan;
         }
         if (targetToUse === 'alur_kas') routeName = 'rkas.export-alur-kas-excel';
 
@@ -1687,7 +1692,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                             </div>
                         )}
                         {activeTab === 'Rincian Pencairan' && (
-                            <TabRincianPencairan anggaran={anggaran} tahapanData={tahapanData} variant='rkas' onPrint={(target, params) => { if (params?.tahap) setRpTahap(params.tahap); setPrintTarget(target as any); setShowPrintModal(true); }} onExportExcel={(target, params) => handleExportExcel(target, params?.tahap)} />
+                            <TabRincianPencairan anggaran={anggaran} tahapanData={tahapanData} variant='rkas' onPrint={(target, params) => { if (params?.tahap) setRpTahap(params.tahap); if (params?.bulan) setRpBulan(params.bulan); setPrintTarget(target as any); setShowPrintModal(true); }} onExportExcel={(target, params) => handleExportExcel(target, params?.tahap, params?.bulan)} />
                         )}
                         {activeTab === 'Alur Kas' && (
                             <TabAlurKas anggaran={anggaran} tahapanData={tahapanData} months={months} onPrint={(target) => { setPrintTarget(target as any); setShowPrintModal(true); }} />

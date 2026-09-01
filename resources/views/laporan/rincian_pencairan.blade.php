@@ -103,12 +103,12 @@
         <tr>
             <td class="w-label">Program</td>
             <td class="w-colon">:</td>
-            <td>BOS REGULER</td>
+            <td>{{ strtoupper($anggaran['sumber_dana'] ?? 'BOS REGULER') }}</td>
         </tr>
         <tr>
             <td class="w-label">Kegiatan</td>
             <td class="w-colon">:</td>
-            <td>Daftar Rincian Pencairan BOS Reguler Tahap {{ $tahap ?? 1 }} Tahun {{ $anggaran['tahun_anggaran'] ?? '' }}</td>
+            <td>Daftar Rincian Pencairan {{ $anggaran['sumber_dana'] ?? 'BOS Reguler' }} Tahap {{ $tahap ?? 1 }} {{ isset($bulan) && $bulan !== 'Semua' ? 'Bulan ' . $bulan : '' }} Tahun {{ $anggaran['tahun_anggaran'] ?? '' }}</td>
         </tr>
         <tr>
             <td class="w-label">Nama Satuan</td>
@@ -131,9 +131,10 @@
         <thead>
             <tr class="header-green">
                 <th rowspan="2" style="width: 3%;">No</th>
-                <th rowspan="2" style="width: 23%;">Nama Kegiatan</th>
-                <th rowspan="2" style="width: 12%;">Nama Penerima</th>
-                <th rowspan="2" style="width: 9%;">Jabatan</th>
+                <th rowspan="2" style="width: 18%;">Nama Kegiatan</th>
+                <th rowspan="2" style="width: 8%;">Bulan</th>
+                <th rowspan="2" style="width: 10%;">Nama Penerima</th>
+                <th rowspan="2" style="width: 8%;">Jabatan</th>
                 <th rowspan="2" style="width: 9%;">Jumlah<br/>Anggaran<br/>(Rp)</th>
                 <th rowspan="2" style="width: 6%;">Pot. PPN</th>
                 <th rowspan="2" style="width: 6%;">Pot. PPH 23</th>
@@ -145,15 +146,16 @@
             </tr>
             <tr class="header-yellow">
                 <th style="width: 3%;">1</th>
-                <th style="width: 23%;">2</th>
-                <th style="width: 12%;">3</th>
-                <th style="width: 9%;">4</th>
-                <th style="width: 9%;">5</th>
-                <th style="width: 6%;">6</th>
+                <th style="width: 18%;">2</th>
+                <th style="width: 8%;">3</th>
+                <th style="width: 10%;">4</th>
+                <th style="width: 8%;">5</th>
+                <th style="width: 9%;">6</th>
                 <th style="width: 6%;">7</th>
                 <th style="width: 6%;">8</th>
-                <th style="width: 10%;">9</th>
-                <th style="width: 11%;">10</th>
+                <th style="width: 6%;">9</th>
+                <th style="width: 10%;">10</th>
+                <th style="width: 11%;">11</th>
                 <th style="width: 5%;"></th>
             </tr>
         </thead>
@@ -165,58 +167,123 @@
                 $totalPph23 = 0;
                 $totalPph21 = 0;
                 $totalDiterima = 0;
+                $tahap = $tahap ?? 1;
+
+                $groupedItems = [];
+                foreach($tahapanData as $progCode => $program) {
+                    if(isset($program['sub_programs'])) {
+                        foreach($program['sub_programs'] as $subCode => $subProgram) {
+                            if(isset($subProgram['uraian_programs'])) {
+                                foreach($subProgram['uraian_programs'] as $urCode => $urProgram) {
+                                    if(isset($urProgram['items'])) {
+                                        foreach($urProgram['items'] as $item) {
+                                            $jumlahAnggaran = 0;
+                                            if (isset($bulan) && $bulan !== 'Semua') {
+                                                if (isset($item['bulanan']) && isset($item['bulanan'][$bulan])) {
+                                                    $jumlahAnggaran = $item['bulanan'][$bulan]['total'] ?? 0;
+                                                }
+                                            } else {
+                                                $jumlahAnggaran = $tahap == 1 ? ($item['tahap1'] ?? 0) : ($item['tahap2'] ?? 0);
+                                            }
+                                            
+                                            if($jumlahAnggaran > 0) {
+                                                $currentUraianGabungan = $tahap == 1 ? ($item['uraian_gabungan_t1'] ?? null) : ($item['uraian_gabungan_t2'] ?? null);
+                                                $displayUraian = !empty($currentUraianGabungan) ? $currentUraianGabungan : $item['uraian'];
+                                                $key = $item['kode_rekening_id'] . '-' . $displayUraian;
+                                                
+                                                if (!isset($groupedItems[$key])) {
+                                                    $groupedItems[$key] = $item;
+                                                    $groupedItems[$key]['uraian'] = $displayUraian;
+                                                    $groupedItems[$key]['tahap_anggaran'] = 0;
+                                                    $groupedItems[$key]['pot_ppn_total'] = 0;
+                                                    $groupedItems[$key]['pot_pph23_total'] = 0;
+                                                    $groupedItems[$key]['pot_pph21_total'] = 0;
+                                                }
+                                                
+                                                $ppn = 0;
+                                                $pph23 = 0;
+                                                $pph21_total = 0;
+
+                                                if (isset($bulan) && $bulan !== 'Semua') {
+                                                    if (isset($item['bulanan']) && isset($item['bulanan'][$bulan])) {
+                                                        $ppn = $item['bulanan'][$bulan]['pot_ppn'] ?? 0;
+                                                        $pph23 = $item['bulanan'][$bulan]['pot_pph23'] ?? 0;
+                                                        $pph21_total = ($item['bulanan'][$bulan]['pot_pph21'] ?? 0) + ($item['bulanan'][$bulan]['pot_pph21_narasumber'] ?? 0);
+                                                    }
+                                                } else {
+                                                    $ppn = $tahap == 1 ? ($item['pot_ppn_t1'] ?? 0) : ($item['pot_ppn_t2'] ?? 0);
+                                                    $pph23 = $tahap == 1 ? ($item['pot_pph23_t1'] ?? 0) : ($item['pot_pph23_t2'] ?? 0);
+                                                    $pph21_total = $tahap == 1 ? (($item['pot_pph21_t1'] ?? 0) + ($item['pot_pph21_narasumber_t1'] ?? 0)) : (($item['pot_pph21_t2'] ?? 0) + ($item['pot_pph21_narasumber_t2'] ?? 0));
+                                                }
+                                                
+                                                $groupedItems[$key]['tahap_anggaran'] += $jumlahAnggaran;
+                                                $groupedItems[$key]['pot_ppn_total'] += $ppn;
+                                                $groupedItems[$key]['pot_pph23_total'] += $pph23;
+                                                $groupedItems[$key]['pot_pph21_total'] += $pph21_total;
+                                                
+                                                if (empty($groupedItems[$key]['nama_penerima']) && !empty($item['nama_penerima'])) {
+                                                    $groupedItems[$key]['nama_penerima'] = $item['nama_penerima'];
+                                                    $groupedItems[$key]['jabatan'] = $item['jabatan'];
+                                                    $groupedItems[$key]['nomor_rekening'] = $item['nomor_rekening'];
+                                                    $groupedItems[$key]['bank'] = $item['bank'];
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             @endphp
 
-            @foreach($tahapanData as $progCode => $program)
-                @if(isset($program['sub_programs']))
-                    @foreach($program['sub_programs'] as $subCode => $subProgram)
-                        @if(isset($subProgram['uraian_programs']))
-                            @foreach($subProgram['uraian_programs'] as $urCode => $urProgram)
-                                @if(isset($urProgram['items']))
-                                    @foreach($urProgram['items'] as $item)
-                                        @php
-                                            $tahap = $tahap ?? 1;
-                                            $jumlahAnggaran = $tahap == 1 ? ($item['tahap1'] ?? 0) : ($item['tahap2'] ?? 0);
-                                        @endphp
-                                        @if($jumlahAnggaran > 0)
-                                            @php
-                                                $ppn = isset($item['pot_ppn']) && is_numeric($item['pot_ppn']) ? (float)$item['pot_ppn'] : 0;
-                                                $pph23 = isset($item['pot_pph23']) && is_numeric($item['pot_pph23']) ? (float)$item['pot_pph23'] : 0;
-                                                $pph21_base = isset($item['pot_pph21']) && is_numeric($item['pot_pph21']) ? (float)$item['pot_pph21'] : 0;
-                                                $pph21_narasumber = isset($item['pot_pph21_narasumber']) && is_numeric($item['pot_pph21_narasumber']) ? (float)$item['pot_pph21_narasumber'] : 0;
-                                                $pph21_total = $pph21_base + $pph21_narasumber;
-                                                $diterima = $jumlahAnggaran - $ppn - $pph23 - $pph21_total;
+            @foreach($groupedItems as $item)
+                @php
+                    $diterima = $item['tahap_anggaran'] - $item['pot_ppn_total'] - $item['pot_pph23_total'] - $item['pot_pph21_total'];
+                    
+                    $totalAnggaran += $item['tahap_anggaran'];
+                    $totalPpn += $item['pot_ppn_total'];
+                    $totalPph23 += $item['pot_pph23_total'];
+                    $totalPph21 += $item['pot_pph21_total'];
+                    $totalDiterima += $diterima;
 
-                                                $totalAnggaran += $jumlahAnggaran;
-                                                $totalPpn += $ppn;
-                                                $totalPph23 += $pph23;
-                                                $totalPph21 += $pph21_total;
-                                                $totalDiterima += $diterima;
-                                            @endphp
-                                            <tr>
-                                                <td class="text-center">{{ $no++ }}</td>
-                                                <td>{{ $item['uraian'] ?? '-' }}</td>
-                                                <td>{{ $item['nama_penerima'] ?? '-' }}</td>
-                                                <td>{{ $item['jabatan'] ?? '-' }}</td>
-                                                <td class="text-right">{{ number_format($jumlahAnggaran, 0, ',', '.') }}</td>
-                                                <td class="text-right">{{ $ppn > 0 ? number_format($ppn, 0, ',', '.') : '-' }}</td>
-                                                <td class="text-right">{{ $pph23 > 0 ? number_format($pph23, 0, ',', '.') : '-' }}</td>
-                                                <td class="text-right">{{ $pph21_total > 0 ? number_format($pph21_total, 0, ',', '.') : '-' }}</td>
-                                                <td class="text-right">{{ $diterima > 0 ? number_format($diterima, 0, ',', '.') : '-' }}</td>
-                                                <td class="text-center">{{ $item['nomor_rekening'] ?? '-' }}</td>
-                                                <td class="text-center">{{ $item['bank'] ?? '-' }}</td>
-                                            </tr>
-                                        @endif
-                                    @endforeach
-                                @endif
-                            @endforeach
-                        @endif
-                    @endforeach
-                @endif
+                    $bulanTampil = '-';
+                    if (isset($bulan) && $bulan !== 'Semua') {
+                        $bulanTampil = $bulan;
+                    } else {
+                        if (!empty($item['bulanan'])) {
+                            $bulanKeys = array_keys($item['bulanan']);
+                            $tahapBulan = [];
+                            foreach($bulanKeys as $b) {
+                                $isTahap1 = in_array($b, ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni']);
+                                if ($tahap == 1 && $isTahap1) {
+                                    $tahapBulan[] = $b;
+                                } elseif ($tahap == 2 && !$isTahap1) {
+                                    $tahapBulan[] = $b;
+                                }
+                            }
+                            $bulanTampil = !empty($tahapBulan) ? implode(', ', $tahapBulan) : '-';
+                        }
+                    }
+                @endphp
+                <tr>
+                    <td class="text-center">{{ $no++ }}</td>
+                    <td>{{ $item['uraian'] ?? '-' }}</td>
+                    <td class="text-center">{{ $bulanTampil }}</td>
+                    <td>{{ $item['nama_penerima'] ?? '-' }}</td>
+                    <td>{{ $item['jabatan'] ?? '-' }}</td>
+                    <td class="text-right">{{ number_format($item['tahap_anggaran'], 0, ',', '.') }}</td>
+                    <td class="text-right">{{ $item['pot_ppn_total'] > 0 ? number_format($item['pot_ppn_total'], 0, ',', '.') : '-' }}</td>
+                    <td class="text-right">{{ $item['pot_pph23_total'] > 0 ? number_format($item['pot_pph23_total'], 0, ',', '.') : '-' }}</td>
+                    <td class="text-right">{{ $item['pot_pph21_total'] > 0 ? number_format($item['pot_pph21_total'], 0, ',', '.') : '-' }}</td>
+                    <td class="text-right">{{ $diterima > 0 ? number_format($diterima, 0, ',', '.') : '-' }}</td>
+                    <td class="text-center">{{ $item['nomor_rekening'] ?? '-' }}</td>
+                    <td class="text-center">{{ $item['bank'] ?? '-' }}</td>
+                </tr>
             @endforeach
 
             <tr class="font-bold">
-                <td colspan="4" class="text-center">Jumlah</td>
+                <td colspan="5" class="text-center">Jumlah</td>
                 <td class="text-right">{{ $totalAnggaran > 0 ? number_format($totalAnggaran, 0, ',', '.') : '-' }}</td>
                 <td class="text-right">{{ $totalPpn > 0 ? number_format($totalPpn, 0, ',', '.') : '-' }}</td>
                 <td class="text-right">{{ $totalPph23 > 0 ? number_format($totalPph23, 0, ',', '.') : '-' }}</td>
@@ -227,7 +294,7 @@
 
             @if($no == 1)
                 <tr>
-                    <td colspan="11" class="text-center" style="padding: 20px;">Tidak ada data rincian pencairan.</td>
+                    <td colspan="12" class="text-center" style="padding: 20px;">Tidak ada data rincian pencairan.</td>
                 </tr>
             @endif
         </tbody>
