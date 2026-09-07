@@ -131,32 +131,34 @@
         <thead>
             <tr class="header-green">
                 <th rowspan="2" style="width: 3%;">No</th>
-                <th rowspan="2" style="width: 18%;">Nama Kegiatan</th>
-                <th rowspan="2" style="width: 8%;">Bulan</th>
+                <th rowspan="2" style="width: 15%;">Nama Kegiatan</th>
+                <th rowspan="2" style="width: 6%;">Bulan</th>
+                <th rowspan="2" style="width: 7%;">No. Kwitansi</th>
                 <th rowspan="2" style="width: 10%;">Nama Penerima</th>
-                <th rowspan="2" style="width: 8%;">Jabatan</th>
+                <th rowspan="2" style="width: 7%;">Jabatan</th>
                 <th rowspan="2" style="width: 9%;">Jumlah<br/>Anggaran<br/>(Rp)</th>
-                <th rowspan="2" style="width: 6%;">Pot. PPN</th>
-                <th rowspan="2" style="width: 6%;">Pot. PPH 23</th>
-                <th rowspan="2" style="width: 6%;">Pot. PPH 21</th>
-                <th rowspan="2" style="width: 10%;">Jumlah Yang<br/>Diterima<br/>(Rp)</th>
-                <th rowspan="2" colspan="2" style="width: 16%;">Nomor Rekening</th>
+                <th rowspan="2" style="width: 5%;">Pot. PPN</th>
+                <th rowspan="2" style="width: 5%;">Pot. PPH 23</th>
+                <th rowspan="2" style="width: 5%;">Pot. PPH 21</th>
+                <th rowspan="2" style="width: 9%;">Jumlah Yang<br/>Diterima<br/>(Rp)</th>
+                <th rowspan="2" colspan="2" style="width: 19%;">Nomor Rekening</th>
             </tr>
             <tr class="header-green">
             </tr>
             <tr class="header-yellow">
                 <th style="width: 3%;">1</th>
-                <th style="width: 18%;">2</th>
-                <th style="width: 8%;">3</th>
-                <th style="width: 10%;">4</th>
-                <th style="width: 8%;">5</th>
-                <th style="width: 9%;">6</th>
-                <th style="width: 6%;">7</th>
-                <th style="width: 6%;">8</th>
-                <th style="width: 6%;">9</th>
-                <th style="width: 10%;">10</th>
-                <th style="width: 11%;">11</th>
-                <th style="width: 5%;"></th>
+                <th style="width: 15%;">2</th>
+                <th style="width: 6%;">3</th>
+                <th style="width: 7%;">4</th>
+                <th style="width: 10%;">5</th>
+                <th style="width: 7%;">6</th>
+                <th style="width: 9%;">7</th>
+                <th style="width: 5%;">8</th>
+                <th style="width: 5%;">9</th>
+                <th style="width: 5%;">10</th>
+                <th style="width: 9%;">11</th>
+                <th style="width: 12%;">12</th>
+                <th style="width: 7%;">13</th>
             </tr>
         </thead>
         <tbody>
@@ -198,6 +200,12 @@
                                                     $groupedItems[$key]['pot_ppn_total'] = 0;
                                                     $groupedItems[$key]['pot_pph23_total'] = 0;
                                                     $groupedItems[$key]['pot_pph21_total'] = 0;
+                                                    $groupedItems[$key]['rkas_ids'] = [];
+                                                }
+                                                if (!empty($item['rkas_ids'])) {
+                                                    $groupedItems[$key]['rkas_ids'] = array_merge($groupedItems[$key]['rkas_ids'], $item['rkas_ids']);
+                                                } elseif (!empty($item['id'])) {
+                                                    $groupedItems[$key]['rkas_ids'][] = $item['id'];
                                                 }
                                                 
                                                 $ppn = 0;
@@ -248,28 +256,49 @@
                     $totalDiterima += $diterima;
 
                     $bulanTampil = '-';
+                    $relevantMonths = [];
+                    
                     if (isset($bulan) && $bulan !== 'Semua') {
                         $bulanTampil = $bulan;
+                        $relevantMonths = [$bulan];
                     } else {
+                        $TAHAP_1_MONTHS = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni'];
+                        $TAHAP_2_MONTHS = ['Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+                        $relevantMonths = $tahap == 1 ? $TAHAP_1_MONTHS : $TAHAP_2_MONTHS;
+                        
                         if (!empty($item['bulanan'])) {
                             $bulanKeys = array_keys($item['bulanan']);
                             $tahapBulan = [];
                             foreach($bulanKeys as $b) {
-                                $isTahap1 = in_array($b, ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni']);
-                                if ($tahap == 1 && $isTahap1) {
-                                    $tahapBulan[] = $b;
-                                } elseif ($tahap == 2 && !$isTahap1) {
+                                if (in_array($b, $relevantMonths)) {
                                     $tahapBulan[] = $b;
                                 }
                             }
                             $bulanTampil = !empty($tahapBulan) ? implode(', ', $tahapBulan) : '-';
                         }
                     }
+
+                    $kwitansis = [];
+                    // Gunakan SEMUA rkas_ids dari item ini, jangan dibatasi.
+                    // Filter bulan tertangani oleh in_array($kwt['bulan'], $relevantMonths)
+                    if (!empty($item['rkas_ids'])) {
+                        foreach ($item['rkas_ids'] as $rkasId) {
+                            if (!empty($kwitansiMap[$rkasId])) {
+                                foreach ($kwitansiMap[$rkasId] as $kwt) {
+                                    if (in_array($kwt['bulan'], $relevantMonths)) {
+                                        $kwitansis[$kwt['id_transaksi']] = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    $noKwitansiTampil = !empty($kwitansis) ? implode(', ', array_keys($kwitansis)) : '-';
                 @endphp
                 <tr>
                     <td class="text-center">{{ $no++ }}</td>
                     <td>{{ $item['uraian'] ?? '-' }}</td>
                     <td class="text-center">{{ $bulanTampil }}</td>
+                    <td class="text-center">{{ $noKwitansiTampil }}</td>
                     <td>{{ $item['nama_penerima'] ?? '-' }}</td>
                     <td>{{ $item['jabatan'] ?? '-' }}</td>
                     <td class="text-right">{{ number_format($item['tahap_anggaran'], 0, ',', '.') }}</td>
@@ -283,7 +312,7 @@
             @endforeach
 
             <tr class="font-bold">
-                <td colspan="5" class="text-center">Jumlah</td>
+                <td colspan="6" class="text-center">Jumlah</td>
                 <td class="text-right">{{ $totalAnggaran > 0 ? number_format($totalAnggaran, 0, ',', '.') : '-' }}</td>
                 <td class="text-right">{{ $totalPpn > 0 ? number_format($totalPpn, 0, ',', '.') : '-' }}</td>
                 <td class="text-right">{{ $totalPph23 > 0 ? number_format($totalPph23, 0, ',', '.') : '-' }}</td>
@@ -317,11 +346,18 @@
                     NIP. {{ $anggaran['nip_kepala_sekolah'] ?? '...........................' }}
                 </td>
                 <td>
-                    {{ $anggaran['sekolah']['kabupaten_kota'] ?? '...........................' }}, {{ $tanggalSumber ? \Carbon\Carbon::parse($tanggalSumber)->locale('id')->translatedFormat('d F Y') : \Carbon\Carbon::now()->translatedFormat('d F Y') }}<br>
+                    <br>
                     Bendahara BOS
                     <div class="signature-space"></div>
                     <strong><u>{{ $anggaran['bendahara'] ?? '...........................' }}</u></strong><br>
                     NIP. {{ $anggaran['nip_bendahara'] ?? '...........................' }}
+                </td>
+                <td>
+                    {{ $anggaran['sekolah']['kabupaten_kota'] ?? '...........................' }}, {{ \Carbon\Carbon::now()->locale('id')->translatedFormat('d F Y') }}<br>
+                    Bank Penyalur
+                    <div class="signature-space"></div>
+                    <strong><u></u>...........................</strong><br>
+                    
                 </td>
             </tr>
         </table>

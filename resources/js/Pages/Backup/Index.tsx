@@ -543,7 +543,7 @@ export default function BackupIndex({ auth, backupFiles, stats, flash, currentNp
                             name="npsn_code"
                             value={npsnData.npsn_code}
                             onChange={(e) => setNpsnData('npsn_code', e.target.value)}
-                            className="mt-1 block w-full"
+                            className="mt-1 block w-full dark:text-gray-950"
                             disabled={!isDatabaseReset}
                             isFocused={isDatabaseReset}
                         />

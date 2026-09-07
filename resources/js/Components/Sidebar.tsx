@@ -229,12 +229,12 @@ export default function Sidebar({ className = '', isOpen = true, setIsOpen }: { 
                             />
 
                             <div className={`space-y-1 overflow-hidden transition-all duration-300 ${isIntegrasiOpen || !isOpen ? 'max-h-[500px] opacity-100 mt-1' : 'max-h-0 opacity-0'}`}>
-                                <NavLink href={route('integrasi.api.index')} active={route().current('integrasi.api.*')} isSidebarOpen={isOpen} icon={<IconApi />}>
+                                {/* <NavLink href={route('integrasi.api.index')} active={route().current('integrasi.api.*')} isSidebarOpen={isOpen} icon={<IconApi />}>
                                     API
-                                </NavLink>
-                                <NavLink href={route('integrasi.sync.index')} active={route().current('integrasi.sync.*')} isSidebarOpen={isOpen} icon={<IconSync />}>
+                                </NavLink> */}
+                                {/* <NavLink href={route('integrasi.sync.index')} active={route().current('integrasi.sync.*')} isSidebarOpen={isOpen} icon={<IconSync />}>
                                     Singkron
-                                </NavLink>
+                                </NavLink> */}
                                 
                                 {/* Path Arkas Trigger */}
                                 <button

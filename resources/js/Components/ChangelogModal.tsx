@@ -29,7 +29,7 @@ export default function ChangelogModal() {
                         Informasi Rilis
                     </h2>
                     <span className="bg-indigo-100 text-indigo-800 text-sm font-semibold px-3 py-1 rounded-full dark:bg-indigo-900 dark:text-indigo-300">
-                        SIKAS V.2026.19
+                        SIKAS V.2026.21
                     </span>
                 </div>
 
@@ -70,6 +70,8 @@ export default function ChangelogModal() {
                             <li><span className="font-medium">Perbaikan Form bulan pada Rkas dan Rkas Perubahan:</span> Perbaikanbug pada form bulan pada rkas dan rkas perubahan saat bulan sudah terpilih maka tidak akan tampil lagi pada pilihan bulan. </li>
                             <li><span className="font-medium">Perbaikan Pajak PPN:</span> Perbaikan pada perhitungan pajak PPN yang tidak memperhitungkan nilai awal barang dan jasa. </li>
                             <li><span className="font-medium">Perbaikan Optimalisasi Aplikasi:</span> Perbaikan Optimalisasi Aplikasi untuk penggunaan yang lebih lancar. </li>
+                            <li><span className="font-medium">Perbaikan RKA Tahapan Perubahan :</span> Perbaikan pada RKA Tahapan yang mengalami bug perhitungan total jumlah berkurang dan bertambah pada Tahapan RKAS Perubahan </li>
+                            <li><span className="font-medium">Perbaikan Rincian Pencairan :</span> Perbaikan Detail pada rincian pencairan saat menggabungkan uraian akan menampilkan uraian asli, jumlah satuan, dan harga satuan. </li>
                         </ul>
                     </div>
                 </div>

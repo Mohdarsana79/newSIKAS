@@ -126,9 +126,10 @@ interface SummaryProps extends Record<string, unknown> {
         jenis_belanja: Array<{ label: string; value: number; percentage: number; }>;
     };
     routePrefix?: string;
+    kwitansiMap?: Record<number, Array<{ id_transaksi: string; bulan: string }>>;
 }
 
-export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaBulananData, rekapData, perTahapData, lembarData, rincianData, grafikData, routePrefix = '' }: PageProps<SummaryProps>) {
+export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaBulananData, rekapData, perTahapData, lembarData, rincianData, grafikData, routePrefix = '', kwitansiMap }: PageProps<SummaryProps>) {
     const [activeTab, setActiveTab] = useState('Rka Tahapan');
     const [selectedMonth, setSelectedMonth] = useState('Januari');
     const [isLoading, setIsLoading] = useState(false);
@@ -1692,7 +1693,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                             </div>
                         )}
                         {activeTab === 'Rincian Pencairan' && (
-                            <TabRincianPencairan anggaran={anggaran} tahapanData={tahapanData} variant='rkas' onPrint={(target, params) => { if (params?.tahap) setRpTahap(params.tahap); if (params?.bulan) setRpBulan(params.bulan); setPrintTarget(target as any); setShowPrintModal(true); }} onExportExcel={(target, params) => handleExportExcel(target, params?.tahap, params?.bulan)} />
+                            <TabRincianPencairan anggaran={anggaran} tahapanData={tahapanData} variant='rkas' kwitansiMap={kwitansiMap} onPrint={(target, params) => { if (params?.tahap) setRpTahap(params.tahap); if (params?.bulan) setRpBulan(params.bulan); setPrintTarget(target as any); setShowPrintModal(true); }} onExportExcel={(target, params) => handleExportExcel(target, params?.tahap, params?.bulan)} />
                         )}
                         {activeTab === 'Alur Kas' && (
                             <TabAlurKas anggaran={anggaran} tahapanData={tahapanData} months={months} onPrint={(target) => { setPrintTarget(target as any); setShowPrintModal(true); }} />

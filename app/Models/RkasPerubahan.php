@@ -32,7 +32,8 @@ class RkasPerubahan extends Model
         'pot_pph21_narasumber',
         'status_penerima',
         'golongan',
-        'uraian_gabungan'
+        'uraian_gabungan',
+        'nomor_kwitansi'
     ];
 
     protected $casts = [

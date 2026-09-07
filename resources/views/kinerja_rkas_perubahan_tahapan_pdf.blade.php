@@ -493,10 +493,23 @@
                             foreach ($tahapanData as $prog) {
                                 $totalSebelum += $prog['jumlah_murni'] ?? 0;
                                 $totalSesudah += $prog['jumlah'];
-                                $totalBertambah += max(0, $prog['jumlah'] - ($prog['jumlah_murni'] ?? 0));
-                                $totalBerkurang += max(0, ($prog['jumlah_murni'] ?? 0) - $prog['jumlah']);
                                 $totalTahap1 += $prog['tahap1'];
                                 $totalTahap2 += $prog['tahap2'];
+                                
+                                if (!empty($prog['sub_programs'])) {
+                                    foreach ($prog['sub_programs'] as $sub) {
+                                        if (!empty($sub['uraian_programs'])) {
+                                            foreach ($sub['uraian_programs'] as $ur) {
+                                                if (!empty($ur['items'])) {
+                                                    foreach ($ur['items'] as $item) {
+                                                        $totalBertambah += max(0, $item['jumlah'] - ($item['jumlah_murni'] ?? 0));
+                                                        $totalBerkurang += max(0, ($item['jumlah_murni'] ?? 0) - $item['jumlah']);
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         @endphp
                         @if ($is_excel ?? false)

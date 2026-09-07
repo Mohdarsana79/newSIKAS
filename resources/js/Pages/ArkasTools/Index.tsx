@@ -155,9 +155,9 @@ export default function Index({ auth }: any) {
                     <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
                         <form onSubmit={handleSearch} className="flex gap-4 items-end mb-6">
                             <div className="flex-1">
-                                <InputLabel value="Cari Uraian/Barang" />
+                                <InputLabel value="Cari Uraian/Barang" className="dark:text-gray-950" />
                                 <TextInput
-                                    className="w-full mt-1"
+                                    className="w-full mt-1 dark:text-gray-950"
                                     placeholder="Contoh: kertas HVS"
                                     value={keyword}
                                     onChange={(e) => setKeyword(e.target.value)}
@@ -208,16 +208,16 @@ export default function Index({ auth }: any) {
                                         results.slice(0, 1000).map((item: any, i) => (
                                             <tr key={i} className="hover:bg-gray-50">
                                                 <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-500 font-mono">{item.id_barang}</td>
-                                                <td className="px-6 py-4">{item.nama_barang}</td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                <td className="px-6 py-4 dark:text-gray-950">{item.nama_barang}</td>
+                                                <td className="px-6 py-4 whitespace-nowrap dark:text-gray-950">
                                                     {item.kode_rekening ? item.kode_rekening : <span className="text-gray-400 italic">none</span>}
                                                 </td>
-                                                <td className="px-6 py-4">
+                                                <td className="px-6 py-4 whitespace-nowrap dark:text-gray-950">
                                                     {item.rekening ? item.rekening : <span className="text-gray-400 italic">none</span>}
                                                 </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">{item.satuan}</td>
+                                                <td className="px-6 py-4 whitespace-nowrap dark:text-gray-950">{item.satuan}</td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-center font-medium text-indigo-600">{item.tahun}</td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-right">
+                                                <td className="px-6 py-4 whitespace-nowrap text-right dark:text-gray-950">
                                                     {item.batas_atas ? new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(item.batas_atas) : '0'}
                                                 </td>
                                             </tr>

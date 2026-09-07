@@ -87,7 +87,7 @@ return [
             'driver' => 'pgsql',
             'url' => null,
             'host' => '127.0.0.1',
-            'port' => '5438',
+            'port' => '5432',
             'database' => 'newSIKAS',
             'username' => 'postgres',
             'password' => 'sikas',

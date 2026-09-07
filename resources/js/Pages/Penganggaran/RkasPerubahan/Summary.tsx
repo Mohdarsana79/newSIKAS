@@ -144,9 +144,10 @@ interface SummaryProps extends Record<string, unknown> {
         jenis_belanja: Array<{ label: string; value: number; percentage: number; }>;
     };
     routePrefix?: string;
+    kwitansiMap?: Record<number, Array<{ id_transaksi: string; bulan: string }>>;
 }
 
-export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaBulananData, rekapData, perTahapData, lembarData, rincianData, grafikData, routePrefix = '' }: PageProps<SummaryProps>) {
+export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaBulananData, rekapData, perTahapData, lembarData, rincianData, grafikData, routePrefix = '', kwitansiMap }: PageProps<SummaryProps>) {
     const [activeTab, setActiveTab] = useState('Rka Tahapan');
     const [selectedMonth, setSelectedMonth] = useState('Januari');
     const [isLoading, setIsLoading] = useState(false);
@@ -295,6 +296,20 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
             }
         });
     };
+
+    let totalBertambahRkaTahapan = 0;
+    let totalBerkurangRkaTahapan = 0;
+
+    Object.values(tahapanData || {}).forEach((prog: any) => {
+        Object.values(prog.sub_programs || {}).forEach((sub: any) => {
+            Object.values(sub.uraian_programs || {}).forEach((uraian: any) => {
+                (uraian.items || []).forEach((item: any) => {
+                    totalBertambahRkaTahapan += Math.max(0, item.jumlah - (item.jumlah_murni || 0));
+                    totalBerkurangRkaTahapan += Math.max(0, (item.jumlah_murni || 0) - item.jumlah);
+                });
+            });
+        });
+    });
 
     return (
         <AuthenticatedLayout
@@ -736,10 +751,10 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                                                                 {formatCurrency(Object.values(tahapanData || {}).reduce((acc: number, prog: any) => acc + prog.jumlah, 0))}
                                                             </td>
                                                             <td className="px-2 py-2 text-right">
-                                                                {formatCurrency(Object.values(tahapanData || {}).reduce((acc: number, prog: any) => acc + (Math.max(0, prog.jumlah - (prog.jumlah_murni || 0))), 0))}
+                                                                {formatCurrency(totalBertambahRkaTahapan)}
                                                             </td>
                                                             <td className="px-2 py-2 text-right">
-                                                                {formatCurrency(Object.values(tahapanData || {}).reduce((acc: number, prog: any) => acc + (Math.max(0, (prog.jumlah_murni || 0) - prog.jumlah)), 0))}
+                                                                {formatCurrency(totalBerkurangRkaTahapan)}
                                                             </td>
                                                             <td className="px-2 py-2 text-right">
                                                                 {formatCurrency(Object.values(tahapanData || {}).reduce((acc: number, prog: any) => acc + prog.tahap1, 0))}
@@ -1383,7 +1398,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                         )}
 
                         {activeTab === 'Rincian Pencairan' && (
-                            <TabRincianPencairan anggaran={anggaran} tahapanData={tahapanData} variant='rkas_perubahan' onPrint={(target, params) => { if (params?.tahap) setRpTahap(params.tahap); if (params?.bulan) setRpBulan(params.bulan); setPrintTarget(target as any); setShowPrintModal(true); }} onExportExcel={(target, params) => handleExportExcel(target, params?.tahap, params?.bulan)} />
+                            <TabRincianPencairan anggaran={anggaran} tahapanData={tahapanData} variant='rkas_perubahan' kwitansiMap={kwitansiMap} onPrint={(target, params) => { if (params?.tahap) setRpTahap(params.tahap); if (params?.bulan) setRpBulan(params.bulan); setPrintTarget(target as any); setShowPrintModal(true); }} onExportExcel={(target, params) => handleExportExcel(target, params?.tahap, params?.bulan)} />
                         )}
                         
                         {activeTab === 'Alur Kas' && (

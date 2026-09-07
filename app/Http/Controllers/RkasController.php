@@ -477,6 +477,8 @@ class RkasController extends Controller
             'jenis_belanja' => $grafikData['jenis_belanja'] ?? []
         ];
 
+        $kwitansiMap = $this->getKwitansiMap($id);
+
         return $this->renderVariant('Penganggaran/Rkas/Summary', [
             'anggaran' => $penganggaran,
             'groupedData' => $grouped,
@@ -486,7 +488,8 @@ class RkasController extends Controller
             'perTahapData' => $perTahapData,
             'lembarData' => $lembarData,
             'rincianData' => $rincianData,
-            'grafikData' => $grafikDataResponse
+            'grafikData' => $grafikDataResponse,
+            'kwitansiMap' => $kwitansiMap,
         ]);
     }
 
@@ -503,6 +506,7 @@ class RkasController extends Controller
                 $tahap = in_array($item->bulan, ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni']) ? 1 : 2;
                 return $item->kode_rekening_id . '-' . $tampil . '-Tahap' . $tahap;
             })->map(function ($uraianGroup) {
+                $firstWithPenerima = $uraianGroup->firstWhere('nama_penerima', '!=', null) ?? $uraianGroup->first();
                 $first = $uraianGroup->first();
                 $tahap = in_array($first->bulan, ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni']) ? 1 : 2;
                 return [
@@ -523,10 +527,10 @@ class RkasController extends Controller
                     'rkas_ids' => $uraianGroup->pluck('id')->values()->all(),
                     'bulan_list' => $uraianGroup->pluck('bulan')->filter()->unique()->values()->all(),
                     'bulan' => implode(', ', $uraianGroup->pluck('bulan')->filter()->unique()->values()->all()),
-                    'nama_penerima' => $first->nama_penerima ?? '-',
-                    'jabatan' => $first->jabatan ?? '-',
-                    'nomor_rekening' => $first->nomor_rekening ?? '-',
-                    'bank' => $first->bank ?? '-'
+                    'nama_penerima' => $firstWithPenerima->nama_penerima ?? '-',
+                    'jabatan' => $firstWithPenerima->jabatan ?? '-',
+                    'nomor_rekening' => $firstWithPenerima->nomor_rekening ?? '-',
+                    'bank' => $firstWithPenerima->bank ?? '-'
                 ];
             })->values();
 
@@ -1207,6 +1211,13 @@ class RkasController extends Controller
                         'pot_pph23' => 0,
                         'pot_pph21' => 0,
                         'pot_pph21_narasumber' => 0,
+                        'nama_penerima' => $item->nama_penerima,
+                        'jabatan' => $item->jabatan,
+                        'nomor_rekening' => $item->nomor_rekening,
+                        'bank' => $item->bank,
+                        'ada_npwp' => $item->ada_npwp,
+                        'status_penerima' => $item->status_penerima,
+                        'golongan' => $item->golongan,
                      ];
                 }
                 $groupedItems[$key]['bulanan'][$bulanName]['volume'] += $item->jumlah;
@@ -1259,6 +1270,138 @@ class RkasController extends Controller
         }
 
         return $terorganisir;
+    }
+
+    /**
+     * Membuat mapping rkas_id => [{ id_transaksi, bulan }, ...] dari kolom nomor_kwitansi.
+     */
+    private function getKwitansiMap($penganggaranId): array
+    {
+        $rkasTable = (new ($this->Rkas))->getTable();
+        $bkuTable = (new ($this->BukuKasUmum))->getTable();
+        $penganggaranFk = VariantConfig::penganggaranFk($this->variant);
+        
+        // 1. Dapatkan lookup id_transaksi => bulan dari BKU
+        $bkuRows = DB::table($bkuTable)
+            ->where($penganggaranFk, $penganggaranId)
+            ->whereNotNull('id_transaksi')
+            ->select('id_transaksi', 'tanggal_transaksi')
+            ->get();
+
+        $bulanNames = [
+            1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
+            5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
+            9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember',
+        ];
+
+        $bkuLookup = [];
+        foreach ($bkuRows as $row) {
+            $bulanName = '';
+            if ($row->tanggal_transaksi) {
+                $bulanNum = (int) date('n', strtotime($row->tanggal_transaksi));
+                $bulanName = $bulanNames[$bulanNum] ?? '';
+            }
+            $bkuLookup[$row->id_transaksi] = $bulanName;
+        }
+
+        // 2. Dapatkan data RKAS yang memiliki nomor_kwitansi
+        $rkasRows = DB::table($rkasTable)
+            ->where($penganggaranFk, $penganggaranId)
+            ->whereNotNull('nomor_kwitansi')
+            ->select('id', 'nomor_kwitansi')
+            ->get();
+
+        $map = [];
+        foreach ($rkasRows as $row) {
+            if (!$row->nomor_kwitansi) continue;
+            
+            $kwitansis = array_map('trim', explode(',', $row->nomor_kwitansi));
+            foreach ($kwitansis as $kwitansi) {
+                if (!$kwitansi) continue;
+                
+                $map[$row->id][] = [
+                    'id_transaksi' => $kwitansi,
+                    'bulan' => $bkuLookup[$kwitansi] ?? '',
+                ];
+            }
+        }
+
+        // Deduplicate
+        foreach ($map as $k => $entries) {
+            $unique = [];
+            $seen = [];
+            foreach ($entries as $entry) {
+                $sig = $entry['id_transaksi'] . '|' . $entry['bulan'];
+                if (!in_array($sig, $seen)) {
+                    $seen[] = $sig;
+                    $unique[] = $entry;
+                }
+            }
+            $map[$k] = $unique;
+        }
+
+        return $map;
+    }
+
+    public function getAvailableKwitansi($id)
+    {
+        $bkuClass = $this->BukuKasUmum;
+        $penganggaranFk = VariantConfig::penganggaranFk($this->variant);
+        
+        $bkuRows = $bkuClass::with('uraianDetails')
+            ->where($penganggaranFk, $id)
+            ->whereNotNull('id_transaksi')
+            ->select('id', 'id_transaksi', 'tanggal_transaksi', 'uraian')
+            ->get();
+            
+        $bulanNames = [
+            1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
+            5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
+            9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember',
+        ];
+
+        $results = [];
+        foreach ($bkuRows as $row) {
+            $bulanName = '';
+            if ($row->tanggal_transaksi) {
+                $bulanNum = (int) date('n', strtotime($row->tanggal_transaksi));
+                $bulanName = $bulanNames[$bulanNum] ?? '';
+            }
+
+            $uraianDetails = $row->uraianDetails->map(function($detail) {
+                return [
+                    'uraian' => $detail->uraian,
+                    'volume' => $detail->volume,
+                    'satuan' => $detail->satuan,
+                    'harga_satuan' => $detail->harga_satuan,
+                    'jumlah' => $detail->jumlah,
+                ];
+            });
+
+            $results[] = [
+                'id_transaksi' => $row->id_transaksi,
+                'bulan' => $bulanName,
+                'uraian' => $row->uraian,
+                'uraian_details' => $uraianDetails,
+            ];
+        }
+
+        return response()->json($results);
+    }
+
+    public function updateKwitansi(Request $request, $id)
+    {
+        $request->validate([
+            'rkas_ids' => 'required|array',
+            'rkas_ids.*' => 'integer',
+            'nomor_kwitansi' => 'nullable|string'
+        ]);
+        
+        $this->Rkas::where(VariantConfig::penganggaranFk($this->variant), $id)
+            ->whereIn('id', $request->rkas_ids)
+            ->update(['nomor_kwitansi' => $request->nomor_kwitansi]);
+            
+        return redirect()->back()->with('success', 'Nomor kwitansi berhasil disimpan.');
     }
 
     private function getRekapRkas($penganggaranId)
@@ -2065,12 +2208,14 @@ class RkasController extends Controller
 
         $tahap = $request->tahap ?? 1;
         $bulan = $request->bulan ?? 'Semua';
+        $kwitansiMap = $this->getKwitansiMap($id);
 
         $pdf = Pdf::loadView('laporan.rincian_pencairan', [
             'anggaran' => $penganggaran->toArray(),
             'tahapanData' => $tahapanData,
             'tahap' => $tahap,
             'bulan' => $bulan,
+            'kwitansiMap' => $kwitansiMap,
             'paper_size' => $request->paper_size ?? 'A4',
             'orientation' => $request->orientation ?? 'landscape',
             'font_size' => $request->font_size ?? '10pt',
@@ -2099,12 +2244,14 @@ class RkasController extends Controller
 
         $tahap = $request->tahap ?? 1;
         $bulan = $request->bulan ?? 'Semua';
+        $kwitansiMap = $this->getKwitansiMap($id);
 
         $html = view('laporan.rincian_pencairan_excel', [
             'anggaran' => $penganggaran->toArray(),
             'tahapanData' => $tahapanData,
             'tahap' => $tahap,
             'bulan' => $bulan,
+            'kwitansiMap' => $kwitansiMap,
             'is_excel' => true
         ])->render();
 

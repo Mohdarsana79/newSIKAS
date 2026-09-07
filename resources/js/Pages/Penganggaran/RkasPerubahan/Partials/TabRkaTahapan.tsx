@@ -29,6 +29,20 @@ export default function TabRkaTahapan({ anggaran, tahapanData, onPrint, onExport
         }
     };
 
+    let totalBertambah = 0;
+    let totalBerkurang = 0;
+
+    Object.values(tahapanData || {}).forEach((prog: any) => {
+        Object.values(prog.sub_programs || {}).forEach((sub: any) => {
+            Object.values(sub.uraian_programs || {}).forEach((uraian: any) => {
+                (uraian.items || []).forEach((item: any) => {
+                    totalBertambah += Math.max(0, item.jumlah - (item.jumlah_murni || 0));
+                    totalBerkurang += Math.max(0, (item.jumlah_murni || 0) - item.jumlah);
+                });
+            });
+        });
+    });
+
     return (
                             <div className="space-y-8 animate-fade-in-up">
                                 {/* Action Button */}
@@ -306,10 +320,10 @@ export default function TabRkaTahapan({ anggaran, tahapanData, onPrint, onExport
                                                                 {formatCurrency(Object.values(tahapanData || {}).reduce((acc: number, prog: any) => acc + prog.jumlah, 0))}
                                                             </td>
                                                             <td className="px-2 py-2 text-right">
-                                                                {formatCurrency(Object.values(tahapanData || {}).reduce((acc: number, prog: any) => acc + (Math.max(0, prog.jumlah - (prog.jumlah_murni || 0))), 0))}
+                                                                {formatCurrency(totalBertambah)}
                                                             </td>
                                                             <td className="px-2 py-2 text-right">
-                                                                {formatCurrency(Object.values(tahapanData || {}).reduce((acc: number, prog: any) => acc + (Math.max(0, (prog.jumlah_murni || 0) - prog.jumlah)), 0))}
+                                                                {formatCurrency(totalBerkurang)}
                                                             </td>
                                                             <td className="px-2 py-2 text-right">
                                                                 {formatCurrency(Object.values(tahapanData || {}).reduce((acc: number, prog: any) => acc + prog.tahap1, 0))}

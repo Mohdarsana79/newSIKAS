@@ -43,6 +43,7 @@
                 <th rowspan="2">No</th>
                 <th rowspan="2">Nama Kegiatan</th>
                 <th rowspan="2">Bulan</th>
+                <th rowspan="2">No. Kwitansi</th>
                 <th rowspan="2">Nama Penerima</th>
                 <th rowspan="2">Jabatan</th>
                 <th rowspan="2">Jumlah Anggaran (Rp)</th>
@@ -108,6 +109,12 @@
                                                     $groupedItems[$key]['pot_ppn_total'] = 0;
                                                     $groupedItems[$key]['pot_pph23_total'] = 0;
                                                     $groupedItems[$key]['pot_pph21_total'] = 0;
+                                                    $groupedItems[$key]['rkas_ids'] = [];
+                                                }
+                                                if (!empty($item['rkas_ids'])) {
+                                                    $groupedItems[$key]['rkas_ids'] = array_merge($groupedItems[$key]['rkas_ids'], $item['rkas_ids']);
+                                                } elseif (!empty($item['id'])) {
+                                                    $groupedItems[$key]['rkas_ids'][] = $item['id'];
                                                 }
                                                 
                                                 $ppn = 0;
@@ -158,28 +165,49 @@
                     $totalDiterima += $diterima;
 
                     $bulanTampil = '-';
+                    $relevantMonths = [];
+                    
                     if (isset($bulan) && $bulan !== 'Semua') {
                         $bulanTampil = $bulan;
+                        $relevantMonths = [$bulan];
                     } else {
+                        $TAHAP_1_MONTHS = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni'];
+                        $TAHAP_2_MONTHS = ['Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+                        $relevantMonths = $tahap == 1 ? $TAHAP_1_MONTHS : $TAHAP_2_MONTHS;
+                        
                         if (!empty($item['bulanan'])) {
                             $bulanKeys = array_keys($item['bulanan']);
                             $tahapBulan = [];
                             foreach($bulanKeys as $b) {
-                                $isTahap1 = in_array($b, ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni']);
-                                if ($tahap == 1 && $isTahap1) {
-                                    $tahapBulan[] = $b;
-                                } elseif ($tahap == 2 && !$isTahap1) {
+                                if (in_array($b, $relevantMonths)) {
                                     $tahapBulan[] = $b;
                                 }
                             }
                             $bulanTampil = !empty($tahapBulan) ? implode(', ', $tahapBulan) : '-';
                         }
                     }
+
+                    $kwitansis = [];
+                    // Gunakan SEMUA rkas_ids dari item ini, jangan dibatasi.
+                    // Filter bulan tertangani oleh in_array($kwt['bulan'], $relevantMonths)
+                    if (!empty($item['rkas_ids'])) {
+                        foreach ($item['rkas_ids'] as $rkasId) {
+                            if (!empty($kwitansiMap[$rkasId])) {
+                                foreach ($kwitansiMap[$rkasId] as $kwt) {
+                                    if (in_array($kwt['bulan'], $relevantMonths)) {
+                                        $kwitansis[$kwt['id_transaksi']] = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    $noKwitansiTampil = !empty($kwitansis) ? implode(', ', array_keys($kwitansis)) : '-';
                 @endphp
                 <tr>
                     <td align="center">{{ $no++ }}</td>
                     <td>{{ $item['uraian'] ?? '-' }}</td>
                     <td align="center">{{ $bulanTampil }}</td>
+                    <td align="center">{{ $noKwitansiTampil }}</td>
                     <td>{{ $item['nama_penerima'] ?? '-' }}</td>
                     <td>{{ $item['jabatan'] ?? '-' }}</td>
                     <td align="right">{{ $item['tahap_anggaran'] > 0 ? $item['tahap_anggaran'] : 0 }}</td>
@@ -193,7 +221,7 @@
             @endforeach
 
             <tr style="font-weight: bold;">
-                <td colspan="5" align="center">Jumlah</td>
+                <td colspan="6" align="center">Jumlah</td>
                 <td align="right">{{ $totalAnggaran }}</td>
                 <td align="right">{{ $totalPpn }}</td>
                 <td align="right">{{ $totalPph23 }}</td>

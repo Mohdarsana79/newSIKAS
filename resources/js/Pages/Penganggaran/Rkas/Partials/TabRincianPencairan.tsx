@@ -1,13 +1,17 @@
 import { Fragment, useState, useMemo } from 'react';
 import { useForm, usePage, router } from '@inertiajs/react';
 import CreatableSelect from 'react-select/creatable';
-
+import axios from 'axios';
+import Modal from '@/Components/Modal';
+import PrimaryButton from '@/Components/PrimaryButton';
+import SecondaryButton from '@/Components/SecondaryButton';
 interface TabRincianPencairanProps {
     anggaran: any;
     tahapanData: any;
     variant: string;
     onPrint?: (target: string, params?: Record<string, any>) => void;
     onExportExcel?: (target: string, params?: Record<string, any>) => void;
+    kwitansiMap?: Record<number, Array<{ id_transaksi: string; bulan: string }>>;
 }
 
 // Tarif PPH 21 Non-PNS dengan NIK/NPWP
@@ -75,7 +79,7 @@ function getPph21Rate(statusPenerima: string, golongan: string, adaNpwp: boolean
     return tarifTable[tarifTable.length - 1].rate;
 }
 
-export default function TabRincianPencairan({ anggaran, tahapanData, variant, onPrint, onExportExcel }: TabRincianPencairanProps) {
+export default function TabRincianPencairan({ anggaran, tahapanData, variant, onPrint, onExportExcel, kwitansiMap }: TabRincianPencairanProps) {
     const { routePrefix } = usePage().props as any;
     const isSilpa = anggaran?.sumber_dana?.toLowerCase().includes('silpa');
     const isRkasAwal = variant === 'rkas' && !isSilpa;
@@ -97,6 +101,18 @@ export default function TabRincianPencairan({ anggaran, tahapanData, variant, on
     const [showDetailModal, setShowDetailModal] = useState(false);
     const [detailItem, setDetailItem] = useState<any>(null);
     const [searchQuery, setSearchQuery] = useState('');
+    
+    // Kwitansi Modal State
+    const [showKwitansiModal, setShowKwitansiModal] = useState(false);
+    const [selectedRkasIds, setSelectedRkasIds] = useState<number[]>([]);
+    const [availableKwitansi, setAvailableKwitansi] = useState<any[]>([]);
+    const [selectedKwitansi, setSelectedKwitansi] = useState<string[]>([]);
+    const [isFetchingKwitansi, setIsFetchingKwitansi] = useState(false);
+    const [kwitansiDetailData, setKwitansiDetailData] = useState<any | null>(null);
+    const [searchKwitansi, setSearchKwitansi] = useState('');
+    const [filterTahapKwitansi, setFilterTahapKwitansi] = useState('Semua');
+    const [filterBulanKwitansi, setFilterBulanKwitansi] = useState('Semua');
+
     const pageProps = usePage().props as any;
     const pageErrors = pageProps.errors || {};
 
@@ -228,7 +244,44 @@ export default function TabRincianPencairan({ anggaran, tahapanData, variant, on
                 if (!existing.original_items) {
                     existing.original_items = [];
                 }
-                existing.original_items.push(item);
+                
+                // Merge rkas_ids
+                if (item.rkas_ids) {
+                    if (!existing.rkas_ids) existing.rkas_ids = [];
+                    existing.rkas_ids.push(...item.rkas_ids);
+                    existing.rkas_ids = Array.from(new Set(existing.rkas_ids));
+                }
+                
+                // Merge rkas_ids_per_bulan
+                if (item.rkas_ids_per_bulan) {
+                    if (!existing.rkas_ids_per_bulan) existing.rkas_ids_per_bulan = {};
+                    Object.entries(item.rkas_ids_per_bulan).forEach(([m, ids]) => {
+                        if (!existing.rkas_ids_per_bulan[m]) existing.rkas_ids_per_bulan[m] = [];
+                        existing.rkas_ids_per_bulan[m].push(...(ids as number[]));
+                        existing.rkas_ids_per_bulan[m] = Array.from(new Set(existing.rkas_ids_per_bulan[m]));
+                    });
+                }
+                
+                // Merge murni_rkas_ids
+                if (item.murni_rkas_ids) {
+                    if (!existing.murni_rkas_ids) existing.murni_rkas_ids = [];
+                    existing.murni_rkas_ids.push(...item.murni_rkas_ids);
+                    existing.murni_rkas_ids = Array.from(new Set(existing.murni_rkas_ids));
+                }
+
+                existing.original_items.push({
+                    id: item.id,
+                    rkas_ids: item.rkas_ids,
+                    uraian: item.uraian,
+                    kode_rekening: item.kode_rekening,
+                    kode_kegiatan: item.kode_kegiatan,
+                    kode_rekening_id: item.kode_rekening_id,
+                    kode_id: item.kode_id,
+                    satuan: item.satuan,
+                    harga_satuan: item.harga_satuan || item.tarif || 0,
+                    jumlah: item.volume || 0,
+                    total: item.jumlah || 0,
+                });
 
                 if (!existing.bulan_list) existing.bulan_list = [];
                 itemMonths.forEach((m: string) => {
@@ -241,7 +294,19 @@ export default function TabRincianPencairan({ anggaran, tahapanData, variant, on
                     ...item, 
                     uraian: displayUraian, 
                     uraian_gabungan: currentUraianGabungan,
-                    original_items: [item], 
+                    original_items: [{
+                        id: item.id,
+                        rkas_ids: item.rkas_ids,
+                        uraian: item.uraian,
+                        kode_rekening: item.kode_rekening,
+                        kode_kegiatan: item.kode_kegiatan,
+                        kode_rekening_id: item.kode_rekening_id,
+                        kode_id: item.kode_id,
+                        satuan: item.satuan,
+                        harga_satuan: item.harga_satuan || item.tarif || 0,
+                        jumlah: item.volume || 0,
+                        total: item.jumlah || 0,
+                    }], 
                     bulan_list: [...itemMonths], 
                     jumlah_filtered: jumlahBulanIni 
                 };
@@ -296,31 +361,97 @@ export default function TabRincianPencairan({ anggaran, tahapanData, variant, on
     // Extract unique recipients from all items
     const recipientsOptions = useMemo(() => {
         const list: any[] = [];
-        const names = new Set();
+        const uniqueKeys = new Set();
         flatItems.forEach(item => {
-            if (item.nama_penerima && !names.has(item.nama_penerima)) {
+            if (item.nama_penerima) {
                 // Filter out 'Test Silpa' as requested
                 if (item.nama_penerima.toLowerCase() === 'test silpa') {
                     return;
                 }
                 
-                names.add(item.nama_penerima);
-                list.push({
-                    value: item.nama_penerima,
-                    label: item.nama_penerima,
-                    data: {
-                        jabatan: item.jabatan || '',
-                        nomor_rekening: item.nomor_rekening || '',
-                        bank: item.bank || '',
-                        ada_npwp: item.ada_npwp == 1,
-                        status_penerima: item.status_penerima || '',
-                        golongan: item.golongan || '',
-                    }
-                });
+                const acc = item.nomor_rekening || '';
+                const key = item.nama_penerima + '|' + acc;
+                
+                if (!uniqueKeys.has(key)) {
+                    uniqueKeys.add(key);
+                    list.push({
+                        value: key,
+                        label: acc ? `${item.nama_penerima} - ${acc}` : item.nama_penerima,
+                        data: {
+                            nama_penerima: item.nama_penerima,
+                            jabatan: item.jabatan || '',
+                            nomor_rekening: acc,
+                            bank: item.bank || '',
+                            ada_npwp: item.ada_npwp == 1,
+                            status_penerima: item.status_penerima || '',
+                            golongan: item.golongan || '',
+                        }
+                    });
+                }
             }
         });
         return list;
     }, [flatItems]);
+
+    const fetchAvailableKwitansi = async (rkasIds: number[], currentKwitansi: string[]) => {
+        setIsFetchingKwitansi(true);
+        setSelectedRkasIds(rkasIds);
+        setSelectedKwitansi(currentKwitansi);
+        
+        try {
+            const baseRoute = variant === 'rkas_perubahan' 
+                ? 'rkas-perubahan.available-kwitansi'
+                : 'rkas.available-kwitansi';
+            const routeName = (routePrefix || '') + baseRoute;
+            const url = route(routeName, anggaran.id);
+                
+            const response = await axios.get(url);
+            setAvailableKwitansi(response.data);
+            setShowKwitansiModal(true);
+        } catch (error) {
+            console.error("Gagal mengambil data kwitansi", error);
+        } finally {
+            setIsFetchingKwitansi(false);
+        }
+    };
+
+    const saveKwitansi = () => {
+        if (!selectedRkasIds || selectedRkasIds.length === 0) return;
+        
+        const baseRoute = variant === 'rkas_perubahan'
+            ? 'rkas-perubahan.update-kwitansi'
+            : 'rkas.update-kwitansi';
+        const routeName = (routePrefix || '') + baseRoute;
+        const url = route(routeName, anggaran.id);
+            
+        router.put(url, {
+            rkas_ids: selectedRkasIds,
+            nomor_kwitansi: selectedKwitansi.join(','),
+            is_perubahan: variant === 'rkas_perubahan'
+        }, {
+            preserveScroll: true,
+            onSuccess: () => {
+                setShowKwitansiModal(false);
+            },
+            onError: (errors) => {
+                console.error("Gagal menyimpan kwitansi", errors);
+            }
+        });
+    };
+
+    const toggleKwitansiSelection = (idTransaksi: string) => {
+        if (selectedBulan !== 'Semua') {
+            setSelectedKwitansi(prev => 
+                prev.includes(idTransaksi) ? [] : [idTransaksi]
+            );
+        } else {
+            setSelectedKwitansi(prev => 
+                prev.includes(idTransaksi) 
+                    ? prev.filter(id => id !== idTransaksi)
+                    : [...prev, idTransaksi]
+            );
+        }
+    };
 
     const handleEditClick = (item: any) => {
         setEditingItem(item);
@@ -328,13 +459,45 @@ export default function TabRincianPencairan({ anggaran, tahapanData, variant, on
         let ppn = '';
         let pph23 = '';
         let pph21 = '';
+        let namaPenerima = item.nama_penerima || '';
+        let jabatan = item.jabatan || '';
+        let nomorRekening = item.nomor_rekening || '';
+        let bank = item.bank || '';
+        let adaNpwp = item.ada_npwp == 1;
+        let statusPenerima = item.status_penerima || '';
+        let golongan = item.golongan || '';
 
         if (selectedBulan !== 'Semua') {
             const m = item.bulanan?.[selectedBulan];
             ppn = m?.pot_ppn ? String(m.pot_ppn) : '';
             pph23 = m?.pot_pph23 ? String(m.pot_pph23) : '';
             pph21 = m?.pot_pph21 || m?.pot_pph21_narasumber ? String(Number(m.pot_pph21 || 0) + Number(m.pot_pph21_narasumber || 0)) : '';
+            if (m) {
+                namaPenerima = m.nama_penerima || namaPenerima;
+                jabatan = m.jabatan || jabatan;
+                nomorRekening = m.nomor_rekening || nomorRekening;
+                bank = m.bank || bank;
+                adaNpwp = m.ada_npwp == 1;
+                statusPenerima = m.status_penerima || statusPenerima;
+                golongan = m.golongan || golongan;
+            }
         } else {
+            const TAHAP_1_MONTHS = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni'];
+            const TAHAP_2_MONTHS = ['Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+            const tahapMonths = selectedTahap === 1 ? TAHAP_1_MONTHS : TAHAP_2_MONTHS;
+            for (const month of tahapMonths) {
+                const m = item.bulanan?.[month];
+                if (m && m.total > 0) {
+                    namaPenerima = m.nama_penerima || namaPenerima;
+                    jabatan = m.jabatan || jabatan;
+                    nomorRekening = m.nomor_rekening || nomorRekening;
+                    bank = m.bank || bank;
+                    adaNpwp = m.ada_npwp == 1;
+                    statusPenerima = m.status_penerima || statusPenerima;
+                    golongan = m.golongan || golongan;
+                    break;
+                }
+            }
             ppn = selectedTahap === 1 ? (item.pot_ppn_t1 ? String(item.pot_ppn_t1) : '') : (item.pot_ppn_t2 ? String(item.pot_ppn_t2) : '');
             pph23 = selectedTahap === 1 ? (item.pot_pph23_t1 ? String(item.pot_pph23_t1) : '') : (item.pot_pph23_t2 ? String(item.pot_pph23_t2) : '');
             const p21_t1 = Number(item.pot_pph21_t1 || 0) + Number(item.pot_pph21_narasumber_t1 || 0);
@@ -361,16 +524,16 @@ export default function TabRincianPencairan({ anggaran, tahapanData, variant, on
             uraian: item.uraian,
             kode_rekening_id: item.kode_rekening_id,
             rkas_ids: Array.from(new Set(idsToUpdate)),
-            nama_penerima: item.nama_penerima || '',
-            jabatan: item.jabatan || '',
-            nomor_rekening: item.nomor_rekening || '',
-            bank: item.bank || '',
-            ada_npwp: item.ada_npwp == 1,
+            nama_penerima: namaPenerima,
+            jabatan: jabatan,
+            nomor_rekening: nomorRekening,
+            bank: bank,
+            ada_npwp: adaNpwp,
             pot_ppn: ppn,
             pot_pph23: pph23,
             pot_pph21: pph21,
-            status_penerima: item.status_penerima || '',
-            golongan: item.golongan || '',
+            status_penerima: statusPenerima,
+            golongan: golongan,
         });
     };
 
@@ -727,7 +890,7 @@ export default function TabRincianPencairan({ anggaran, tahapanData, variant, on
                                 placeholder="Cari uraian..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm sm:text-sm pl-8 w-48"
+                                className="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm sm:text-sm pl-8 w-48 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                             />
                             <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
                                 <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -815,6 +978,7 @@ export default function TabRincianPencairan({ anggaran, tahapanData, variant, on
                                 <th className="px-3 py-2 text-center font-bold text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600 whitespace-nowrap" rowSpan={2}>Kode Kegiatan</th>
                                 <th className="px-3 py-2 text-center font-bold text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600" rowSpan={2}>Nama Kegiatan</th>
                                 <th className="px-3 py-2 text-center font-bold text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600" rowSpan={2}>Bulan</th>
+                                <th className="px-3 py-2 text-center font-bold text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600 whitespace-nowrap" rowSpan={2}>No. Kwitansi</th>
                                 <th className="px-3 py-2 text-center font-bold text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600" rowSpan={2}>Nama Penerima</th>
                                 <th className="px-3 py-2 text-center font-bold text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600" rowSpan={2}>Jabatan</th>
                                 <th className="px-3 py-2 text-center font-bold text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600 whitespace-nowrap" rowSpan={2}>Jumlah<br/>Anggaran<br/>(Rp)</th>
@@ -844,6 +1008,7 @@ export default function TabRincianPencairan({ anggaran, tahapanData, variant, on
                                 <th className="px-3 py-1 text-center text-xs text-gray-500 dark:text-gray-400 border border-gray-300 dark:border-gray-600">12</th>
                                 <th className="px-3 py-1 text-center text-xs text-gray-500 dark:text-gray-400 border border-gray-300 dark:border-gray-600">13</th>
                                 <th className="px-3 py-1 text-center text-xs text-gray-500 dark:text-gray-400 border border-gray-300 dark:border-gray-600">14</th>
+                                <th className="px-3 py-1 text-center text-xs text-gray-500 dark:text-gray-400 border border-gray-300 dark:border-gray-600">15</th>
                                 <th className="px-3 py-1 text-center text-xs text-gray-500 dark:text-gray-400 border border-gray-300 dark:border-gray-600"></th>
                             </tr>
                         </thead>
@@ -853,13 +1018,36 @@ export default function TabRincianPencairan({ anggaran, tahapanData, variant, on
                                 let ppn = 0;
                                 let pph23 = 0;
                                 let pph21 = 0;
+                                let namaPenerima = item.nama_penerima;
+                                let jabatan = item.jabatan;
+                                let nomorRekening = item.nomor_rekening;
+                                let bank = item.bank;
 
                                 if (selectedBulan !== 'Semua') {
                                     const m = item.bulanan?.[selectedBulan];
                                     ppn = m?.pot_ppn || 0;
                                     pph23 = m?.pot_pph23 || 0;
                                     pph21 = (m?.pot_pph21 || 0) + (m?.pot_pph21_narasumber || 0);
+                                    if (m) {
+                                        namaPenerima = m.nama_penerima || namaPenerima;
+                                        jabatan = m.jabatan || jabatan;
+                                        nomorRekening = m.nomor_rekening || nomorRekening;
+                                        bank = m.bank || bank;
+                                    }
                                 } else {
+                                    const TAHAP_1_MONTHS = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni'];
+                                    const TAHAP_2_MONTHS = ['Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+                                    const tahapMonths = selectedTahap === 1 ? TAHAP_1_MONTHS : TAHAP_2_MONTHS;
+                                    for (const month of tahapMonths) {
+                                        const m = item.bulanan?.[month];
+                                        if (m && m.total > 0) {
+                                            namaPenerima = m.nama_penerima || namaPenerima;
+                                            jabatan = m.jabatan || jabatan;
+                                            nomorRekening = m.nomor_rekening || nomorRekening;
+                                            bank = m.bank || bank;
+                                            break;
+                                        }
+                                    }
                                     ppn = selectedTahap === 1 ? (item.pot_ppn_t1 || 0) : (item.pot_ppn_t2 || 0);
                                     pph23 = selectedTahap === 1 ? (item.pot_pph23_t1 || 0) : (item.pot_pph23_t2 || 0);
                                     pph21 = selectedTahap === 1 ? ((item.pot_pph21_t1 || 0) + (item.pot_pph21_narasumber_t1 || 0)) : ((item.pot_pph21_t2 || 0) + (item.pot_pph21_narasumber_t2 || 0));
@@ -898,13 +1086,115 @@ export default function TabRincianPencairan({ anggaran, tahapanData, variant, on
                                             <div className="text-gray-900 dark:text-gray-100 text-xs text-center">{item.bulan_list?.join(', ') || '-'}</div>
                                         </td>
                                         <td className="px-3 py-2 border border-gray-200 dark:border-gray-700">
-                                            {item.nama_penerima ? (
-                                                <span className="text-gray-900 dark:text-gray-100">{item.nama_penerima}</span>
+                                            <div className="text-gray-900 dark:text-gray-100 text-xs text-center">
+                                                {(() => {
+                                                    if (!kwitansiMap) return '-';
+
+                                                    const TAHAP_1_MONTHS = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni'];
+                                                    const TAHAP_2_MONTHS = ['Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
+                                                    // Tentukan bulan-bulan yang relevan
+                                                    let relevantMonths: string[];
+                                                    if (selectedBulan !== 'Semua') {
+                                                        relevantMonths = [selectedBulan];
+                                                    } else {
+                                                        relevantMonths = selectedTahap === 1 ? TAHAP_1_MONTHS : TAHAP_2_MONTHS;
+                                                    }
+
+                                                    // Dapatkan SEMUA id untuk item ini (lintas bulan)
+                                                    const allItemIds = [
+                                                        ...(item.rkas_ids || [item.id]),
+                                                        ...(item.murni_rkas_ids || [])
+                                                    ];
+
+                                                    // Helper untuk mendapatkan urutan bulan
+                                                    const monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+                                                    const getMonthIndex = (m: string) => monthNames.indexOf(m);
+
+                                                    // Periksa dan saring Kwitansi
+                                                    const kwitansiNumbers = new Set<string>();
+                                                    const activeTahapMonths = selectedTahap === 1 ? TAHAP_1_MONTHS : TAHAP_2_MONTHS;
+                                                    const activeIds: number[] = [];
+
+                                                    allItemIds.forEach((id: number) => {
+                                                        // Cari tahu bulan anggaran dari id ini
+                                                        let budgetMonthStr = '';
+                                                        if (item.rkas_ids_per_bulan) {
+                                                            for (const [bulan, ids] of Object.entries(item.rkas_ids_per_bulan)) {
+                                                                if ((ids as number[]).includes(id)) { budgetMonthStr = bulan; break; }
+                                                            }
+                                                        }
+                                                        if (!budgetMonthStr && item.murni_rkas_ids_per_bulan) {
+                                                            for (const [bulan, ids] of Object.entries(item.murni_rkas_ids_per_bulan)) {
+                                                                if ((ids as number[]).includes(id)) { budgetMonthStr = bulan; break; }
+                                                            }
+                                                        }
+
+                                                        let shouldProcess = false;
+                                                        if (budgetMonthStr) {
+                                                            if (selectedBulan === 'Semua') {
+                                                                if (activeTahapMonths.includes(budgetMonthStr)) {
+                                                                    shouldProcess = true;
+                                                                    activeIds.push(id);
+                                                                }
+                                                            } else {
+                                                                if (budgetMonthStr === selectedBulan) {
+                                                                    shouldProcess = true;
+                                                                    activeIds.push(id);
+                                                                }
+                                                            }
+                                                        }
+
+                                                        const entries = kwitansiMap[id];
+                                                        if (entries && shouldProcess) {
+                                                            entries.forEach((entry: { id_transaksi: string; bulan: string }) => {
+                                                                kwitansiNumbers.add(entry.id_transaksi);
+                                                            });
+                                                        }
+                                                    });
+
+                                                    const uniqueKwitansi = Array.from(kwitansiNumbers);
+                                                    const hasKwitansi = uniqueKwitansi.length > 0;
+
+                                                    return (
+                                                        <div className="flex flex-col items-center justify-center gap-1">
+                                                            {hasKwitansi ? (
+                                                                <div className="flex flex-col items-center gap-1">
+                                                                    {selectedBulan === 'Semua' ? (
+                                                                        <div className="text-center whitespace-normal">{uniqueKwitansi.join(', ')}</div>
+                                                                    ) : (
+                                                                        <div className="flex flex-col gap-0.5 text-center">
+                                                                            {uniqueKwitansi.map((k, i) => <div key={i}>{k}</div>)}
+                                                                        </div>
+                                                                    )}
+                                                                    <button
+                                                                        onClick={() => fetchAvailableKwitansi(activeIds, uniqueKwitansi)}
+                                                                        className="inline-flex items-center justify-center px-2 py-1 text-[10px] font-medium rounded text-white bg-indigo-500 hover:bg-indigo-600 shadow-sm transition-colors"
+                                                                    >
+                                                                        Edit
+                                                                    </button>
+                                                                </div>
+                                                            ) : (
+                                                                <button
+                                                                    onClick={() => fetchAvailableKwitansi(activeIds, [])}
+                                                                    className="inline-flex items-center justify-center px-2 py-1 text-[10px] font-medium rounded text-white bg-green-500 hover:bg-green-600 shadow-sm transition-colors whitespace-nowrap"
+                                                                >
+                                                                    + Tambah
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })()}
+                                            </div>
+                                        </td>
+                                        <td className="px-3 py-2 border border-gray-200 dark:border-gray-700">
+                                            {namaPenerima ? (
+                                                <span className="text-gray-900 dark:text-gray-100">{namaPenerima}</span>
                                             ) : (
                                                 <span className="text-red-500 italic text-xs">Belum diisi</span>
                                             )}
                                         </td>
-                                        <td className="px-3 py-2 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">{item.jabatan || '-'}</td>
+                                        <td className="px-3 py-2 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">{jabatan || '-'}</td>
                                         <td className="px-3 py-2 text-right border border-gray-200 dark:border-gray-700 font-medium text-gray-900 dark:text-gray-100 whitespace-nowrap">
                                             {jumlahAnggaran > 0 ? formatCurrency(jumlahAnggaran) : '-'}
                                         </td>
@@ -921,10 +1211,10 @@ export default function TabRincianPencairan({ anggaran, tahapanData, variant, on
                                             {jumlahDiterima > 0 ? formatCurrency(jumlahDiterima) : '-'}
                                         </td>
                                         <td className="px-3 py-2 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 whitespace-nowrap font-mono text-xs">
-                                            {item.nomor_rekening || '-'}
+                                            {nomorRekening || '-'}
                                         </td>
                                         <td className="px-3 py-2 text-center border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
-                                            {item.bank || '-'}
+                                            {bank || '-'}
                                         </td>
                                         <td className="px-3 py-2 text-center border border-gray-200 dark:border-gray-700">
                                             <div className="flex flex-col gap-1 items-center justify-center">
@@ -1067,12 +1357,16 @@ export default function TabRincianPencairan({ anggaran, tahapanData, variant, on
                                         <CreatableSelect
                                             isClearable
                                             options={recipientsOptions}
-                                            value={data.nama_penerima ? { label: data.nama_penerima, value: data.nama_penerima } : null}
+                                            value={data.nama_penerima ? (
+                                                recipientsOptions.find(opt => opt.data.nama_penerima === data.nama_penerima && opt.data.nomor_rekening === (data.nomor_rekening || '')) 
+                                                || { label: data.nama_penerima, value: data.nama_penerima }
+                                            ) : null}
                                             onChange={(selected: any) => {
                                                 if (selected) {
+                                                    const isNew = selected.__isNew__;
                                                     setData(prev => ({
                                                         ...prev,
-                                                        nama_penerima: selected.value,
+                                                        nama_penerima: isNew ? selected.value : (selected.data?.nama_penerima || selected.label.split(' - ')[0]),
                                                         ...(selected.data ? {
                                                             jabatan: selected.data.jabatan || '',
                                                             nomor_rekening: selected.data.nomor_rekening || '',
@@ -1100,6 +1394,14 @@ export default function TabRincianPencairan({ anggaran, tahapanData, variant, on
                                             noOptionsMessage={() => "Ketik untuk mencari atau menambah"}
                                             className="mt-1 react-select-container [&_input:focus]:!ring-0 [&_input:focus]:!border-transparent [&_input:focus]:!shadow-none [&_input]:!ring-0 [&_input]:!shadow-none [&_input]:!border-transparent"
                                             classNamePrefix="react-select"
+                                            classNames={{
+                                                control: () => 'dark:!bg-gray-700 dark:!border-gray-600 dark:!text-white',
+                                                singleValue: () => 'dark:!text-white',
+                                                input: () => 'dark:!text-white',
+                                                menu: () => 'dark:!bg-gray-800 dark:!border-gray-600',
+                                                option: (state) => state.isFocused ? 'dark:!bg-indigo-900 dark:!text-white' : 'dark:!bg-gray-800 dark:!text-gray-200',
+                                                placeholder: () => 'dark:!text-gray-400'
+                                            }}
                                             styles={{
                                                 control: (base, state) => ({
                                                     ...base,
@@ -1482,7 +1784,7 @@ export default function TabRincianPencairan({ anggaran, tahapanData, variant, on
             {/* Modal Detail Uraian Tergabung */}
             {showDetailModal && detailItem && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[80vh]">
+                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[80vh]">
                         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-sky-50 dark:bg-sky-900/30">
                             <h3 className="text-lg font-bold text-sky-800 dark:text-sky-200">Detail Uraian Tergabung</h3>
                             <button onClick={() => setShowDetailModal(false)} className="text-gray-400 hover:text-gray-500 transition-colors">
@@ -1506,6 +1808,9 @@ export default function TabRincianPencairan({ anggaran, tahapanData, variant, on
                                         <tr>
                                             <th className="px-3 py-2 text-center font-bold text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600 w-12">No</th>
                                             <th className="px-3 py-2 text-left font-bold text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600">Uraian Asli</th>
+                                            <th className="px-3 py-2 text-right font-bold text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600">Vol</th>
+                                            <th className="px-3 py-2 text-right font-bold text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600">Harga Satuan</th>
+                                            <th className="px-3 py-2 text-right font-bold text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600">Total</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
@@ -1519,6 +1824,15 @@ export default function TabRincianPencairan({ anggaran, tahapanData, variant, on
                                                             {orig.kode_kegiatan} {orig.kode_kegiatan && orig.kode_rekening ? ' / ' : ''} {orig.kode_rekening}
                                                         </div>
                                                     )}
+                                                </td>
+                                                <td className="px-3 py-2 text-right border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
+                                                    {orig.volume ?? orig.jumlah} {orig.satuan}
+                                                </td>
+                                                <td className="px-3 py-2 text-right border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 whitespace-nowrap">
+                                                    Rp {formatCurrency(orig.harga_satuan || 0)}
+                                                </td>
+                                                <td className="px-3 py-2 text-right border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 whitespace-nowrap">
+                                                    Rp {formatCurrency(orig.total || orig.jumlah || 0)}
                                                 </td>
                                             </tr>
                                         ))}
@@ -1537,6 +1851,217 @@ export default function TabRincianPencairan({ anggaran, tahapanData, variant, on
                     </div>
                 </div>
             )}
+            {/* Modal Pilih Kwitansi */}
+            <Modal show={showKwitansiModal} onClose={() => {
+                setShowKwitansiModal(false);
+                setTimeout(() => setKwitansiDetailData(null), 300); // Reset state after transition
+            }} maxWidth={kwitansiDetailData ? "3xl" : "2xl"}>
+                <div className="p-6">
+                    <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
+                        {kwitansiDetailData ? "Detail Uraian Kwitansi" : "Pilih Nomor Kwitansi"}
+                    </h2>
+                    
+                    {kwitansiDetailData ? (
+                        <div className="space-y-4">
+                            <div>
+                                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Nomor Kwitansi</h3>
+                                <p className="mt-1 text-sm text-gray-900 dark:text-white">{kwitansiDetailData.id_transaksi}</p>
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Bulan</h3>
+                                <p className="mt-1 text-sm text-gray-900 dark:text-white">{kwitansiDetailData.bulan}</p>
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Uraian Detail</h3>
+                                {kwitansiDetailData.uraian_details && kwitansiDetailData.uraian_details.length > 0 ? (
+                                    <div className="mt-2 overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+                                        <table className="min-w-full text-sm">
+                                            <thead className="bg-gray-100 dark:bg-gray-700">
+                                                <tr>
+                                                    <th className="px-3 py-2 text-center font-bold text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600 w-12">No</th>
+                                                    <th className="px-3 py-2 text-left font-bold text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600">Uraian</th>
+                                                    <th className="px-3 py-2 text-right font-bold text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600">Vol</th>
+                                                    <th className="px-3 py-2 text-left font-bold text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600">Satuan</th>
+                                                    <th className="px-3 py-2 text-right font-bold text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600">Harga Satuan</th>
+                                                    <th className="px-3 py-2 text-right font-bold text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600">Total</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
+                                                {kwitansiDetailData.uraian_details.map((detail: any, idx: number) => (
+                                                    <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                                        <td className="px-3 py-2 text-center border border-gray-200 dark:border-gray-700 text-gray-500">{idx + 1}</td>
+                                                        <td className="px-3 py-2 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">{detail.uraian}</td>
+                                                        <td className="px-3 py-2 text-right border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">{detail.volume}</td>
+                                                        <td className="px-3 py-2 text-left border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">{detail.satuan}</td>
+                                                        <td className="px-3 py-2 text-right border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 whitespace-nowrap">Rp {new Intl.NumberFormat('id-ID').format(detail.harga_satuan || 0)}</td>
+                                                        <td className="px-3 py-2 text-right border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 whitespace-nowrap">Rp {new Intl.NumberFormat('id-ID').format(detail.jumlah || 0)}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                ) : (
+                                    <div className="mt-1 p-3 bg-gray-50 dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700">
+                                        <p className="text-sm text-gray-900 dark:text-white whitespace-pre-wrap">
+                                            {kwitansiDetailData.uraian}
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                            
+                            <div className="mt-6 flex justify-end">
+                                <SecondaryButton onClick={() => setKwitansiDetailData(null)}>Kembali</SecondaryButton>
+                            </div>
+                        </div>
+                    ) : (
+                        <>
+                            {isFetchingKwitansi ? (
+                        <div className="flex justify-center p-8">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            <div className="flex flex-col sm:flex-row gap-3">
+                                <div className="flex-1">
+                                    <input 
+                                        type="text" 
+                                        placeholder="Cari Nomor atau Uraian..." 
+                                        value={searchKwitansi}
+                                        onChange={(e) => setSearchKwitansi(e.target.value)}
+                                        className="w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm"
+                                    />
+                                </div>
+                                <div className="w-full sm:w-40">
+                                    <select 
+                                        value={filterTahapKwitansi}
+                                        onChange={(e) => setFilterTahapKwitansi(e.target.value)}
+                                        className="w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm"
+                                    >
+                                        <option value="Semua">Semua Tahap</option>
+                                        <option value="1">Tahap 1</option>
+                                        <option value="2">Tahap 2</option>
+                                    </select>
+                                </div>
+                                <div className="w-full sm:w-40">
+                                    <select 
+                                        value={filterBulanKwitansi}
+                                        onChange={(e) => setFilterBulanKwitansi(e.target.value)}
+                                        className="w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm"
+                                    >
+                                        <option value="Semua">Semua Bulan</option>
+                                        <option value="Januari">Januari</option>
+                                        <option value="Februari">Februari</option>
+                                        <option value="Maret">Maret</option>
+                                        <option value="April">April</option>
+                                        <option value="Mei">Mei</option>
+                                        <option value="Juni">Juni</option>
+                                        <option value="Juli">Juli</option>
+                                        <option value="Agustus">Agustus</option>
+                                        <option value="September">September</option>
+                                        <option value="Oktober">Oktober</option>
+                                        <option value="November">November</option>
+                                        <option value="Desember">Desember</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div className="max-h-[60vh] overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-md">
+                                {availableKwitansi.length > 0 ? (
+                                    <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                                        <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400 sticky top-0 shadow-sm">
+                                            <tr>
+                                                <th className="px-4 py-3 w-10">Pilih</th>
+                                                <th className="px-4 py-3">Nomor Kwitansi</th>
+                                                <th className="px-4 py-3">Bulan</th>
+                                                <th className="px-4 py-3 w-20">Aksi</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {(() => {
+                                                const TAHAP_1_MONTHS = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni'];
+                                                const TAHAP_2_MONTHS = ['Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+                                                
+                                                const filtered = availableKwitansi.filter(k => {
+                                                    let matchesSearch = true;
+                                                    let matchesTahap = true;
+                                                    let matchesBulan = true;
+                                                    
+                                                    if (searchKwitansi) {
+                                                        const q = searchKwitansi.toLowerCase();
+                                                        matchesSearch = (k.id_transaksi?.toLowerCase().includes(q) || k.uraian?.toLowerCase().includes(q));
+                                                    }
+                                                    
+                                                    if (filterTahapKwitansi !== 'Semua') {
+                                                        if (filterTahapKwitansi === '1') matchesTahap = TAHAP_1_MONTHS.includes(k.bulan);
+                                                        if (filterTahapKwitansi === '2') matchesTahap = TAHAP_2_MONTHS.includes(k.bulan);
+                                                    }
+                                                    
+                                                    if (filterBulanKwitansi !== 'Semua') {
+                                                        matchesBulan = k.bulan === filterBulanKwitansi;
+                                                    }
+                                                    
+                                                    return matchesSearch && matchesTahap && matchesBulan;
+                                                });
+                                                
+                                                if (filtered.length === 0) {
+                                                    return (
+                                                        <tr>
+                                                            <td colSpan={4} className="text-center py-8 text-gray-500">
+                                                                Tidak ada kwitansi yang cocok dengan filter.
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                }
+                                                
+                                                return filtered.map((kwitansi, idx) => (
+                                            <tr key={idx} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                                                <td className="px-4 py-3">
+                                                    <input 
+                                                        type="checkbox" 
+                                                        checked={selectedKwitansi.includes(kwitansi.id_transaksi)}
+                                                        onChange={() => toggleKwitansiSelection(kwitansi.id_transaksi)}
+                                                        className="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-indigo-500"
+                                                    />
+                                                </td>
+                                                    <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">
+                                                        {kwitansi.id_transaksi}
+                                                    </td>
+                                                    <td className="px-4 py-3">
+                                                        {kwitansi.bulan}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-center">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setKwitansiDetailData(kwitansi)}
+                                                            className="inline-flex items-center px-2 py-1 text-xs font-medium text-center text-white bg-sky-500 rounded hover:bg-sky-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition-colors"
+                                                        >
+                                                            Detail
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                                ));
+                                            })()}
+                                        </tbody>
+                                    </table>
+                                ) : (
+                                    <div className="text-center py-8 text-gray-500">
+                                        Tidak ada data kwitansi (BKU) untuk anggaran ini.
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                            
+                            <div className="mt-6 flex justify-end space-x-3">
+                                <SecondaryButton onClick={() => setShowKwitansiModal(false)}>Batal</SecondaryButton>
+                                <PrimaryButton onClick={saveKwitansi} disabled={isFetchingKwitansi}>
+                                    Simpan Kwitansi
+                                </PrimaryButton>
+                            </div>
+                        </>
+                    )}
+                </div>
+            </Modal>
         </div>
     );
 }
