@@ -176,10 +176,35 @@ export default function TabRincianPencairan({ anggaran, tahapanData, variant, on
                 const kodeRekening = (item.kode_rekening || '').toLowerCase();
                 const kodeKegiatan = (item.kode_kegiatan || '').toLowerCase();
                 
+                let namaPenerima = (item.nama_penerima || '').toLowerCase();
+                let nomorRekening = (item.nomor_rekening || '').toLowerCase();
+
+                if (selectedBulan !== 'Semua') {
+                    const m = item.bulanan?.[selectedBulan];
+                    if (m) {
+                        namaPenerima = (m.nama_penerima || item.nama_penerima || '').toLowerCase();
+                        nomorRekening = (m.nomor_rekening || item.nomor_rekening || '').toLowerCase();
+                    }
+                } else {
+                    const TAHAP_1_MONTHS = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni'];
+                    const TAHAP_2_MONTHS = ['Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+                    const tahapMonths = selectedTahap === 1 ? TAHAP_1_MONTHS : TAHAP_2_MONTHS;
+                    for (const month of tahapMonths) {
+                        const m = item.bulanan?.[month];
+                        if (m && m.total > 0) {
+                            namaPenerima = (m.nama_penerima || item.nama_penerima || '').toLowerCase();
+                            nomorRekening = (m.nomor_rekening || item.nomor_rekening || '').toLowerCase();
+                            break;
+                        }
+                    }
+                }
+
                 if (!uraian.includes(q) && 
                     !uraianGabungan.includes(q) && 
                     !kodeRekening.includes(q) && 
-                    !kodeKegiatan.includes(q)) {
+                    !kodeKegiatan.includes(q) &&
+                    !namaPenerima.includes(q) &&
+                    !nomorRekening.includes(q)) {
                     return false;
                 }
             }
@@ -1281,7 +1306,7 @@ export default function TabRincianPencairan({ anggaran, tahapanData, variant, on
 
                             {/* Baris Jumlah */}
                             <tr className="bg-gray-100 dark:bg-gray-700 font-bold">
-                                <td colSpan={8} className="px-3 py-2 text-center border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100">Jumlah</td>
+                                <td colSpan={9} className="px-3 py-2 text-center border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100">Jumlah</td>
                                 <td className="px-3 py-2 text-right border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 whitespace-nowrap">
                                     {formatCurrency(totals.totalAnggaran)}
                                 </td>

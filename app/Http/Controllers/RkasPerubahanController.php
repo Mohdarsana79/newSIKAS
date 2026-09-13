@@ -780,39 +780,15 @@ class RkasPerubahanController extends Controller
     {
         $rkasTable = (new ($this->Rkas))->getTable();
         $rkasPerubahanTable = (new ($this->RkasPerubahan))->getTable();
-        $bkuTable = (new ($this->BukuKasUmum))->getTable();
         $penganggaranFk = VariantConfig::penganggaranFk($this->variant);
         
-        // 1. Dapatkan lookup id_transaksi => bulan dari BKU
-        $bkuRows = DB::table($bkuTable)
-            ->where($penganggaranFk, $penganggaranId)
-            ->whereNotNull('id_transaksi')
-            ->select('id_transaksi', 'tanggal_transaksi')
-            ->get();
-
-        $bulanNames = [
-            1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
-            5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
-            9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember',
-        ];
-
-        $bkuLookup = [];
-        foreach ($bkuRows as $row) {
-            $bulanName = '';
-            if ($row->tanggal_transaksi) {
-                $bulanNum = (int) date('n', strtotime($row->tanggal_transaksi));
-                $bulanName = $bulanNames[$bulanNum] ?? '';
-            }
-            $bkuLookup[$row->id_transaksi] = $bulanName;
-        }
-
         $map = [];
 
-        // 2a. Dapatkan data RKAS awal yang memiliki nomor_kwitansi
+        // Dapatkan data RKAS awal yang memiliki nomor_kwitansi
         $rkasRows = DB::table($rkasTable)
             ->where($penganggaranFk, $penganggaranId)
             ->whereNotNull('nomor_kwitansi')
-            ->select('id', 'nomor_kwitansi')
+            ->select('id', 'nomor_kwitansi', 'bulan')
             ->get();
 
         foreach ($rkasRows as $row) {
@@ -822,16 +798,16 @@ class RkasPerubahanController extends Controller
                 if (!$kwitansi) continue;
                 $map[$row->id][] = [
                     'id_transaksi' => $kwitansi,
-                    'bulan' => $bkuLookup[$kwitansi] ?? '',
+                    'bulan' => $row->bulan,
                 ];
             }
         }
 
-        // 2b. Dapatkan data RKAS perubahan yang memiliki nomor_kwitansi
+        // Dapatkan data RKAS perubahan yang memiliki nomor_kwitansi
         $rkasPerubahanRows = DB::table($rkasPerubahanTable)
             ->where($penganggaranFk, $penganggaranId)
             ->whereNotNull('nomor_kwitansi')
-            ->select('id', 'nomor_kwitansi')
+            ->select('id', 'nomor_kwitansi', 'bulan')
             ->get();
 
         foreach ($rkasPerubahanRows as $row) {
@@ -841,7 +817,7 @@ class RkasPerubahanController extends Controller
                 if (!$kwitansi) continue;
                 $map[$row->id][] = [
                     'id_transaksi' => $kwitansi,
-                    'bulan' => $bkuLookup[$kwitansi] ?? '',
+                    'bulan' => $row->bulan,
                 ];
             }
         }

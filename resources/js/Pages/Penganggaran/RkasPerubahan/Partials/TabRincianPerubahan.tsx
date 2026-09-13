@@ -292,7 +292,13 @@ export default function TabRincianPerubahan({ rincianData, onPrint, onExportExce
             const filteredItems = group.items.filter((item: any) => {
                 const uraian = (item.uraian || '').toLowerCase();
                 const uraianGabungan = (item.uraian_gabungan || '').toLowerCase();
-                return uraian.includes(q) || uraianGabungan.includes(q);
+                const namaPenerima = (item.nama_penerima || '').toLowerCase();
+                const nomorRekening = (item.nomor_rekening || '').toLowerCase();
+                
+                return uraian.includes(q) || 
+                       uraianGabungan.includes(q) || 
+                       namaPenerima.includes(q) || 
+                       nomorRekening.includes(q);
             });
             if (filteredItems.length > 0) {
                 const total = filteredItems.reduce((sum: number, item: any) => sum + (item.jumlah || 0), 0);

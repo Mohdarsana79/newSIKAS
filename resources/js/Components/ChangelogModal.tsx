@@ -29,7 +29,7 @@ export default function ChangelogModal() {
                         Informasi Rilis
                     </h2>
                     <span className="bg-indigo-100 text-indigo-800 text-sm font-semibold px-3 py-1 rounded-full dark:bg-indigo-900 dark:text-indigo-300">
-                        SIKAS V.2026.21
+                        SIKAS V.2026.24
                     </span>
                 </div>
 
@@ -49,7 +49,7 @@ export default function ChangelogModal() {
                             <li><span className="font-medium">Penambahan BOSP Kinerja:</span> Penambahan fitur BOSP Kinerja pada halaman Rencana Kerja Anggaran Sekolah.</li>
                             <li><span className="font-medium">Penambahan SiLPA BOSP Reguler:</span> Penambahan fitur SiLPA BOSP Reguler pada halaman Rencana Kerja Anggaran Sekolah.</li>
                             <li><span className="font-medium">Penambahan SiLPA BOSP Kinerja:</span> Penambahan fitur SiLPA BOSP Kinerja pada halaman Rencana Kerja Anggaran Sekolah.</li>
-                            <li><span className="font-medium">Penambahan Perol Rincian Pencairan:</span> Penambahan fitur Perol Rincian Pencairan Pada Rencana Kerja Anggaran Sekolah.</li>
+                            <li><span className="font-medium">Penambahan Payrol Rincian Pencairan:</span> Penambahan fitur Payroll Rincian Pencairan Pada Rencana Kerja Anggaran Sekolah.</li>
                             <li><span className="font-medium">Penambahan Alur Kas:</span> Penambahan fitur Alur KasPada Rencana Kerja Anggaran Sekolah.</li>
                         </ul>
                     </div>
@@ -72,6 +72,9 @@ export default function ChangelogModal() {
                             <li><span className="font-medium">Perbaikan Optimalisasi Aplikasi:</span> Perbaikan Optimalisasi Aplikasi untuk penggunaan yang lebih lancar. </li>
                             <li><span className="font-medium">Perbaikan RKA Tahapan Perubahan :</span> Perbaikan pada RKA Tahapan yang mengalami bug perhitungan total jumlah berkurang dan bertambah pada Tahapan RKAS Perubahan </li>
                             <li><span className="font-medium">Perbaikan Rincian Pencairan :</span> Perbaikan Detail pada rincian pencairan saat menggabungkan uraian akan menampilkan uraian asli, jumlah satuan, dan harga satuan. </li>
+                            <li><span className="font-medium">Perbaikan Payroll :</span> Penambahan kolom nomor kwitansi pada payroll untuk identifikasi pembelanjaan. </li>
+                            <li><span className="font-medium">Perbaikan Rkas dan Rkas Perubahan :</span> Perbaikan Bug nomor kwitansi pada payroll yang tidak muncul pada bulan yang terdeteksi tidak memiliki belanja </li>
+                            <li><span className="font-medium">Perbaikan Form Search :</span> Perbaikan Form Search Rincian Pencairan Agar Dapat mencari data penerima dan rekening penerima </li>
                         </ul>
                     </div>
                 </div>
