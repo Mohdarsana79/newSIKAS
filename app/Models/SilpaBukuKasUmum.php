@@ -28,6 +28,10 @@ class SilpaBukuKasUmum extends Model
 
     protected function dokumenModelClass(): string { return SilpaDokumen::class; }
 
+    protected function bastModelClass(): string { return SilpaBast::class; }
+
+    protected function suratPesananModelClass(): string { return SilpaSuratPesanan::class; }
+
 
     // ─── Backward Compatibility Aliases ───────────────────────────
     public function silpaPenganggaran() { return $this->penganggaran(); }

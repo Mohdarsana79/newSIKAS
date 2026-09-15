@@ -12,6 +12,7 @@ use App\Http\Controllers\SekolahProfileController;
 use App\Http\Controllers\KodeKegiatanController;
 use App\Http\Controllers\RekeningBelanjaController;
 use App\Http\Controllers\KwitansiController;
+use App\Http\Controllers\BastController;
 use App\Http\Controllers\TandaTerimaController;
 use App\Http\Controllers\DatabaseController;
 use App\Http\Controllers\SpmthController;
@@ -253,6 +254,8 @@ use App\Http\Controllers\NotificationController;
 
     // Kwitansi API & Routes
     Route::get('/api/kwitansi/tahun', [KwitansiController::class, 'getTahunAnggaran'])->name('api.kwitansi.tahun');
+    Route::get('/api/bast/tahun', [BastController::class, 'getTahunAnggaran'])->name('api.bast.tahun');
+    Route::get('/api/bast/bku-available', [BastController::class, 'getAvailableBku'])->name('api.bast.bku-available');
     Route::get('/api/kwitansi/check-available', [KwitansiController::class, 'checkAvailableData'])->name('api.kwitansi.check-available');
     Route::get('/api/kwitansi/debug-count', [KwitansiController::class, 'debugDataCount'])->name('api.kwitansi.debug-count');
     Route::get('/api/kwitansi/search', [KwitansiController::class, 'search'])->name('api.kwitansi.search'); // Main data fetch
@@ -276,6 +279,21 @@ use App\Http\Controllers\NotificationController;
     
     // Resource route MUST come after specific routes to avoid 'download-all' being treated as an ID
     Route::resource('kwitansi', KwitansiController::class);
+
+    // BAST API & Routes
+    Route::get('/api/bast/search', [\App\Http\Controllers\BastController::class, 'search'])->name('api.bast.search');
+    Route::post('/api/bast/kondisi/{id}', [\App\Http\Controllers\BastController::class, 'updateKondisi'])->name('bast.kondisi.update');
+    Route::get('/bast/{id}/preview', [\App\Http\Controllers\BastController::class, 'previewPdf'])->name('bast.preview');
+    Route::get('/bast/{id}/pdf', [\App\Http\Controllers\BastController::class, 'generatePdf'])->name('bast.pdf');
+    Route::resource('bast', \App\Http\Controllers\BastController::class);
+
+    // Surat Pesanan API & Routes
+    Route::get('/api/surat-pesanan/search', [\App\Http\Controllers\SuratPesananController::class, 'search'])->name('api.surat-pesanan.search');
+    Route::get('/surat-pesanan/{id}/preview', [\App\Http\Controllers\SuratPesananController::class, 'previewPdf'])->name('surat-pesanan.preview');
+    Route::get('/surat-pesanan/{id}/pdf', [\App\Http\Controllers\SuratPesananController::class, 'generatePdf'])->name('surat-pesanan.pdf');
+    Route::get('/api/surat-pesanan/tahun', [\App\Http\Controllers\SuratPesananController::class, 'getTahunAnggaran'])->name('api.surat-pesanan.tahun');
+    Route::get('/api/surat-pesanan/bku-available', [\App\Http\Controllers\SuratPesananController::class, 'getAvailableBku'])->name('api.surat-pesanan.bku-available');
+    Route::resource('surat-pesanan', \App\Http\Controllers\SuratPesananController::class);
 
     // Tanda Terima API & Routes
     Route::get('/api/tanda-terima/tahun', [TandaTerimaController::class, 'getTahunAnggaran'])->name('api.tanda-terima.tahun');

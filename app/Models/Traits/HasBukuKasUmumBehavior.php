@@ -23,6 +23,8 @@ trait HasBukuKasUmumBehavior
     abstract protected function kwitansiModelClass(): string;
     abstract protected function tandaTerimaModelClass(): string;
     abstract protected function dokumenModelClass(): string;
+    abstract protected function bastModelClass(): string;
+    abstract protected function suratPesananModelClass(): string;
 
     // ─── Fillable & Casts ──────────────────────────────────────────
 
@@ -83,5 +85,17 @@ trait HasBukuKasUmumBehavior
     public function dokumen()
     {
         return $this->hasOne($this->dokumenModelClass(), $this->bkuForeignKey());
+    }
+
+    // Standardized name across variants
+    public function bast()
+    {
+        return $this->hasOne($this->bastModelClass(), $this->bkuForeignKey());
+    }
+
+    // Standardized name across variants
+    public function suratPesanan()
+    {
+        return $this->hasOne($this->suratPesananModelClass(), $this->bkuForeignKey());
     }
 }

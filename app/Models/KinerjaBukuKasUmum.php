@@ -28,6 +28,10 @@ class KinerjaBukuKasUmum extends Model
 
     protected function dokumenModelClass(): string { return KinerjaDokumen::class; }
 
+    protected function bastModelClass(): string { return KinerjaBast::class; }
+
+    protected function suratPesananModelClass(): string { return KinerjaSuratPesanan::class; }
+
 
     // ─── Backward Compatibility Aliases ───────────────────────────
     public function kinerjaPenganggaran() { return $this->penganggaran(); }

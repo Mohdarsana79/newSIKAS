@@ -28,6 +28,10 @@ class KinerjaSilpaBukuKasUmum extends Model
 
     protected function dokumenModelClass(): string { return KinerjaSilpaDokumen::class; }
 
+    protected function bastModelClass(): string { return KinerjaSilpaBast::class; }
+
+    protected function suratPesananModelClass(): string { return KinerjaSilpaSuratPesanan::class; }
+
 
     // ─── Backward Compatibility Aliases ───────────────────────────
     public function kinerjaSilpaPenganggaran() { return $this->penganggaran(); }

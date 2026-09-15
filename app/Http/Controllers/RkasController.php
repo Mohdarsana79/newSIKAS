@@ -1295,7 +1295,7 @@ class RkasController extends Controller
             foreach ($kwitansis as $kwitansi) {
                 if (!$kwitansi) continue;
                 
-                $map[$row->id][] = [
+                $map['rkas_' . $row->id][] = [
                     'id_transaksi' => $kwitansi,
                     'bulan' => $row->bulan,
                 ];
@@ -1368,14 +1368,24 @@ class RkasController extends Controller
     public function updateKwitansi(Request $request, $id)
     {
         $request->validate([
-            'rkas_ids' => 'required|array',
+            'rkas_ids' => 'nullable|array',
             'rkas_ids.*' => 'integer',
+            'murni_rkas_ids' => 'nullable|array',
+            'murni_rkas_ids.*' => 'integer',
             'nomor_kwitansi' => 'nullable|string'
         ]);
         
-        $this->Rkas::where(VariantConfig::penganggaranFk($this->variant), $id)
-            ->whereIn('id', $request->rkas_ids)
-            ->update(['nomor_kwitansi' => $request->nomor_kwitansi]);
+        if (!empty($request->rkas_ids)) {
+            $this->Rkas::where(VariantConfig::penganggaranFk($this->variant), $id)
+                ->whereIn('id', $request->rkas_ids)
+                ->update(['nomor_kwitansi' => $request->nomor_kwitansi]);
+        }
+        
+        if (!empty($request->murni_rkas_ids)) {
+            $this->Rkas::where(VariantConfig::penganggaranFk($this->variant), $id)
+                ->whereIn('id', $request->murni_rkas_ids)
+                ->update(['nomor_kwitansi' => $request->nomor_kwitansi]);
+        }
             
         return redirect()->back()->with('success', 'Nomor kwitansi berhasil disimpan.');
     }

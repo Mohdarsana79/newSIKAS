@@ -434,6 +434,18 @@ class VariantConfig
                 self::SILPA => SilpaDokumen::class,
                 self::KINERJA_SILPA => KinerjaSilpaDokumen::class,
             ],
+            'bast' => [
+                self::REGULER => \App\Models\Bast::class,
+                self::KINERJA => \App\Models\KinerjaBast::class,
+                self::SILPA => \App\Models\SilpaBast::class,
+                self::KINERJA_SILPA => \App\Models\KinerjaSilpaBast::class,
+            ],
+            'surat_pesanan' => [
+                self::REGULER => \App\Models\SuratPesanan::class,
+                self::KINERJA => \App\Models\KinerjaSuratPesanan::class,
+                self::SILPA => \App\Models\SilpaSuratPesanan::class,
+                self::KINERJA_SILPA => \App\Models\KinerjaSilpaSuratPesanan::class,
+            ],
 
             // ── Laporan ─────────────────────────────────────
             'spmth' => [

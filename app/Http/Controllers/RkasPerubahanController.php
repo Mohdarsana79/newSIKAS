@@ -796,7 +796,7 @@ class RkasPerubahanController extends Controller
             $kwitansis = array_map('trim', explode(',', $row->nomor_kwitansi));
             foreach ($kwitansis as $kwitansi) {
                 if (!$kwitansi) continue;
-                $map[$row->id][] = [
+                $map['murni_' . $row->id][] = [
                     'id_transaksi' => $kwitansi,
                     'bulan' => $row->bulan,
                 ];
@@ -815,7 +815,7 @@ class RkasPerubahanController extends Controller
             $kwitansis = array_map('trim', explode(',', $row->nomor_kwitansi));
             foreach ($kwitansis as $kwitansi) {
                 if (!$kwitansi) continue;
-                $map[$row->id][] = [
+                $map['perubahan_' . $row->id][] = [
                     'id_transaksi' => $kwitansi,
                     'bulan' => $row->bulan,
                 ];
@@ -888,18 +888,34 @@ class RkasPerubahanController extends Controller
     public function updateKwitansi(Request $request, $id)
     {
         $request->validate([
-            'rkas_ids' => 'required|array',
+            'rkas_ids' => 'nullable|array',
             'rkas_ids.*' => 'integer',
+            'murni_rkas_ids' => 'nullable|array',
+            'murni_rkas_ids.*' => 'integer',
             'nomor_kwitansi' => 'nullable|string',
             'is_perubahan' => 'nullable|boolean'
         ]);
 
         $isPerubahan = filter_var($request->is_perubahan, FILTER_VALIDATE_BOOLEAN);
-        $modelClass = $isPerubahan ? $this->RkasPerubahan : $this->Rkas;
         
-        $modelClass::where(VariantConfig::penganggaranFk($this->variant), $id)
-            ->whereIn('id', $request->rkas_ids)
-            ->update(['nomor_kwitansi' => $request->nomor_kwitansi]);
+        if ($isPerubahan) {
+            if (!empty($request->rkas_ids)) {
+                $this->RkasPerubahan::where(VariantConfig::penganggaranFk($this->variant), $id)
+                    ->whereIn('id', $request->rkas_ids)
+                    ->update(['nomor_kwitansi' => $request->nomor_kwitansi]);
+            }
+            if (!empty($request->murni_rkas_ids)) {
+                $this->Rkas::where(VariantConfig::penganggaranFk($this->variant), $id)
+                    ->whereIn('id', $request->murni_rkas_ids)
+                    ->update(['nomor_kwitansi' => $request->nomor_kwitansi]);
+            }
+        } else {
+            if (!empty($request->rkas_ids)) {
+                $this->Rkas::where(VariantConfig::penganggaranFk($this->variant), $id)
+                    ->whereIn('id', $request->rkas_ids)
+                    ->update(['nomor_kwitansi' => $request->nomor_kwitansi]);
+            }
+        }
             
         return redirect()->back()->with('success', 'Nomor kwitansi berhasil disimpan.');
     }
@@ -944,7 +960,12 @@ class RkasPerubahanController extends Controller
                             'total' => $group->sum(function($q) { return $q->jumlah * $q->harga_satuan; })
                         ];
                     })->values()->all(),
-                    'rkas_ids' => $uraianGroup->pluck('id')->values()->all(),
+                    'rkas_ids' => $uraianGroup->filter(function($item) {
+                        return get_class($item) === $this->RkasPerubahan;
+                    })->pluck('id')->values()->all(),
+                    'murni_rkas_ids' => $uraianGroup->filter(function($item) {
+                        return get_class($item) === $this->Rkas;
+                    })->pluck('id')->values()->all(),
                     'bulan_list' => $uraianGroup->pluck('bulan')->filter()->unique()->values()->all(),
                     'bulan' => implode(', ', $uraianGroup->pluck('bulan')->filter()->unique()->values()->all()),
                     'nama_penerima' => $firstWithPenerima->nama_penerima ?? '-',

@@ -11,7 +11,7 @@ interface TabRincianPencairanProps {
     variant: string;
     onPrint?: (target: string, params?: Record<string, any>) => void;
     onExportExcel?: (target: string, params?: Record<string, any>) => void;
-    kwitansiMap?: Record<number, Array<{ id_transaksi: string; bulan: string }>>;
+    kwitansiMap?: Record<string, Array<{ id_transaksi: string; bulan: string }>>;
 }
 
 // Tarif PPH 21 Non-PNS dengan NIK/NPWP
@@ -106,6 +106,7 @@ export default function TabRincianPencairan({ anggaran, tahapanData, variant, on
     const [showKwitansiModal, setShowKwitansiModal] = useState(false);
     const [selectedRkasIds, setSelectedRkasIds] = useState<number[]>([]);
     const [availableKwitansi, setAvailableKwitansi] = useState<any[]>([]);
+    const [selectedMurniRkasIds, setSelectedMurniRkasIds] = useState<number[]>([]);
     const [selectedKwitansi, setSelectedKwitansi] = useState<string[]>([]);
     const [isFetchingKwitansi, setIsFetchingKwitansi] = useState(false);
     const [kwitansiDetailData, setKwitansiDetailData] = useState<any | null>(null);
@@ -418,9 +419,10 @@ export default function TabRincianPencairan({ anggaran, tahapanData, variant, on
         return list;
     }, [flatItems]);
 
-    const fetchAvailableKwitansi = async (rkasIds: number[], currentKwitansi: string[]) => {
+    const fetchAvailableKwitansi = async (rkasIds: number[], murniRkasIds: number[], currentKwitansi: string[]) => {
         setIsFetchingKwitansi(true);
         setSelectedRkasIds(rkasIds);
+        setSelectedMurniRkasIds(murniRkasIds);
         setSelectedKwitansi(currentKwitansi);
         
         try {
@@ -441,7 +443,7 @@ export default function TabRincianPencairan({ anggaran, tahapanData, variant, on
     };
 
     const saveKwitansi = () => {
-        if (!selectedRkasIds || selectedRkasIds.length === 0) return;
+        if ((!selectedRkasIds || selectedRkasIds.length === 0) && (!selectedMurniRkasIds || selectedMurniRkasIds.length === 0)) return;
         
         const baseRoute = variant === 'rkas_perubahan'
             ? 'rkas-perubahan.update-kwitansi'
@@ -451,6 +453,7 @@ export default function TabRincianPencairan({ anggaran, tahapanData, variant, on
             
         router.put(url, {
             rkas_ids: selectedRkasIds,
+            murni_rkas_ids: selectedMurniRkasIds,
             nomor_kwitansi: selectedKwitansi.join(','),
             is_perubahan: variant === 'rkas_perubahan'
         }, {
@@ -580,22 +583,22 @@ export default function TabRincianPencairan({ anggaran, tahapanData, variant, on
             
             // PPN: 11/111 x harga barang (hanya jika >= 2.000.000)
             if (editingItem.is_ppn && jumlah >= 2000000) {
-                newPpn = Math.round((jumlah * 11) / 111).toString();
+                newPpn = Math.floor((jumlah * 11) / 111).toString();
             }
             
             // PPh 23: 2% (ada NPWP) atau 4% (tanpa NPWP)
             if (editingItem.is_pph23) {
                 if (data.ada_npwp) {
-                    newPph23 = Math.round(jumlah * 0.02).toString();
+                    newPph23 = Math.floor(jumlah * 0.02).toString();
                 } else {
-                    newPph23 = Math.round(jumlah * 0.04).toString();
+                    newPph23 = Math.floor(jumlah * 0.04).toString();
                 }
             }
 
             // PPh 21: berdasarkan status dan golongan
             if (editingItem.is_pph21 && data.status_penerima) {
                 const rate = getPph21Rate(data.status_penerima, data.golongan, data.ada_npwp, jumlah);
-                newPph21 = Math.round(jumlah * rate).toString();
+                newPph21 = Math.floor(jumlah * rate).toString();
             }
 
             setData(prev => ({
@@ -1139,17 +1142,18 @@ export default function TabRincianPencairan({ anggaran, tahapanData, variant, on
                                                     // Periksa dan saring Kwitansi
                                                     const kwitansiNumbers = new Set<string>();
                                                     const activeTahapMonths = selectedTahap === 1 ? TAHAP_1_MONTHS : TAHAP_2_MONTHS;
-                                                    const activeIds: number[] = [];
+                                                    const activeRkasIds: number[] = [];
+                                                    const activeMurniRkasIds: number[] = [];
 
-                                                    allItemIds.forEach((id: number) => {
-                                                        // Cari tahu bulan anggaran dari id ini
+                                                    const checkAndAdd = (id: number, isMurni: boolean) => {
                                                         let budgetMonthStr = '';
-                                                        if (item.rkas_ids_per_bulan) {
-                                                            for (const [bulan, ids] of Object.entries(item.rkas_ids_per_bulan)) {
+                                                        const idsObj = isMurni ? item.murni_rkas_ids_per_bulan : item.rkas_ids_per_bulan;
+                                                        if (idsObj) {
+                                                            for (const [bulan, ids] of Object.entries(idsObj)) {
                                                                 if ((ids as number[]).includes(id)) { budgetMonthStr = bulan; break; }
                                                             }
                                                         }
-                                                        if (!budgetMonthStr && item.murni_rkas_ids_per_bulan) {
+                                                        if (!budgetMonthStr && !isMurni && item.murni_rkas_ids_per_bulan) {
                                                             for (const [bulan, ids] of Object.entries(item.murni_rkas_ids_per_bulan)) {
                                                                 if ((ids as number[]).includes(id)) { budgetMonthStr = bulan; break; }
                                                             }
@@ -1160,23 +1164,29 @@ export default function TabRincianPencairan({ anggaran, tahapanData, variant, on
                                                             if (selectedBulan === 'Semua') {
                                                                 if (activeTahapMonths.includes(budgetMonthStr)) {
                                                                     shouldProcess = true;
-                                                                    activeIds.push(id);
+                                                                    if (isMurni) activeMurniRkasIds.push(id);
+                                                                    else activeRkasIds.push(id);
                                                                 }
                                                             } else {
                                                                 if (budgetMonthStr === selectedBulan) {
                                                                     shouldProcess = true;
-                                                                    activeIds.push(id);
+                                                                    if (isMurni) activeMurniRkasIds.push(id);
+                                                                    else activeRkasIds.push(id);
                                                                 }
                                                             }
                                                         }
 
-                                                        const entries = kwitansiMap[id];
+                                                        const key = isMurni ? `murni_${id}` : (variant === 'rkas_perubahan' ? `perubahan_${id}` : `rkas_${id}`);
+                                                        const entries = kwitansiMap[key];
                                                         if (entries && shouldProcess) {
                                                             entries.forEach((entry: { id_transaksi: string; bulan: string }) => {
                                                                 kwitansiNumbers.add(entry.id_transaksi);
                                                             });
                                                         }
-                                                    });
+                                                    };
+
+                                                    (item.rkas_ids || [item.id]).forEach((id: number) => checkAndAdd(id, false));
+                                                    (item.murni_rkas_ids || []).forEach((id: number) => checkAndAdd(id, true));
 
                                                     const uniqueKwitansi = Array.from(kwitansiNumbers);
                                                     const hasKwitansi = uniqueKwitansi.length > 0;
@@ -1193,7 +1203,7 @@ export default function TabRincianPencairan({ anggaran, tahapanData, variant, on
                                                                         </div>
                                                                     )}
                                                                     <button
-                                                                        onClick={() => fetchAvailableKwitansi(activeIds, uniqueKwitansi)}
+                                                                        onClick={() => fetchAvailableKwitansi(activeRkasIds, activeMurniRkasIds, uniqueKwitansi)}
                                                                         className="inline-flex items-center justify-center px-2 py-1 text-[10px] font-medium rounded text-white bg-indigo-500 hover:bg-indigo-600 shadow-sm transition-colors"
                                                                     >
                                                                         Edit
@@ -1201,7 +1211,7 @@ export default function TabRincianPencairan({ anggaran, tahapanData, variant, on
                                                                 </div>
                                                             ) : (
                                                                 <button
-                                                                    onClick={() => fetchAvailableKwitansi(activeIds, [])}
+                                                                    onClick={() => fetchAvailableKwitansi(activeRkasIds, activeMurniRkasIds, [])}
                                                                     className="inline-flex items-center justify-center px-2 py-1 text-[10px] font-medium rounded text-white bg-green-500 hover:bg-green-600 shadow-sm transition-colors whitespace-nowrap"
                                                                 >
                                                                     + Tambah
@@ -1899,9 +1909,9 @@ export default function TabRincianPencairan({ anggaran, tahapanData, variant, on
                             <div>
                                 <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Uraian Detail</h3>
                                 {kwitansiDetailData.uraian_details && kwitansiDetailData.uraian_details.length > 0 ? (
-                                    <div className="mt-2 overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+                                    <div className="mt-2 overflow-auto max-h-[60vh] rounded-lg border border-gray-200 dark:border-gray-700">
                                         <table className="min-w-full text-sm">
-                                            <thead className="bg-gray-100 dark:bg-gray-700">
+                                            <thead className="bg-gray-100 dark:bg-gray-700 sticky top-0 z-10 shadow-sm">
                                                 <tr>
                                                     <th className="px-3 py-2 text-center font-bold text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600 w-12">No</th>
                                                     <th className="px-3 py-2 text-left font-bold text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600">Uraian</th>

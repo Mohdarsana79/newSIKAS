@@ -21,4 +21,6 @@ class BukuKasUmum extends Model
     protected function kwitansiModelClass(): string { return Kwitansi::class; }
     protected function tandaTerimaModelClass(): string { return TandaTerima::class; }
     protected function dokumenModelClass(): string { return Dokumen::class; }
+    protected function bastModelClass(): string { return Bast::class; }
+    protected function suratPesananModelClass(): string { return SuratPesanan::class; }
 }
