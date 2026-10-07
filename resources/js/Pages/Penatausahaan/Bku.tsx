@@ -186,8 +186,6 @@ export default function Bku({
         is_ppn: boolean; is_pph21: boolean; is_pph22: boolean; is_pph23: boolean; is_pph4: boolean;
     }>({ is_ppn: false, is_pph21: false, is_pph22: false, is_pph23: false, is_pph4: false });
 
-    // Kode rekening khusus yang kena PPh 23 + PB1 10%
-    const KODE_REKENING_PB1 = ['5.1.02.01.01.0052', '5.1.02.01.01.0053', '5.1.02.01.01.0055'];
 
     // Tarif PPh 21 Non-PNS sesuai PP 58 Tahun 2023 & PMK 168 Tahun 2023
     const TARIF_PPH21_DENGAN_NPWP = [
@@ -431,15 +429,12 @@ export default function Bku({
         });
     }, [itemsKey, fetchedAccounts]);
 
-    // Auto-set pajak pada form — HANYA jalan saat items berubah (itemsKey), bukan saat has_tax berubah
+    // Auto-set pajak pada form — Berjalan saat items atau totalTransaksi berubah
     useEffect(() => {
         if (data.items.length === 0) return;
 
         const selectedRekeningIds = [...new Set(data.items.map((i: any) => String(i.rekening_id)))];
         const selectedAccounts = fetchedAccounts.filter((acc: any) => selectedRekeningIds.includes(String(acc.id)));
-        const hasNpwp = !!(data.npwp && data.npwp.trim() !== '' && !data.no_npwp);
-        const selectedKodes = selectedAccounts.map((a: any) => a.kode_rekening);
-        const hasPB1 = KODE_REKENING_PB1.some(k => selectedKodes.includes(k));
 
         const taxes = {
             is_ppn: selectedAccounts.some((a: any) => a.is_ppn),
@@ -448,35 +443,58 @@ export default function Bku({
             is_pph23: selectedAccounts.some((a: any) => a.is_pph23),
         };
 
-        if (taxes.is_pph21) {
-            setData('has_tax', true);
-            setData('pajak', 'PPh 21');
-        } else if (taxes.is_pph23 && !taxes.is_pph21) {
-            if (taxes.is_ppn && totalTransaksi >= 2000000) {
-                setData('has_tax', true);
-                setData('pajak', 'PPN');
-                setData('persen_pajak', '11');
-            } else {
-                setData('has_tax', true);
-                setData('pajak', 'PPh 23');
-                setData('persen_pajak', hasNpwp ? '2' : '4');
-            }
-        } else if (taxes.is_pph22) {
-            setData('has_tax', true);
-            setData('pajak', 'PPh 22');
-            setData('persen_pajak', hasNpwp ? '1.5' : '3');
-        } else if (taxes.is_ppn && totalTransaksi >= 2000000) {
-            setData('has_tax', true);
-            setData('pajak', 'PPN');
-            setData('persen_pajak', '11');
-        }
+        setData((prev: any) => {
+            const hasNpwp = !!(prev.npwp && prev.npwp.trim() !== '' && !prev.no_npwp);
+            let newHasTax = false;
+            let newPajak = prev.pajak;
+            let newPersenPajak = prev.persen_pajak;
 
-        if (hasPB1) {
-            setData('has_local_tax', true);
-            setData('pajak_daerah', 'PB1');
-            setData('persen_pajak_daerah', '10');
-        }
-    }, [itemsKey]); // Hanya re-run saat item selection berubah
+            if (taxes.is_pph21) {
+                newHasTax = true;
+                newPajak = 'PPh 21';
+            } else if (taxes.is_pph23 && !taxes.is_pph21) {
+                if (taxes.is_ppn && totalTransaksi >= 2000000) {
+                    newHasTax = true;
+                    newPajak = 'PPN';
+                    newPersenPajak = '11';
+                } else {
+                    newHasTax = true;
+                    newPajak = 'PPh 23';
+                    newPersenPajak = hasNpwp ? '2' : '4';
+                }
+            } else if (taxes.is_pph22) {
+                newHasTax = true;
+                newPajak = 'PPh 22';
+                newPersenPajak = hasNpwp ? '1.5' : '3';
+            } else if (taxes.is_ppn && totalTransaksi >= 2000000) {
+                newHasTax = true;
+                newPajak = 'PPN';
+                newPersenPajak = '11';
+            }
+
+            const updates: any = {};
+            if (newHasTax) {
+                if (prev.has_tax !== true) updates.has_tax = true;
+                if (prev.pajak !== newPajak) updates.pajak = newPajak;
+                if (newPajak !== 'PPh 21' && prev.persen_pajak !== newPersenPajak) {
+                    updates.persen_pajak = newPersenPajak;
+                }
+            } else {
+                if (prev.has_tax !== false) {
+                    updates.has_tax = false;
+                    updates.total_pajak = 0;
+                }
+            }
+
+            // Fitur deteksi otomatis pajak daerah (PB1) dihapus sesuai permintaan.
+            // Pengguna kini dapat mencentang dan memilih PB1/SPPD secara manual tanpa di-reset atau dipaksa.
+
+            if (Object.keys(updates).length > 0) {
+                return { ...prev, ...updates };
+            }
+            return prev;
+        });
+    }, [itemsKey, totalTransaksi, fetchedAccounts]);
 
     // Auto-set PPh 21 persen berdasarkan status pegawai & golongan
     useEffect(() => {

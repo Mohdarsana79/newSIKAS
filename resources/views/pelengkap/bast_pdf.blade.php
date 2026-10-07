@@ -112,7 +112,7 @@
 
 <body>
     <div class="title">BERITA ACARA SERAH TERIMA BARANG</div>
-    <div class="subtitle">Nomor: _______________________</div>
+    <div class="subtitle">Nomor: {{ $bast->nomor_bast ?? '_______________________' }}</div>
 
     <div class="content">
         <p>Pada hari ini, ________________ tanggal ________________ bulan ________________ tahun ________________, yang bertanda tangan di bawah ini:</p>

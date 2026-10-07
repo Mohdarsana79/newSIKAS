@@ -120,7 +120,7 @@
         </div>
     @endif
 
-    <div class="title">SURAT PESANAN (SP) BARANG</div>
+    <div class="title">SURAT PESANAN (SP) BARANG / JASA</div>
     <div class="subtitle">Nomor: {{ $suratPesanan->nomor_sp ?? '_______________________' }}</div>
 
     <div class="content">

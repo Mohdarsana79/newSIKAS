@@ -721,7 +721,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                                                                 </td>
                                                                                 <td className="border border-gray-600 p-2 text-center text-gray-600">{item.kode_rekening || ''}</td>
                                                                                 <td className="border border-gray-600 p-2 text-center text-gray-600">{item.no_bukti || ''}</td>
-                                                                                <td className="border border-gray-600 p-2">{item.uraian}</td>
+                                                                                <td className="border border-gray-600 p-2">{item.uraian_opsional ? item.uraian_opsional : item.uraian}</td>
                                                                                 <td className="border border-gray-600 p-2 text-right">
                                                                                     {penerimaan > 0 ? formatCurrency(penerimaan) : '0'}
                                                                                 </td>

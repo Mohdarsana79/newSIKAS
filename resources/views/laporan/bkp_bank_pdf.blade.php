@@ -162,7 +162,7 @@
                     <td class="text-center">{{ \Carbon\Carbon::parse($item['tanggal'])->format('d-m-Y') }}</td>
                     <td class="text-center">{{ $item['kode_rekening'] }}</td>
                     <td class="text-center">{{ $item['no_bukti'] }}</td>
-                    <td>{{ $item['uraian'] }}</td>
+                    <td>{{ !empty($item['uraian_opsional']) ? $item['uraian_opsional'] : $item['uraian'] }}</td>
                     <td class="text-right">{{ $penerimaan > 0 ? number_format($penerimaan, 0, ',', '.') : '0' }}</td>
                     <td class="text-right">{{ $pengeluaran > 0 ? number_format($pengeluaran, 0, ',', '.') : '0' }}</td>
                     <td class="text-right">{{ number_format($currentSaldo, 0, ',', '.') }}</td>

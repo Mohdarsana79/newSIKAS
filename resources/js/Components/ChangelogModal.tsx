@@ -29,7 +29,7 @@ export default function ChangelogModal() {
                         Informasi Rilis
                     </h2>
                     <span className="bg-indigo-100 text-indigo-800 text-sm font-semibold px-3 py-1 rounded-full dark:bg-indigo-900 dark:text-indigo-300">
-                        SIKAS V.2026.24
+                        SIKAS V.2026.25
                     </span>
                 </div>
 
@@ -51,6 +51,7 @@ export default function ChangelogModal() {
                             <li><span className="font-medium">Penambahan SiLPA BOSP Kinerja:</span> Penambahan fitur SiLPA BOSP Kinerja pada halaman Rencana Kerja Anggaran Sekolah.</li>
                             <li><span className="font-medium">Penambahan Payrol Rincian Pencairan:</span> Penambahan fitur Payroll Rincian Pencairan Pada Rencana Kerja Anggaran Sekolah.</li>
                             <li><span className="font-medium">Penambahan Alur Kas:</span> Penambahan fitur Alur KasPada Rencana Kerja Anggaran Sekolah.</li>
+                            <li><span className="font-medium">Penambahan Fitur BAST dan Surat Pesanan:</span> Penambahan fitur Berita Acara Serah Terima Barang (BAST) dan Surat Pesanan Barang dan Jasa pada Fitur Pelengkap.</li>
                         </ul>
                     </div>
 
@@ -75,6 +76,8 @@ export default function ChangelogModal() {
                             <li><span className="font-medium">Perbaikan Payroll :</span> Penambahan kolom nomor kwitansi pada payroll untuk identifikasi pembelanjaan. </li>
                             <li><span className="font-medium">Perbaikan Rkas dan Rkas Perubahan :</span> Perbaikan Bug nomor kwitansi pada payroll yang tidak muncul pada bulan yang terdeteksi tidak memiliki belanja </li>
                             <li><span className="font-medium">Perbaikan Form Search :</span> Perbaikan Form Search Rincian Pencairan Agar Dapat mencari data penerima dan rekening penerima </li>
+                            <li><span className="font-medium">Perbaikan Pajak PPN dan PPh 23 :</span> Perbaikan pada form pajak PPN yang tidak Mereset Otomatis Pajak jika belanja di ubah di bawah 2 jt dan perbaikan pajak makanan dan minuman yang mencentang otomatis PB1 dan SPPD. </li>
+                            <li><span className="font-medium">Perbaikan Uraian Pada Buku Bank :</span> Perbaikan uraian pada buku bank yang memprioritaskan uraian opsional. jika uraian opsional kosong maka sistem otomatis menggunakan uraian asli dari rekening belanja. </li>
                         </ul>
                     </div>
                 </div>

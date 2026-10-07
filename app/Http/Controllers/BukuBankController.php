@@ -408,6 +408,7 @@ class BukuBankController extends Controller
              $items[] = [
                 'tanggal' => $bnt->tanggal_transaksi,
                 'uraian' => $bnt->uraian ?? 'Non Tunai',
+                'uraian_opsional' => $bnt->uraian_opsional,
                 'no_bukti' => $bnt->id_transaksi ?? $bnt->nomor_nota ?? '-',
                 'kode_kegiatan' => $bnt->kodeKegiatan->kode ?? '-',
                 'kode_rekening' => $bnt->rekeningBelanja->kode_rekening ?? '-',

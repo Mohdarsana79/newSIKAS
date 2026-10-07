@@ -394,7 +394,9 @@ class BastController extends Controller
                 return response($pdf->output(), 200)
                     ->header('Content-Type', 'application/pdf');
             }
-            return $pdf->stream('BAST_' . ($bast->nomor_bast ?? $bast->id) . '.pdf');
+            
+            $safeNomorBast = str_replace(['/', '\\'], '_', $bast->nomor_bast ?? $bast->id);
+            return $pdf->stream('BAST_' . $safeNomorBast . '.pdf');
         } catch (\Exception $e) {
             Log::error('Error rendering BAST PDF: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Gagal memuat PDF BAST');
