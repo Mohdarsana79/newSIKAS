@@ -647,8 +647,33 @@ PROMPT;
         $limit = $targetMonth ? 250 : 30;
         $items = $builder->take($limit)->get();
 
-        $itemIds = $items->pluck('id')->all();
-        $allBkuDetails = empty($itemIds) ? collect() : $bkuDetailClass::whereIn($bkuDetailFk, $itemIds)
+        if ($items->isEmpty()) {
+            return [
+                'total_kegiatan' => 0,
+                'alokasi_bulan' => $targetMonth ?: 'Semua Bulan',
+                'keterangan' => 'Tidak ditemukan kegiatan yang sesuai kriteria pencarian.',
+                'items' => [],
+            ];
+        }
+
+        // Ambil seluruh RKAS tahun aktif untuk mengelompokkan kegiatan berulang (recurring items)
+        $allYearRkas = $rkasClass::where(VariantConfig::penganggaranFk($variant), (int) $penganggaran->id)->get();
+
+        // Identifikasi kelompok unik untuk item-item yang ditemukan
+        $targetGroupKeys = $items->map(function ($item) {
+            return $item->kode_id.'|'.$item->kode_rekening_id.'|'.strtolower(trim($item->uraian)).'|'.(float) $item->harga_satuan;
+        })->unique()->all();
+
+        // Kumpulkan seluruh ID RKAS yang bersaudara dalam kelompok kegiatan tersebut
+        $relevantGroupItems = $allYearRkas->filter(function ($r) use ($targetGroupKeys) {
+            $key = $r->kode_id.'|'.$r->kode_rekening_id.'|'.strtolower(trim($r->uraian)).'|'.(float) $r->harga_satuan;
+
+            return in_array($key, $targetGroupKeys, true);
+        });
+        $allRelevantRkasIds = $relevantGroupItems->pluck('id')->all();
+
+        // Pre-fetch seluruh kuitansi BKU tahun aktif yang terkait dengan kelompok kegiatan ini
+        $allBkuDetails = empty($allRelevantRkasIds) ? collect() : $bkuDetailClass::whereIn($bkuDetailFk, $allRelevantRkasIds)
             ->whereHas('bukuKasUmum', function ($bq) use ($penganggaran, $tahun, $variant) {
                 $bq->where(VariantConfig::penganggaranFk($variant), (int) $penganggaran->id)
                     ->where('is_bunga_record', false)
@@ -657,8 +682,23 @@ PROMPT;
             ->with(['bukuKasUmum' => function ($bq) {
                 $bq->select('id', 'tanggal_transaksi', 'nomor_nota', 'id_transaksi');
             }])
-            ->get()
-            ->groupBy($bkuDetailFk);
+            ->get();
+
+        // Kelompokkan detail BKU berdasarkan kunci identitas kelompok kegiatan
+        $bkuByGroup = [];
+        foreach ($allBkuDetails as $bd) {
+            $r = $allYearRkas->firstWhere('id', $bd->{$bkuDetailFk});
+            if ($r) {
+                $key = $r->kode_id.'|'.$r->kode_rekening_id.'|'.strtolower(trim($r->uraian)).'|'.(float) $r->harga_satuan;
+                $bkuByGroup[$key][] = $bd;
+            }
+        }
+
+        $monthOrder = [
+            'Januari' => 1, 'Februari' => 2, 'Maret' => 3, 'April' => 4,
+            'Mei' => 5, 'Juni' => 6, 'Juli' => 7, 'Agustus' => 8,
+            'September' => 9, 'Oktober' => 10, 'November' => 11, 'Desember' => 12,
+        ];
 
         $monthNames = [
             1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
@@ -666,62 +706,89 @@ PROMPT;
             9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember',
         ];
 
-        $results = [];
-        foreach ($items as $item) {
-            $budget = (float) $item->harga_satuan * (float) $item->jumlah;
-            $details = $allBkuDetails->get($item->id, collect());
+        // Lakukan kalkulasi alokasi realisasi berbasis FIFO untuk setiap kelompok kegiatan
+        $groupRealizationMap = [];
+        foreach ($targetGroupKeys as $gKey) {
+            $groupSlots = $relevantGroupItems->filter(function ($r) use ($gKey) {
+                return ($r->kode_id.'|'.$r->kode_rekening_id.'|'.strtolower(trim($r->uraian)).'|'.(float) $r->harga_satuan) === $gKey;
+            })->sortBy(fn ($r) => $monthOrder[$r->bulan] ?? 99)->values();
 
-            // 1. Realisasi s.d. periode bulan yang diminta (jika ada filter bulan) dan tahun aktif
-            $filteredDetails = $details->filter(function ($d) use ($targetMonthIndex) {
-                if (! $targetMonthIndex) {
-                    return true;
-                }
-                if (! $d->bukuKasUmum?->tanggal_transaksi) {
-                    return false;
-                }
-                $m = (int) Carbon::parse($d->bukuKasUmum->tanggal_transaksi)->format('n');
+            $txList = collect($bkuByGroup[$gKey] ?? [])
+                ->sortBy(fn ($d) => $d->bukuKasUmum?->tanggal_transaksi ?? '9999-99-99')
+                ->map(fn ($d) => (object) [
+                    'id' => $d->id,
+                    'tanggal' => $d->bukuKasUmum?->tanggal_transaksi,
+                    'month' => (int) Carbon::parse($d->bukuKasUmum?->tanggal_transaksi)->format('n'),
+                    'available' => (float) $d->jumlah,
+                ])
+                ->values();
 
-                return $m <= $targetMonthIndex;
-            });
+            foreach ($groupSlots as $slot) {
+                $budget = (float) $slot->harga_satuan * (float) $slot->jumlah;
+                $needed = $budget;
+                $assignedMonths = [];
+                $totalAssigned = 0;
+                $spentInPeriod = 0;
 
-            $rawSpent = (float) $filteredDetails->sum('jumlah');
+                foreach ($txList as $tx) {
+                    if ($needed <= 0) {
+                        break;
+                    }
+                    if ($tx->available <= 0) {
+                        continue;
+                    }
 
-            // Audit capping: realisasi untuk baris kegiatan ini tidak boleh melampaui pagu anggarannya
-            $spent = min($budget, $rawSpent);
-            $remaining = max(0, $budget - $spent);
+                    $take = min($needed, $tx->available);
+                    $needed -= $take;
+                    $tx->available -= $take;
+                    $totalAssigned += $take;
 
-            // 2. Deteksi bulan realisasi riil pada BKU sepanjang tahun
-            $totalRealizedAllYear = min($budget, (float) $details->sum('jumlah'));
+                    $mName = $monthNames[$tx->month] ?? $tx->month;
+                    if (! in_array($mName, $assignedMonths)) {
+                        $assignedMonths[] = $mName;
+                    }
 
-            if ($details->isEmpty() || $totalRealizedAllYear <= 0) {
-                $statusRealisasi = 'Belum Direalisasikan';
-                $bulanRealisasiRiil = 'Belum Realisasi';
-            } else {
-                $firstMonth = null;
-                $sortedDetails = $details->sortBy(function ($d) {
-                    return $d->bukuKasUmum?->tanggal_transaksi ?? '9999-99-99';
-                });
-
-                foreach ($sortedDetails as $d) {
-                    if ($d->bukuKasUmum?->tanggal_transaksi) {
-                        $m = (int) Carbon::parse($d->bukuKasUmum->tanggal_transaksi)->format('n');
-                        if (isset($monthNames[$m])) {
-                            $firstMonth = $monthNames[$m];
-                            break;
-                        }
+                    if ($targetMonthIndex && $tx->month <= $targetMonthIndex) {
+                        $spentInPeriod += $take;
+                    } elseif (! $targetMonthIndex) {
+                        $spentInPeriod += $take;
                     }
                 }
 
-                $bulanRealisasiRiil = $firstMonth ?: 'Belum Realisasi';
+                $spentInPeriod = min($budget, $spentInPeriod);
+                $remainingInPeriod = max(0, $budget - $spentInPeriod);
 
-                if ($firstMonth && $firstMonth === $item->bulan) {
-                    $statusRealisasi = "Sesuai Jadwal ({$firstMonth} {$tahun})";
-                } elseif ($firstMonth) {
-                    $statusRealisasi = "Direalisasikan pd {$firstMonth} {$tahun} (Rp ".number_format($totalRealizedAllYear, 0, ',', '.').')';
+                if ($totalAssigned > 0) {
+                    $firstM = $assignedMonths[0];
+                    if ($firstM === $slot->bulan) {
+                        $status = "Sesuai Jadwal ({$firstM} {$tahun})";
+                    } else {
+                        $status = "Direalisasikan pd {$firstM} {$tahun} (Rp ".number_format($totalAssigned, 0, ',', '.').')';
+                    }
+                    $bulanRiil = $firstM;
                 } else {
-                    $statusRealisasi = 'Belum Direalisasikan';
+                    $status = 'Belum Direalisasikan';
+                    $bulanRiil = 'Belum Realisasi';
                 }
+
+                $groupRealizationMap[$slot->id] = [
+                    'spent' => $spentInPeriod,
+                    'remaining' => $remainingInPeriod,
+                    'status' => $status,
+                    'bulan_riil' => $bulanRiil,
+                ];
             }
+        }
+
+        $results = [];
+        foreach ($items as $item) {
+            $budget = (float) $item->harga_satuan * (float) $item->jumlah;
+            $calc = $groupRealizationMap[$item->id] ?? null;
+
+            $spent = $calc ? (float) $calc['spent'] : 0.0;
+            $remaining = $calc ? (float) $calc['remaining'] : $budget;
+            $statusRealisasi = $calc ? $calc['status'] : 'Belum Direalisasikan';
+            $bulanRealisasiRiil = $calc ? $calc['bulan_riil'] : 'Belum Realisasi';
 
             $results[] = [
                 'rkas_id' => (int) $item->id, // Disimpan internal untuk kebutuhan drafting transaksi BKU
