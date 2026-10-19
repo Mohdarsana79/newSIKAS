@@ -55,10 +55,10 @@ Dokumen ini adalah rencana langkah demi langkah untuk mengintegrasikan fitur Buk
 
 ---
 
-## Task 4: Pembaruan Persona ("Om Gian") & System Prompt AI
+## Task 4: Pembaruan Persona Akrab & System Prompt AI
 - **File:** `app/Services/Ai/CopilotService.php`
 - **Tindakan:**
-  1. Perbarui `$systemPrompt` untuk secara spesifik memanggil pengguna dengan sapaan akrab **"Om Gian"** (atau "Om", "Bro", "Bos").
+  1. Perbarui `$systemPrompt` untuk menggunakan persona santai/teman akrab ("Bro", "Om", "Bos").
   2. Tambahkan aturan eksplisit penanganan **Buku Kas Bank**:
      - Jika pengguna menanyakan Buku Kas Bank, BKP Bank, saldo rekening bank, atau mutasi bank bulan X -> WAJIB memanggil `get_bkp_bank_monthly`.
      - Format ringkasan saldo di atas tabel (Saldo Awal, Total Penerimaan, Total Pengeluaran, Saldo Akhir Bank).
