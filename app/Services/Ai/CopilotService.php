@@ -63,6 +63,27 @@ class CopilotService
             [
                 'type' => 'function',
                 'function' => [
+                    'name' => 'get_bkp_bank_monthly',
+                    'description' => 'Mengambil data resmi pembukuan Buku Kas Pembantu Bank (BKP Bank) pada bulan tertentu dalam tahun anggaran aktif (saldo awal kas di bank, total penerimaan transfer dana BOSP, pendapatan bunga bank, penarikan tunai ke kas bendahara, pajak bunga bank, belanja transfer non-tunai/CMS, setoran STS kas daerah, potongan dan setor pajak non-tunai, serta saldo akhir kas di bank, beserta rincian mutasi rekening per tanggal). Panggil tool ini saat pengguna bertanya tentang Buku Kas Bank, Buku Pembantu Bank, BKP Bank, saldo rekening bank, mutasi rekening bank, atau transaksi bank sekolah.',
+                    'parameters' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'bulan' => [
+                                'type' => 'string',
+                                'enum' => [
+                                    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+                                    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+                                ],
+                                'description' => 'Nama bulan pembukuan BKP Bank yang diminta (Januari sampai Desember).',
+                            ],
+                        ],
+                        'required' => ['bulan'],
+                    ],
+                ],
+            ],
+            [
+                'type' => 'function',
+                'function' => [
                     'name' => 'search_rkas_activity',
                     'description' => 'Mencari rincian kegiatan dan akun belanja pada RKAS tahun anggaran aktif berdasarkan kata kunci uraian/kegiatan dan/atau filter alokasi bulan penganggaran (Januari s/d Desember).',
                     'parameters' => [
@@ -218,14 +239,14 @@ Aplikasi saat ini mengelola dana BOSP {$variantTitle} Tahun Anggaran {$tahun}.
 
 Karakter & Gaya Bicara Anda:
 1. GAYA BAHASA SANTAI SEPERTI TEMAN AKRAB:
-   - JANGAN berbicara formal, kaku, atau seperti birokrat/robot. Bicaralah kasual, santai, asyik, dan hangat layaknya teman nongkrong atau partner satu tim.
-   - Sapa dan panggil pengguna dengan sebutan akrab seperti "Bro", "Om", atau "Bos" (contoh: "Halo bro!", "Aman om, ini datanya udah gue siapin", "Gimana kabarnya bos?").
+   - JANGAN berbicara formal, kaku, atau seperti birokrat/robot. Bicaralah kasual, santai, asyik, dan hangat layaknya teman akrab atau partner kerja satu tim.
+   - Panggil pengguna secara konsisten dengan sapaan akrab "Om Gian" (contoh: "Halo Om Gian!", "Aman Om Gian, ini datanya udah siap!", "Siap Om Gian!", "Beres Om Gian!"). Boleh sesekali menggunakan variasi "Om", "Bro", atau "Bos".
    - BISA DIAJAK CHAT BIASA (SMALL TALK):
-     * Jika pengguna menyapa santai ("Halo bro", "Pagi om"), ajak ngobrol balik dengan ramah dan asyik.
+     * Jika pengguna menyapa santai ("Halo bro", "Pagi om", "Halo copilot"), ajak ngobrol balik dengan ramah dan asyik.
      * Jika pengguna curhat lelah urus SPJ, pusing pembukuan, atau ngajak ngobrol ringan (kopi, istirahat, candaan), tanggapi dengan empati dan gaya santai layaknya sahabat yang mengerti perjuangan bendahara sekolah.
-     * Tetap siap sedia dan sigap jika sewaktu-waktu pengguna butuh bantuan terkait RKAS, BKU, kuitansi, atau pajak.
+     * Tetap siap sedia dan sigap jika sewaktu-waktu Om Gian butuh bantuan terkait RKAS, BKU, buku bank, kuitansi, atau pajak.
 2. FORMAT TABEL HTML (TETAP RAPI & PRESISI):
-   - Walaupun gaya bahasa Anda santai seperti teman, saat menyajikan data angka keuangan, daftar belanja, perbandingan pagu, atau kuitansi BKU, Anda WAJIB menyajikannya dalam tabel HTML terstruktur rapi (tag <table>, <thead>, <tbody>, <tr>, <th>, <td>).
+   - Walaupun gaya bahasa Anda santai seperti teman, saat menyajikan data angka keuangan, daftar belanja, perbandingan pagu, kuitansi BKU, atau mutasi Buku Bank, Anda WAJIB menyajikannya dalam tabel HTML terstruktur rapi (tag <table>, <thead>, <tbody>, <tr>, <th>, <td>).
    - Format nominal uang selalu gunakan format Rupiah resmi (contoh: Rp 29.000.000) dan atur rata kanan (align="right" atau style="text-align: right;").
    - Jangan menyajikan data angka dalam baris teks panjang tanpa tabel jika ada 2 baris data atau lebih. Gunakan tabel HTML agar jelas dibaca.
 3. PENCEGAHAN KODE, ID INTERNAL, & VARIABEL TEKNIS (ATURAN SANGAT KETAT):
@@ -236,7 +257,18 @@ Karakter & Gaya Bicara Anda:
      * Gunakan nomor urut biasa (1, 2, 3...) untuk kolom "No".
      * Gunakan istilah umum yang mudah dipahami: "Sisa Anggaran" alih-alih "sisa_pagu", "Realisasi Belanja" alih-alih "terealisasi".
    - Dilarang keras menampilkan tanda dolar (\$) untuk nama variabel program.
-4. PERTANYAAN REALISASI BKU VS PERENCANAAN RKAS:
+4. PERTANYAAN BUKU KAS BANK (BKP BANK) VS REALISASI BKU VS RKAS:
+   - Jika pengguna menanyakan "Buku Kas Bank", "Buku Pembantu Bank", "BKP Bank", "Saldo rekening bank bulan X", "Mutasi bank bulan X", atau aliran uang di rekening:
+     a. WAJIB memanggil tool `get_bkp_bank_monthly` dengan parameter `bulan` yang diminta (contoh: bulan: "Januari").
+     b. JANGAN memanggil `get_bku_monthly_realization` (yang hanya untuk belanja kas BKU) atau `search_rkas_activity`!
+     c. Tampilkan ringkasan posisi kas bank secara santai & jelas di atas tabel:
+        - Saldo Awal Kas Bank Bulan Ini (format Rp)
+        - Total Penerimaan Bank (Transfer Dana BOSP + Bunga Bank + Pajak Non-Tunai)
+        - Total Pengeluaran Bank (Penarikan Tunai + Belanja Non-Tunai + Pajak Bunga + STS)
+        - Saldo Akhir Kas di Bank (Posisi Kas Riil di Rekening)
+     d. Sajikan seluruh transaksi mutasi perbankan dalam tabel HTML terstruktur rapi dengan kolom WAJIB:
+        <th>No</th><th>Tanggal</th><th>Kode Rekening</th><th>No. Bukti</th><th>Uraian Transaksi Bank</th><th>Penerimaan (Rp)</th><th>Pengeluaran (Rp)</th><th>Saldo Bank (Rp)</th>
+     e. Jika bulan tersebut tidak ada transaksi mutasi (mutasi_count = 0), jelaskan secara santai kepada Om Gian bahwa di bulan tersebut tidak ada aliran kas bank masuk maupun keluar, sehingga saldo kas di bank tetap sama dengan saldo awal bulan.
    - Jika pengguna menanyakan "Realisasi BKU", "Berapa realisasi belanja bulan X?", "Tampilkan belanja BKU bulan X", atau daftar kuitansi yang dibukukan:
      a. WAJIB memanggil tool `get_bku_monthly_realization` dengan parameter `bulan` yang diminta (contoh: bulan: "Maret").
      b. JANGAN memanggil `search_rkas_activity` untuk menjawab realisasi belanja kas BKU! Realisasi kas riil tercatat resmi di Buku Kas Umum (BKU), bukan di dokumen perencanaan RKAS.
@@ -352,6 +384,7 @@ PROMPT;
         return match ($name) {
             'get_budget_pagu_summary' => $this->getBudgetPaguSummary($tahun, $variant),
             'get_bku_monthly_realization' => $this->getBkuMonthlyRealization($tahun, $args['bulan'] ?? 'Maret', $variant),
+            'get_bkp_bank_monthly' => $this->getBkpBankMonthly($tahun, $args['bulan'] ?? 'Maret', $variant),
             'search_rkas_activity' => $this->searchRkasActivity($tahun, $args['query'] ?? '', $variant, $args['bulan'] ?? null),
             'calculate_tax_recommendation' => $this->calculateTaxRecommendation(
                 (float) ($args['amount'] ?? 0),
@@ -550,6 +583,322 @@ PROMPT;
             'jumlah_transaksi' => count($transaksiList),
             'keterangan' => "Total realisasi belanja resmi pada BKU bulan {$bulanNama} {$tahun} adalah Rp ".number_format($totalBelanjaBulanIni, 0, ',', '.').' ('.count($transaksiList).' transaksi kuitansi dibukukan).',
             'transaksi' => $transaksiList,
+        ];
+    }
+
+    /**
+     * Tool: Mengambil data resmi pembukuan Buku Kas Pembantu Bank (BKP Bank) per bulan
+     */
+    protected function getBkpBankMonthly(int $tahun, string $bulan, string $variant): array
+    {
+        VariantConfig::validateVariant($variant);
+
+        $penganggaranClass = VariantConfig::getModelClass('penganggaran', $variant);
+        $penerimaanClass = VariantConfig::getModelClass('penerimaan_dana', $variant);
+        $penarikanClass = VariantConfig::getModelClass('penarikan_tunai', $variant);
+        $bkuClass = VariantConfig::getModelClass('bku', $variant);
+        $stsClass = VariantConfig::getModelClass('sts', $variant);
+        $penganggaranFk = VariantConfig::penganggaranFk($variant);
+
+        $penganggaran = $penganggaranClass::where('tahun_anggaran', $tahun)->first();
+        if (! $penganggaran) {
+            return [
+                'error' => "Data penganggaran untuk tahun {$tahun} ({$variant}) belum ditemukan.",
+            ];
+        }
+
+        $bulanMap = [
+            'januari' => 1, 'februari' => 2, 'maret' => 3, 'april' => 4,
+            'mei' => 5, 'juni' => 6, 'juli' => 7, 'agustus' => 8,
+            'september' => 9, 'oktober' => 10, 'november' => 11, 'desember' => 12,
+        ];
+        $cleanBulan = strtolower(trim($bulan));
+        $bulanAngka = $bulanMap[$cleanBulan] ?? 3;
+        $bulanFormatted = ucfirst($cleanBulan);
+
+        $bukuKasService = new BukuKasService($variant);
+
+        // 1. Saldo Awal Bank
+        $saldoAwal = 0.0;
+        if ($bulanAngka > 1) {
+            $saldoAwal = (float) $bukuKasService->hitungSaldoBankSebelumBulan($penganggaran->id, $bulanAngka);
+        }
+
+        // 2. Penerimaan Dana BOSP
+        $penerimaans = $penerimaanClass::where($penganggaranFk, $penganggaran->id)
+            ->whereMonth('tanggal_terima', $bulanAngka)
+            ->whereYear('tanggal_terima', $tahun)
+            ->orderBy('tanggal_terima', 'asc')
+            ->get();
+
+        $totalPenerimaanDana = 0.0;
+        $items = [];
+
+        foreach ($penerimaans as $p) {
+            if ($p->sumber_dana === 'Bosp Reguler Tahap 1' && (float) ($p->saldo_awal ?? 0) > 0) {
+                $saldoAwal += (float) $p->saldo_awal;
+            }
+
+            $jml = (float) $p->jumlah_dana;
+            $totalPenerimaanDana += $jml;
+            $items[] = [
+                'tanggal' => Carbon::parse($p->tanggal_terima)->format('Y-m-d'),
+                'tanggal_formatted' => Carbon::parse($p->tanggal_terima)->format('d/m/Y'),
+                'kode_rekening' => '4.1.01',
+                'no_bukti' => '-',
+                'uraian' => 'Terima Transfer Dana '.$p->sumber_dana,
+                'penerimaan' => $jml,
+                'pengeluaran' => 0.0,
+                'type' => 'penerimaan',
+                'sort_order' => 1,
+            ];
+        }
+
+        // 3. Penarikan Tunai
+        $penarikans = $penarikanClass::where($penganggaranFk, $penganggaran->id)
+            ->whereMonth('tanggal_penarikan', $bulanAngka)
+            ->whereYear('tanggal_penarikan', $tahun)
+            ->orderBy('tanggal_penarikan', 'asc')
+            ->get();
+
+        $totalPenarikan = 0.0;
+        foreach ($penarikans as $pen) {
+            $jml = (float) $pen->jumlah_penarikan;
+            $totalPenarikan += $jml;
+            $items[] = [
+                'tanggal' => Carbon::parse($pen->tanggal_penarikan)->format('Y-m-d'),
+                'tanggal_formatted' => Carbon::parse($pen->tanggal_penarikan)->format('d/m/Y'),
+                'kode_rekening' => '-',
+                'no_bukti' => '-',
+                'uraian' => ! empty($pen->uraian) ? $pen->uraian : 'Penarikan Kas Tunai dari Rekening Bank',
+                'penerimaan' => 0.0,
+                'pengeluaran' => $jml,
+                'type' => 'penarikan',
+                'sort_order' => 5,
+            ];
+        }
+
+        // 4. Bunga Bank & Pajak Bunga Bank
+        $bungaRecords = $bkuClass::where($penganggaranFk, $penganggaran->id)
+            ->whereMonth('tanggal_transaksi', $bulanAngka)
+            ->whereYear('tanggal_transaksi', $tahun)
+            ->where('is_bunga_record', true)
+            ->orderBy('tanggal_transaksi', 'asc')
+            ->get();
+
+        $totalBunga = 0.0;
+        $totalPajakBunga = 0.0;
+        foreach ($bungaRecords as $bungaRecord) {
+            $bunga = (float) $bungaRecord->bunga_bank;
+            $pajakBunga = (float) $bungaRecord->pajak_bunga_bank;
+            $totalBunga += $bunga;
+            $totalPajakBunga += $pajakBunga;
+
+            if ($bunga > 0) {
+                $items[] = [
+                    'tanggal' => Carbon::parse($bungaRecord->tanggal_transaksi)->format('Y-m-d'),
+                    'tanggal_formatted' => Carbon::parse($bungaRecord->tanggal_transaksi)->format('d/m/Y'),
+                    'kode_rekening' => '299',
+                    'no_bukti' => '-',
+                    'uraian' => 'Pendapatan Bunga Bank Bulan '.Carbon::parse($bungaRecord->tanggal_transaksi)->locale('id')->isoFormat('MMMM'),
+                    'penerimaan' => $bunga,
+                    'pengeluaran' => 0.0,
+                    'type' => 'bunga',
+                    'sort_order' => 20,
+                ];
+            }
+
+            if ($pajakBunga > 0) {
+                $items[] = [
+                    'tanggal' => Carbon::parse($bungaRecord->tanggal_transaksi)->format('Y-m-d'),
+                    'tanggal_formatted' => Carbon::parse($bungaRecord->tanggal_transaksi)->format('d/m/Y'),
+                    'kode_rekening' => '199',
+                    'no_bukti' => '-',
+                    'uraian' => 'Potongan Pajak Bunga Bank (PPh 4 ayat 2) Bulan '.Carbon::parse($bungaRecord->tanggal_transaksi)->locale('id')->isoFormat('MMMM'),
+                    'penerimaan' => 0.0,
+                    'pengeluaran' => $pajakBunga,
+                    'type' => 'pajak_bunga',
+                    'sort_order' => 21,
+                ];
+            }
+        }
+
+        // 5. Belanja Non-Tunai & Potongan Pajak Non-Tunai
+        $belanjaNonTunaiList = $bkuClass::where($penganggaranFk, $penganggaran->id)
+            ->with(['kodeKegiatan', 'rekeningBelanja'])
+            ->where('is_bunga_record', false)
+            ->where('jenis_transaksi', 'non-tunai')
+            ->whereMonth('tanggal_transaksi', $bulanAngka)
+            ->whereYear('tanggal_transaksi', $tahun)
+            ->orderBy('tanggal_transaksi', 'asc')
+            ->get();
+
+        $totalBelanjaNonTunai = 0.0;
+        $totalPajakDiterimaNonTunai = 0.0;
+
+        foreach ($belanjaNonTunaiList as $bnt) {
+            $kotor = (float) $bnt->total_transaksi_kotor;
+            $totalBelanjaNonTunai += $kotor;
+
+            $items[] = [
+                'tanggal' => Carbon::parse($bnt->tanggal_transaksi)->format('Y-m-d'),
+                'tanggal_formatted' => Carbon::parse($bnt->tanggal_transaksi)->format('d/m/Y'),
+                'kode_rekening' => $bnt->rekeningBelanja?->kode_rekening ?? '-',
+                'no_bukti' => $bnt->nomor_nota ?? $bnt->id_transaksi ?? '-',
+                'uraian' => 'Belanja Non-Tunai: '.($bnt->uraian_opsional ?: $bnt->uraian),
+                'penerimaan' => 0.0,
+                'pengeluaran' => $kotor,
+                'type' => 'belanja_non_tunai',
+                'sort_order' => 10,
+            ];
+
+            $pajakPusat = (float) ($bnt->total_pajak ?? 0);
+            if ($pajakPusat > 0) {
+                $totalPajakDiterimaNonTunai += $pajakPusat;
+                $items[] = [
+                    'tanggal' => Carbon::parse($bnt->tanggal_transaksi)->format('Y-m-d'),
+                    'tanggal_formatted' => Carbon::parse($bnt->tanggal_transaksi)->format('d/m/Y'),
+                    'kode_rekening' => '-',
+                    'no_bukti' => $bnt->kode_masa_pajak ?? '-',
+                    'uraian' => 'Terima Pajak '.($bnt->pajak ?? 'Pusat').' ('.($bnt->uraian_opsional ?: $bnt->uraian).')',
+                    'penerimaan' => $pajakPusat,
+                    'pengeluaran' => 0.0,
+                    'type' => 'terima_pajak',
+                    'sort_order' => 11,
+                ];
+            }
+
+            $pajakDaerah = (float) ($bnt->total_pajak_daerah ?? 0);
+            if ($pajakDaerah > 0) {
+                $totalPajakDiterimaNonTunai += $pajakDaerah;
+                $items[] = [
+                    'tanggal' => Carbon::parse($bnt->tanggal_transaksi)->format('Y-m-d'),
+                    'tanggal_formatted' => Carbon::parse($bnt->tanggal_transaksi)->format('d/m/Y'),
+                    'kode_rekening' => '-',
+                    'no_bukti' => '-',
+                    'uraian' => 'Terima Pajak Daerah ('.($bnt->uraian_opsional ?: $bnt->uraian).')',
+                    'penerimaan' => $pajakDaerah,
+                    'pengeluaran' => 0.0,
+                    'type' => 'terima_pajak_daerah',
+                    'sort_order' => 11,
+                ];
+            }
+        }
+
+        // 6. Setoran Pajak Non-Tunai (NTPN)
+        $bkuPajakDisetorNonTunai = $bkuClass::where($penganggaranFk, $penganggaran->id)
+            ->where('is_bunga_record', false)
+            ->where('jenis_transaksi', 'non-tunai')
+            ->whereMonth('tanggal_lapor', $bulanAngka)
+            ->whereYear('tanggal_lapor', $tahun)
+            ->whereNotNull('ntpn')
+            ->where(function ($query) {
+                $query->where('total_pajak', '>', 0)
+                    ->orWhere('total_pajak_daerah', '>', 0);
+            })
+            ->orderBy('tanggal_lapor', 'asc')
+            ->get();
+
+        $totalPajakDisetorNonTunai = 0.0;
+        foreach ($bkuPajakDisetorNonTunai as $bkuSetor) {
+            $pajakPusat = (float) ($bkuSetor->total_pajak ?? 0);
+            if ($pajakPusat > 0) {
+                $totalPajakDisetorNonTunai += $pajakPusat;
+                $items[] = [
+                    'tanggal' => Carbon::parse($bkuSetor->tanggal_lapor)->format('Y-m-d'),
+                    'tanggal_formatted' => Carbon::parse($bkuSetor->tanggal_lapor)->format('d/m/Y'),
+                    'kode_rekening' => '-',
+                    'no_bukti' => $bkuSetor->ntpn ?? '-',
+                    'uraian' => 'Setor NTPN Pajak '.($bkuSetor->pajak ?? '').' ('.($bkuSetor->uraian_opsional ?: $bkuSetor->uraian).')',
+                    'penerimaan' => 0.0,
+                    'pengeluaran' => $pajakPusat,
+                    'type' => 'setor_pajak',
+                    'sort_order' => 12,
+                ];
+            }
+
+            $pajakDaerah = (float) ($bkuSetor->total_pajak_daerah ?? 0);
+            if ($pajakDaerah > 0) {
+                $totalPajakDisetorNonTunai += $pajakDaerah;
+                $items[] = [
+                    'tanggal' => Carbon::parse($bkuSetor->tanggal_lapor)->format('Y-m-d'),
+                    'tanggal_formatted' => Carbon::parse($bkuSetor->tanggal_lapor)->format('d/m/Y'),
+                    'kode_rekening' => '-',
+                    'no_bukti' => '-',
+                    'uraian' => 'Setor Pajak Daerah ('.($bkuSetor->uraian_opsional ?: $bkuSetor->uraian).')',
+                    'penerimaan' => 0.0,
+                    'pengeluaran' => $pajakDaerah,
+                    'type' => 'setor_pajak_daerah',
+                    'sort_order' => 12,
+                ];
+            }
+        }
+
+        // 7. STS (Surat Tanda Setor) Buku Bank
+        $stsRecords = $stsClass::where($penganggaranFk, $penganggaran->id)
+            ->where('is_bkp', true)
+            ->whereMonth('tanggal_bayar', $bulanAngka)
+            ->whereYear('tanggal_bayar', $tahun)
+            ->orderBy('tanggal_bayar', 'asc')
+            ->get();
+
+        $totalSts = 0.0;
+        foreach ($stsRecords as $sts) {
+            $jml = (float) $sts->jumlah_bayar;
+            $totalSts += $jml;
+            $items[] = [
+                'tanggal' => Carbon::parse($sts->tanggal_bayar)->format('Y-m-d'),
+                'tanggal_formatted' => Carbon::parse($sts->tanggal_bayar)->format('d/m/Y'),
+                'kode_rekening' => '-',
+                'no_bukti' => $sts->no_bukti ?? $sts->nomor_sts ?? '-',
+                'uraian' => 'Setoran STS Kas Daerah: '.($sts->uraian ?? 'Pengembalian Dana'),
+                'penerimaan' => 0.0,
+                'pengeluaran' => $jml,
+                'type' => 'sts',
+                'sort_order' => 7,
+            ];
+        }
+
+        // Urutkan seluruh items mutasi: Tanggal -> Sort Order
+        usort($items, function ($a, $b) {
+            $tA = strtotime($a['tanggal']);
+            $tB = strtotime($b['tanggal']);
+            if ($tA !== $tB) {
+                return $tA - $tB;
+            }
+
+            return ($a['sort_order'] ?? 99) - ($b['sort_order'] ?? 99);
+        });
+
+        // Hitung running balance per baris transaksi
+        $runningSaldo = $saldoAwal;
+        foreach ($items as &$item) {
+            $runningSaldo = $runningSaldo + $item['penerimaan'] - $item['pengeluaran'];
+            $item['saldo_berjalan'] = $runningSaldo;
+        }
+        unset($item);
+
+        $totalPenerimaan = $totalPenerimaanDana + $totalBunga + $totalPajakDiterimaNonTunai;
+        $totalPengeluaran = $totalPenarikan + $totalPajakBunga + $totalBelanjaNonTunai + $totalPajakDisetorNonTunai + $totalSts;
+        $saldoAkhir = $saldoAwal + $totalPenerimaan - $totalPengeluaran;
+
+        return [
+            'bulan' => $bulanFormatted,
+            'tahun' => $tahun,
+            'saldo_awal' => $saldoAwal,
+            'total_penerimaan' => $totalPenerimaan,
+            'total_pengeluaran' => $totalPengeluaran,
+            'saldo_akhir' => $saldoAkhir,
+            'rincian_ringkasan' => [
+                'transfer_dana_masuk' => $totalPenerimaanDana,
+                'bunga_bank' => $totalBunga,
+                'penarikan_tunai' => $totalPenarikan,
+                'pajak_bunga' => $totalPajakBunga,
+                'belanja_non_tunai' => $totalBelanjaNonTunai,
+                'sts_kas_daerah' => $totalSts,
+            ],
+            'mutasi_count' => count($items),
+            'items' => $items,
         ];
     }
 
