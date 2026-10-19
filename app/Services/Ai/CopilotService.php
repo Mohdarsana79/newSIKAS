@@ -41,6 +41,27 @@ class CopilotService
             [
                 'type' => 'function',
                 'function' => [
+                    'name' => 'get_bku_monthly_realization',
+                    'description' => 'Mengambil data resmi pembukuan kas BKU (Buku Kas Umum) pada bulan tertentu dalam tahun anggaran aktif (total belanja riil yang dibukukan di BKU, total belanja kumulatif s.d. bulan tersebut, dan rincian kuitansi belanja BKU lengkap dengan tanggal transaksi, nomor nota/bukti, nama rekanan/toko, kode/nama rekening belanja, dan nominal kuitansi). Panggil tool ini saat pengguna bertanya tentang realisasi belanja BKU, realisasi kas bulanan, pengeluaran kas, atau daftar kuitansi yang dibayarkan di bulan tertentu.',
+                    'parameters' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'bulan' => [
+                                'type' => 'string',
+                                'enum' => [
+                                    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+                                    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+                                ],
+                                'description' => 'Nama bulan pembukuan BKU yang diminta (Januari sampai Desember).',
+                            ],
+                        ],
+                        'required' => ['bulan'],
+                    ],
+                ],
+            ],
+            [
+                'type' => 'function',
+                'function' => [
                     'name' => 'search_rkas_activity',
                     'description' => 'Mencari rincian kegiatan dan akun belanja pada RKAS tahun anggaran aktif berdasarkan kata kunci uraian/kegiatan dan/atau filter alokasi bulan penganggaran (Januari s/d Desember).',
                     'parameters' => [
@@ -211,22 +232,27 @@ Karakter & Pedoman Kerja Anda:
      * Gunakan "Kode Rekening" dan "Nama Rekening" secara resmi.
    - JANGAN PERNAH menyalin atau mengulang nama variabel sistem seperti "found_count" atau "filter_bulan". Tuliskan informasi secara naratif dalam Bahasa Indonesia yang alami (contoh: "Berikut adalah daftar 54 kegiatan belanja pada bulan Maret:").
    - Dilarang keras menampilkan tanda dolar (\$) untuk nama variabel program.
-3. PERTANYAAN PAGU ANGGARAN VS REALISASI (ATURAN KETAT):
+3. PERTANYAAN REALISASI BKU VS PERENCANAAN RKAS (ATURAN SANGAT KETAT):
+   - Jika pengguna menanyakan "Realisasi BKU", "Berapa realisasi belanja bulan X?", "Tampilkan belanja BKU bulan X", atau daftar kuitansi yang dibukukan:
+     a. WAJIB memanggil tool `get_bku_monthly_realization` dengan parameter `bulan` yang diminta (contoh: bulan: "Maret").
+     b. JANGAN memanggil `search_rkas_activity` untuk menjawab realisasi belanja kas BKU! Realisasi kas riil sekolah tercatat resmi di Buku Kas Umum (BKU), bukan di dokumen perencanaan RKAS.
+     c. Tampilkan ringkasan eksekutif di atas tabel:
+        - Total Realisasi Belanja BKU Bulan Ini (format Rp, contoh: Rp 8.348.000)
+        - Total Belanja Kumulatif s.d. Bulan Ini (format Rp)
+        - Jumlah Transaksi Kuitansi Belanja
+     d. Sajikan seluruh transaksi kuitansi belanja dalam tabel HTML terstruktur rapi dengan kolom WAJIB:
+        <th>No</th><th>Tanggal Transaksi</th><th>No. Bukti / Nota</th><th>Uraian Belanja BKU</th><th>Rekanan / Toko</th><th>Rekening Belanja</th><th>Nominal Belanja (Rp)</th>
    - Jika pengguna menanyakan "Berapa pagu anggaran saya?", "Berapa total dana BOSP tahun ini?", atau ringkasan penetapan anggaran:
      a. Panggil tool `get_budget_pagu_summary`.
-     b. JANGAN memanggil `query_realization_comparison` kecuali pengguna secara eksplisit meminta data realisasi, serapan, atau perbandingan belanja antar triwulan.
-     c. Sajikan tabel HTML ringkas berisi: Pagu Total Penetapan, Alokasi Penerimaan Tahap 1 & 2, serta Alokasi Rencana Belanja per Kelompok (Barang & Jasa vs Belanja Modal).
-   - Jika pengguna menanyakan performa belanja, realisasi, serapan, atau grafik serapan (contoh: "Bandingkan serapan triwulan 1 vs 2", "Berapa realisasi belanja tahun ini?"):
+     b. JANGAN memanggil `query_realization_comparison` kecuali pengguna secara eksplisit meminta data realisasi antar triwulan.
+     c. Sajikan tabel HTML ringkas: Pagu Total Penetapan, Penerimaan Tahap 1 & 2, serta Alokasi Rencana Belanja per Kelompok.
+   - Jika pengguna menanyakan performa belanja, grafik serapan triwulan atau kelompok belanja:
      a. Panggil tool `query_realization_comparison`.
-     b. Berikan ulasan eksekutif tajam dan grafik komparasi serapan.
-4. PENCARIAN DATA RKAS & BULAN ANGGARAN:
-   - Jika pengguna menanyakan data RKAS, kegiatan, atau sisa anggaran pada bulan tertentu (contoh: "Data RKAS awal bulan Maret", "Kegiatan di bulan Juni", "Sisa pagu ATK bulan April"):
-     a. Panggil tool `search_rkas_activity` dengan parameter `bulan` yang sesuai (contoh: bulan: "Maret").
-     b. Jika ada kata kunci barang/kegiatan, masukkan ke parameter `query`. Jika pengguna hanya meminta data bulan secara umum, kosongkan `query` atau isi kata kunci umum.
-     c. Tampilkan SELURUH baris kegiatan hasil pencarian tanpa dipotong dalam tabel HTML yang rapi.
-     d. FORMAT KOLOM TABEL RKAS WAJIB:
-        <th>No</th><th>Bulan</th><th>Uraian Kegiatan / Barang</th><th>Kode Rekening</th><th>Nama Rekening</th><th>Total Anggaran</th><th>Realisasi Belanja</th><th>Sisa Anggaran</th>
-     e. DILARANG KERAS membuat kolom "ID Kegiatan" atau menampilkan angka ID database apapun di tabel. Cukup gunakan nomor urut urutan baris (1, 2, 3...) di kolom "No".
+4. PENCARIAN RENCANA KEGIATAN RKAS:
+   - Jika pengguna menanyakan rencana kegiatan atau alokasi anggaran di dokumen perencanaan RKAS (contoh: "Apa saja rencana anggaran di RKAS bulan Maret?", "Cari kegiatan sarpras di RKAS"):
+     a. Panggil tool `search_rkas_activity` dengan parameter `bulan` atau `query`.
+     b. Tampilkan seluruh baris kegiatan dalam tabel HTML (kolom: No, Bulan, Uraian Kegiatan / Barang, Kode Rekening, Nama Rekening, Total Anggaran, Realisasi Belanja, Sisa Anggaran).
+     c. DILARANG KERAS membuat kolom "ID Kegiatan" atau menampilkan angka ID database apapun di tabel. Cukup gunakan nomor urut urutan baris (1, 2, 3...) di kolom "No".
 5. DRAFTING TRANSAKSI BKU:
    - Jika pengguna meminta mencatat belanja atau kuitansi (contoh: "Catat belanja ATK...", "Bayar katering..."):
      a. Panggil tool `search_rkas_activity` untuk mencari rincian kegiatan dan akun rekening yang relevan di RKAS {$tahun}.
@@ -324,6 +350,7 @@ PROMPT;
     {
         return match ($name) {
             'get_budget_pagu_summary' => $this->getBudgetPaguSummary($tahun, $variant),
+            'get_bku_monthly_realization' => $this->getBkuMonthlyRealization($tahun, $args['bulan'] ?? 'Maret', $variant),
             'search_rkas_activity' => $this->searchRkasActivity($tahun, $args['query'] ?? '', $variant, $args['bulan'] ?? null),
             'calculate_tax_recommendation' => $this->calculateTaxRecommendation(
                 (float) ($args['amount'] ?? 0),
@@ -434,6 +461,94 @@ PROMPT;
             'rincian_penerimaan' => $rincianPenerimaan,
             'alokasi_kelompok_belanja' => $kelompokBelanja,
             'status' => 'Data Pagu Resmi',
+        ];
+    }
+
+    /**
+     * Tool: Mengambil data resmi realisasi pembukuan kas BKU bulanan
+     */
+    protected function getBkuMonthlyRealization(int $tahun, string $bulan, string $variant): array
+    {
+        $penganggaranClass = VariantConfig::getModelClass('penganggaran', $variant);
+        $bkuClass = VariantConfig::getModelClass('bku', $variant);
+        $bkuFk = VariantConfig::penganggaranFk($variant);
+
+        $penganggaran = $penganggaranClass::where('tahun_anggaran', $tahun)->first();
+        if (!$penganggaran) {
+            return ['error' => "Data penganggaran untuk tahun {$tahun} ({$variant}) belum ditemukan."];
+        }
+
+        $monthMap = [
+            'januari' => 1, 'februari' => 2, 'maret' => 3, 'april' => 4, 'mei' => 5, 'juni' => 6,
+            'juli' => 7, 'agustus' => 8, 'september' => 9, 'oktober' => 10, 'november' => 11, 'desember' => 12,
+        ];
+
+        $monthKey = strtolower(trim($bulan));
+        $bulanAngka = $monthMap[$monthKey] ?? 3;
+        $bulanNama = ucfirst($monthKey);
+        foreach ($monthMap as $mName => $mIdx) {
+            if ($mIdx === $bulanAngka) {
+                $bulanNama = ucfirst($mName);
+                break;
+            }
+        }
+
+        // 1. Total Belanja BKU Bulan Ini (hanya transaksi belanja reguler, bukan record bunga/closing)
+        $totalBelanjaBulanIni = (float) $bkuClass::where($bkuFk, $penganggaran->id)
+            ->whereMonth('tanggal_transaksi', $bulanAngka)
+            ->whereYear('tanggal_transaksi', $tahun)
+            ->where('is_bunga_record', false)
+            ->sum(DB::raw('COALESCE(total_transaksi_kotor, dibelanjakan, 0)'));
+
+        // 2. Total Belanja Kumulatif s.d. Bulan Ini
+        $totalBelanjaSdBulanIni = (float) $bkuClass::where($bkuFk, $penganggaran->id)
+            ->whereMonth('tanggal_transaksi', '<=', $bulanAngka)
+            ->whereYear('tanggal_transaksi', $tahun)
+            ->where('is_bunga_record', false)
+            ->sum(DB::raw('COALESCE(total_transaksi_kotor, dibelanjakan, 0)'));
+
+        // 3. Ambil seluruh transaksi belanja BKU pada bulan ini
+        $bkuItems = $bkuClass::with(['kodeKegiatan', 'rekeningBelanja', 'uraianDetails'])
+            ->where($bkuFk, $penganggaran->id)
+            ->whereMonth('tanggal_transaksi', $bulanAngka)
+            ->whereYear('tanggal_transaksi', $tahun)
+            ->where('is_bunga_record', false)
+            ->orderBy('tanggal_transaksi', 'asc')
+            ->orderBy('id', 'asc')
+            ->get();
+
+        $transaksiList = [];
+        $no = 1;
+        foreach ($bkuItems as $bku) {
+            $nominal = (float) ($bku->total_transaksi_kotor ?: $bku->dibelanjakan);
+            if ($nominal <= 0) {
+                continue;
+            }
+
+            $noBukti = $bku->nomor_nota ?: ($bku->id_transaksi ?: 'BKU-' . $bku->id);
+            $rekanan = $bku->nama_toko ?: ($bku->nama_penerima_pembayaran ?: '-');
+            $tgl = $bku->tanggal_transaksi ? Carbon::parse($bku->tanggal_transaksi)->format('d/m/Y') : '-';
+
+            $transaksiList[] = [
+                'no' => $no++,
+                'tanggal' => $tgl,
+                'no_bukti' => $noBukti,
+                'uraian' => $bku->uraian ?: 'Pembayaran Belanja',
+                'rekanan' => $rekanan,
+                'kode_rekening' => $bku->rekeningBelanja?->kode_rekening ?? '-',
+                'nama_rekening' => $bku->rekeningBelanja?->rincian_objek ?? '-',
+                'nominal' => $nominal,
+            ];
+        }
+
+        return [
+            'bulan' => $bulanNama,
+            'tahun' => $tahun,
+            'total_belanja_bulan_ini' => $totalBelanjaBulanIni,
+            'total_belanja_kumulatif_sd_bulan_ini' => $totalBelanjaSdBulanIni,
+            'jumlah_transaksi' => count($transaksiList),
+            'keterangan' => "Total realisasi belanja resmi pada BKU bulan {$bulanNama} {$tahun} adalah Rp " . number_format($totalBelanjaBulanIni, 0, ',', '.') . " (" . count($transaksiList) . " transaksi kuitansi dibukukan).",
+            'transaksi' => $transaksiList,
         ];
     }
 
