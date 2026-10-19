@@ -3,7 +3,7 @@
 namespace App\Services\Ai;
 
 use App\Config\VariantConfig;
-use App\Models\Sekolah;
+use App\Models\SekolahProfile;
 use Illuminate\Support\Facades\DB;
 
 class CalkDataAggregator
@@ -27,7 +27,7 @@ class CalkDataAggregator
             $periodeLabel = 'Tahap 2 (Juli - Desember)';
         }
 
-        $sekolah = Sekolah::first();
+        $sekolah = SekolahProfile::query()->first(['*']);
         $penganggaranClass = VariantConfig::getModelClass('penganggaran', $variant);
         $bkuClass = VariantConfig::getModelClass('bku', $variant);
         $penerimaanClass = VariantConfig::getModelClass('penerimaan_dana', $variant);

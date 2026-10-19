@@ -4,7 +4,7 @@ namespace App\Services\Ai;
 
 use App\Config\VariantConfig;
 use App\Models\RefBarang;
-use App\Models\Sekolah;
+use App\Models\SekolahProfile;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -236,7 +236,7 @@ class ArkasDiagnosticService
         $setorClass = VariantConfig::getModelClass('setor_tunai', $variant);
         $fk = VariantConfig::penganggaranFk($variant);
 
-        $sekolah = Sekolah::first();
+        $sekolah = SekolahProfile::query()->first(['*']);
         $penganggaran = $penganggaranClass::where('tahun_anggaran', $tahun)->first();
 
         $rkasCount = 0;

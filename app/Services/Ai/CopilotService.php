@@ -30,6 +30,17 @@ class CopilotService
             [
                 'type' => 'function',
                 'function' => [
+                    'name' => 'get_budget_pagu_summary',
+                    'description' => 'Mengambil ringkasan data resmi Pagu Anggaran BOSP tahun berjalan (Total penetapan anggaran pendapatan sekolah, rincian pagu Tahap 1 & Tahap 2, dan total rencana belanja RKAS per kelompok belanja). Panggil tool ini saat pengguna bertanya tentang pagu anggaran sekolah, total dana BOSP, atau alokasi penetapan pagu.',
+                    'parameters' => [
+                        'type' => 'object',
+                        'properties' => (object) [],
+                    ],
+                ],
+            ],
+            [
+                'type' => 'function',
+                'function' => [
                     'name' => 'search_rkas_activity',
                     'description' => 'Mencari rincian kegiatan dan akun belanja pada RKAS tahun anggaran aktif beserta sisa pagunya.',
                     'parameters' => [
@@ -168,7 +179,7 @@ class CopilotService
         }
 
         VariantConfig::validateVariant($variant);
-        $sekolah = SekolahProfile::first();
+        $sekolah = SekolahProfile::query()->first(['*']);
         $sekolahNama = $sekolah?->nama_sekolah ?? 'Satuan Pendidikan';
         $variantTitle = VariantConfig::title($variant);
 
@@ -177,17 +188,27 @@ Anda adalah "SIKAS AI Copilot", asisten keuangan cerdas, sopan, dan sangat telit
 Aplikasi saat ini mengelola dana BOSP {$variantTitle} Tahun Anggaran {$tahun}.
 
 Karakter & Pedoman Kerja Anda:
-1. BAHASA: Gunakan Bahasa Indonesia yang ramah, profesional, dan akrab dengan istilah penatausahaan dana BOSP (seperti RKAS, BKU, NTPN, Rekening Belanja, PPN, PPh, BAST).
-2. DRAFTING TRANSAKSI:
+1. BAHASA & FORMAT TAMPILAN:
+   - Gunakan Bahasa Indonesia yang ramah, profesional, dan akrab dengan istilah penatausahaan dana BOSP (seperti RKAS, BKU, NTPN, Rekening Belanja, PPN, PPh, BAST).
+   - FORMAT TABEL HTML: Setiap kali menyajikan data tabular, perbandingan data, ringkasan pagu, daftar kegiatan, atau rincian pajak/belanja, Anda WAJIB menyajikannya dalam tabel HTML terstruktur rapi (gunakan tag <table>, <thead>, <tbody>, <tr>, <th>, <td>).
+   - Format nominal uang selalu gunakan format Rupiah resmi (contoh: Rp 29.000.000) dan atur rata kanan (align="right" atau style="text-align: right;").
+   - Jangan menyajikan data angka dalam baris teks panjang tanpa tabel jika ada 2 baris data atau lebih. Gunakan tabel HTML agar jelas bagi Bendahara.
+2. PERTANYAAN PAGU ANGGARAN VS REALISASI (ATURAN KETAT):
+   - Jika pengguna menanyakan "Berapa pagu anggaran saya?", "Berapa total dana BOSP tahun ini?", atau ringkasan penetapan anggaran:
+     a. Panggil tool `get_budget_pagu_summary`.
+     b. JANGAN memanggil `query_realization_comparison` kecuali pengguna secara eksplisit meminta data realisasi, serapan, atau perbandingan belanja antar triwulan.
+     c. Sajikan tabel HTML ringkas berisi: Pagu Total Penetapan, Alokasi Penerimaan Tahap 1 & 2, serta Alokasi Rencana Belanja per Kelompok (Barang & Jasa vs Belanja Modal).
+   - Jika pengguna menanyakan performa belanja, realisasi, serapan, atau grafik serapan (contoh: "Bandingkan serapan triwulan 1 vs 2", "Berapa realisasi belanja tahun ini?"):
+     a. Panggil tool `query_realization_comparison`.
+     b. Berikan ulasan eksekutif tajam dan grafik komparasi serapan.
+   - Jika pengguna menanyakan kegiatan atau sisa pagu belanja tertentu (contoh: "Berapa sisa pagu ATK?", "Cari kegiatan sarpras"):
+     a. Panggil tool `search_rkas_activity` dan tampilkan hasilnya dalam tabel HTML rapi.
+3. DRAFTING TRANSAKSI BKU:
    - Jika pengguna meminta mencatat belanja atau kuitansi (contoh: "Catat belanja ATK...", "Bayar katering..."):
      a. Panggil tool `search_rkas_activity` untuk mencari rincian kegiatan dan akun rekening yang relevan di RKAS {$tahun}.
      b. Panggil tool `calculate_tax_recommendation` untuk menghitung pajak resmi yang berlaku.
      c. Panggil tool `prepare_bku_transaction_draft` untuk menghasilkan Draf Staging Card transaksi.
      d. Beri tahu bendahara bahwa Anda telah menyiapkan Draf Kartu Transaksi di layar, dan mintalah mereka menekan tombol konfirmasi untuk menyimpannya ke BKU.
-3. ANALITIK & PERTANYAAN KEUANGAN:
-   - Jika pengguna menanyakan performa belanja, sisa pagu, atau perbandingan serapan (contoh: "Berapa sisa pagu sarpras?", "Bandingkan serapan triwulan 1 vs 2"):
-     a. Panggil tool `query_realization_comparison` atau `search_rkas_activity`.
-     b. Berikan ulasan eksekutif yang tajam, menyebutkan angka nominal dengan format rupiah (Rp), dan berikan rekomendasi serapan.
 4. Jangan pernah mengarang kode rekening atau RKAS ID secara sembarangan, selalu gunakan hasil dari tool.
 PROMPT;
 
@@ -278,6 +299,7 @@ PROMPT;
     protected function executeTool(string $name, array $args, string $variant, int $tahun): array
     {
         return match ($name) {
+            'get_budget_pagu_summary' => $this->getBudgetPaguSummary($tahun, $variant),
             'search_rkas_activity' => $this->searchRkasActivity($tahun, $args['query'] ?? '', $variant),
             'calculate_tax_recommendation' => $this->calculateTaxRecommendation(
                 (float) ($args['amount'] ?? 0),
@@ -289,6 +311,106 @@ PROMPT;
             'query_realization_comparison' => $this->queryRealizationComparison($tahun, $variant, $args['group_by'] ?? 'triwulan'),
             default => ['error' => "Unknown tool: {$name}"],
         };
+    }
+
+    /**
+     * Tool: Ringkasan resmi Pagu Anggaran BOSP tahun aktif (penetapan, penerimaan, dan RKAS)
+     */
+    protected function getBudgetPaguSummary(int $tahun, string $variant): array
+    {
+        $penganggaranClass = VariantConfig::getModelClass('penganggaran', $variant);
+        $penerimaanClass = VariantConfig::getModelClass('penerimaan_dana', $variant);
+        $rkasClass = VariantConfig::getModelClass('rkas', $variant);
+        $penganggaranFk = VariantConfig::penganggaranFk($variant);
+
+        $penganggaran = $penganggaranClass::where('tahun_anggaran', $tahun)->first();
+        if (!$penganggaran) {
+            return [
+                'error' => "Data penganggaran untuk tahun {$tahun} ({$variant}) belum ditemukan.",
+            ];
+        }
+
+        $paguAnggaran = (float) ($penganggaran->pagu_anggaran ?? 0);
+
+        // Penerimaan per tahap
+        $penerimaans = $penerimaanClass::where($penganggaranFk, $penganggaran->id)->get();
+        $tahap1Nominal = 0.0;
+        $tahap2Nominal = 0.0;
+        $totalPenerimaan = 0.0;
+        $rincianPenerimaan = [];
+
+        foreach ($penerimaans as $pd) {
+            $nominal = (float) $pd->jumlah_dana;
+            $totalPenerimaan += $nominal;
+            $rincianPenerimaan[] = [
+                'sumber_dana' => $pd->sumber_dana,
+                'tanggal_terima' => $pd->tanggal_terima ? \Carbon\Carbon::parse($pd->tanggal_terima)->format('d/m/Y') : '-',
+                'jumlah' => $nominal,
+            ];
+            if (stripos($pd->sumber_dana, 'Tahap 1') !== false) {
+                $tahap1Nominal += $nominal;
+            } elseif (stripos($pd->sumber_dana, 'Tahap 2') !== false) {
+                $tahap2Nominal += $nominal;
+            }
+        }
+
+        // Hitung rincian rencana belanja RKAS per kelompok rekening
+        $rkasItems = $rkasClass::with('rekeningBelanja')
+            ->where($penganggaranFk, $penganggaran->id)
+            ->get();
+
+        $totalRencanaRkas = 0.0;
+        $barangJasaTotal = 0.0;
+        $modalTotal = 0.0;
+        $lainnyaTotal = 0.0;
+
+        foreach ($rkasItems as $item) {
+            $subtotal = (float) $item->harga_satuan * (float) $item->jumlah;
+            $totalRencanaRkas += $subtotal;
+            $kodeRekening = $item->rekeningBelanja?->kode_rekening ?? '';
+
+            if (str_starts_with($kodeRekening, '5.1.02')) {
+                $barangJasaTotal += $subtotal;
+            } elseif (str_starts_with($kodeRekening, '5.2')) {
+                $modalTotal += $subtotal;
+            } else {
+                $lainnyaTotal += $subtotal;
+            }
+        }
+
+        $kelompokBelanja = [
+            [
+                'kategori' => 'Belanja Barang dan Jasa (5.1.02)',
+                'nominal' => $barangJasaTotal,
+                'persentase' => $totalRencanaRkas > 0 ? round(($barangJasaTotal / $totalRencanaRkas) * 100, 2) : 0,
+            ],
+            [
+                'kategori' => 'Belanja Modal / Aset (5.2)',
+                'nominal' => $modalTotal,
+                'persentase' => $totalRencanaRkas > 0 ? round(($modalTotal / $totalRencanaRkas) * 100, 2) : 0,
+            ],
+        ];
+
+        if ($lainnyaTotal > 0) {
+            $kelompokBelanja[] = [
+                'kategori' => 'Belanja Lainnya / Operasi',
+                'nominal' => $lainnyaTotal,
+                'persentase' => $totalRencanaRkas > 0 ? round(($lainnyaTotal / $totalRencanaRkas) * 100, 2) : 0,
+            ];
+        }
+
+        return [
+            'tahun_anggaran' => $tahun,
+            'variant' => $variant,
+            'pagu_total_penetapan' => $paguAnggaran > 0 ? $paguAnggaran : $totalRencanaRkas,
+            'total_rencana_rkas' => $totalRencanaRkas,
+            'total_dana_diterima' => $totalPenerimaan,
+            'tahap_1' => $tahap1Nominal,
+            'tahap_2' => $tahap2Nominal,
+            'rincian_penerimaan' => $rincianPenerimaan,
+            'alokasi_kelompok_belanja' => $kelompokBelanja,
+            'status' => 'Data Pagu Resmi',
+        ];
     }
 
     /**

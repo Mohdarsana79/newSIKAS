@@ -59,6 +59,35 @@ interface Message {
     timestamp: string;
 }
 
+function sanitizeAndFormatHtml(content: string): string {
+    if (!content) return '';
+
+    const hasHtml = /<\/?[a-z][\s\S]*>/i.test(content);
+    if (!hasHtml) {
+        return content
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\n/g, '<br/>');
+    }
+
+    // Clean dangerous tags and event handlers
+    let sanitized = content
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+        .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
+        .replace(/<object\b[^<]*(?:(?!<\/object>)<[^<]*)*<\/object>/gi, '')
+        .replace(/\son\w+\s*=\s*["'][^"']*["']/gi, '')
+        .replace(/javascript:/gi, '');
+
+    // Auto-wrap bare <table> in horizontal scroll container if not already wrapped
+    if (sanitized.includes('<table') && !sanitized.includes('overflow-x-auto')) {
+        sanitized = sanitized.replace(
+            /(<table[\s\S]*?<\/table>)/gi,
+            '<div class="overflow-x-auto my-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800/80 shadow-xs">$1</div>'
+        );
+    }
+
+    return sanitized;
+}
+
 export default function CopilotDrawer() {
     const { auth, variant: pageVariant, tahun: pageTahun } = usePage<any>().props;
     const vroute = useVariantRoute();
@@ -221,6 +250,85 @@ export default function CopilotDrawer() {
 
     return (
         <>
+            {/* Scoped Styling untuk Tabel dan Elemen HTML Chat Copilot */}
+            <style>{`
+                .ai-html-content table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    font-size: 0.725rem;
+                    line-height: 1.25rem;
+                }
+                .ai-html-content th {
+                    background-color: rgba(241, 245, 249, 0.95);
+                    color: #334155;
+                    font-weight: 700;
+                    padding: 6px 8px;
+                    text-align: left;
+                    border-bottom: 1px solid #cbd5e1;
+                    white-space: nowrap;
+                }
+                .dark .ai-html-content th {
+                    background-color: rgba(30, 41, 59, 0.95);
+                    color: #e2e8f0;
+                    border-bottom: 1px solid #475569;
+                }
+                .ai-html-content td {
+                    padding: 6px 8px;
+                    border-bottom: 1px solid #f1f5f9;
+                    color: #1e293b;
+                }
+                .dark .ai-html-content td {
+                    border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+                    color: #cbd5e1;
+                }
+                .ai-html-content tr:last-child td {
+                    border-bottom: none;
+                }
+                .ai-html-content tr:hover td {
+                    background-color: rgba(248, 250, 252, 0.7);
+                }
+                .dark .ai-html-content tr:hover td {
+                    background-color: rgba(30, 41, 59, 0.4);
+                }
+                .ai-html-content p {
+                    margin-bottom: 0.4rem;
+                }
+                .ai-html-content p:last-child {
+                    margin-bottom: 0;
+                }
+                .ai-html-content ul {
+                    list-style-type: disc;
+                    padding-left: 1.25rem;
+                    margin-bottom: 0.4rem;
+                }
+                .ai-html-content ol {
+                    list-style-type: decimal;
+                    padding-left: 1.25rem;
+                    margin-bottom: 0.4rem;
+                }
+                .ai-html-content li {
+                    margin-bottom: 0.2rem;
+                }
+                .ai-html-content strong {
+                    font-weight: 700;
+                    color: #0f172a;
+                }
+                .dark .ai-html-content strong {
+                    color: #f8fafc;
+                }
+                .ai-html-content code {
+                    background-color: rgba(241, 245, 249, 0.8);
+                    padding: 0.1rem 0.3rem;
+                    border-radius: 0.25rem;
+                    font-family: monospace;
+                    font-size: 0.7rem;
+                }
+                .dark .ai-html-content code {
+                    background-color: rgba(51, 65, 85, 0.6);
+                    color: #e2e8f0;
+                }
+            `}</style>
+
             {/* Floating Action Button (FAB) di Pojok Kanan Bawah */}
             {!isOpen && (
                 <div className="fixed bottom-6 right-6 z-40 animate-bounce-subtle">
@@ -328,7 +436,7 @@ export default function CopilotDrawer() {
                                         {/* Suggested Quick Prompt Chips */}
                                         <div className="pt-2 flex flex-col gap-1.5 text-left max-w-xs mx-auto">
                                             {[
-                                                '💰 Berapa sisa pagu kegiatan sarpras tahun ini?',
+                                                '💰 Berapa pagu anggaran dan penerimaan dana tahun ini?',
                                                 '📝 Catat belanja konsumsi rapat Rp 350.000 tunai ke Katering Berkah',
                                                 '📊 Bandingkan realisasi serapan belanja per triwulan',
                                                 '🧾 Berapa tarif pajak untuk belanja laptop Rp 8.500.000?',
@@ -357,7 +465,14 @@ export default function CopilotDrawer() {
                                                         : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 border border-gray-200/80 dark:border-gray-700 rounded-bl-none'
                                                 }`}
                                             >
-                                                <div className="whitespace-pre-wrap">{msg.content}</div>
+                                                {msg.role === 'user' ? (
+                                                    <div className="whitespace-pre-wrap">{msg.content}</div>
+                                                ) : (
+                                                    <div
+                                                        className="ai-html-content text-xs leading-relaxed"
+                                                        dangerouslySetInnerHTML={{ __html: sanitizeAndFormatHtml(msg.content) }}
+                                                    />
+                                                )}
 
                                                 {/* STAGING CARD DRAF TRANSAKSI */}
                                                 {msg.staging_card && (
