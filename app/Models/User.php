@@ -24,6 +24,9 @@ class User extends Authenticatable
         'password',
         'security_code',
         'is_security_code_enabled',
+        'deepseek_api_key',
+        'deepseek_model_reasoner',
+        'deepseek_model_chat',
     ];
 
     /**
@@ -35,6 +38,7 @@ class User extends Authenticatable
         'password',
         'remember_token',
         'security_code', // Hide security code by default, explicitly show when needed
+        'deepseek_api_key',
     ];
 
     /**
@@ -48,6 +52,17 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_security_code_enabled' => 'boolean',
+            'deepseek_api_key' => 'encrypted',
         ];
+    }
+
+    public function hasDeepSeekKey(): bool
+    {
+        return !empty($this->deepseek_api_key);
+    }
+
+    public function bkuAuditLogs()
+    {
+        return $this->hasMany(BkuAuditLog::class);
     }
 }

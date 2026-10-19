@@ -9,6 +9,8 @@ import { id } from 'date-fns/locale';
 import PrintSettingsModal, { PrintSettings } from '@/Components/PrintSettingsModal';
 import CheckStsModal from './Partials/CheckStsModal';
 import TrkSaldoAwalModal from './Partials/TrkSaldoAwalModal';
+import BkuAuditModal from '@/Components/Ai/BkuAuditModal';
+import { Sparkles } from 'lucide-react';
 
 interface RekapitulasiProps {
     auth: any;
@@ -38,6 +40,9 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
 
     const [bkpRegData, setBkpRegData] = useState<any>(null);
     const [bulanReg, setBulanReg] = useState(bulan);
+    const [showAiAuditModal, setShowAiAuditModal] = useState(false);
+    const [auditStatusData, setAuditStatusData] = useState<any>(null);
+    const [hasDeepSeekKey, setHasDeepSeekKey] = useState(false);
 
     const [bkpBaData, setBkpBaData] = useState<any>(null);
     const [bulanBa, setBulanBa] = useState(bulan);
@@ -89,6 +94,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
             fetchBkpRobData();
         } else if (activeTab === 'reg' && tahun && bulanReg) {
             fetchBkpRegData();
+            fetchAuditStatus();
         } else if (activeTab === 'ba' && tahun && bulanBa) {
             fetchBkpBaData();
         } else if (activeTab === 'realisasi' && tahun) {
@@ -196,6 +202,18 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
             console.error("Error fetching BKP Reg data:", error);
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const fetchAuditStatus = async () => {
+        try {
+            const response = await axios.get(vroute('api.bku-audit.status', { tahun, bulan: bulanReg }));
+            if (response.data.success) {
+                setAuditStatusData(response.data.audit);
+                setHasDeepSeekKey(response.data.has_api_key);
+            }
+        } catch (error) {
+            console.error("Error fetching AI audit status:", error);
         }
     };
 
@@ -1549,7 +1567,24 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                             ))}
                                         </select>
                                     </div>
-                                    <div className="flex gap-2">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowAiAuditModal(true)}
+                                            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-purple-600 via-indigo-600 to-indigo-700 hover:from-purple-700 hover:to-indigo-800 text-white rounded-md font-bold text-xs uppercase tracking-wider shadow-sm transition transform hover:-translate-y-0.5"
+                                        >
+                                            <Sparkles className="w-4 h-4 text-purple-200" />
+                                            Pra-Audit AI (DeepSeek-R1)
+                                            {auditStatusData && (
+                                                <span className={`ml-1.5 px-2 py-0.5 rounded-full text-[10px] font-black ${
+                                                    auditStatusData.compliance_score >= 85
+                                                        ? 'bg-emerald-400 text-emerald-950'
+                                                        : (auditStatusData.compliance_score >= 60 ? 'bg-amber-300 text-amber-950' : 'bg-rose-400 text-rose-950')
+                                                }`}>
+                                                    {auditStatusData.compliance_score}/100
+                                                </span>
+                                            )}
+                                        </button>
                                         <button
                                             onClick={() => setShowPrintBkpRegModal(true)}
                                             className="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 focus:bg-indigo-700 active:bg-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150"
@@ -1565,6 +1600,18 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                     title="Cetak Register BKP"
                                     includePeriodFilters={true}
                                     initialPeriod={bulanReg}
+                                />
+
+                                <BkuAuditModal
+                                    isOpen={showAiAuditModal}
+                                    onClose={() => setShowAiAuditModal(false)}
+                                    tahun={tahun}
+                                    bulan={bulanReg}
+                                    hasApiKey={hasDeepSeekKey}
+                                    initialAuditData={auditStatusData}
+                                    onAuditCompleted={(newAudit) => {
+                                        setAuditStatusData(newAudit);
+                                    }}
                                 />
 
                                 {/* Report Header */}

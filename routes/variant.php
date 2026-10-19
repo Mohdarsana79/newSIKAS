@@ -7,6 +7,7 @@ use App\Http\Controllers\BastController;
 use App\Http\Controllers\BeritaAcaraPenutupanController;
 use App\Http\Controllers\BhmController;
 use App\Http\Controllers\BhpController;
+use App\Http\Controllers\BkuAuditController;
 use App\Http\Controllers\BukuBankController;
 use App\Http\Controllers\BukuKasPembantuTunaiController;
 use App\Http\Controllers\BukuKasUmumController;
@@ -370,3 +371,8 @@ Route::get('/realisasi/cetak', [RekapitulasiRealisasiController::class, 'generat
 Route::get('/rek-realisasi/cetak', [RekapitulasiRealisasiController::class, 'generateRekapRealisasiPerRekeningPdf'])->name('rek-realisasi.cetak');
 Route::get('/bhp/cetak', [BhpController::class, 'generatePdf'])->name('bhp.cetak');
 Route::get('/bhm/cetak', [BhmController::class, 'generatePdf'])->name('bhm.cetak');
+
+// AI Pra-Audit Routes
+Route::get('/api/bku-audit/status', [BkuAuditController::class, 'getStatus'])->name('api.bku-audit.status');
+Route::post('/api/bku-audit/run', [BkuAuditController::class, 'runAudit'])->name('api.bku-audit.run');
+Route::get('/bku-audit/pdf/{id}', [BkuAuditController::class, 'exportPdf'])->name('bku-audit.pdf');

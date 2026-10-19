@@ -18,9 +18,14 @@ class ProfileController extends Controller
      */
     public function edit(Request $request): Response
     {
+        $user = $request->user();
+
         return Inertia::render('Profile/Edit', [
-            'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
+            'mustVerifyEmail' => $user instanceof MustVerifyEmail,
             'status' => session('status'),
+            'hasDeepSeekKey' => $user->hasDeepSeekKey(),
+            'deepseekModelReasoner' => $user->deepseek_model_reasoner ?: 'deepseek-reasoner',
+            'deepseekModelChat' => $user->deepseek_model_chat ?: 'deepseek-chat',
         ]);
     }
 
@@ -82,5 +87,45 @@ class ProfileController extends Controller
             'code' => $code,
             'message' => 'Kode keamanan berhasil digenerate.',
         ]);
+    }
+
+    /**
+     * Memperbarui pengaturan DeepSeek API Key dan preferensi model.
+     */
+    public function updateDeepSeekSettings(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'deepseek_api_key' => 'nullable|string',
+            'deepseek_model_reasoner' => 'required|string|max:50',
+            'deepseek_model_chat' => 'required|string|max:50',
+        ]);
+
+        $user = $request->user();
+
+        if ($request->has('deepseek_api_key') && $request->filled('deepseek_api_key')) {
+            $user->deepseek_api_key = trim($validated['deepseek_api_key']);
+        } elseif ($request->has('clear_api_key') && $request->boolean('clear_api_key')) {
+            $user->deepseek_api_key = null;
+        }
+
+        $user->deepseek_model_reasoner = $validated['deepseek_model_reasoner'];
+        $user->deepseek_model_chat = $validated['deepseek_model_chat'];
+        $user->save();
+
+        return Redirect::back()->with('status', 'deepseek-settings-updated');
+    }
+
+    /**
+     * Menguji validitas koneksi ke DeepSeek API.
+     */
+    public function testDeepSeekConnection(Request $request, \App\Services\Ai\DeepSeekService $deepSeekService)
+    {
+        $apiKey = $request->input('deepseek_api_key');
+        if (empty($apiKey)) {
+            $apiKey = $request->user()->deepseek_api_key;
+        }
+
+        $result = $deepSeekService->testConnection($apiKey ?? '');
+        return response()->json($result);
     }
 }

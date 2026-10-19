@@ -1,6 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { PageProps } from '@/types';
 import { Head } from '@inertiajs/react';
+import DeepSeekApiForm from './Partials/DeepSeekApiForm';
 import SecurityCodeForm from './Partials/SecurityCodeForm';
 import UpdatePasswordForm from './Partials/UpdatePasswordForm';
 import UpdateProfileInformationForm from './Partials/UpdateProfileInformationForm';
@@ -41,6 +42,11 @@ export default function Edit({
                         <div className="bg-white p-4 shadow-lg sm:rounded-xl sm:p-8 dark:bg-gray-800 transition-all hover:shadow-xl duration-300 border border-gray-100 dark:border-gray-700">
                             <UpdatePasswordForm className="max-w-xl" />
                         </div>
+                    </div>
+
+                    {/* DeepSeek AI Configuration (BYOK) */}
+                    <div className="bg-white p-4 shadow-lg sm:rounded-xl sm:p-8 dark:bg-gray-800 transition-all hover:shadow-xl duration-300 border border-purple-100 dark:border-purple-900/30">
+                        <DeepSeekApiForm className="max-w-4xl" />
                     </div>
 
                     {/* Security Code Section (Replaces Delete Account) */}
