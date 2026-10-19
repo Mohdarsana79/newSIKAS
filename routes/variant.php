@@ -1,6 +1,7 @@
 <?php
 
 use App\Config\VariantConfig;
+use App\Http\Controllers\AiCopilotController;
 use App\Http\Controllers\ArkasSettingController;
 use App\Http\Controllers\ArkasToolController;
 use App\Http\Controllers\BastController;
@@ -376,3 +377,8 @@ Route::get('/bhm/cetak', [BhmController::class, 'generatePdf'])->name('bhm.cetak
 Route::get('/api/bku-audit/status', [BkuAuditController::class, 'getStatus'])->name('api.bku-audit.status');
 Route::post('/api/bku-audit/run', [BkuAuditController::class, 'runAudit'])->name('api.bku-audit.run');
 Route::get('/bku-audit/pdf/{id}', [BkuAuditController::class, 'exportPdf'])->name('bku-audit.pdf');
+
+// AI Copilot Routes
+Route::post('/api/ai/copilot/chat', [AiCopilotController::class, 'chat'])->name('api.ai.copilot.chat');
+Route::post('/api/ai/copilot/commit', [AiCopilotController::class, 'commitTransaction'])->name('api.ai.copilot.commit');
+Route::get('/api/ai/copilot/context', [AiCopilotController::class, 'getQuickContext'])->name('api.ai.copilot.context');

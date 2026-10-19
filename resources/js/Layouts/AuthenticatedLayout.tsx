@@ -4,6 +4,7 @@ import { PropsWithChildren, ReactNode, useState } from 'react';
 import ChangelogModal from '@/Components/ChangelogModal';
 
 import Toast from '@/Components/Toast';
+import CopilotDrawer from '@/Components/Ai/CopilotDrawer';
 
 export default function Authenticated({
     header,
@@ -22,6 +23,7 @@ export default function Authenticated({
         <div className="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 flex">
             <Toast />
             <ChangelogModal />
+            <CopilotDrawer />
             {/* Sidebar */}
             <Sidebar
                 isOpen={sidebarOpen}

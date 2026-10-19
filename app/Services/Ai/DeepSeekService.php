@@ -179,4 +179,64 @@ class DeepSeekService
             ];
         }
     }
+
+    /**
+     * Memanggil model DeepSeek-V3 dengan dukungan Function Calling (Tools)
+     */
+    public function callChatWithTools(string $apiKey, array $messages, array $tools = [], array $options = []): array
+    {
+        $apiKey = trim($apiKey);
+        if (empty($apiKey)) {
+            return [
+                'success' => false,
+                'message' => 'Kunci API DeepSeek belum dikonfigurasi pada profil Anda.',
+            ];
+        }
+
+        $payload = [
+            'model' => $options['model'] ?? 'deepseek-chat',
+            'messages' => $messages,
+            'temperature' => $options['temperature'] ?? 0.3,
+        ];
+
+        if (!empty($tools)) {
+            $payload['tools'] = $tools;
+            $payload['tool_choice'] = $options['tool_choice'] ?? 'auto';
+        }
+
+        $timeout = $options['timeout'] ?? 60;
+
+        try {
+            $response = Http::withToken($apiKey)
+                ->timeout($timeout)
+                ->acceptJson()
+                ->post("{$this->baseUrl}/chat/completions", $payload);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                $choice = $data['choices'][0]['message'] ?? [];
+
+                return [
+                    'success' => true,
+                    'message' => $choice,
+                    'content' => $choice['content'] ?? '',
+                    'tool_calls' => $choice['tool_calls'] ?? [],
+                    'usage' => $data['usage'] ?? [],
+                ];
+            }
+
+            $errorMessage = $response->json('error.message') ?? $response->body();
+            return [
+                'success' => false,
+                'message' => "DeepSeek Tools error: {$errorMessage}",
+            ];
+        } catch (\Throwable $e) {
+            Log::error('DeepSeek callChatWithTools exception: ' . $e->getMessage());
+            return [
+                'success' => false,
+                'message' => 'Gagal menghubungi DeepSeek API: ' . $e->getMessage(),
+            ];
+        }
+    }
 }
+
