@@ -73,14 +73,14 @@ function renderParsedTable(rows: string[]): string {
 
     const dataRows = rows.slice(2);
 
-    let html = '<div class="overflow-x-auto my-2.5 rounded-xl border border-slate-200 dark:border-gray-700 shadow-xs bg-white dark:bg-gray-800">';
+    let html = '<div class="overflow-x-auto overflow-y-auto max-h-72 my-2.5 rounded-xl border border-slate-200 dark:border-gray-700 shadow-xs bg-white dark:bg-gray-800 scroll-smooth">';
     html += '<table class="min-w-full text-xs divide-y divide-slate-200 dark:divide-gray-700">';
     
-    // Header
-    html += '<thead class="bg-slate-100/90 dark:bg-gray-750"><tr>';
+    // Header (Sticky on vertical scroll)
+    html += '<thead class="bg-slate-100/95 dark:bg-gray-750 sticky top-0 z-10 backdrop-blur-xs shadow-xs"><tr>';
     headerCells.forEach((th, idx) => {
         const align = aligns[idx] || 'text-left';
-        html += `<th class="px-3 py-2 ${align} font-bold text-slate-700 dark:text-gray-200 uppercase tracking-wider text-[11px] border-b border-slate-200 dark:border-gray-700">${th}</th>`;
+        html += `<th class="px-3 py-2 ${align} font-bold text-slate-700 dark:text-gray-200 uppercase tracking-wider text-[11px] whitespace-nowrap border-b border-slate-200 dark:border-gray-700">${th}</th>`;
     });
     html += '</tr></thead>';
 
@@ -92,10 +92,12 @@ function renderParsedTable(rows: string[]): string {
         html += `<tr class="${bgClass} hover:bg-indigo-50/40 dark:hover:bg-indigo-950/20 transition-colors">`;
         cells.forEach((td, idx) => {
             let align = aligns[idx] || 'text-left';
+            let extraClass = '';
             if (td.startsWith('Rp') || /^-?\d[\d.,]*%?$/.test(td)) {
                 align = 'text-right font-mono font-medium';
+                extraClass = 'whitespace-nowrap';
             }
-            html += `<td class="px-3 py-2 text-slate-700 dark:text-gray-300 ${align}">${td}</td>`;
+            html += `<td class="px-3 py-2 text-slate-700 dark:text-gray-300 ${align} ${extraClass}">${td}</td>`;
         });
         html += '</tr>';
     });
@@ -165,7 +167,7 @@ function sanitizeAndFormatHtml(content: string): string {
     if (processed.includes('<table') && !processed.includes('overflow-x-auto')) {
         processed = processed.replace(
             /(<table[\s\S]*?<\/table>)/gi,
-            '<div class="overflow-x-auto my-2.5 rounded-xl border border-slate-200 dark:border-gray-700 shadow-xs bg-white dark:bg-gray-800">$1</div>'
+            '<div class="overflow-x-auto overflow-y-auto max-h-72 my-2.5 rounded-xl border border-slate-200 dark:border-gray-700 shadow-xs bg-white dark:bg-gray-800 scroll-smooth">$1</div>'
         );
     }
 
@@ -425,6 +427,25 @@ export default function CopilotDrawer() {
                 .dark .ai-html-content code {
                     background-color: rgba(51, 65, 85, 0.6);
                     color: #e2e8f0;
+                }
+                /* Sleek Custom Scrollbar untuk Tabel yang Panjang */
+                .ai-html-content .overflow-x-auto::-webkit-scrollbar,
+                .ai-html-content .overflow-y-auto::-webkit-scrollbar {
+                    width: 5px;
+                    height: 5px;
+                }
+                .ai-html-content .overflow-x-auto::-webkit-scrollbar-track,
+                .ai-html-content .overflow-y-auto::-webkit-scrollbar-track {
+                    background: transparent;
+                }
+                .ai-html-content .overflow-x-auto::-webkit-scrollbar-thumb,
+                .ai-html-content .overflow-y-auto::-webkit-scrollbar-thumb {
+                    background: #cbd5e1;
+                    border-radius: 9999px;
+                }
+                .dark .ai-html-content .overflow-x-auto::-webkit-scrollbar-thumb,
+                .dark .ai-html-content .overflow-y-auto::-webkit-scrollbar-thumb {
+                    background: #475569;
                 }
             `}</style>
 
