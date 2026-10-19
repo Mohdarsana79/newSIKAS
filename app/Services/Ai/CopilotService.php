@@ -42,16 +42,23 @@ class CopilotService
                 'type' => 'function',
                 'function' => [
                     'name' => 'search_rkas_activity',
-                    'description' => 'Mencari rincian kegiatan dan akun belanja pada RKAS tahun anggaran aktif beserta sisa pagunya.',
+                    'description' => 'Mencari rincian kegiatan dan akun belanja pada RKAS tahun anggaran aktif berdasarkan kata kunci uraian/kegiatan dan/atau filter alokasi bulan penganggaran (Januari s/d Desember).',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
                             'query' => [
                                 'type' => 'string',
-                                'description' => 'Kata kunci nama kegiatan, jenis belanja, atau uraian barang (misal: ATK, asesmen, konsumsi, pemeliharaan).',
+                                'description' => 'Kata kunci nama kegiatan, jenis belanja, atau uraian barang (misal: ATK, asesmen, konsumsi, pemeliharaan). Opsional jika bulan diisi.',
+                            ],
+                            'bulan' => [
+                                'type' => 'string',
+                                'enum' => [
+                                    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+                                    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+                                ],
+                                'description' => 'Nama bulan penganggaran RKAS (Januari sampai Desember).',
                             ],
                         ],
-                        'required' => ['query'],
                     ],
                 ],
             ],
@@ -193,7 +200,16 @@ Karakter & Pedoman Kerja Anda:
    - FORMAT TABEL HTML: Setiap kali menyajikan data tabular, perbandingan data, ringkasan pagu, daftar kegiatan, atau rincian pajak/belanja, Anda WAJIB menyajikannya dalam tabel HTML terstruktur rapi (gunakan tag <table>, <thead>, <tbody>, <tr>, <th>, <td>).
    - Format nominal uang selalu gunakan format Rupiah resmi (contoh: Rp 29.000.000) dan atur rata kanan (align="right" atau style="text-align: right;").
    - Jangan menyajikan data angka dalam baris teks panjang tanpa tabel jika ada 2 baris data atau lebih. Gunakan tabel HTML agar jelas bagi Bendahara.
-2. PERTANYAAN PAGU ANGGARAN VS REALISASI (ATURAN KETAT):
+2. PENCEGAHAN KODE & NAMA VARIABEL TEKNIS (ATURAN SANGAT KETAT):
+   - JANGAN PERNAH menampilkan kode pemrograman (PHP, SQL, JavaScript, Python), blok kode, atau query database di dalam chat bubble.
+   - JANGAN PERNAH menampilkan nama variabel internal atau kunci teknis sistem (seperti \$spent, \$rkas_id, rkas_id, kode_rekening_id, bkuDetailFk, dsb.).
+   - Gunakan selalu istilah formal dan ramah bagi bendahara sekolah:
+     * Gunakan "ID Kegiatan" alih-alih "rkas_id".
+     * Gunakan "Sisa Anggaran" alih-alih "sisa_pagu" atau "\$remaining".
+     * Gunakan "Realisasi Belanja" alih-alih "terealisasi" atau "\$spent".
+     * Gunakan "Kode Rekening" dan "Nama Rekening" secara resmi.
+   - Dilarang keras menampilkan tanda dolar (\$) untuk nama variabel program.
+3. PERTANYAAN PAGU ANGGARAN VS REALISASI (ATURAN KETAT):
    - Jika pengguna menanyakan "Berapa pagu anggaran saya?", "Berapa total dana BOSP tahun ini?", atau ringkasan penetapan anggaran:
      a. Panggil tool `get_budget_pagu_summary`.
      b. JANGAN memanggil `query_realization_comparison` kecuali pengguna secara eksplisit meminta data realisasi, serapan, atau perbandingan belanja antar triwulan.
@@ -201,15 +217,18 @@ Karakter & Pedoman Kerja Anda:
    - Jika pengguna menanyakan performa belanja, realisasi, serapan, atau grafik serapan (contoh: "Bandingkan serapan triwulan 1 vs 2", "Berapa realisasi belanja tahun ini?"):
      a. Panggil tool `query_realization_comparison`.
      b. Berikan ulasan eksekutif tajam dan grafik komparasi serapan.
-   - Jika pengguna menanyakan kegiatan atau sisa pagu belanja tertentu (contoh: "Berapa sisa pagu ATK?", "Cari kegiatan sarpras"):
-     a. Panggil tool `search_rkas_activity` dan tampilkan hasilnya dalam tabel HTML rapi.
-3. DRAFTING TRANSAKSI BKU:
+4. PENCARIAN DATA RKAS & BULAN ANGGARAN:
+   - Jika pengguna menanyakan data RKAS, kegiatan, atau sisa anggaran pada bulan tertentu (contoh: "Data RKAS awal bulan Maret", "Kegiatan di bulan Juni", "Sisa pagu ATK bulan April"):
+     a. Panggil tool `search_rkas_activity` dengan parameter `bulan` yang sesuai (contoh: bulan: "Maret").
+     b. Jika ada kata kunci barang/kegiatan, masukkan ke parameter `query`. Jika pengguna hanya meminta data bulan secara umum, kosongkan `query` atau isi kata kunci umum.
+     c. Tampilkan daftar kegiatan hasil pencarian dalam tabel HTML yang rapi (kolom: Bulan, ID Kegiatan, Uraian Barang / Kegiatan, Kode Rekening, Total Anggaran, Realisasi, Sisa Anggaran).
+5. DRAFTING TRANSAKSI BKU:
    - Jika pengguna meminta mencatat belanja atau kuitansi (contoh: "Catat belanja ATK...", "Bayar katering..."):
      a. Panggil tool `search_rkas_activity` untuk mencari rincian kegiatan dan akun rekening yang relevan di RKAS {$tahun}.
      b. Panggil tool `calculate_tax_recommendation` untuk menghitung pajak resmi yang berlaku.
      c. Panggil tool `prepare_bku_transaction_draft` untuk menghasilkan Draf Staging Card transaksi.
      d. Beri tahu bendahara bahwa Anda telah menyiapkan Draf Kartu Transaksi di layar, dan mintalah mereka menekan tombol konfirmasi untuk menyimpannya ke BKU.
-4. Jangan pernah mengarang kode rekening atau RKAS ID secara sembarangan, selalu gunakan hasil dari tool.
+6. Jangan pernah mengarang kode rekening atau ID kegiatan secara sembarangan, selalu gunakan hasil dari tool.
 PROMPT;
 
         $conversation = [
@@ -252,7 +271,7 @@ PROMPT;
             if (empty($toolCalls)) {
                 return [
                     'success' => true,
-                    'content' => $response['content'] ?? '',
+                    'content' => $this->sanitizeResponseText($response['content'] ?? ''),
                     'staging_card' => $stagingCard,
                     'analytics_chart' => $analyticsChart,
                 ];
@@ -287,7 +306,7 @@ PROMPT;
 
         return [
             'success' => true,
-            'content' => $conversation[count($conversation) - 1]['content'] ?? 'Selesai memproses instruksi Anda.',
+            'content' => $this->sanitizeResponseText($conversation[count($conversation) - 1]['content'] ?? 'Selesai memproses instruksi Anda.'),
             'staging_card' => $stagingCard,
             'analytics_chart' => $analyticsChart,
         ];
@@ -300,7 +319,7 @@ PROMPT;
     {
         return match ($name) {
             'get_budget_pagu_summary' => $this->getBudgetPaguSummary($tahun, $variant),
-            'search_rkas_activity' => $this->searchRkasActivity($tahun, $args['query'] ?? '', $variant),
+            'search_rkas_activity' => $this->searchRkasActivity($tahun, $args['query'] ?? '', $variant, $args['bulan'] ?? null),
             'calculate_tax_recommendation' => $this->calculateTaxRecommendation(
                 (float) ($args['amount'] ?? 0),
                 $args['item_type'] ?? 'barang',
@@ -414,13 +433,12 @@ PROMPT;
     }
 
     /**
-     * Tool: Pencarian kegiatan dan sisa pagu RKAS
+     * Tool: Pencarian kegiatan dan sisa pagu RKAS dengan filter kata kunci dan alokasi bulan
      */
-    protected function searchRkasActivity(int $tahun, string $query, string $variant): array
+    protected function searchRkasActivity(int $tahun, ?string $query, string $variant, ?string $bulan = null): array
     {
         $penganggaranClass = VariantConfig::getModelClass('penganggaran', $variant);
         $rkasClass = VariantConfig::getModelClass('rkas', $variant);
-        $bkuClass = VariantConfig::getModelClass('bku', $variant);
         $bkuDetailClass = VariantConfig::getModelClass('bku_uraian_detail', $variant);
         $bkuDetailFk = VariantConfig::uraianDetailRkasFk($variant);
 
@@ -429,34 +447,86 @@ PROMPT;
             return ['error' => 'Data penganggaran tidak ditemukan'];
         }
 
-        $queryClean = strtolower(trim($query));
+        $validMonths = [
+            'januari' => 'Januari',
+            'februari' => 'Februari',
+            'maret' => 'Maret',
+            'april' => 'April',
+            'mei' => 'Mei',
+            'juni' => 'Juni',
+            'juli' => 'Juli',
+            'agustus' => 'Agustus',
+            'september' => 'September',
+            'oktober' => 'Oktober',
+            'november' => 'November',
+            'desember' => 'Desember',
+        ];
 
-        $items = $rkasClass::with(['kodeKegiatan', 'rekeningBelanja'])
-            ->where(VariantConfig::penganggaranFk($variant), $penganggaran->id)
-            ->where(function ($q) use ($queryClean) {
-                $q->whereRaw('LOWER(uraian) LIKE ?', ["%{$queryClean}%"])
-                  ->orWhereHas('kodeKegiatan', function ($kq) use ($queryClean) {
-                      $kq->whereRaw('LOWER(uraian) LIKE ?', ["%{$queryClean}%"])
-                         ->orWhereRaw('LOWER(sub_program) LIKE ?', ["%{$queryClean}%"]);
+        // Validasi atau deteksi bulan dari parameter atau kata kunci query
+        $targetMonth = null;
+        if (!empty($bulan)) {
+            $monthKey = strtolower(trim($bulan));
+            if (isset($validMonths[$monthKey])) {
+                $targetMonth = $validMonths[$monthKey];
+            }
+        }
+
+        $queryRaw = trim((string) ($query ?? ''));
+        $queryLower = strtolower($queryRaw);
+
+        // Jika bulan belum terisi dari argumen, deteksi otomatis jika ada nama bulan di query
+        if (!$targetMonth && !empty($queryLower)) {
+            foreach ($validMonths as $key => $name) {
+                if (preg_match('/\b' . $key . '\b/i', $queryLower)) {
+                    $targetMonth = $name;
+                    // Bersihkan nama bulan dari query kata kunci agar pencarian barang lebih akurat
+                    $queryRaw = trim(preg_replace('/\b(awal|akhir|pertengahan)?\s*(bulan)?\s*' . $key . '\b/i', '', $queryRaw));
+                    break;
+                }
+            }
+        }
+
+        $queryClean = strtolower(trim($queryRaw));
+
+        $builder = $rkasClass::with(['kodeKegiatan', 'rekeningBelanja'])
+            ->where(VariantConfig::penganggaranFk($variant), (int) $penganggaran->id);
+
+        if ($targetMonth) {
+            $builder->where('bulan', $targetMonth);
+        }
+
+        if (!empty($queryClean)) {
+            // Escape wildcard SQL (% dan _) untuk mencegah manipulasi query pattern
+            $escaped = addcslashes($queryClean, '%_\\');
+            $likeParam = "%{$escaped}%";
+
+            $builder->where(function ($q) use ($likeParam) {
+                $q->whereRaw('LOWER(uraian) LIKE ?', [$likeParam])
+                  ->orWhereHas('kodeKegiatan', function ($kq) use ($likeParam) {
+                      $kq->whereRaw('LOWER(uraian) LIKE ?', [$likeParam])
+                         ->orWhereRaw('LOWER(sub_program) LIKE ?', [$likeParam]);
                   })
-                  ->orWhereHas('rekeningBelanja', function ($rq) use ($queryClean) {
-                      $rq->whereRaw('LOWER(rincian_objek) LIKE ?', ["%{$queryClean}%"]);
+                  ->orWhereHas('rekeningBelanja', function ($rq) use ($likeParam) {
+                      $rq->whereRaw('LOWER(rincian_objek) LIKE ?', [$likeParam]);
                   });
-            })
-            ->take(8)
-            ->get();
+            });
+        }
+
+        $items = $builder->take(15)->get();
 
         $results = [];
         foreach ($items as $item) {
             $budget = (float) $item->harga_satuan * (float) $item->jumlah;
             
             // Hitung realisasi belanja yang telah dibukukan untuk RKAS ID ini
-            $spent = (float) $bkuDetailClass::where($bkuDetailFk, $item->id)->sum('jumlah');
+            $spent = (float) $bkuDetailClass::where($bkuDetailFk, (int) $item->id)->sum('jumlah');
 
             $remaining = max(0, $budget - $spent);
 
             $results[] = [
-                'rkas_id' => $item->id,
+                'id_kegiatan' => (int) $item->id,
+                'rkas_id' => (int) $item->id,
+                'bulan' => $item->bulan ?? '-',
                 'uraian_barang' => $item->uraian,
                 'kode_kegiatan' => $item->kodeKegiatan?->kode ?? '-',
                 'nama_kegiatan' => $item->kodeKegiatan?->uraian ?? '-',
@@ -472,6 +542,7 @@ PROMPT;
 
         return [
             'found_count' => count($results),
+            'filter_bulan' => $targetMonth ?: 'Semua Bulan',
             'items' => $results,
         ];
     }
@@ -738,4 +809,41 @@ PROMPT;
             ];
         }
     }
+
+    /**
+     * Sanitasi teks respons assistant untuk mencegah kebocoran nama variabel, sintaks kode, dan query SQL
+     */
+    protected function sanitizeResponseText(string $text): string
+    {
+        if (empty($text)) {
+            return '';
+        }
+
+        // 1. Bersihkan variabel berawalan $ (seperti $spent, $rkas_id, $remaining)
+        $text = preg_replace('/\$[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*/', '', $text);
+
+        // 2. Samarkan technical key names yang umum menjadi istilah ramah bendahara
+        $replacements = [
+            '/\brkas_id\b/i' => 'ID Kegiatan',
+            '/\bbku_id\b/i' => 'ID Transaksi BKU',
+            '/\bkode_rekening_id\b/i' => 'Kode Rekening',
+            '/\bkode_kegiatan_id\b/i' => 'Kode Kegiatan',
+            '/\bsisa_pagu\b/i' => 'Sisa Anggaran',
+            '/\btotal_anggaran\b/i' => 'Total Anggaran',
+            '/\buraian_detail\b/i' => 'Rincian Belanja',
+        ];
+        $text = preg_replace(array_keys($replacements), array_values($replacements), $text);
+
+        // 3. Bersihkan blok kode teknis (sql, php, bash, python, json) jika ada
+        $text = preg_replace('/```(?:sql|php|bash|sh|powershell|cmd|python)\b[\s\S]*?```/i', '', $text);
+
+        // 4. Bersihkan cuplikan raw SQL jika ada yang bocor di teks bebas
+        $text = preg_replace('/\b(SELECT\s+.*?\s+FROM|INSERT\s+INTO|UPDATE\s+\w+\s+SET|DELETE\s+FROM)\s+[^;\n]+(?:;)?/is', '', $text);
+
+        // 5. Bersihkan sisa backtick kosong `` jika variabel di dalamnya terhapus
+        $text = str_replace(['``', '` `'], '', $text);
+
+        return trim($text);
+    }
 }
+
