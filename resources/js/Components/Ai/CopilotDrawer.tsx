@@ -59,33 +59,132 @@ interface Message {
     timestamp: string;
 }
 
+function renderParsedTable(rows: string[]): string {
+    if (rows.length < 2) return rows.join('\n');
+
+    const headerCells = rows[0].split('|').slice(1, -1).map(c => c.trim());
+    const delimiterCells = rows[1].split('|').slice(1, -1).map(c => c.trim());
+
+    const aligns = delimiterCells.map(d => {
+        if (d.startsWith(':') && d.endsWith(':')) return 'text-center';
+        if (d.endsWith(':')) return 'text-right';
+        return 'text-left';
+    });
+
+    const dataRows = rows.slice(2);
+
+    let html = '<div class="overflow-x-auto my-2.5 rounded-xl border border-slate-200 dark:border-gray-700 shadow-xs bg-white dark:bg-gray-800">';
+    html += '<table class="min-w-full text-xs divide-y divide-slate-200 dark:divide-gray-700">';
+    
+    // Header
+    html += '<thead class="bg-slate-100/90 dark:bg-gray-750"><tr>';
+    headerCells.forEach((th, idx) => {
+        const align = aligns[idx] || 'text-left';
+        html += `<th class="px-3 py-2 ${align} font-bold text-slate-700 dark:text-gray-200 uppercase tracking-wider text-[11px] border-b border-slate-200 dark:border-gray-700">${th}</th>`;
+    });
+    html += '</tr></thead>';
+
+    // Body
+    html += '<tbody class="divide-y divide-slate-100 dark:divide-gray-700/60 bg-white dark:bg-gray-800">';
+    dataRows.forEach((row, rowIdx) => {
+        const cells = row.split('|').slice(1, -1).map(c => c.trim());
+        const bgClass = rowIdx % 2 === 1 ? 'bg-slate-50/50 dark:bg-gray-800/50' : '';
+        html += `<tr class="${bgClass} hover:bg-indigo-50/40 dark:hover:bg-indigo-950/20 transition-colors">`;
+        cells.forEach((td, idx) => {
+            let align = aligns[idx] || 'text-left';
+            if (td.startsWith('Rp') || /^-?\d[\d.,]*%?$/.test(td)) {
+                align = 'text-right font-mono font-medium';
+            }
+            html += `<td class="px-3 py-2 text-slate-700 dark:text-gray-300 ${align}">${td}</td>`;
+        });
+        html += '</tr>';
+    });
+    html += '</tbody></table></div>';
+
+    return html;
+}
+
+function parseMarkdownTables(text: string): string {
+    const lines = text.split('\n');
+    const result: string[] = [];
+    let inTable = false;
+    let tableRows: string[] = [];
+
+    const isTableRow = (l: string) => /^\s*\|(.+)\|\s*$/.test(l);
+    const isDelimiterRow = (l: string) => /^\s*\|(\s*:?-+:?\s*\|)+\s*$/.test(l);
+
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+
+        if (isTableRow(line)) {
+            if (!inTable && i + 1 < lines.length && isDelimiterRow(lines[i + 1])) {
+                inTable = true;
+                tableRows = [line];
+            } else if (inTable) {
+                tableRows.push(line);
+            } else {
+                result.push(line);
+            }
+        } else {
+            if (inTable) {
+                result.push(renderParsedTable(tableRows));
+                inTable = false;
+                tableRows = [];
+            }
+            result.push(line);
+        }
+    }
+
+    if (inTable && tableRows.length > 0) {
+        result.push(renderParsedTable(tableRows));
+    }
+
+    return result.join('\n');
+}
+
 function sanitizeAndFormatHtml(content: string): string {
     if (!content) return '';
 
-    const hasHtml = /<\/?[a-z][\s\S]*>/i.test(content);
-    if (!hasHtml) {
-        return content
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\n/g, '<br/>');
-    }
+    // 1. Strip markdown code fences around HTML or markdown table
+    let processed = content
+        .replace(/```(?:html|markdown|xml)?\s*([\s\S]*?)\s*```/gi, '$1')
+        .replace(/```/g, '');
 
-    // Clean dangerous tags and event handlers
-    let sanitized = content
+    // 2. Parse any markdown tables into styled HTML tables
+    processed = parseMarkdownTables(processed);
+
+    // 3. Clean dangerous script tags and event handlers
+    processed = processed
         .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
         .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
         .replace(/<object\b[^<]*(?:(?!<\/object>)<[^<]*)*<\/object>/gi, '')
         .replace(/\son\w+\s*=\s*["'][^"']*["']/gi, '')
         .replace(/javascript:/gi, '');
 
-    // Auto-wrap bare <table> in horizontal scroll container if not already wrapped
-    if (sanitized.includes('<table') && !sanitized.includes('overflow-x-auto')) {
-        sanitized = sanitized.replace(
+    // 4. If there are raw HTML <table> tags without overflow container, wrap them
+    if (processed.includes('<table') && !processed.includes('overflow-x-auto')) {
+        processed = processed.replace(
             /(<table[\s\S]*?<\/table>)/gi,
-            '<div class="overflow-x-auto my-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800/80 shadow-xs">$1</div>'
+            '<div class="overflow-x-auto my-2.5 rounded-xl border border-slate-200 dark:border-gray-700 shadow-xs bg-white dark:bg-gray-800">$1</div>'
         );
     }
 
-    return sanitized;
+    // 5. Convert markdown headers: ### Title -> <h6 ...>Title</h6>
+    processed = processed.replace(/^###\s+(.+)$/gm, '<h6 class="font-bold text-gray-900 dark:text-gray-100 mt-2 mb-1 text-xs">$1</h6>');
+    processed = processed.replace(/^##\s+(.+)$/gm, '<h5 class="font-bold text-gray-900 dark:text-gray-100 mt-2.5 mb-1 text-sm">$1</h5>');
+    
+    // 6. Markdown bold **text**
+    processed = processed.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    
+    // 7. Markdown bullet points: lines starting with "- " or "* "
+    processed = processed.replace(/(?:^|\n)[-*]\s+(.+)/g, '<div class="flex items-start gap-1.5 my-1 ml-1 text-xs"><span class="text-indigo-500 font-bold">•</span><span>$1</span></div>');
+
+    // 8. Line breaks: convert newlines outside of HTML tags
+    processed = processed
+        .replace(/\n\n+/g, '<div class="my-1.5"></div>')
+        .replace(/(?<!>)\n(?!<)/g, '<br/>');
+
+    return processed;
 }
 
 export default function CopilotDrawer() {
