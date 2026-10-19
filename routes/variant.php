@@ -15,6 +15,7 @@ use App\Http\Controllers\BukuKasPembantuTunaiController;
 use App\Http\Controllers\BukuKasUmumController;
 use App\Http\Controllers\BukuPajakController;
 use App\Http\Controllers\BukuRobController;
+use App\Http\Controllers\CalkReportController;
 use App\Http\Controllers\DatabaseController;
 use App\Http\Controllers\DokumenController;
 use App\Http\Controllers\IntegrasiController;
@@ -183,6 +184,12 @@ Route::get('/laporan', function () {
         'penganggaranFk' => VariantConfig::penganggaranFk($variant),
     ]);
 })->name('laporan.index');
+
+// CaLK & Narasi LPJ AI Routes
+Route::get('/laporan/calk/data', [CalkReportController::class, 'index'])->name('laporan.calk.data');
+Route::post('/laporan/calk/generate', [CalkReportController::class, 'generate'])->name('laporan.calk.generate');
+Route::post('/laporan/calk/save', [CalkReportController::class, 'save'])->name('laporan.calk.save');
+Route::get('/laporan/calk/export-pdf/{id}', [CalkReportController::class, 'exportPdf'])->name('laporan.calk.export-pdf');
 
 // Backup
 Route::prefix('backup')->name('backup.')->group(function () {

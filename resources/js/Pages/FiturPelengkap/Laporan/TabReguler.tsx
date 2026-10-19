@@ -4,6 +4,8 @@ import SpmthTab from './components/SpmthTab';
 import SptjTab from './components/SptjTab';
 import Sp2bTab from './components/Sp2bTab';
 import LphTab from './components/LphTab';
+import CalkTab from './components/CalkTab';
+import { Brain, Sparkles } from 'lucide-react';
 
 interface LaporanProps {
     auth: {
@@ -19,6 +21,7 @@ export default function Index({ auth }: LaporanProps) {
         { id: 'SPTJ', label: 'SPTJ' },
         { id: 'SP2B', label: 'SP2B' },
         { id: 'LPH', label: 'LPH' },
+        { id: 'CALK', label: 'CaLK & Narasi LPJ AI', isAi: true },
     ];
 
     const renderContent = () => {
@@ -31,6 +34,8 @@ export default function Index({ auth }: LaporanProps) {
                 return <Sp2bTab />;
             case 'LPH':
                 return <LphTab />;
+            case 'CALK':
+                return <CalkTab />;
             default:
                 return null;
         }
@@ -82,7 +87,15 @@ export default function Index({ auth }: LaporanProps) {
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                     </svg>
                                 )}
+                                {tab.id === 'CALK' && (
+                                    <Brain className="w-4 h-4 text-indigo-400" />
+                                )}
                                 {tab.label}
+                                {tab.id === 'CALK' && (
+                                    <span className="px-1.5 py-0.2 rounded-full bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 text-[10px] font-bold">
+                                        DeepSeek
+                                    </span>
+                                )}
                             </button>
                         ))}
                     </div>
