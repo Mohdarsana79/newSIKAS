@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Log;
 class CopilotService
 {
     protected DeepSeekService $deepSeekService;
+
     protected BukuKasService $bukuKasService;
 
     public function __construct(DeepSeekService $deepSeekService, BukuKasService $bukuKasService)
@@ -288,7 +289,7 @@ PROMPT;
                 'timeout' => 45,
             ]);
 
-            if (!$response['success']) {
+            if (! $response['success']) {
                 return [
                     'success' => false,
                     'message' => $response['message'],
@@ -375,7 +376,7 @@ PROMPT;
         $penganggaranFk = VariantConfig::penganggaranFk($variant);
 
         $penganggaran = $penganggaranClass::where('tahun_anggaran', $tahun)->first();
-        if (!$penganggaran) {
+        if (! $penganggaran) {
             return [
                 'error' => "Data penganggaran untuk tahun {$tahun} ({$variant}) belum ditemukan.",
             ];
@@ -395,7 +396,7 @@ PROMPT;
             $totalPenerimaan += $nominal;
             $rincianPenerimaan[] = [
                 'sumber_dana' => $pd->sumber_dana,
-                'tanggal_terima' => $pd->tanggal_terima ? \Carbon\Carbon::parse($pd->tanggal_terima)->format('d/m/Y') : '-',
+                'tanggal_terima' => $pd->tanggal_terima ? Carbon::parse($pd->tanggal_terima)->format('d/m/Y') : '-',
                 'jumlah' => $nominal,
             ];
             if (stripos($pd->sumber_dana, 'Tahap 1') !== false) {
@@ -474,7 +475,7 @@ PROMPT;
         $bkuFk = VariantConfig::penganggaranFk($variant);
 
         $penganggaran = $penganggaranClass::where('tahun_anggaran', $tahun)->first();
-        if (!$penganggaran) {
+        if (! $penganggaran) {
             return ['error' => "Data penganggaran untuk tahun {$tahun} ({$variant}) belum ditemukan."];
         }
 
@@ -525,7 +526,7 @@ PROMPT;
                 continue;
             }
 
-            $noBukti = $bku->nomor_nota ?: ($bku->id_transaksi ?: 'BKU-' . $bku->id);
+            $noBukti = $bku->nomor_nota ?: ($bku->id_transaksi ?: 'BKU-'.$bku->id);
             $rekanan = $bku->nama_toko ?: ($bku->nama_penerima_pembayaran ?: '-');
             $tgl = $bku->tanggal_transaksi ? Carbon::parse($bku->tanggal_transaksi)->format('d/m/Y') : '-';
 
@@ -547,7 +548,7 @@ PROMPT;
             'total_belanja_bulan_ini' => $totalBelanjaBulanIni,
             'total_belanja_kumulatif_sd_bulan_ini' => $totalBelanjaSdBulanIni,
             'jumlah_transaksi' => count($transaksiList),
-            'keterangan' => "Total realisasi belanja resmi pada BKU bulan {$bulanNama} {$tahun} adalah Rp " . number_format($totalBelanjaBulanIni, 0, ',', '.') . " (" . count($transaksiList) . " transaksi kuitansi dibukukan).",
+            'keterangan' => "Total realisasi belanja resmi pada BKU bulan {$bulanNama} {$tahun} adalah Rp ".number_format($totalBelanjaBulanIni, 0, ',', '.').' ('.count($transaksiList).' transaksi kuitansi dibukukan).',
             'transaksi' => $transaksiList,
         ];
     }
@@ -563,7 +564,7 @@ PROMPT;
         $bkuDetailFk = VariantConfig::uraianDetailRkasFk($variant);
 
         $penganggaran = $penganggaranClass::where('tahun_anggaran', $tahun)->first();
-        if (!$penganggaran) {
+        if (! $penganggaran) {
             return ['error' => 'Data penganggaran tidak ditemukan'];
         }
 
@@ -584,7 +585,7 @@ PROMPT;
 
         // Validasi atau deteksi bulan dari parameter atau kata kunci query
         $targetMonth = null;
-        if (!empty($bulan)) {
+        if (! empty($bulan)) {
             $monthKey = strtolower(trim($bulan));
             if (isset($validMonths[$monthKey])) {
                 $targetMonth = $validMonths[$monthKey];
@@ -595,18 +596,25 @@ PROMPT;
         $queryLower = strtolower($queryRaw);
 
         // Jika bulan belum terisi dari argumen, deteksi otomatis jika ada nama bulan di query
-        if (!$targetMonth && !empty($queryLower)) {
+        if (! $targetMonth && ! empty($queryLower)) {
             foreach ($validMonths as $key => $name) {
-                if (preg_match('/\b' . $key . '\b/i', $queryLower)) {
+                if (preg_match('/\b'.$key.'\b/i', $queryLower)) {
                     $targetMonth = $name;
                     // Bersihkan nama bulan dari query kata kunci agar pencarian barang lebih akurat
-                    $queryRaw = trim(preg_replace('/\b(awal|akhir|pertengahan)?\s*(bulan)?\s*' . $key . '\b/i', '', $queryRaw));
+                    $queryRaw = trim(preg_replace('/\b(awal|akhir|pertengahan)?\s*(bulan)?\s*'.$key.'\b/i', '', $queryRaw));
                     break;
                 }
             }
         }
 
         $queryClean = strtolower(trim($queryRaw));
+
+        $monthNumbers = [
+            'Januari' => 1, 'Februari' => 2, 'Maret' => 3, 'April' => 4,
+            'Mei' => 5, 'Juni' => 6, 'Juli' => 7, 'Agustus' => 8,
+            'September' => 9, 'Oktober' => 10, 'November' => 11, 'Desember' => 12,
+        ];
+        $targetMonthIndex = $targetMonth ? ($monthNumbers[$targetMonth] ?? null) : null;
 
         $builder = $rkasClass::with(['kodeKegiatan', 'rekeningBelanja'])
             ->where(VariantConfig::penganggaranFk($variant), (int) $penganggaran->id);
@@ -615,20 +623,20 @@ PROMPT;
             $builder->where('bulan', $targetMonth);
         }
 
-        if (!empty($queryClean)) {
+        if (! empty($queryClean)) {
             // Escape wildcard SQL (% dan _) untuk mencegah manipulasi query pattern
             $escaped = addcslashes($queryClean, '%_\\');
             $likeParam = "%{$escaped}%";
 
             $builder->where(function ($q) use ($likeParam) {
                 $q->whereRaw('LOWER(uraian) LIKE ?', [$likeParam])
-                  ->orWhereHas('kodeKegiatan', function ($kq) use ($likeParam) {
-                      $kq->whereRaw('LOWER(uraian) LIKE ?', [$likeParam])
-                         ->orWhereRaw('LOWER(sub_program) LIKE ?', [$likeParam]);
-                  })
-                  ->orWhereHas('rekeningBelanja', function ($rq) use ($likeParam) {
-                      $rq->whereRaw('LOWER(rincian_objek) LIKE ?', [$likeParam]);
-                  });
+                    ->orWhereHas('kodeKegiatan', function ($kq) use ($likeParam) {
+                        $kq->whereRaw('LOWER(uraian) LIKE ?', [$likeParam])
+                            ->orWhereRaw('LOWER(sub_program) LIKE ?', [$likeParam]);
+                    })
+                    ->orWhereHas('rekeningBelanja', function ($rq) use ($likeParam) {
+                        $rq->whereRaw('LOWER(rincian_objek) LIKE ?', [$likeParam]);
+                    });
             });
         }
 
@@ -639,10 +647,23 @@ PROMPT;
         $results = [];
         foreach ($items as $item) {
             $budget = (float) $item->harga_satuan * (float) $item->jumlah;
-            
-            // Hitung realisasi belanja yang telah dibukukan untuk RKAS ID ini
-            $spent = (float) $bkuDetailClass::where($bkuDetailFk, (int) $item->id)->sum('jumlah');
 
+            // Hitung realisasi belanja BKU yang telah dibukukan untuk RKAS ID ini
+            // Dibatasi sampai periode bulan yang diminta (jika ada filter bulan) dan tahun aktif
+            $bkuDetailQuery = $bkuDetailClass::where($bkuDetailFk, (int) $item->id)
+                ->whereHas('bukuKasUmum', function ($bq) use ($penganggaran, $tahun, $targetMonthIndex, $variant) {
+                    $bq->where(VariantConfig::penganggaranFk($variant), (int) $penganggaran->id)
+                        ->where('is_bunga_record', false)
+                        ->whereYear('tanggal_transaksi', $tahun);
+                    if ($targetMonthIndex) {
+                        $bq->whereMonth('tanggal_transaksi', '<=', $targetMonthIndex);
+                    }
+                });
+
+            $rawSpent = (float) $bkuDetailQuery->sum('jumlah');
+
+            // Audit capping: realisasi untuk baris kegiatan ini tidak boleh melampaui pagu anggarannya
+            $spent = min($budget, $rawSpent);
             $remaining = max(0, $budget - $spent);
 
             $results[] = [
@@ -664,7 +685,7 @@ PROMPT;
         return [
             'total_kegiatan' => count($results),
             'alokasi_bulan' => $targetMonth ?: 'Semua Bulan',
-            'keterangan' => 'Ditemukan ' . count($results) . ' kegiatan' . ($targetMonth ? ' pada alokasi bulan ' . $targetMonth : ''),
+            'keterangan' => 'Ditemukan '.count($results).' kegiatan'.($targetMonth ? ' pada alokasi bulan '.$targetMonth : ''),
             'items' => $results,
         ];
     }
@@ -736,7 +757,7 @@ PROMPT;
         $rkasClass = VariantConfig::getModelClass('rkas', $variant);
         $rkas = $rkasClass::with(['kodeKegiatan', 'rekeningBelanja'])->find($params['rkas_id']);
 
-        if (!$rkas) {
+        if (! $rkas) {
             return ['error' => 'Data RKAS tidak ditemukan.'];
         }
 
@@ -748,7 +769,8 @@ PROMPT;
         $budget = (float) $rkas->harga_satuan * (float) $rkas->jumlah;
         $bkuDetailFk = VariantConfig::uraianDetailRkasFk($variant);
         $bkuDetailClass = VariantConfig::getModelClass('bku_uraian_detail', $variant);
-        $spent = (float) $bkuDetailClass::where($bkuDetailFk, $rkas->id)->sum('jumlah');
+        $rawSpent = (float) $bkuDetailClass::where($bkuDetailFk, $rkas->id)->sum('jumlah');
+        $spent = min($budget, $rawSpent);
         $remainingBefore = max(0, $budget - $spent);
         $remainingAfter = $remainingBefore - $amount;
 
@@ -794,7 +816,7 @@ PROMPT;
         $bkuFk = VariantConfig::penganggaranFk($variant);
 
         $penganggaran = $penganggaranClass::where('tahun_anggaran', $tahun)->first();
-        if (!$penganggaran) {
+        if (! $penganggaran) {
             return ['error' => 'Penganggaran tahun aktif tidak ditemukan.'];
         }
 
@@ -816,7 +838,7 @@ PROMPT;
                 ],
                 'summary_kpi' => [
                     'total_realisasi' => $q1 + $q2 + $q3 + $q4,
-                    'triwulan_tertinggi' => 'Triwulan ' . (array_search(max($q1, $q2, $q3, $q4), [$q1, $q2, $q3, $q4]) + 1),
+                    'triwulan_tertinggi' => 'Triwulan '.(array_search(max($q1, $q2, $q3, $q4), [$q1, $q2, $q3, $q4]) + 1),
                 ],
             ];
 
@@ -828,15 +850,15 @@ PROMPT;
 
         // Default: Kategori Belanja (Barang Jasa vs Modal)
         $barangJasa = (float) $bkuClass::where($bkuFk, $penganggaran->id)
-            ->whereHas('rekeningBelanja', fn($q) => $q->where('kode_rekening', 'like', '5.1.02%'))
+            ->whereHas('rekeningBelanja', fn ($q) => $q->where('kode_rekening', 'like', '5.1.02%'))
             ->sum('dibelanjakan');
 
         $modal = (float) $bkuClass::where($bkuFk, $penganggaran->id)
-            ->whereHas('rekeningBelanja', fn($q) => $q->where('kode_rekening', 'like', '5.2%'))
+            ->whereHas('rekeningBelanja', fn ($q) => $q->where('kode_rekening', 'like', '5.2%'))
             ->sum('dibelanjakan');
 
         $pegawai = (float) $bkuClass::where($bkuFk, $penganggaran->id)
-            ->whereHas('rekeningBelanja', fn($q) => $q->where('kode_rekening', 'like', '5.1.01%'))
+            ->whereHas('rekeningBelanja', fn ($q) => $q->where('kode_rekening', 'like', '5.1.01%'))
             ->sum('dibelanjakan');
 
         $chartData = [
@@ -872,7 +894,7 @@ PROMPT;
         $bkuDetailClass = VariantConfig::getModelClass('bku_uraian_detail', $variant);
 
         $penganggaran = $penganggaranClass::where('tahun_anggaran', $tahun)->first();
-        if (!$penganggaran) {
+        if (! $penganggaran) {
             return ['success' => false, 'message' => 'Penganggaran tahun aktif tidak ditemukan.'];
         }
 
@@ -885,7 +907,7 @@ PROMPT;
                 $totalPajak = (float) ($payload['total_pajak'] ?? 0);
 
                 // Buat entri BKU Utama
-                $bku = new $bkuClass();
+                $bku = new $bkuClass;
                 $bku->{$bkuFk} = $penganggaran->id;
                 $bku->tanggal_transaksi = $payload['tanggal'] ?? now()->format('Y-m-d');
                 $bku->jenis_transaksi = $payload['jenis_transaksi'] ?? 'tunai';
@@ -905,7 +927,7 @@ PROMPT;
                 $bku->save();
 
                 // Buat rincian uraian detail
-                $detail = new $bkuDetailClass();
+                $detail = new $bkuDetailClass;
                 $detail->{VariantConfig::bkuFk($variant)} = $bku->id;
                 $detail->uraian = $payload['uraian'] ?? 'Item Belanja';
                 $detail->volume = $payload['volume'] ?? 1;
@@ -924,10 +946,11 @@ PROMPT;
                 ];
             });
         } catch (\Throwable $e) {
-            Log::error('Commit BKU Transaction failed: ' . $e->getMessage());
+            Log::error('Commit BKU Transaction failed: '.$e->getMessage());
+
             return [
                 'success' => false,
-                'message' => 'Gagal menyimpan transaksi: ' . $e->getMessage(),
+                'message' => 'Gagal menyimpan transaksi: '.$e->getMessage(),
             ];
         }
     }
@@ -977,4 +1000,3 @@ PROMPT;
         return trim($text);
     }
 }
-
