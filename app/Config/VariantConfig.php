@@ -390,7 +390,19 @@ class VariantConfig
                 self::SILPA => SilpaBukuKasUmum::class,
                 self::KINERJA_SILPA => KinerjaSilpaBukuKasUmum::class,
             ],
+            'buku_kas_umum' => [
+                self::REGULER => BukuKasUmum::class,
+                self::KINERJA => KinerjaBukuKasUmum::class,
+                self::SILPA => SilpaBukuKasUmum::class,
+                self::KINERJA_SILPA => KinerjaSilpaBukuKasUmum::class,
+            ],
             'bku_uraian_detail' => [
+                self::REGULER => BukuKasUmumUraianDetail::class,
+                self::KINERJA => KinerjaBukuKasUmumUraianDetail::class,
+                self::SILPA => SilpaBukuKasUmumUraianDetail::class,
+                self::KINERJA_SILPA => KinerjaSilpaBukuKasUmumUraianDetail::class,
+            ],
+            'buku_kas_umum_uraian_detail' => [
                 self::REGULER => BukuKasUmumUraianDetail::class,
                 self::KINERJA => KinerjaBukuKasUmumUraianDetail::class,
                 self::SILPA => SilpaBukuKasUmumUraianDetail::class,

@@ -230,7 +230,7 @@ class ArkasDiagnosticService
     {
         $penganggaranClass = VariantConfig::getModelClass('penganggaran', $variant);
         $rkasClass = VariantConfig::getModelClass('rkas', $variant);
-        $bkuClass = VariantConfig::getModelClass('buku_kas_umum', $variant);
+        $bkuClass = VariantConfig::getModelClass('bku', $variant);
         $penerimaanClass = VariantConfig::getModelClass('penerimaan_dana', $variant);
         $penarikanClass = VariantConfig::getModelClass('penarikan_tunai', $variant);
         $setorClass = VariantConfig::getModelClass('setor_tunai', $variant);

@@ -29,7 +29,7 @@ class CalkDataAggregator
 
         $sekolah = Sekolah::first();
         $penganggaranClass = VariantConfig::getModelClass('penganggaran', $variant);
-        $bkuClass = VariantConfig::getModelClass('buku_kas_umum', $variant);
+        $bkuClass = VariantConfig::getModelClass('bku', $variant);
         $penerimaanClass = VariantConfig::getModelClass('penerimaan_dana', $variant);
         $penarikanClass = VariantConfig::getModelClass('penarikan_tunai', $variant);
         $setorClass = VariantConfig::getModelClass('setor_tunai', $variant);

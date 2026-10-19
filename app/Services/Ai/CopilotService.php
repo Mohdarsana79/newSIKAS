@@ -299,6 +299,7 @@ PROMPT;
         $penganggaranClass = VariantConfig::getModelClass('penganggaran', $variant);
         $rkasClass = VariantConfig::getModelClass('rkas', $variant);
         $bkuClass = VariantConfig::getModelClass('bku', $variant);
+        $bkuDetailClass = VariantConfig::getModelClass('bku_uraian_detail', $variant);
         $bkuDetailFk = VariantConfig::uraianDetailRkasFk($variant);
 
         $penganggaran = $penganggaranClass::where('tahun_anggaran', $tahun)->first();
@@ -328,9 +329,7 @@ PROMPT;
             $budget = (float) $item->harga_satuan * (float) $item->jumlah;
             
             // Hitung realisasi belanja yang telah dibukukan untuk RKAS ID ini
-            $spent = (float) DB::table(VariantConfig::getModelClass('bku_uraian_detail', $variant)->getTable())
-                ->where($bkuDetailFk, $item->id)
-                ->sum('jumlah');
+            $spent = (float) $bkuDetailClass::where($bkuDetailFk, $item->id)->sum('jumlah');
 
             $remaining = max(0, $budget - $spent);
 
@@ -433,9 +432,8 @@ PROMPT;
         // Periksa sisa pagu
         $budget = (float) $rkas->harga_satuan * (float) $rkas->jumlah;
         $bkuDetailFk = VariantConfig::uraianDetailRkasFk($variant);
-        $spent = (float) DB::table(VariantConfig::getModelClass('bku_uraian_detail', $variant)->getTable())
-            ->where($bkuDetailFk, $rkas->id)
-            ->sum('jumlah');
+        $bkuDetailClass = VariantConfig::getModelClass('bku_uraian_detail', $variant);
+        $spent = (float) $bkuDetailClass::where($bkuDetailFk, $rkas->id)->sum('jumlah');
         $remainingBefore = max(0, $budget - $spent);
         $remainingAfter = $remainingBefore - $amount;
 
