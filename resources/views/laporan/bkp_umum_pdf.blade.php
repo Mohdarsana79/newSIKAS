@@ -177,7 +177,7 @@
             <td class="dots-underline">Rp. {{ number_format($report['data']['saldo_bank'] ?? 0, 0, ',', '.') }}</td>
             <td></td>
         </tr>
-         <tr>
+         {{-- <tr>
             <td style="padding-left: 20px;">1. Dana Sekolah</td>
             <td>:</td>
             <td class="dots-underline">Rp. {{ number_format($report['data']['dana_sekolah'] ?? 0, 0, ',', '.') }}</td>
@@ -188,7 +188,7 @@
             <td>:</td>
             <td class="dots-underline">Rp. {{ number_format($report['data']['dana_bosp'] ?? 0, 0, ',', '.') }}</td>
             <td></td>
-        </tr>
+        </tr> --}}
         <tr>
             <td>Saldo Kas Tunai</td>
             <td>:</td>

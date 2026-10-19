@@ -31,6 +31,54 @@ export default function Index({ tahunList, penganggaranList, statusPerTahun, tah
     const [loading, setLoading] = useState(false);
     const [isValidationOpen, setIsValidationOpen] = useState(false); // Validation modal state
 
+    // ARKAS BKU Pull States
+    const [isArkasBkuModalOpen, setIsArkasBkuModalOpen] = useState(false);
+    const [arkasBkuLoading, setArkasBkuLoading] = useState(false);
+    const [arkasBkuData, setArkasBkuData] = useState<any>(null);
+    const [arkasBkuYear, setArkasBkuYear] = useState<any>(null);
+    const [arkasBkuPenganggaranId, setArkasBkuPenganggaranId] = useState<any>(null);
+    const [isOverwriteChecked, setIsOverwriteChecked] = useState(false);
+    const [pullingBku, setPullingBku] = useState(false);
+
+    const handleOpenArkasBkuModal = async (penganggaranId: any, tahunAnggaran: any) => {
+        setArkasBkuPenganggaranId(penganggaranId);
+        setArkasBkuYear(tahunAnggaran);
+        setIsArkasBkuModalOpen(true);
+        setArkasBkuLoading(true);
+        setArkasBkuData(null);
+        setIsOverwriteChecked(false);
+
+        try {
+            const response = await axios.get(vroute('penatausahaan.check-arkas-bku', penganggaranId));
+            setArkasBkuData(response.data);
+        } catch (error: any) {
+            console.error("Error checking ARKAS BKU:", error);
+            setArkasBkuData({
+                status: 'error',
+                message: error.response?.data?.message || 'Gagal memeriksa database ARKAS.'
+            });
+        } finally {
+            setArkasBkuLoading(false);
+        }
+    };
+
+    const handleExecutePullArkasBku = () => {
+        if (!arkasBkuPenganggaranId) return;
+        setPullingBku(true);
+        router.post(vroute('penatausahaan.pull-arkas-bku', arkasBkuPenganggaranId), {
+            overwrite: isOverwriteChecked
+        }, {
+            onSuccess: () => {
+                setIsArkasBkuModalOpen(false);
+                setPullingBku(false);
+            },
+            onError: (err) => {
+                console.error("Error pulling BKU:", err);
+                setPullingBku(false);
+            }
+        });
+    };
+
     // Form handling
     const { data, setData, post, processing, errors, reset, clearErrors } = useForm({
         penganggaran_id: '',
@@ -239,7 +287,7 @@ export default function Index({ tahunList, penganggaranList, statusPerTahun, tah
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                             <p className="text-sm text-blue-700 dark:text-blue-300">
-                                Laporkan minimal 50% belanja dana tahap 2 paling lambat 31 Agustus setiap tahun
+                                Laporkan minimal 50% belanja dana tahap 1 paling lambat 31 Agustus setiap tahun
                             </p>
                         </div>
 
@@ -254,6 +302,7 @@ export default function Index({ tahunList, penganggaranList, statusPerTahun, tah
                                             statusPerTahun={statusPerTahun}
                                             activeTab={activeTab}
                                             onValidation={() => setIsValidationOpen(true)}
+                                            onOpenArkasBkuModal={handleOpenArkasBkuModal}
                                             onOpenModal={(id: any) => {
                                                 setCurrentPenganggaranId(id);
                                                 setIsModalOpen(true);
@@ -343,7 +392,7 @@ export default function Index({ tahunList, penganggaranList, statusPerTahun, tah
                                     </div>
                                     <div>
                                         <h4 className="font-medium text-gray-900 dark:text-gray-100">Tambah Penerimaan Tahap Berikutnya</h4>
-                                        <p className="text-xs text-blue-500 mt-1">"Tambah Penerimaan" membutuhkan koneksi internet</p>
+                                        <p className="text-xs text-blue-500 mt-1">"Tambah Penerimaan"</p>
                                     </div>
                                 </div>
 
@@ -470,11 +519,176 @@ export default function Index({ tahunList, penganggaranList, statusPerTahun, tah
                     </div>
                 </div>
             </Modal>
+
+            {/* Modal Tarik BKU dari ARKAS (Tahunan) */}
+            <Modal show={isArkasBkuModalOpen} onClose={() => !pullingBku && setIsArkasBkuModalOpen(false)} maxWidth="2xl">
+                <div className="p-6">
+                    <div className="flex items-center gap-3 border-b border-gray-100 dark:border-gray-700 pb-4">
+                        <div className="p-2.5 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl text-emerald-600 dark:text-emerald-400">
+                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">
+                                Tarik Buku Kas Umum (BKU) dari ARKAS
+                            </h2>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                                Tahun Anggaran {arkasBkuYear} • {activeTab}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="mt-5">
+                        {arkasBkuLoading ? (
+                            <div className="py-12 flex flex-col items-center justify-center gap-3">
+                                <div className="w-9 h-9 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+                                <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                                    Memeriksa data BKU di database ARKAS...
+                                </p>
+                            </div>
+                        ) : arkasBkuData?.status === 'error' || !arkasBkuData?.exists ? (
+                            <div className="py-8 text-center">
+                                <div className="mx-auto w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-amber-600 dark:text-amber-400 mb-3">
+                                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                    </svg>
+                                </div>
+                                <h4 className="text-base font-semibold text-gray-800 dark:text-gray-200 mb-1">
+                                    Data BKU ARKAS Tidak Ditemukan
+                                </h4>
+                                <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md mx-auto">
+                                    {arkasBkuData?.message || `Tidak ditemukan catatan transaksi BKU untuk Tahun ${arkasBkuYear} pada database ARKAS.`}
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="space-y-5">
+                                {/* Ringkasan Data ARKAS */}
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                    <div className="bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200/60 dark:border-emerald-800/40 rounded-xl p-3.5">
+                                        <span className="text-[10pt] text-emerald-700 dark:text-emerald-300 font-medium">Penerimaan Dana</span>
+                                        <div className="text-base font-bold text-emerald-800 dark:text-emerald-200 mt-1">
+                                            {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(arkasBkuData.arkas_data.nominal_penerimaan || 0)}
+                                        </div>
+                                        <div className="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5">
+                                            {arkasBkuData.arkas_data.total_penerimaan || 0} kali penerimaan
+                                        </div>
+                                    </div>
+                                    <div className="bg-blue-50/60 dark:bg-blue-950/20 border border-blue-200/60 dark:border-blue-800/40 rounded-xl p-3.5">
+                                        <span className="text-[10pt] text-blue-700 dark:text-blue-300 font-medium">Tarik Tunai</span>
+                                        <div className="text-base font-bold text-blue-800 dark:text-blue-200 mt-1">
+                                            {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(arkasBkuData.arkas_data.nominal_penarikan || 0)}
+                                        </div>
+                                        <div className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">
+                                            {arkasBkuData.arkas_data.total_penarikan || 0} transaksi tarik
+                                        </div>
+                                    </div>
+                                    <div className="bg-purple-50/60 dark:bg-purple-950/20 border border-purple-200/60 dark:border-purple-800/40 rounded-xl p-3.5">
+                                        <span className="text-[10pt] text-purple-700 dark:text-purple-300 font-medium">Belanja Kas</span>
+                                        <div className="text-base font-bold text-purple-800 dark:text-purple-200 mt-1">
+                                            {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(arkasBkuData.arkas_data.nominal_belanja || 0)}
+                                        </div>
+                                        <div className="text-xs text-purple-600 dark:text-purple-400 mt-0.5">
+                                            {arkasBkuData.arkas_data.total_nota_belanja || 0} nota ({arkasBkuData.arkas_data.total_item_belanja || 0} item)
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Status Tutup Buku Bulan */}
+                                {arkasBkuData.arkas_data.closed_months && arkasBkuData.arkas_data.closed_months.length > 0 && (
+                                    <div className="bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 rounded-xl p-3.5">
+                                        <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 block mb-2">
+                                            Status Tutup Buku di ARKAS:
+                                        </span>
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {arkasBkuData.arkas_data.closed_months.map((m: string) => (
+                                                <span key={m} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
+                                                    ✓ {m} Ditutup
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Warning jika RKAS belum ada */}
+                                {!arkasBkuData.has_rkas && (
+                                    <div className="p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl flex items-start gap-3">
+                                        <svg className="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                        </svg>
+                                        <div className="text-sm text-red-800 dark:text-red-300">
+                                            <span className="font-bold block mb-0.5">Data RKAS Belum Tersedia di newSIKAS</span>
+                                            Penarikan BKU mewajibkan RKAS di newSIKAS sudah terisi untuk mencocokkan rincian belanja. Silakan lakukan penarikan RKAS terlebih dahulu pada menu Penganggaran.
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Warning & Konfirmasi Overwrite jika sudah ada data BKU */}
+                                {arkasBkuData.has_existing_data && (
+                                    <div className="p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl space-y-3">
+                                        <div className="flex items-start gap-3">
+                                            <svg className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                            </svg>
+                                            <div className="text-sm text-amber-800 dark:text-amber-300">
+                                                <span className="font-bold block mb-0.5">Konfirmasi Timpa Ulang (Overwrite)</span>
+                                                Di newSIKAS saat ini sudah tercatat <strong>{arkasBkuData.existing_counts.total} transaksi BKU</strong> pada tahun {arkasBkuYear} (termasuk {arkasBkuData.existing_counts.belanja} belanja, {arkasBkuData.existing_counts.penerimaan} penerimaan). Melanjutkan penarikan akan <strong>menghapus data BKU tahun {arkasBkuYear}</strong> dan menggantikannya dengan data resmi dari ARKAS.
+                                            </div>
+                                        </div>
+                                        <label className="flex items-center gap-2.5 pt-2 border-t border-amber-200/80 dark:border-amber-800/80 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={isOverwriteChecked}
+                                                onChange={(e) => setIsOverwriteChecked(e.target.checked)}
+                                                className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500"
+                                            />
+                                            <span className="text-xs font-semibold text-amber-900 dark:text-amber-200">
+                                                Saya memahami dan menyetujui untuk menimpa ulang seluruh data BKU Tahun {arkasBkuYear}.
+                                            </span>
+                                        </label>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="mt-6 flex justify-end gap-3 border-t border-gray-100 dark:border-gray-700 pt-4">
+                        <SecondaryButton onClick={() => setIsArkasBkuModalOpen(false)} disabled={pullingBku}>
+                            Batal
+                        </SecondaryButton>
+                        {arkasBkuData?.exists && arkasBkuData?.has_rkas && (
+                            <button
+                                onClick={handleExecutePullArkasBku}
+                                disabled={pullingBku || (arkasBkuData.has_existing_data && !isOverwriteChecked)}
+                                className={`inline-flex items-center px-5 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider text-white shadow-sm transition-all duration-150 ${
+                                    pullingBku || (arkasBkuData.has_existing_data && !isOverwriteChecked)
+                                        ? 'bg-gray-400 dark:bg-gray-600 cursor-not-allowed opacity-60'
+                                        : 'bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2'
+                                }`}
+                            >
+                                {pullingBku ? (
+                                    <>
+                                        <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                        Menarik BKU...
+                                    </>
+                                ) : (
+                                    <>
+                                        <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                        </svg>
+                                        {arkasBkuData.has_existing_data ? 'Tarik & Timpa Ulang BKU' : 'Tarik BKU Sekarang'}
+                                    </>
+                                )}
+                            </button>
+                        )}
+                    </div>
+                </div>
+            </Modal>
         </AuthenticatedLayout>
     );
 }
 
-const YearAccordionItem = ({ item, months, statusPerTahun, activeTab, onOpenModal, onValidation }: any) => {
+const YearAccordionItem = ({ item, months, statusPerTahun, activeTab, onOpenModal, onValidation, onOpenArkasBkuModal }: any) => {
     const vroute = useVariantRoute();
     const [isOpen, setIsOpen] = useState(false);
 
@@ -516,7 +730,16 @@ const YearAccordionItem = ({ item, months, statusPerTahun, activeTab, onOpenModa
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                         <h4 className="text-lg font-bold text-gray-800 dark:text-gray-100 hidden md:block">
                         </h4>
-                        <div className="flex items-center gap-3 w-full md:w-auto">
+                        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                            <button
+                                onClick={() => onOpenArkasBkuModal(item.id, item.tahun_anggaran)}
+                                className="flex-1 md:flex-none inline-flex justify-center items-center px-4 py-2 bg-emerald-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-emerald-700 focus:bg-emerald-700 active:bg-emerald-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition ease-in-out duration-150 shadow-sm"
+                            >
+                                <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg>
+                                Tarik BKU dari ARKAS
+                            </button>
                             <Link
                                 href={vroute('penatausahaan.rekapitulasi', { tahun: item.tahun_anggaran, bulan: 'januari' })}
                                 className="flex-1 md:flex-none inline-flex justify-center items-center px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md font-semibold text-xs text-gray-700 dark:text-gray-300 uppercase tracking-widest shadow-sm hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150"
@@ -528,7 +751,7 @@ const YearAccordionItem = ({ item, months, statusPerTahun, activeTab, onOpenModa
                             </Link>
                             <button
                                 onClick={() => onOpenModal(item.id)}
-                                className="flex-1 md:flex-none inline-flex justify-center items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 focus:bg-blue-700 active:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150"
+                                className="flex-1 md:flex-none inline-flex justify-center items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 focus:bg-blue-700 active:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150 shadow-sm"
                             >
                                 <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />

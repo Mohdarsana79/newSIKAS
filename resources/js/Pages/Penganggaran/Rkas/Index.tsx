@@ -85,6 +85,64 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
     const [copyModalData, setCopyModalData] = useState<any>(null);
     const [isCopying, setIsCopying] = useState(false);
 
+    // Pull ARKAS Logic
+    const [isArkasModalOpen, setIsArkasModalOpen] = useState(false);
+    const [arkasPreviewData, setArkasPreviewData] = useState<any>(null);
+    const [isCheckingArkas, setIsCheckingArkas] = useState(false);
+    const [isPullingArkas, setIsPullingArkas] = useState(false);
+
+    const handleCheckArkas = async () => {
+        setIsCheckingArkas(true);
+        try {
+            const response = await axios.get(route(`${routePrefix || ''}rkas.check-arkas`, anggaran.id));
+            if (response.data.status === 'success') {
+                if (response.data.exists) {
+                    if (response.data.has_bku) {
+                        setAlertMessage('Tidak dapat menarik data ARKAS karena sudah terdapat transaksi belanja pada Buku Kas Umum (BKU).');
+                        setIsAlertModalOpen(true);
+                        return;
+                    }
+                    if (response.data.current_rkas_count > 0) {
+                        setAlertMessage('Tidak dapat menarik data ARKAS karena data RKAS di newSIKAS sudah terisi.');
+                        setIsAlertModalOpen(true);
+                        return;
+                    }
+                    setArkasPreviewData(response.data);
+                    setIsArkasModalOpen(true);
+                } else {
+                    setAlertMessage(response.data.message || `Tidak ditemukan data RKAS Murni di ARKAS untuk tahun ${anggaran.tahun}.`);
+                    setIsAlertModalOpen(true);
+                }
+            } else {
+                setAlertMessage('Gagal mengecek data ARKAS: ' + (response.data.message || 'Terjadi kesalahan'));
+                setIsAlertModalOpen(true);
+            }
+        } catch (error: any) {
+            setAlertMessage('Gagal menghubungi engine ARKAS: ' + (error.response?.data?.message || error.message));
+            setIsAlertModalOpen(true);
+        } finally {
+            setIsCheckingArkas(false);
+        }
+    };
+
+    const confirmPullArkas = () => {
+        setIsPullingArkas(true);
+        router.post(route(`${routePrefix || ''}rkas.pull-arkas`, anggaran.id), {}, {
+            onSuccess: () => {
+                setIsArkasModalOpen(false);
+            },
+            onError: (errors) => {
+                if (errors.message) {
+                    setAlertMessage(errors.message);
+                    setIsAlertModalOpen(true);
+                }
+            },
+            onFinish: () => {
+                setIsPullingArkas(false);
+            }
+        });
+    };
+
     const handleCopyPreviousYear = async () => {
         try {
             const response = await axios.post(route(`${routePrefix || ''}rkas.check-previous-perubahan`), {
@@ -479,15 +537,34 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                                         Tambah
                                     </PrimaryButton>
                                     {items.length === 0 && (variant === 'reguler' || variant === 'kinerja' || variant === undefined) && (
-                                        <button
-                                            onClick={handleCopyPreviousYear}
-                                            className="bg-indigo-600 hover:bg-indigo-700 text-white focus:ring-indigo-500 flex items-center gap-2 px-4 py-2 rounded-md font-semibold text-xs uppercase tracking-widest hover:bg-gray-700 active:bg-gray-900 focus:outline-none focus:border-gray-900 focus:ring ring-gray-300 disabled:opacity-25 transition ease-in-out duration-150"
-                                        >
-                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                                            </svg>
-                                            Salin
-                                        </button>
+                                        <>
+                                            <button
+                                                onClick={handleCopyPreviousYear}
+                                                className="bg-indigo-600 hover:bg-indigo-700 text-white focus:ring-indigo-500 flex items-center gap-2 px-4 py-2 rounded-md font-semibold text-xs uppercase tracking-widest hover:bg-gray-700 active:bg-gray-900 focus:outline-none focus:border-gray-900 focus:ring ring-gray-300 disabled:opacity-25 transition ease-in-out duration-150"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                                </svg>
+                                                Salin
+                                            </button>
+                                            <button
+                                                onClick={handleCheckArkas}
+                                                disabled={isCheckingArkas}
+                                                className="bg-emerald-600 hover:bg-emerald-700 text-white focus:ring-emerald-500 flex items-center gap-2 px-4 py-2 rounded-md font-semibold text-xs uppercase tracking-widest hover:bg-gray-700 active:bg-gray-900 focus:outline-none focus:border-gray-900 focus:ring ring-gray-300 disabled:opacity-25 transition ease-in-out duration-150 shadow-sm"
+                                            >
+                                                {isCheckingArkas ? (
+                                                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                    </svg>
+                                                ) : (
+                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                                    </svg>
+                                                )}
+                                                Tarik dari ARKAS
+                                            </button>
+                                        </>
                                     )}
                                 </>
                             )}
@@ -1415,6 +1492,83 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                         >
                             {isCopying ? 'Menyalin...' : 'Ya, Salin Data'}
                         </PrimaryButton>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Modal Preview Tarik RKAS dari ARKAS */}
+            <Modal show={isArkasModalOpen} onClose={() => { if (!isPullingArkas) setIsArkasModalOpen(false); }} maxWidth="md">
+                <div className="p-6">
+                    <div className="mb-5 flex justify-center">
+                        <div className="bg-emerald-100 dark:bg-emerald-900/30 p-3 rounded-full text-emerald-600 dark:text-emerald-400">
+                            <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                        </div>
+                    </div>
+                    <h2 className="text-xl font-bold text-center text-gray-900 dark:text-gray-100 mb-2">
+                        Tarik RKAS dari ARKAS
+                    </h2>
+                    <p className="text-center text-xs text-gray-500 dark:text-gray-400 mb-6">
+                        Data RKAS Murni ditemukan di database ARKAS. Periksa rincian di bawah sebelum menyinkronkan.
+                    </p>
+
+                    {arkasPreviewData && (
+                        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 space-y-3 border border-gray-100 dark:border-gray-700 text-sm mb-6">
+                            <div className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-gray-600">
+                                <span className="text-gray-500 dark:text-gray-400">Tahun Anggaran</span>
+                                <span className="font-semibold text-gray-800 dark:text-white">{arkasPreviewData.tahun}</span>
+                            </div>
+                            <div className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-gray-600">
+                                <span className="text-gray-500 dark:text-gray-400">Sumber Dana</span>
+                                <span className="font-semibold text-gray-800 dark:text-white">{arkasPreviewData.sumber_dana}</span>
+                            </div>
+                            <div className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-gray-600">
+                                <span className="text-gray-500 dark:text-gray-400">Pagu Total ARKAS</span>
+                                <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                                    Rp {new Intl.NumberFormat('id-ID').format(arkasPreviewData.pagu)}
+                                </span>
+                            </div>
+                            <div className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-gray-600">
+                                <span className="text-gray-500 dark:text-gray-400">Jumlah Kegiatan</span>
+                                <span className="font-semibold text-gray-800 dark:text-white">{arkasPreviewData.total_kegiatan} Kegiatan</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span className="text-gray-500 dark:text-gray-400">Total Alokasi Bulanan</span>
+                                <span className="font-semibold text-gray-800 dark:text-white">{arkasPreviewData.total_alokasi} Baris Data</span>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md mb-6">
+                        <p className="text-xs text-amber-800 dark:text-amber-200 leading-relaxed">
+                            <strong>Perhatian:</strong> Seluruh data alokasi bulanan akan disalin ke RKAS Awal newSIKAS dan nilai Pagu Anggaran akan otomatis disinkronkan.
+                        </p>
+                    </div>
+
+                    <div className="flex justify-center gap-3">
+                        <SecondaryButton onClick={() => setIsArkasModalOpen(false)} disabled={isPullingArkas}>
+                            Batal
+                        </SecondaryButton>
+
+                        <button
+                            type="button"
+                            onClick={confirmPullArkas}
+                            disabled={isPullingArkas}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs uppercase tracking-widest px-4 py-2 rounded-md transition ease-in-out duration-150 disabled:opacity-50 flex items-center gap-2"
+                        >
+                            {isPullingArkas ? (
+                                <>
+                                    <svg className="animate-spin -ml-1 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    Menarik Data...
+                                </>
+                            ) : (
+                                'Ya, Tarik Sekarang'
+                            )}
+                        </button>
                     </div>
                 </div>
             </Modal>

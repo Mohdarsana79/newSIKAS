@@ -2,29 +2,29 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\PenarikanTunai;
-use App\Models\SetorTunai;
-use App\Models\BukuKasUmum;
+use App\Config\VariantConfig;
+use App\Exports\BkpPembantuTunaiExport;
 use App\Models\Penganggaran;
-use App\Models\SekolahProfile as Sekolah;
+use App\Services\BukuKasService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use App\Config\VariantConfig;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Inertia\Inertia;
 use Maatwebsite\Excel\Facades\Excel;
-use App\Exports\BkpPembantuTunaiExport;
-use App\Services\BukuKasService;
 
 class BukuKasPembantuTunaiController extends Controller
 {
     protected $bukuKasService;
 
-        protected string $variant;
+    protected string $variant;
+
     protected string $Penganggaran;
+
     protected string $BukuKasUmum;
+
     protected string $PenarikanTunai;
+
     protected string $SetorTunai;
 
     public function __construct(BukuKasService $bukuKasService)
@@ -42,6 +42,7 @@ class BukuKasPembantuTunaiController extends Controller
             return $next($request);
         });
     }
+
     /**
      * Get tanggal penarikan tunai terakhir untuk penganggaran tertentu
      */
@@ -51,7 +52,7 @@ class BukuKasPembantuTunaiController extends Controller
             Log::info('Getting tanggal penarikan for penganggaran:', [VariantConfig::penganggaranFk($this->variant) => $penganggaran_id]);
 
             // Validasi penganggaran_id
-            if (!is_numeric($penganggaran_id)) {
+            if (! is_numeric($penganggaran_id)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'ID penganggaran tidak valid',
@@ -63,7 +64,7 @@ class BukuKasPembantuTunaiController extends Controller
                 ->first();
 
             Log::info('Penarikan terakhir found:', [
-                'exists' => !is_null($penarikanTerakhir),
+                'exists' => ! is_null($penarikanTerakhir),
                 'tanggal' => $penarikanTerakhir ? $penarikanTerakhir->tanggal_penarikan : null,
             ]);
 
@@ -89,12 +90,12 @@ class BukuKasPembantuTunaiController extends Controller
                 ],
             ]);
         } catch (\Exception $e) {
-            Log::error('Error getting tanggal penarikan: ' . $e->getMessage());
-            Log::error('Error trace: ' . $e->getTraceAsString());
+            Log::error('Error getting tanggal penarikan: '.$e->getMessage());
+            Log::error('Error trace: '.$e->getTraceAsString());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal mengambil data tanggal penarikan: ' . $e->getMessage(),
+                'message' => 'Gagal mengambil data tanggal penarikan: '.$e->getMessage(),
                 'debug' => [
                     VariantConfig::penganggaranFk($this->variant) => $penganggaran_id,
                     'error' => $e->getMessage(),
@@ -109,8 +110,8 @@ class BukuKasPembantuTunaiController extends Controller
     public function getBkpPembantuData(Request $request)
     {
         $data = $this->getBkpPembantuDataInternal($request->input('tahun'), $request->input('bulan'));
-        
-        if (!$data) {
+
+        if (! $data) {
             return response()->json([
                 'success' => false,
                 'message' => 'Data tidak ditemukan',
@@ -140,9 +141,9 @@ class BukuKasPembantuTunaiController extends Controller
 
             Carbon::setLocale('id');
 
-             // List of months to process
+            // List of months to process
             $monthsToProcess = [];
-            
+
             if ($bulan === 'Tahap 1') {
                 $monthsToProcess = ['januari', 'februari', 'maret', 'april', 'mei', 'juni'];
             } elseif ($bulan === 'Tahap 2') {
@@ -150,7 +151,7 @@ class BukuKasPembantuTunaiController extends Controller
             } elseif ($bulan === 'Tahunan') {
                 $monthsToProcess = [
                     'januari', 'februari', 'maret', 'april', 'mei', 'juni',
-                    'juli', 'agustus', 'september', 'oktober', 'november', 'desember'
+                    'juli', 'agustus', 'september', 'oktober', 'november', 'desember',
                 ];
             } else {
                 $monthsToProcess = [$bulan];
@@ -162,9 +163,9 @@ class BukuKasPembantuTunaiController extends Controller
                 // Reuse existing getBkpPembantuData logic but we need the internal data array, not JSON response.
                 // Since getBkpPembantuData returns JSON response, we should refactor or call an internal method.
                 // For simplicity, let's extract the logic to internal method like BKU Bank.
-                
+
                 $data = $this->getBkpPembantuDataInternal($tahun, $m);
-                
+
                 if ($data) {
                     $bulanAngka = $this->convertBulanToNumber($m);
                     $bulanAngkaStr = str_pad($bulanAngka, 2, '0', STR_PAD_LEFT);
@@ -185,22 +186,23 @@ class BukuKasPembantuTunaiController extends Controller
             }
 
             if (empty($reportData)) {
-                 return response('Data tidak ditemukan', 404);
+                return response('Data tidak ditemukan', 404);
             }
 
             $pdf = Pdf::loadView('laporan.bkp_pembantu_tunai_pdf', [
                 'reportData' => $reportData,
                 'paperSize' => $paperSize,
                 'orientation' => $orientation,
-                'fontSize' => $fontSize
+                'fontSize' => $fontSize,
             ]);
 
             $pdf->setPaper($paperSize, $orientation);
 
             return $pdf->stream("BKP_Pembantu_Tunai_{$bulan}_{$tahun}.pdf");
         } catch (\Exception $e) {
-            Log::error('Error generating BKP Pembantu Tunai PDF: ' . $e->getMessage());
-            return response('Gagal generate PDF: ' . $e->getMessage(), 500);
+            Log::error('Error generating BKP Pembantu Tunai PDF: '.$e->getMessage());
+
+            return response('Gagal generate PDF: '.$e->getMessage(), 500);
         }
     }
 
@@ -215,9 +217,9 @@ class BukuKasPembantuTunaiController extends Controller
 
             Carbon::setLocale('id');
 
-             // List of months to process
+            // List of months to process
             $monthsToProcess = [];
-            
+
             if ($bulan === 'Tahap 1') {
                 $monthsToProcess = ['januari', 'februari', 'maret', 'april', 'mei', 'juni'];
             } elseif ($bulan === 'Tahap 2') {
@@ -225,7 +227,7 @@ class BukuKasPembantuTunaiController extends Controller
             } elseif ($bulan === 'Tahunan') {
                 $monthsToProcess = [
                     'januari', 'februari', 'maret', 'april', 'mei', 'juni',
-                    'juli', 'agustus', 'september', 'oktober', 'november', 'desember'
+                    'juli', 'agustus', 'september', 'oktober', 'november', 'desember',
                 ];
             } else {
                 $monthsToProcess = [$bulan];
@@ -235,7 +237,7 @@ class BukuKasPembantuTunaiController extends Controller
 
             foreach ($monthsToProcess as $m) {
                 $data = $this->getBkpPembantuDataInternal($tahun, $m);
-                
+
                 if ($data) {
                     $bulanAngka = $this->convertBulanToNumber($m);
                     $bulanAngkaStr = str_pad($bulanAngka, 2, '0', STR_PAD_LEFT);
@@ -256,34 +258,37 @@ class BukuKasPembantuTunaiController extends Controller
             }
 
             if (empty($reportData)) {
-                 return response('Data tidak ditemukan', 404);
+                return response('Data tidak ditemukan', 404);
             }
 
             return Excel::download(new BkpPembantuTunaiExport($reportData), "BKP_Pembantu_Tunai_{$bulan}_{$tahun}.xlsx");
 
         } catch (\Exception $e) {
-            Log::error('Error generating BKP Pembantu Tunai Excel: ' . $e->getMessage());
-            return response('Gagal generate Excel: ' . $e->getMessage(), 500);
+            Log::error('Error generating BKP Pembantu Tunai Excel: '.$e->getMessage());
+
+            return response('Gagal generate Excel: '.$e->getMessage(), 500);
         }
     }
 
     /**
      * Internal helper specific for logic extraction
      */
-    public function getBkpPembantuDataInternal($tahun, $bulan) 
+    public function getBkpPembantuDataInternal($tahun, $bulan)
     {
-         $penganggaran = ($this->Penganggaran)::query()->where('tahun_anggaran', $tahun)->first();
-         if (!$penganggaran) return null;
+        $penganggaran = ($this->Penganggaran)::query()->where('tahun_anggaran', $tahun)->first();
+        if (! $penganggaran) {
+            return null;
+        }
 
-         $bulanAngka = $this->convertBulanToNumber($bulan);
-         
-         // Reuse the logic from getBkpPembantuData but return array
-         // Copying essential parts
-         $penarikanTunais = ($this->PenarikanTunai)::query()->where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
-                ->whereMonth('tanggal_penarikan', $bulanAngka)
-                ->whereYear('tanggal_penarikan', $tahun)
-                ->orderBy('tanggal_penarikan', 'asc')
-                ->get();
+        $bulanAngka = $this->convertBulanToNumber($bulan);
+
+        // Reuse the logic from getBkpPembantuData but return array
+        // Copying essential parts
+        $penarikanTunais = ($this->PenarikanTunai)::query()->where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
+            ->whereMonth('tanggal_penarikan', $bulanAngka)
+            ->whereYear('tanggal_penarikan', $tahun)
+            ->orderBy('tanggal_penarikan', 'asc')
+            ->get();
 
         $setorTunais = ($this->SetorTunai)::query()->where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
             ->whereMonth('tanggal_setor', $bulanAngka)
@@ -343,9 +348,9 @@ class BukuKasPembantuTunaiController extends Controller
             + $pajakPengeluaran + $pajakDaerahPengeluaran;
 
         $currentSaldo = $totalPenerimaan - $totalPengeluaran;
-        
+
         $items = [];
-        
+
         // Hitung total penarikan tunai
         $totalPenarikanTunai = $penarikanTunais->sum('jumlah_penarikan');
 
@@ -360,7 +365,7 @@ class BukuKasPembantuTunaiController extends Controller
                 'penerimaan' => $p->jumlah_penarikan,
                 'pengeluaran' => 0,
                 'sort_order' => 4,
-                'group_id' => 0
+                'group_id' => 0,
             ];
         }
 
@@ -373,7 +378,7 @@ class BukuKasPembantuTunaiController extends Controller
                 'penerimaan' => 0,
                 'pengeluaran' => $s->jumlah_setor,
                 'sort_order' => 5,
-                'group_id' => 0
+                'group_id' => 0,
             ];
         }
 
@@ -381,86 +386,89 @@ class BukuKasPembantuTunaiController extends Controller
         foreach ($bkuDataTunai as $bku) {
             $blockCounter++;
             $groupMap[$bku->id] = $blockCounter;
+            $uraianBelanja = $bku->uraian_opsional ?: $bku->uraian;
             $items[] = [
                 'tanggal' => $bku->tanggal_transaksi,
-                'uraian' => $bku->uraian_opsional ? $bku->uraian_opsional : $bku->uraian,
+                'uraian' => $uraianBelanja,
                 'no_bukti' => $bku->id_transaksi,
                 'kode_rekening' => $bku->rekeningBelanja ? $bku->rekeningBelanja->kode_rekening : '-',
                 'penerimaan' => 0,
                 'pengeluaran' => $bku->total_transaksi_kotor,
                 'sort_order' => 10,
-                'group_id' => $blockCounter
+                'group_id' => $blockCounter,
             ];
-            
+
             if ($bku->total_pajak > 0) {
-                 $items[] = [
-                     'tanggal' => $bku->tanggal_transaksi,
-                     'uraian' => 'Terima Pajak ' . $bku->pajak . ' ' . ((float)$bku->persen_pajak) . '%' . ' ' . $bku->uraian_opsional,
-                     'no_bukti' => $bku->kode_masa_pajak,
-                     'kode_rekening' => '-',
-                     'penerimaan' => $bku->total_pajak,
-                     'pengeluaran' => 0,
-                     'sort_order' => 11,
-                     'group_id' => $blockCounter
-                 ];
+                $items[] = [
+                    'tanggal' => $bku->tanggal_transaksi,
+                    'uraian' => trim('Terima Pajak '.$bku->pajak.' '.((float) $bku->persen_pajak).'% '.$uraianBelanja),
+                    'no_bukti' => $bku->kode_masa_pajak,
+                    'kode_rekening' => '-',
+                    'penerimaan' => $bku->total_pajak,
+                    'pengeluaran' => 0,
+                    'sort_order' => 11,
+                    'group_id' => $blockCounter,
+                ];
             }
             if ($bku->total_pajak_daerah > 0) {
-                 $items[] = [
-                     'tanggal' => $bku->tanggal_transaksi,
-                     'uraian' => 'Terima Pajak ' . $bku->pajak_daerah . ' ' . ((float)$bku->persen_pajak_daerah) . '%' . ' ' . $bku->uraian_opsional,
-                     'no_bukti' => '-',
-                     'kode_rekening' => '-',
-                     'penerimaan' => $bku->total_pajak_daerah,
-                     'pengeluaran' => 0,
-                     'sort_order' => 11,
-                     'group_id' => $blockCounter
-                 ];
+                $items[] = [
+                    'tanggal' => $bku->tanggal_transaksi,
+                    'uraian' => trim('Terima Pajak '.$bku->pajak_daerah.' '.((float) $bku->persen_pajak_daerah).'% '.$uraianBelanja),
+                    'no_bukti' => '-',
+                    'kode_rekening' => '-',
+                    'penerimaan' => $bku->total_pajak_daerah,
+                    'pengeluaran' => 0,
+                    'sort_order' => 11,
+                    'group_id' => $blockCounter,
+                ];
             }
         }
 
         foreach ($bkuPajakDisetorTunai as $bku) {
             $currentGroupId = $groupMap[$bku->id] ?? null;
-            if (!$currentGroupId) {
+            if (! $currentGroupId) {
                 $blockCounter++;
                 $currentGroupId = $blockCounter;
                 $groupMap[$bku->id] = $currentGroupId;
             }
+            $uraianBelanja = $bku->uraian_opsional ?: $bku->uraian;
             if ($bku->total_pajak > 0) {
                 $items[] = [
                     'tanggal' => $bku->tanggal_lapor,
-                    'uraian' => 'Setor Pajak ' . $bku->pajak . ' ' . ((float)$bku->persen_pajak) . '%' . ' ' . $bku->uraian_opsional,
-                    'no_bukti' => $bku->ntpn, 
+                    'uraian' => trim('Setor Pajak '.$bku->pajak.' '.((float) $bku->persen_pajak).'%'.' '.$uraianBelanja),
+                    'no_bukti' => $bku->ntpn,
                     'kode_rekening' => '-',
                     'penerimaan' => 0,
                     'pengeluaran' => $bku->total_pajak,
                     'sort_order' => 12,
-                    'group_id' => $currentGroupId
+                    'group_id' => $currentGroupId,
                 ];
             }
             if ($bku->total_pajak_daerah > 0) {
                 $items[] = [
                     'tanggal' => $bku->tanggal_lapor,
-                    'uraian' => 'Setor Pajak ' . $bku->pajak_daerah . ' ' . ((float)$bku->persen_pajak_daerah) . '%' . ' ' . $bku->uraian_opsional,
+                    'uraian' => trim('Setor Pajak '.$bku->pajak_daerah.' '.((float) $bku->persen_pajak_daerah).'%'.' '.$uraianBelanja),
                     'no_bukti' => '-',
                     'kode_rekening' => '-',
                     'penerimaan' => 0,
                     'pengeluaran' => $bku->total_pajak_daerah,
                     'sort_order' => 12,
-                    'group_id' => $currentGroupId
+                    'group_id' => $currentGroupId,
                 ];
             }
         }
-        
-        usort($items, function($a, $b) {
-            $tA = strtotime($a['tanggal'] instanceof \Carbon\Carbon ? $a['tanggal']->toDateTimeString() : $a['tanggal']);
-            $tB = strtotime($b['tanggal'] instanceof \Carbon\Carbon ? $b['tanggal']->toDateTimeString() : $b['tanggal']);
-            
+
+        usort($items, function ($a, $b) {
+            $tA = strtotime($a['tanggal'] instanceof Carbon ? $a['tanggal']->toDateTimeString() : $a['tanggal']);
+            $tB = strtotime($b['tanggal'] instanceof Carbon ? $b['tanggal']->toDateTimeString() : $b['tanggal']);
+
             if ($tA !== $tB) {
                 return $tA - $tB;
             }
             if (($a['group_id'] ?? 0) !== ($b['group_id'] ?? 0)) {
                 return ($a['group_id'] ?? 0) - ($b['group_id'] ?? 0);
             }
+
             return ($a['sort_order'] ?? 99) - ($b['sort_order'] ?? 99);
         });
 
@@ -472,7 +480,7 @@ class BukuKasPembantuTunaiController extends Controller
                 'totalPengeluaran' => $totalPengeluaran,
                 'totalPengeluaran' => $totalPengeluaran,
                 'currentSaldo' => $currentSaldo,
-                'totalPenarikan' => $totalPenarikanTunai
+                'totalPenarikan' => $totalPenarikanTunai,
             ],
             'sekolah' => [
                 'nama_sekolah' => $penganggaran->sekolah->nama_sekolah,
@@ -492,7 +500,6 @@ class BukuKasPembantuTunaiController extends Controller
             ],
         ];
     }
-
 
     // Helper methods
     private function convertBulanToNumber($bulan)
@@ -533,30 +540,35 @@ class BukuKasPembantuTunaiController extends Controller
     private function getTanggalAkhirBulan($tahun, $bulan)
     {
         $bulanAngka = $this->convertBulanToNumber($bulan);
+
         return Carbon::create($tahun, $bulanAngka, 1)->endOfMonth();
     }
 
     private function getHariAkhirBulan($tahun, $bulan)
     {
         $tanggalAkhirBulan = $this->getTanggalAkhirBulan($tahun, $bulan);
+
         return $tanggalAkhirBulan->locale('id')->dayName;
     }
 
     private function formatAkhirBulanLengkapHari($tahun, $bulan)
     {
         $tanggalAkhirBulan = $this->getTanggalAkhirBulan($tahun, $bulan);
+
         return $tanggalAkhirBulan->locale('id')->translatedFormat('l, j F Y');
     }
 
     private function formatAkhirBulanSingkat($tahun, $bulan)
     {
         $tanggalAkhirBulan = $this->getTanggalAkhirBulan($tahun, $bulan);
+
         return $tanggalAkhirBulan->format('d/m/Y');
     }
 
     private function formatTanggalAkhirBulanLengkap($tahun, $bulan)
     {
         $tanggalAkhirBulan = $this->getTanggalAkhirBulan($tahun, $bulan);
+
         return $tanggalAkhirBulan->locale('id')->translatedFormat('j F Y');
     }
 
@@ -566,9 +578,10 @@ class BukuKasPembantuTunaiController extends Controller
         if (app()->bound('variant')) {
             $var = app('variant');
         }
-        return \Inertia\Inertia::render(VariantConfig::pagePrefix($var) . $component, array_merge($props, [
+
+        return Inertia::render(VariantConfig::pagePrefix($var).$component, array_merge($props, [
             'variant' => $var,
-            'routePrefix' => VariantConfig::routePrefix($var)
+            'routePrefix' => VariantConfig::routePrefix($var),
         ]));
     }
 }

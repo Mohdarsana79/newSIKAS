@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\Process\Process;
 
 class BukuKasUmumController extends Controller
 {
@@ -389,11 +390,11 @@ class BukuKasUmumController extends Controller
 
         // panggil validasi nota yang sama
         $allUsedNotes = ($this->BukuKasUmum)::query()->where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
-        ->where(function ($query) {
-            $query->whereNotNull('nomor_nota')->orWhereNotNull('id_transaksi');
-        })
-        ->select('id', 'id_transaksi', 'nomor_nota')
-        ->get();
+            ->where(function ($query) {
+                $query->whereNotNull('nomor_nota')->orWhereNotNull('id_transaksi');
+            })
+            ->select('id', 'id_transaksi', 'nomor_nota')
+            ->get();
 
         // Ambil Nomor Nota Terakhir (Excluding bunga/closing record)
         $lastNoteNumber = ($this->BukuKasUmum)::query()->where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
@@ -1725,7 +1726,7 @@ class BukuKasUmumController extends Controller
         $bulanList = [
             1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
             5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
-            9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'
+            9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember',
         ];
 
         if ($bulanAngka == 1) {
@@ -3067,5 +3068,546 @@ class BukuKasUmumController extends Controller
 
             return response()->json(['success' => false, 'data' => []]);
         }
+    }
+
+    /**
+     * Menentukan id_ref_sumber_dana ARKAS berdasarkan varian newSIKAS aktif.
+     */
+    private function getArkasSumberDanaId(): int
+    {
+        return match ($this->variant) {
+            'kinerja' => 12,
+            'silpa' => 33,
+            'kinerja_silpa' => 35,
+            default => 1, // reguler
+        };
+    }
+
+    /**
+     * Menjalankan Python engine dump_bku.py dengan environment yang tepat.
+     */
+    private function runArkasBkuEngine(array $args): array
+    {
+        $pythonPath = storage_path('app/arkas_engine/python.exe');
+        $scriptPath = storage_path('app/arkas_engine/dump_bku.py');
+
+        if (! file_exists($pythonPath) || ! file_exists($scriptPath)) {
+            throw new \Exception('Arkas Engine tidak ditemukan.');
+        }
+
+        $env = $_SERVER;
+        unset($env['OPENSSL_CONF']);
+
+        $appdata = $env['APPDATA'] ?? null;
+        $userprofile = $env['USERPROFILE'] ?? null;
+
+        if (empty($appdata)) {
+            $appdata = trim(shell_exec("powershell -Command \"[Environment]::GetFolderPath('ApplicationData')\""));
+        }
+        if (empty($userprofile)) {
+            $userprofile = trim(shell_exec("powershell -Command \"[Environment]::GetFolderPath('UserProfile')\""));
+        }
+        if (empty($userprofile) && ! empty($appdata)) {
+            $userprofile = dirname(dirname($appdata));
+        }
+        if (empty($appdata) && ! empty($userprofile)) {
+            $appdata = $userprofile.'\\AppData\\Roaming';
+        }
+
+        $env['SystemRoot'] = $env['SystemRoot'] ?? 'C:\\Windows';
+        $env['SystemDrive'] = $env['SystemDrive'] ?? 'C:';
+        $env['USERPROFILE'] = $userprofile ?: ($env['USERPROFILE'] ?? 'C:\\Users\\Digitalisasi');
+        $env['APPDATA'] = $appdata ?: ($env['APPDATA'] ?? 'C:\\Users\\Digitalisasi\\AppData\\Roaming');
+        $env['LOCALAPPDATA'] = $env['LOCALAPPDATA'] ?? ($userprofile ? $userprofile.'\\AppData\\Local' : '');
+        $env['TEMP'] = $env['TEMP'] ?? ($userprofile ? $userprofile.'\\AppData\\Local\\Temp' : '');
+        $env['TMP'] = $env['TMP'] ?? $env['TEMP'];
+
+        $command = array_merge([$pythonPath, $scriptPath], $args);
+
+        $dbPathManual = env('ARKAS_DB_PATH', '');
+        $dbPathManual = trim($dbPathManual, '"\' ');
+        $dbPathManual = str_replace('\\', '/', $dbPathManual);
+        if (! empty($dbPathManual)) {
+            $command[] = $dbPathManual;
+        }
+
+        $process = new Process($command, null, $env);
+        $process->setTimeout(120);
+        $process->run();
+
+        if (! $process->isSuccessful()) {
+            throw new \Exception('Gagal mengeksekusi engine ARKAS: '.$process->getErrorOutput());
+        }
+
+        $output = $process->getOutput();
+        $result = json_decode($output, true);
+
+        if (! $result) {
+            throw new \Exception('Format respons engine ARKAS tidak valid: '.$output);
+        }
+
+        if (isset($result['status']) && $result['status'] === 'error') {
+            throw new \Exception($result['message'] ?? 'Terjadi kesalahan pada engine ARKAS.');
+        }
+
+        return $result;
+    }
+
+    /**
+     * Memeriksa ketersediaan data BKU di ARKAS untuk satu tahun penuh.
+     */
+    public function checkArkasBkuYearly(Request $request, $penganggaranId)
+    {
+        try {
+            $penganggaran = ($this->Penganggaran)::findOrFail($penganggaranId);
+            $penganggaranFk = VariantConfig::penganggaranFk($this->variant);
+            $tahun = (int) $penganggaran->tahun_anggaran;
+            $sumberDanaId = $this->getArkasSumberDanaId();
+
+            // 1. Cek keberadaan RKAS
+            $rkasCount = ($this->Rkas)::where($penganggaranFk, $penganggaran->id)->count();
+
+            // 2. Cek data BKU existing di newSIKAS
+            $existingBelanja = ($this->BukuKasUmum)::where($penganggaranFk, $penganggaran->id)
+                ->where('is_bunga_record', false)->count();
+            $existingPenerimaan = ($this->PenerimaanDana)::where($penganggaranFk, $penganggaran->id)->count();
+            $existingPenarikan = ($this->PenarikanTunai)::where($penganggaranFk, $penganggaran->id)->count();
+            $existingSetor = ($this->SetorTunai)::where($penganggaranFk, $penganggaran->id)->count();
+            $totalExisting = $existingBelanja + $existingPenerimaan + $existingPenarikan + $existingSetor;
+
+            // 3. Jalankan check di ARKAS
+            $result = $this->runArkasBkuEngine(['check', (string) $tahun, (string) $sumberDanaId]);
+
+            return response()->json([
+                'status' => 'success',
+                'exists' => $result['exists'] ?? false,
+                'tahun' => $tahun,
+                'sumber_dana' => VariantConfig::title($this->variant),
+                'rkas_count' => $rkasCount,
+                'has_rkas' => $rkasCount > 0,
+                'has_existing_data' => $totalExisting > 0,
+                'existing_counts' => [
+                    'belanja' => $existingBelanja,
+                    'penerimaan' => $existingPenerimaan,
+                    'penarikan' => $existingPenarikan,
+                    'setor' => $existingSetor,
+                    'total' => $totalExisting,
+                ],
+                'arkas_data' => $result,
+                'message' => $result['message'] ?? null,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('❌ [CHECK ARKAS BKU YEARLY] Error: '.$e->getMessage());
+
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Memeriksa ketersediaan data BKU di ARKAS untuk bulan tertentu.
+     */
+    public function checkArkasBkuMonthly(Request $request, $penganggaranId, $bulan)
+    {
+        try {
+            $penganggaran = ($this->Penganggaran)::findOrFail($penganggaranId);
+            $penganggaranFk = VariantConfig::penganggaranFk($this->variant);
+            $tahun = (int) $penganggaran->tahun_anggaran;
+            $bulanAngka = $this->convertBulanToNumber($bulan);
+            $sumberDanaId = $this->getArkasSumberDanaId();
+
+            // 1. Cek keberadaan RKAS
+            $rkasCount = ($this->Rkas)::where($penganggaranFk, $penganggaran->id)->count();
+
+            // 2. Cek data BKU existing di newSIKAS pada bulan ini
+            $existingBelanja = ($this->BukuKasUmum)::where($penganggaranFk, $penganggaran->id)
+                ->whereYear('tanggal_transaksi', $tahun)
+                ->whereMonth('tanggal_transaksi', $bulanAngka)
+                ->where('is_bunga_record', false)->count();
+            $existingPenerimaan = ($this->PenerimaanDana)::where($penganggaranFk, $penganggaran->id)
+                ->whereYear('tanggal_terima', $tahun)
+                ->whereMonth('tanggal_terima', $bulanAngka)->count();
+            $existingPenarikan = ($this->PenarikanTunai)::where($penganggaranFk, $penganggaran->id)
+                ->whereYear('tanggal_penarikan', $tahun)
+                ->whereMonth('tanggal_penarikan', $bulanAngka)->count();
+            $existingSetor = ($this->SetorTunai)::where($penganggaranFk, $penganggaran->id)
+                ->whereYear('tanggal_setor', $tahun)
+                ->whereMonth('tanggal_setor', $bulanAngka)->count();
+            $totalExisting = $existingBelanja + $existingPenerimaan + $existingPenarikan + $existingSetor;
+
+            // 3. Jalankan check di ARKAS untuk bulan ini
+            $result = $this->runArkasBkuEngine(['check', (string) $tahun, (string) $sumberDanaId, $bulan]);
+
+            return response()->json([
+                'status' => 'success',
+                'exists' => $result['exists'] ?? false,
+                'tahun' => $tahun,
+                'bulan' => $bulan,
+                'sumber_dana' => VariantConfig::title($this->variant),
+                'rkas_count' => $rkasCount,
+                'has_rkas' => $rkasCount > 0,
+                'has_existing_data' => $totalExisting > 0,
+                'existing_counts' => [
+                    'belanja' => $existingBelanja,
+                    'penerimaan' => $existingPenerimaan,
+                    'penarikan' => $existingPenarikan,
+                    'setor' => $existingSetor,
+                    'total' => $totalExisting,
+                ],
+                'arkas_data' => $result,
+                'message' => $result['message'] ?? null,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('❌ [CHECK ARKAS BKU MONTHLY] Error: '.$e->getMessage());
+
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Menarik seluruh data BKU dalam setahun penuh dari ARKAS.
+     */
+    public function pullArkasBkuYearly(Request $request, $penganggaranId)
+    {
+        try {
+            $penganggaran = ($this->Penganggaran)::findOrFail($penganggaranId);
+            $tahun = (int) $penganggaran->tahun_anggaran;
+            $sumberDanaId = $this->getArkasSumberDanaId();
+            $overwrite = filter_var($request->input('overwrite', false), FILTER_VALIDATE_BOOLEAN);
+
+            // Eksekusi dump dari Python
+            $dumpResult = $this->runArkasBkuEngine(['dump', (string) $tahun, (string) $sumberDanaId]);
+
+            DB::beginTransaction();
+
+            $stats = $this->executePullArkasBku($penganggaran, $dumpResult, null, $overwrite);
+
+            DB::commit();
+
+            return redirect()->back()->with('success', "Berhasil menarik BKU Tahun {$tahun} dari ARKAS: {$stats['imported_belanja']} transaksi belanja, {$stats['imported_penerimaan']} penerimaan dana, {$stats['imported_penarikan']} penarikan tunai.");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('❌ [PULL ARKAS BKU YEARLY] Error: '.$e->getMessage());
+
+            return redirect()->back()->withErrors([
+                'message' => 'Gagal menarik data BKU dari ARKAS: '.$e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Menarik data BKU bulan tertentu dari ARKAS.
+     */
+    public function pullArkasBkuMonthly(Request $request, $penganggaranId, $bulan)
+    {
+        try {
+            $penganggaran = ($this->Penganggaran)::findOrFail($penganggaranId);
+            $tahun = (int) $penganggaran->tahun_anggaran;
+            $sumberDanaId = $this->getArkasSumberDanaId();
+            $overwrite = filter_var($request->input('overwrite', false), FILTER_VALIDATE_BOOLEAN);
+
+            // Eksekusi dump dari Python untuk bulan terpilih
+            $dumpResult = $this->runArkasBkuEngine(['dump', (string) $tahun, (string) $sumberDanaId, $bulan]);
+
+            DB::beginTransaction();
+
+            $stats = $this->executePullArkasBku($penganggaran, $dumpResult, $bulan, $overwrite);
+
+            DB::commit();
+
+            return redirect()->back()->with('success', "Berhasil menarik BKU Bulan {$bulan} {$tahun} dari ARKAS: {$stats['imported_belanja']} transaksi belanja, {$stats['imported_penerimaan']} penerimaan dana, {$stats['imported_penarikan']} penarikan tunai.");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('❌ [PULL ARKAS BKU MONTHLY] Error: '.$e->getMessage());
+
+            return redirect()->back()->withErrors([
+                'message' => 'Gagal menarik data BKU Bulan '.$bulan.' dari ARKAS: '.$e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Core handler penyimpanan data BKU dari payload ARKAS ke database newSIKAS.
+     */
+    private function executePullArkasBku($penganggaran, array $dumpResult, ?string $bulanFilter = null, bool $overwrite = false): array
+    {
+        $penganggaranFk = VariantConfig::penganggaranFk($this->variant);
+        $bkuFk = VariantConfig::bkuFk($this->variant);
+        $tahun = (int) $penganggaran->tahun_anggaran;
+        $bulanAngkaFilter = $bulanFilter ? $this->convertBulanToNumber($bulanFilter) : null;
+
+        // 1. Cek keberadaan RKAS
+        $rkasCount = ($this->Rkas)::where($penganggaranFk, $penganggaran->id)->count();
+        if ($rkasCount === 0) {
+            throw new \Exception('Data RKAS belum ada di newSIKAS. Harap tarik atau isi data RKAS terlebih dahulu sebelum menarik BKU.');
+        }
+
+        // Preload master data
+        $kegiatanMap = KodeKegiatan::pluck('id', 'kode')->toArray();
+        $rekeningMap = RekeningBelanja::pluck('id', 'kode_rekening')->toArray();
+        $rkasList = ($this->Rkas)::where($penganggaranFk, $penganggaran->id)->get();
+        $rkasPerubahanList = ($this->RkasPerubahan && class_exists($this->RkasPerubahan))
+            ? ($this->RkasPerubahan)::where($penganggaranFk, $penganggaran->id)->get()
+            : collect([]);
+
+        // Cek jika data sudah ada tetapi opsi overwrite tidak dicentang
+        if (! $overwrite) {
+            $hasExisting = false;
+            if ($bulanAngkaFilter) {
+                $hasExisting = ($this->BukuKasUmum)::where($penganggaranFk, $penganggaran->id)
+                    ->where(function ($q) use ($tahun, $bulanAngkaFilter) {
+                        $q->where(function ($sub) use ($tahun, $bulanAngkaFilter) {
+                            $sub->whereYear('tanggal_transaksi', $tahun)
+                                ->whereMonth('tanggal_transaksi', $bulanAngkaFilter);
+                        })->orWhere(function ($sub) use ($tahun, $bulanAngkaFilter) {
+                            $sub->whereYear('tanggal_tutup', $tahun)
+                                ->whereMonth('tanggal_tutup', $bulanAngkaFilter);
+                        });
+                    })->exists()
+                    || ($this->PenerimaanDana)::where($penganggaranFk, $penganggaran->id)
+                        ->whereYear('tanggal_terima', $tahun)
+                        ->whereMonth('tanggal_terima', $bulanAngkaFilter)->exists()
+                    || ($this->PenarikanTunai)::where($penganggaranFk, $penganggaran->id)
+                        ->whereYear('tanggal_penarikan', $tahun)
+                        ->whereMonth('tanggal_penarikan', $bulanAngkaFilter)->exists()
+                    || ($this->SetorTunai)::where($penganggaranFk, $penganggaran->id)
+                        ->whereYear('tanggal_setor', $tahun)
+                        ->whereMonth('tanggal_setor', $bulanAngkaFilter)->exists();
+            } else {
+                $hasExisting = ($this->BukuKasUmum)::where($penganggaranFk, $penganggaran->id)->exists()
+                    || ($this->PenerimaanDana)::where($penganggaranFk, $penganggaran->id)->exists()
+                    || ($this->PenarikanTunai)::where($penganggaranFk, $penganggaran->id)->exists()
+                    || ($this->SetorTunai)::where($penganggaranFk, $penganggaran->id)->exists();
+            }
+
+            if ($hasExisting) {
+                $periodeLabel = $bulanFilter ? "Bulan {$bulanFilter} {$tahun}" : "Tahun {$tahun}";
+                throw new \Exception("Data BKU untuk {$periodeLabel} sudah ada di newSIKAS. Harap centang konfirmasi penimpaan (overwrite) untuk mengganti data lama.");
+            }
+        }
+
+        // Hapus data lama jika overwrite disetujui
+        if ($overwrite) {
+            if ($bulanAngkaFilter) {
+                // Scoped bulan ini saja
+                $bkuIds = ($this->BukuKasUmum)::where($penganggaranFk, $penganggaran->id)
+                    ->where(function ($q) use ($tahun, $bulanAngkaFilter) {
+                        $q->where(function ($sub) use ($tahun, $bulanAngkaFilter) {
+                            $sub->whereYear('tanggal_transaksi', $tahun)
+                                ->whereMonth('tanggal_transaksi', $bulanAngkaFilter);
+                        })->orWhere(function ($sub) use ($tahun, $bulanAngkaFilter) {
+                            $sub->whereYear('tanggal_tutup', $tahun)
+                                ->whereMonth('tanggal_tutup', $bulanAngkaFilter);
+                        });
+                    })
+                    ->pluck('id')->toArray();
+
+                if (! empty($bkuIds)) {
+                    ($this->BukuKasUmumUraianDetail)::whereIn($bkuFk, $bkuIds)->delete();
+                    ($this->BukuKasUmum)::whereIn('id', $bkuIds)->delete();
+                }
+
+                ($this->PenerimaanDana)::where($penganggaranFk, $penganggaran->id)
+                    ->whereYear('tanggal_terima', $tahun)
+                    ->whereMonth('tanggal_terima', $bulanAngkaFilter)->delete();
+
+                ($this->PenarikanTunai)::where($penganggaranFk, $penganggaran->id)
+                    ->whereYear('tanggal_penarikan', $tahun)
+                    ->whereMonth('tanggal_penarikan', $bulanAngkaFilter)->delete();
+
+                ($this->SetorTunai)::where($penganggaranFk, $penganggaran->id)
+                    ->whereYear('tanggal_setor', $tahun)
+                    ->whereMonth('tanggal_setor', $bulanAngkaFilter)->delete();
+            } else {
+                // Semua bulan di tahun ini
+                $bkuIds = ($this->BukuKasUmum)::where($penganggaranFk, $penganggaran->id)->pluck('id')->toArray();
+                if (! empty($bkuIds)) {
+                    ($this->BukuKasUmumUraianDetail)::whereIn($bkuFk, $bkuIds)->delete();
+                    ($this->BukuKasUmum)::whereIn('id', $bkuIds)->delete();
+                }
+                ($this->PenerimaanDana)::where($penganggaranFk, $penganggaran->id)->delete();
+                ($this->PenarikanTunai)::where($penganggaranFk, $penganggaran->id)->delete();
+                ($this->SetorTunai)::where($penganggaranFk, $penganggaran->id)->delete();
+            }
+        }
+
+        $importedPenerimaan = 0;
+        $importedPenarikan = 0;
+        $importedSetor = 0;
+        $importedBelanja = 0;
+
+        // 2. Simpan Penerimaan Dana
+        if (! empty($dumpResult['penerimaan_dana'])) {
+            foreach ($dumpResult['penerimaan_dana'] as $p) {
+                $tgl = $p['tanggal_terima'];
+                $mNum = (int) date('n', strtotime($tgl));
+
+                $sumberDanaTitle = VariantConfig::sumberDanaTahap1($this->variant);
+                if ($this->variant === VariantConfig::REGULER) {
+                    $sumberDanaTitle = ($mNum <= 6) ? 'Bosp Reguler Tahap 1' : 'Bosp Reguler Tahap 2';
+                } elseif ($this->variant === VariantConfig::KINERJA) {
+                    $sumberDanaTitle = ($mNum <= 6) ? 'Bosp Kinerja Tahap 1' : 'Bosp Kinerja Tahap 2';
+                } else {
+                    $options = VariantConfig::sumberDanaOptions($this->variant);
+                    $sumberDanaTitle = $options[0] ?? 'SiLPA BOSP Reguler';
+                }
+
+                ($this->PenerimaanDana)::create([
+                    $penganggaranFk => $penganggaran->id,
+                    'sumber_dana' => $sumberDanaTitle,
+                    'jumlah_dana' => $p['jumlah_dana'],
+                    'tanggal_terima' => $tgl,
+                ]);
+                $importedPenerimaan++;
+            }
+        }
+
+        // 3. Simpan Penarikan Tunai
+        if (! empty($dumpResult['penarikan_tunai'])) {
+            foreach ($dumpResult['penarikan_tunai'] as $pt) {
+                ($this->PenarikanTunai)::create([
+                    $penganggaranFk => $penganggaran->id,
+                    'tanggal_penarikan' => $pt['tanggal_penarikan'],
+                    'jumlah_penarikan' => $pt['jumlah_penarikan'],
+                ]);
+                $importedPenarikan++;
+            }
+        }
+
+        // 4. Simpan Setor Tunai
+        if (! empty($dumpResult['setor_tunai'])) {
+            foreach ($dumpResult['setor_tunai'] as $st) {
+                ($this->SetorTunai)::create([
+                    $penganggaranFk => $penganggaran->id,
+                    'tanggal_setor' => $st['tanggal_setor'],
+                    'jumlah_setor' => $st['jumlah_setor'],
+                ]);
+                $importedSetor++;
+            }
+        }
+
+        // 5. Simpan Transaksi Belanja & Detail Barang
+        if (! empty($dumpResult['transaksi_belanja'])) {
+            foreach ($dumpResult['transaksi_belanja'] as $tx) {
+                $kegId = $kegiatanMap[trim($tx['kode_kegiatan'])] ?? null;
+                $rekId = $rekeningMap[trim($tx['kode_rekening'])] ?? null;
+
+                $idTransaksi = ! empty($tx['no_bukti']) ? $tx['no_bukti'] : (! empty($tx['nomor_nota']) ? $tx['nomor_nota'] : null);
+                if (empty($idTransaksi)) {
+                    $dateClean = str_replace('-', '', $tx['tanggal_transaksi']);
+                    $idTransaksi = 'TRX-'.$dateClean.'-'.strtoupper(substr(md5(uniqid(mt_rand(), true)), 0, 4));
+                }
+                $nomorNota = ! empty($tx['no_nota']) ? $tx['no_nota'] : $idTransaksi;
+
+                $bku = ($this->BukuKasUmum)::create([
+                    $penganggaranFk => $penganggaran->id,
+                    'id_transaksi' => $idTransaksi,
+                    'tanggal_transaksi' => $tx['tanggal_transaksi'],
+                    'kode_kegiatan_id' => $kegId,
+                    'rekening_belanja_id' => $rekId,
+                    'uraian' => $tx['uraian'],
+                    'jenis_transaksi' => $tx['jenis_transaksi'],
+                    'total_transaksi_kotor' => $tx['total_transaksi_kotor'],
+                    'dibelanjakan' => $tx['dibelanjakan'],
+                    'pajak' => ($tx['pajak'] !== 'Tanpa Pajak') ? $tx['pajak'] : null,
+                    'persen_pajak' => $tx['persen_pajak'] ?: null,
+                    'total_pajak' => $tx['total_pajak'] ?: 0,
+                    'ntpn' => ! empty($tx['ntpn']) ? $tx['ntpn'] : null,
+                    'tanggal_lapor' => ! empty($tx['tanggal_lapor']) ? $tx['tanggal_lapor'] : null,
+                    'nama_toko' => $tx['nama_toko'] ?: null,
+                    'alamat_toko' => $tx['alamat_toko'] ?: null,
+                    'npwp' => $tx['npwp'] ?: null,
+                    'nomor_nota' => $nomorNota,
+                    'is_bunga_record' => false,
+                ]);
+
+                $tglTx = $tx['tanggal_transaksi'];
+                $mNum = (int) date('n', strtotime($tglTx));
+                $isTahap2 = $mNum >= 7;
+                $rkasFkKey = VariantConfig::uraianDetailRkasFk($this->variant, $isTahap2);
+
+                foreach ($tx['items'] as $item) {
+                    $itemKegId = $kegiatanMap[trim($item['kode_kegiatan'])] ?? $kegId;
+                    $itemRekId = $rekeningMap[trim($item['kode_rekening'])] ?? $rekId;
+
+                    $targetPool = ($isTahap2 && $rkasPerubahanList->isNotEmpty()) ? $rkasPerubahanList : $rkasList;
+
+                    // Match Exact
+                    $matchedRkas = $targetPool->first(function ($r) use ($itemKegId, $itemRekId, $item) {
+                        return $r->kode_id == $itemKegId
+                            && $r->kode_rekening_id == $itemRekId
+                            && (trim(strtolower($r->uraian)) === trim(strtolower($item['rapbs_uraian'])) || trim(strtolower($r->uraian)) === trim(strtolower($item['uraian'])));
+                    });
+
+                    // Fallback Keg + Rek
+                    if (! $matchedRkas) {
+                        $matchedRkas = $targetPool->first(function ($r) use ($itemKegId, $itemRekId) {
+                            return $r->kode_id == $itemKegId && $r->kode_rekening_id == $itemRekId;
+                        });
+                    }
+
+                    // Fallback First
+                    if (! $matchedRkas) {
+                        $matchedRkas = $targetPool->first();
+                    }
+
+                    $matchedId = $matchedRkas ? $matchedRkas->id : null;
+
+                    ($this->BukuKasUmumUraianDetail)::create([
+                        $bkuFk => $bku->id,
+                        'uraian' => $item['uraian'],
+                        'volume' => $item['volume'],
+                        'satuan' => $item['satuan'],
+                        'harga_satuan' => $item['harga_satuan'],
+                        'jumlah' => $item['item_total'],
+                        'kode_kegiatan_id' => $itemKegId,
+                        'rekening_belanja_id' => $itemRekId,
+                        $rkasFkKey => $matchedId,
+                        'kondisi' => 'Baik',
+                    ]);
+                }
+                $importedBelanja++;
+            }
+        }
+
+        // 6. Simpan Status Penutupan Bulan & Bunga Bank
+        if (! empty($dumpResult['penutupan_bulan'])) {
+            foreach ($dumpResult['penutupan_bulan'] as $pb) {
+                if (! empty($pb['is_closed']) && ! empty($pb['tanggal_tutup'])) {
+                    $tutupExists = ($this->BukuKasUmum)::where($penganggaranFk, $penganggaran->id)
+                        ->where('is_bunga_record', true)
+                        ->whereMonth('tanggal_tutup', $pb['bulan_angka'])
+                        ->whereYear('tanggal_tutup', $tahun)
+                        ->first();
+
+                    if (! $tutupExists) {
+                        ($this->BukuKasUmum)::create([
+                            $penganggaranFk => $penganggaran->id,
+                            'tanggal_transaksi' => $pb['tanggal_tutup'],
+                            'tanggal_tutup' => $pb['tanggal_tutup'],
+                            'jenis_transaksi' => 'non-tunai',
+                            'is_bunga_record' => true,
+                            'bunga_bank' => $pb['bunga_bank'] ?: 0,
+                            'pajak_bunga_bank' => $pb['pajak_bunga_bank'] ?: 0,
+                            'total_transaksi_kotor' => 0,
+                            'dibelanjakan' => 0,
+                            'total_pajak' => 0,
+                        ]);
+                    }
+                }
+            }
+        }
+
+        return [
+            'imported_penerimaan' => $importedPenerimaan,
+            'imported_penarikan' => $importedPenarikan,
+            'imported_setor' => $importedSetor,
+            'imported_belanja' => $importedBelanja,
+        ];
     }
 }

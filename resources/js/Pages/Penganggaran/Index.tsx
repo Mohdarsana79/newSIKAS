@@ -14,6 +14,7 @@ import DangerButton from '@/Components/DangerButton';
 import { useForm } from '@inertiajs/react';
 import DatePicker from '@/Components/DatePicker';
 import { format } from 'date-fns';
+import axios from 'axios';
 
 interface PenganggaranItem {
     id: number;
@@ -70,6 +71,75 @@ export default function Index({
     const [alertMessage, setAlertMessage] = useState('');
 
     const [isDeleting, setIsDeleting] = useState(false);
+
+    // Pull ARKAS Perubahan State & Handler
+    const [isArkasModalOpen, setIsArkasModalOpen] = useState(false);
+    const [arkasPreviewData, setArkasPreviewData] = useState<any>(null);
+    const [isCheckingArkas, setIsCheckingArkas] = useState(false);
+    const [activeCheckingId, setActiveCheckingId] = useState<number | null>(null);
+    const [isPullingArkas, setIsPullingArkas] = useState(false);
+    const [confirmOverwrite, setConfirmOverwrite] = useState(false);
+    const [selectedPenganggaranId, setSelectedPenganggaranId] = useState<number | null>(null);
+
+    const handleCheckArkasPerubahan = async (id: number, tahun: string) => {
+        setIsCheckingArkas(true);
+        setActiveCheckingId(id);
+        setSelectedPenganggaranId(id);
+        try {
+            const response = await axios.get(vroute('rkas-perubahan.check-arkas', id));
+            if (response.data.status === 'success') {
+                if (response.data.exists) {
+                    if (response.data.has_bku_tahap2) {
+                        setAlertMessage('Tidak dapat menarik data ARKAS karena sudah terdapat transaksi belanja pada Buku Kas Umum (BKU) bulan Juli - Desember. Hapus transaksi belanja BKU pada periode tersebut terlebih dahulu.');
+                        setIsAlertModalOpen(true);
+                        return;
+                    }
+                    setConfirmOverwrite(false);
+                    setArkasPreviewData(response.data);
+                    setIsArkasModalOpen(true);
+                } else {
+                    setAlertMessage(response.data.message || `Tidak ditemukan data RKAS Perubahan yang disetujui di ARKAS untuk tahun ${tahun}.`);
+                    setIsAlertModalOpen(true);
+                }
+            } else {
+                setAlertMessage('Gagal mengecek data ARKAS: ' + (response.data.message || 'Terjadi kesalahan'));
+                setIsAlertModalOpen(true);
+            }
+        } catch (error: any) {
+            setAlertMessage('Gagal menghubungi engine ARKAS: ' + (error.response?.data?.message || error.message));
+            setIsAlertModalOpen(true);
+        } finally {
+            setIsCheckingArkas(false);
+            setActiveCheckingId(null);
+        }
+    };
+
+    const confirmPullArkas = () => {
+        if (!selectedPenganggaranId) return;
+        if (arkasPreviewData?.current_rkas_count > 0 && !confirmOverwrite) {
+            setAlertMessage('Harap centang persetujuan penimpaan (overwrite) untuk melanjutkan penarikan data.');
+            setIsAlertModalOpen(true);
+            return;
+        }
+
+        setIsPullingArkas(true);
+        router.post(vroute('rkas-perubahan.pull-arkas', selectedPenganggaranId), {
+            overwrite: confirmOverwrite,
+        }, {
+            onSuccess: () => {
+                setIsArkasModalOpen(false);
+            },
+            onError: (errors) => {
+                if (errors.message) {
+                    setAlertMessage(errors.message);
+                    setIsAlertModalOpen(true);
+                }
+            },
+            onFinish: () => {
+                setIsPullingArkas(false);
+            }
+        });
+    };
 
     const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({
         pagu_anggaran: '',
@@ -319,6 +389,28 @@ export default function Index({
                                                 </svg>
                                                 Detail RKAS
                                             </Link>
+
+                                            {/* Tarik ARKAS Button for Perubahan */}
+                                            {item.status === 'perubahan' && (
+                                                <button
+                                                    onClick={() => handleCheckArkasPerubahan(item.id, item.tahun)}
+                                                    disabled={isCheckingArkas && activeCheckingId === item.id}
+                                                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all shadow-sm bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:hover:bg-emerald-900/40 border border-emerald-200 dark:border-emerald-800"
+                                                    title="Tarik RKAS Perubahan dari ARKAS"
+                                                >
+                                                    {isCheckingArkas && activeCheckingId === item.id ? (
+                                                        <svg className="animate-spin h-4 w-4 text-emerald-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                        </svg>
+                                                    ) : (
+                                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                                        </svg>
+                                                    )}
+                                                    <span className="hidden sm:inline">Tarik ARKAS</span>
+                                                </button>
+                                            )}
 
                                             {/* Summary / Print Button */}
                                             <Link
@@ -637,7 +729,7 @@ export default function Index({
                         </div>
                     </div>
                     <h2 className="text-lg font-bold text-center text-gray-900 dark:text-white mb-2">
-                        Tidak Dapat Menghapus
+                        Pemberitahuan
                     </h2>
                     <p className="text-center text-sm text-gray-600 dark:text-gray-400">
                         {alertMessage}
@@ -645,6 +737,97 @@ export default function Index({
                     <div className="mt-6 flex justify-center">
                         <PrimaryButton className="w-full justify-center" onClick={() => setIsAlertModalOpen(false)}>
                             Mengerti
+                        </PrimaryButton>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Modal Preview Tarik RKAS Perubahan dari ARKAS */}
+            <Modal show={isArkasModalOpen} onClose={() => { if (!isPullingArkas) setIsArkasModalOpen(false); }} maxWidth="md">
+                <div className="p-6">
+                    <div className="mb-5 flex justify-center">
+                        <div className="bg-emerald-100 dark:bg-emerald-900/30 p-3 rounded-full text-emerald-600 dark:text-emerald-400">
+                            <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                        </div>
+                    </div>
+                    <h2 className="text-xl font-bold text-center text-gray-900 dark:text-gray-100 mb-1">
+                        Tarik RKAS Perubahan dari ARKAS
+                    </h2>
+                    <p className="text-center text-xs text-gray-500 dark:text-gray-400 mb-6">
+                        Data Perubahan Anggaran resmi ditemukan di database ARKAS. Periksa rincian di bawah sebelum menyinkronkan.
+                    </p>
+
+                    {arkasPreviewData && (
+                        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 space-y-3 border border-gray-100 dark:border-gray-700 text-sm mb-6">
+                            <div className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-gray-600">
+                                <span className="text-gray-500 dark:text-gray-400">Tahun Anggaran</span>
+                                <span className="font-semibold text-gray-800 dark:text-white">{arkasPreviewData.tahun}</span>
+                            </div>
+                            <div className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-gray-600">
+                                <span className="text-gray-500 dark:text-gray-400">Sumber Dana</span>
+                                <span className="font-semibold text-gray-800 dark:text-white">{arkasPreviewData.sumber_dana}</span>
+                            </div>
+                            <div className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-gray-600">
+                                <span className="text-gray-500 dark:text-gray-400">Status Revisi ARKAS</span>
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                                    Perubahan (Revisi)
+                                </span>
+                            </div>
+                            <div className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-gray-600">
+                                <span className="text-gray-500 dark:text-gray-400">Pagu Total Perubahan</span>
+                                <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                                    Rp {new Intl.NumberFormat('id-ID').format(arkasPreviewData.pagu)}
+                                </span>
+                            </div>
+                            <div className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-gray-600">
+                                <span className="text-gray-500 dark:text-gray-400">Jumlah Kegiatan</span>
+                                <span className="font-semibold text-gray-800 dark:text-white">{arkasPreviewData.total_kegiatan} Kegiatan</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span className="text-gray-500 dark:text-gray-400">Total Alokasi Bulanan</span>
+                                <span className="font-semibold text-gray-800 dark:text-white">{arkasPreviewData.total_alokasi} Baris Data</span>
+                            </div>
+                        </div>
+                    )}
+
+                    {arkasPreviewData && arkasPreviewData.current_rkas_count > 0 ? (
+                        <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md mb-6 space-y-2">
+                            <p className="text-xs text-amber-800 dark:text-amber-200 leading-relaxed font-semibold">
+                                Data RKAS Perubahan di newSIKAS saat ini sudah berisi {arkasPreviewData.current_rkas_count} baris alokasi.
+                            </p>
+                            <label className="flex items-start gap-2 cursor-pointer mt-2 pt-2 border-t border-amber-200 dark:border-amber-700/50">
+                                <input
+                                    type="checkbox"
+                                    checked={confirmOverwrite}
+                                    onChange={(e) => setConfirmOverwrite(e.target.checked)}
+                                    className="mt-0.5 rounded border-amber-300 text-amber-600 shadow-sm focus:ring-amber-500"
+                                />
+                                <span className="text-xs text-amber-900 dark:text-amber-100 font-medium">
+                                    Saya setuju untuk menimpa ulang (overwrite) seluruh data RKAS Perubahan saat ini dengan data dari ARKAS.
+                                </span>
+                            </label>
+                        </div>
+                    ) : (
+                        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md mb-6">
+                            <p className="text-xs text-blue-800 dark:text-blue-200 leading-relaxed">
+                                <strong>Informasi:</strong> Seluruh data alokasi bulanan akan disalin ke modul RKAS Perubahan newSIKAS dan nilai Pagu Anggaran akan otomatis disinkronkan.
+                            </p>
+                        </div>
+                    )}
+
+                    <div className="flex justify-center gap-3">
+                        <SecondaryButton onClick={() => setIsArkasModalOpen(false)} disabled={isPullingArkas}>
+                            Batal
+                        </SecondaryButton>
+
+                        <PrimaryButton
+                            onClick={confirmPullArkas}
+                            disabled={isPullingArkas || (arkasPreviewData?.current_rkas_count > 0 && !confirmOverwrite)}
+                            className="bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-500"
+                        >
+                            {isPullingArkas ? 'Menarik Data...' : 'Ya, Tarik Sekarang'}
                         </PrimaryButton>
                     </div>
                 </div>

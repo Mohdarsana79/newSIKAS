@@ -148,6 +148,55 @@ export default function Bku({
         ntpn: '',
     });
 
+    // ARKAS BKU Monthly Pull State
+    const [isArkasMonthlyModalOpen, setIsArkasMonthlyModalOpen] = useState(false);
+    const [arkasMonthlyLoading, setArkasMonthlyLoading] = useState(false);
+    const [arkasMonthlyData, setArkasMonthlyData] = useState<any>(null);
+    const [isMonthlyOverwriteChecked, setIsMonthlyOverwriteChecked] = useState(false);
+    const [pullingMonthlyBku, setPullingMonthlyBku] = useState(false);
+
+    const handleOpenArkasMonthlyModal = async () => {
+        setIsArkasMonthlyModalOpen(true);
+        setArkasMonthlyLoading(true);
+        setArkasMonthlyData(null);
+        setIsMonthlyOverwriteChecked(false);
+
+        try {
+            const response = await axios.get(vroute('bku.check-arkas', {
+                penganggaranId: penganggaran.id,
+                bulan: bulan
+            }));
+            setArkasMonthlyData(response.data);
+        } catch (error: any) {
+            console.error("Error checking ARKAS BKU monthly:", error);
+            setArkasMonthlyData({
+                status: 'error',
+                message: error.response?.data?.message || 'Gagal memeriksa database ARKAS.'
+            });
+        } finally {
+            setArkasMonthlyLoading(false);
+        }
+    };
+
+    const handleExecutePullArkasMonthly = () => {
+        setPullingMonthlyBku(true);
+        router.post(vroute('bku.pull-arkas', {
+            penganggaranId: penganggaran.id,
+            bulan: bulan
+        }), {
+            overwrite: isMonthlyOverwriteChecked
+        }, {
+            onSuccess: () => {
+                setIsArkasMonthlyModalOpen(false);
+                setPullingMonthlyBku(false);
+            },
+            onError: (err) => {
+                console.error("Error pulling monthly BKU:", err);
+                setPullingMonthlyBku(false);
+            }
+        });
+    };
+
     const [isReopenModalOpen, setIsReopenModalOpen] = useState(false);
     const [isReopening, setIsReopening] = useState(false);
     const [currentStep, setCurrentStep] = useState(1);
@@ -2243,6 +2292,17 @@ export default function Bku({
                         <div className="flex flex-wrap gap-2 w-full lg:w-auto">
                             {!is_closed && (
                                 <button
+                                    onClick={handleOpenArkasMonthlyModal}
+                                    className="inline-flex items-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 border border-transparent rounded-md font-semibold text-[10pt] text-white uppercase tracking-widest shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition ease-in-out duration-150"
+                                >
+                                    <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                    </svg>
+                                    Tarik dari ARKAS
+                                </button>
+                            )}
+                            {!is_closed && (
+                                <button
                                     onClick={() => {
                                         setIsEditMode(false);
                                         setEditingBkuId(null);
@@ -3371,6 +3431,154 @@ export default function Bku({
                     </div>
                 </div>
             )}
+            {/* Modal Tarik BKU dari ARKAS (Bulanan) */}
+            <Modal show={isArkasMonthlyModalOpen} onClose={() => !pullingMonthlyBku && setIsArkasMonthlyModalOpen(false)} maxWidth="2xl">
+                <div className="p-6">
+                    <div className="flex items-center gap-3 border-b border-gray-100 dark:border-gray-700 pb-4">
+                        <div className="p-2.5 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl text-emerald-600 dark:text-emerald-400">
+                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">
+                                Tarik BKU Bulan {bulan} dari ARKAS
+                            </h2>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                                Tahun Anggaran {tahun} • {bulan}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="mt-5">
+                        {arkasMonthlyLoading ? (
+                            <div className="py-12 flex flex-col items-center justify-center gap-3">
+                                <div className="w-9 h-9 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+                                <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                                    Memeriksa data BKU Bulan {bulan} di database ARKAS...
+                                </p>
+                            </div>
+                        ) : arkasMonthlyData?.status === 'error' || !arkasMonthlyData?.exists ? (
+                            <div className="py-8 text-center">
+                                <div className="mx-auto w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-amber-600 dark:text-amber-400 mb-3">
+                                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                    </svg>
+                                </div>
+                                <h4 className="text-base font-semibold text-gray-800 dark:text-gray-200 mb-1">
+                                    Data BKU Bulan {bulan} Tidak Ditemukan
+                                </h4>
+                                <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md mx-auto">
+                                    {arkasMonthlyData?.message || `Tidak ditemukan catatan transaksi BKU Bulan ${bulan} ${tahun} di database ARKAS.`}
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="space-y-5">
+                                {/* Ringkasan Data ARKAS Bulan Ini */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div className="bg-purple-50/60 dark:bg-purple-950/20 border border-purple-200/60 dark:border-purple-800/40 rounded-xl p-3.5">
+                                        <span className="text-[10pt] text-purple-700 dark:text-purple-300 font-medium">Belanja Kas Bulan Ini</span>
+                                        <div className="text-lg font-bold text-purple-800 dark:text-purple-200 mt-1">
+                                            {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(arkasMonthlyData.arkas_data.nominal_belanja || 0)}
+                                        </div>
+                                        <div className="text-xs text-purple-600 dark:text-purple-400 mt-0.5">
+                                            {arkasMonthlyData.arkas_data.total_nota_belanja || 0} nota ({arkasMonthlyData.arkas_data.total_item_belanja || 0} item belanja)
+                                        </div>
+                                    </div>
+                                    <div className="bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200/60 dark:border-emerald-800/40 rounded-xl p-3.5">
+                                        <span className="text-[10pt] text-emerald-700 dark:text-emerald-300 font-medium">Status Bulan di ARKAS</span>
+                                        <div className="mt-2">
+                                            {arkasMonthlyData.arkas_data.is_closed ? (
+                                                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300">
+                                                    ✓ Sudah Ditutup Buku
+                                                </span>
+                                            ) : (
+                                                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300">
+                                                    Draft / Belum Ditutup
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="text-xs text-emerald-600 dark:text-emerald-400 mt-1.5">
+                                            {arkasMonthlyData.arkas_data.total_penerimaan > 0 && `${arkasMonthlyData.arkas_data.total_penerimaan} penerimaan dana • `}
+                                            {arkasMonthlyData.arkas_data.total_penarikan > 0 && `${arkasMonthlyData.arkas_data.total_penarikan} tarik tunai`}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Warning jika RKAS belum ada */}
+                                {!arkasMonthlyData.has_rkas && (
+                                    <div className="p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl flex items-start gap-3">
+                                        <svg className="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                        </svg>
+                                        <div className="text-sm text-red-800 dark:text-red-300">
+                                            <span className="font-bold block mb-0.5">Data RKAS Belum Tersedia</span>
+                                            Penarikan BKU mewajibkan RKAS di newSIKAS sudah terisi untuk mencocokkan rincian belanja.
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Warning & Konfirmasi Overwrite jika sudah ada data BKU bulan ini */}
+                                {arkasMonthlyData.has_existing_data && (
+                                    <div className="p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl space-y-3">
+                                        <div className="flex items-start gap-3">
+                                            <svg className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                            </svg>
+                                            <div className="text-sm text-amber-800 dark:text-amber-300">
+                                                <span className="font-bold block mb-0.5">Konfirmasi Timpa Ulang (Overwrite)</span>
+                                                Di newSIKAS saat ini sudah tercatat <strong>{arkasMonthlyData.existing_counts.total} transaksi BKU</strong> pada bulan {bulan} {tahun}. Melanjutkan penarikan akan <strong>menghapus data transaksi bulan {bulan} ini</strong> dan menggantikannya dengan data resmi dari ARKAS.
+                                            </div>
+                                        </div>
+                                        <label className="flex items-center gap-2.5 pt-2 border-t border-amber-200/80 dark:border-amber-800/80 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={isMonthlyOverwriteChecked}
+                                                onChange={(e) => setIsMonthlyOverwriteChecked(e.target.checked)}
+                                                className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500"
+                                            />
+                                            <span className="text-xs font-semibold text-amber-900 dark:text-amber-200">
+                                                Saya memahami dan menyetujui untuk menimpa ulang data BKU bulan {bulan} {tahun}.
+                                            </span>
+                                        </label>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="mt-6 flex justify-end gap-3 border-t border-gray-100 dark:border-gray-700 pt-4">
+                        <SecondaryButton onClick={() => setIsArkasMonthlyModalOpen(false)} disabled={pullingMonthlyBku}>
+                            Batal
+                        </SecondaryButton>
+                        {arkasMonthlyData?.exists && arkasMonthlyData?.has_rkas && (
+                            <button
+                                onClick={handleExecutePullArkasMonthly}
+                                disabled={pullingMonthlyBku || (arkasMonthlyData.has_existing_data && !isMonthlyOverwriteChecked)}
+                                className={`inline-flex items-center px-5 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider text-white shadow-sm transition-all duration-150 ${
+                                    pullingMonthlyBku || (arkasMonthlyData.has_existing_data && !isMonthlyOverwriteChecked)
+                                        ? 'bg-gray-400 dark:bg-gray-600 cursor-not-allowed opacity-60'
+                                        : 'bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2'
+                                }`}
+                            >
+                                {pullingMonthlyBku ? (
+                                    <>
+                                        <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                        Menarik BKU...
+                                    </>
+                                ) : (
+                                    <>
+                                        <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                        </svg>
+                                        {arkasMonthlyData.has_existing_data ? 'Tarik & Timpa Ulang BKU' : 'Tarik BKU Sekarang'}
+                                    </>
+                                )}
+                            </button>
+                        )}
+                    </div>
+                </div>
+            </Modal>
         </AuthenticatedLayout >
     );
 }

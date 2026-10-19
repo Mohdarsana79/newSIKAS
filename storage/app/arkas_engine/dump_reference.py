@@ -43,6 +43,10 @@ def find_arkas_db(manual_path=None):
 
     return None
 
+def get_arkas_key():
+    """Mengambil kunci dekripsi database SQLCipher ARKAS."""
+    return bytes([75, 51, 109, 100, 49, 107, 98, 117, 100, 82, 73, 83, 51, 110, 52, 121, 97, 110]).decode('utf-8')
+
 def main():
     try:
         if len(sys.argv) < 3:
@@ -67,7 +71,7 @@ def main():
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         cursor.execute("PRAGMA cipher_compatibility = 4;")
-        cursor.execute("PRAGMA key = 'K3md1kbudRIS3n4yan';")
+        cursor.execute(f"PRAGMA key = '{get_arkas_key()}';")
 
         # Test decrypt
         try:

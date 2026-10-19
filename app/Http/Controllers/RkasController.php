@@ -15,26 +15,33 @@ use App\Config\VariantConfig;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
+use Symfony\Component\Process\Process;
 
 class RkasController extends Controller
 {
-    protected ?string $variant;
-    protected ?string $Penganggaran;
-    protected ?string $Rkas;
-    protected ?string $RkasPerubahan;
-    protected ?string $BukuKasUmum;
-    protected ?string $BukuKasUmumUraianDetail;
+    protected ?string $variant = 'reguler';
+    protected ?string $Penganggaran = null;
+    protected ?string $Rkas = null;
+    protected ?string $RkasPerubahan = null;
+    protected ?string $BukuKasUmum = null;
+    protected ?string $BukuKasUmumUraianDetail = null;
+
+    protected function initVariantModels(): void
+    {
+        $this->variant = app()->bound('variant') ? app('variant') : ($this->variant ?? 'reguler');
+        $this->Penganggaran = VariantConfig::getModelClass('penganggaran', $this->variant);
+        $this->Rkas = VariantConfig::getModelClass('rkas', $this->variant);
+        $this->RkasPerubahan = VariantConfig::getModelClass('rkas_perubahan', $this->variant);
+        $this->BukuKasUmum = VariantConfig::getModelClass('bku', $this->variant);
+        $this->BukuKasUmumUraianDetail = VariantConfig::getModelClass('bku_uraian_detail', $this->variant);
+    }
 
     public function __construct()
     {
+        $this->initVariantModels();
+
         $this->middleware(function ($request, $next) {
-            $this->variant = app()->bound('variant') ? app('variant') : 'reguler';
-            $this->Penganggaran = VariantConfig::getModelClass('penganggaran', $this->variant);
-            $this->Rkas = VariantConfig::getModelClass('rkas', $this->variant);
-            $this->RkasPerubahan = VariantConfig::getModelClass('rkas_perubahan', $this->variant);
-            $this->BukuKasUmum = VariantConfig::getModelClass('bku', $this->variant);
-            $this->BukuKasUmumUraianDetail = VariantConfig::getModelClass('bku_uraian_detail', $this->variant);
-            
+            $this->initVariantModels();
             return $next($request);
         });
     }
@@ -2495,6 +2502,244 @@ class RkasController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()->withErrors(['message' => 'Gagal memisahkan kegiatan: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Menentukan id_ref_sumber_dana ARKAS berdasarkan varian newSIKAS aktif.
+     */
+    private function getArkasSumberDanaId(): int
+    {
+        return match ($this->variant) {
+            'kinerja' => 12,
+            'silpa' => 33,
+            'kinerja_silpa' => 35,
+            default => 1, // reguler (BOS Reguler)
+        };
+    }
+
+    /**
+     * Menjalankan Python engine dump_rkas.py dengan environment yang tepat.
+     */
+    private function runArkasEngine(array $args): array
+    {
+        $pythonPath = storage_path('app/arkas_engine/python.exe');
+        $scriptPath = storage_path('app/arkas_engine/dump_rkas.py');
+
+        if (!file_exists($pythonPath) || !file_exists($scriptPath)) {
+            throw new \Exception('Arkas Engine tidak ditemukan.');
+        }
+
+        $env = $_SERVER;
+        unset($env['OPENSSL_CONF']);
+
+        $appdata = $env['APPDATA'] ?? null;
+        $userprofile = $env['USERPROFILE'] ?? null;
+
+        if (empty($appdata)) {
+            $appdata = trim(shell_exec("powershell -Command \"[Environment]::GetFolderPath('ApplicationData')\""));
+        }
+        if (empty($userprofile)) {
+            $userprofile = trim(shell_exec("powershell -Command \"[Environment]::GetFolderPath('UserProfile')\""));
+        }
+        if (empty($userprofile) && !empty($appdata)) {
+            $userprofile = dirname(dirname($appdata));
+        }
+        if (empty($appdata) && !empty($userprofile)) {
+            $appdata = $userprofile . '\\AppData\\Roaming';
+        }
+
+        $env['SystemRoot']   = $env['SystemRoot']   ?? 'C:\\Windows';
+        $env['SystemDrive']  = $env['SystemDrive']  ?? 'C:';
+        $env['USERPROFILE']  = $userprofile ?: ($env['USERPROFILE'] ?? 'C:\\Users\\Digitalisasi');
+        $env['APPDATA']      = $appdata     ?: ($env['APPDATA']     ?? 'C:\\Users\\Digitalisasi\\AppData\\Roaming');
+        $env['LOCALAPPDATA'] = $env['LOCALAPPDATA'] ?? ($userprofile ? $userprofile . '\\AppData\\Local' : '');
+        $env['TEMP']         = $env['TEMP']         ?? ($userprofile ? $userprofile . '\\AppData\\Local\\Temp' : '');
+        $env['TMP']          = $env['TMP']          ?? $env['TEMP'];
+
+        $command = array_merge([$pythonPath, $scriptPath], $args);
+
+        $dbPathManual = env('ARKAS_DB_PATH', '');
+        $dbPathManual = trim($dbPathManual, '"\' ');
+        $dbPathManual = str_replace('\\', '/', $dbPathManual);
+        if (!empty($dbPathManual)) {
+            $command[] = $dbPathManual;
+        }
+
+        $process = new Process($command, null, $env);
+        $process->setTimeout(60);
+        $process->run();
+
+        if (!$process->isSuccessful()) {
+            throw new \Exception('Gagal mengeksekusi engine ARKAS: ' . $process->getErrorOutput());
+        }
+
+        $output = $process->getOutput();
+        $result = json_decode($output, true);
+
+        if (!$result) {
+            throw new \Exception('Format respons engine ARKAS tidak valid: ' . $output);
+        }
+
+        if (isset($result['status']) && $result['status'] === 'error') {
+            throw new \Exception($result['message'] ?? 'Terjadi kesalahan pada engine ARKAS.');
+        }
+
+        return $result;
+    }
+
+    /**
+     * Memeriksa ketersediaan RKAS Murni di ARKAS untuk preview sebelum ditarik.
+     */
+    public function checkArkasRkas(Request $request, $id)
+    {
+        try {
+            $penganggaran = ($this->Penganggaran)::findOrFail($id);
+            $tahun = (int) $penganggaran->tahun_anggaran;
+            $sumberDanaId = $this->getArkasSumberDanaId();
+
+            $rkasCount = ($this->Rkas)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)->count();
+            $hasBku = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)->exists();
+
+            $result = $this->runArkasEngine(['check', (string)$tahun, (string)$sumberDanaId]);
+
+            return response()->json([
+                'status' => 'success',
+                'exists' => $result['exists'] ?? false,
+                'tahun' => $tahun,
+                'sumber_dana' => $result['sumber_dana'] ?? VariantConfig::title($this->variant),
+                'pagu' => (float) ($result['pagu'] ?? 0),
+                'total_kegiatan' => (int) ($result['total_kegiatan'] ?? 0),
+                'total_alokasi' => (int) ($result['total_alokasi'] ?? 0),
+                'total_alokasi_rp' => (float) ($result['total_alokasi_rp'] ?? 0),
+                'current_rkas_count' => $rkasCount,
+                'has_bku' => $hasBku,
+                'can_pull' => ($rkasCount === 0 && !$hasBku && !empty($result['exists'])),
+                'message' => $result['message'] ?? null,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('❌ [CHECK ARKAS RKAS] Error: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Menarik data alokasi bulanan RKAS Murni dari ARKAS dan menyimpannya ke tabel rkas.
+     */
+    public function pullArkasRkas(Request $request, $id)
+    {
+        try {
+            $penganggaran = ($this->Penganggaran)::findOrFail($id);
+            $penganggaranFk = VariantConfig::penganggaranFk($this->variant);
+
+            // 1. Validasi Keamanan: RKAS saat ini harus kosong
+            $rkasCount = ($this->Rkas)::where($penganggaranFk, $penganggaran->id)->count();
+            if ($rkasCount > 0) {
+                return redirect()->back()->withErrors([
+                    'message' => 'Penarikan data ditolak: Data RKAS di newSIKAS sudah terisi (' . $rkasCount . ' data). Tombol tarik hanya dapat digunakan saat RKAS masih kosong.'
+                ]);
+            }
+
+            // 2. Validasi Keamanan: BKU tidak boleh sudah memiliki transaksi belanja
+            $hasBku = ($this->BukuKasUmum)::where($penganggaranFk, $penganggaran->id)->exists();
+            if ($hasBku) {
+                return redirect()->back()->withErrors([
+                    'message' => 'Penarikan data ditolak: Sudah terdapat catatan transaksi belanja pada Buku Kas Umum (BKU). Hapus transaksi BKU terlebih dahulu jika ingin mengatur ulang RKAS.'
+                ]);
+            }
+
+            $tahun = (int) $penganggaran->tahun_anggaran;
+            $sumberDanaId = $this->getArkasSumberDanaId();
+
+            // Eksekusi engine dump
+            $result = $this->runArkasEngine(['dump', (string)$tahun, (string)$sumberDanaId]);
+            $items = $result['data'] ?? [];
+
+            if (empty($items)) {
+                return redirect()->back()->withErrors([
+                    'message' => 'Tidak ada data alokasi RKAS yang dapat ditarik dari ARKAS.'
+                ]);
+            }
+
+            // Pre-load master data untuk lookup cepat O(1)
+            $kegiatans = KodeKegiatan::all();
+            $kegiatanMap = [];
+            foreach ($kegiatans as $k) {
+                $codeNormalized = rtrim($k->kode, '.') . '.';
+                $kegiatanMap[$codeNormalized] = $k->id;
+                $kegiatanMap[rtrim($k->kode, '.')] = $k->id;
+            }
+
+            $rekenings = RekeningBelanja::all()->keyBy('kode_rekening');
+
+            // Validasi kecocokan master data sebelum insert
+            $missingKegiatan = [];
+            $missingRekening = [];
+
+            foreach ($items as $item) {
+                $kodeKeg = rtrim($item['kode_kegiatan'] ?? '', '.') . '.';
+                if (!isset($kegiatanMap[$kodeKeg])) {
+                    $missingKegiatan[$item['kode_kegiatan']] = true;
+                }
+
+                $kodeRek = $item['kode_rekening'] ?? '';
+                if (!isset($rekenings[$kodeRek])) {
+                    $missingRekening[$kodeRek] = true;
+                }
+            }
+
+            if (!empty($missingKegiatan) || !empty($missingRekening)) {
+                $errMsg = 'Terdapat referensi ARKAS yang belum terdaftar di newSIKAS: ';
+                if (!empty($missingKegiatan)) {
+                    $errMsg .= 'Kode Kegiatan: ' . implode(', ', array_keys($missingKegiatan)) . '. ';
+                }
+                if (!empty($missingRekening)) {
+                    $errMsg .= 'Kode Rekening: ' . implode(', ', array_keys($missingRekening)) . '. ';
+                }
+                $errMsg .= 'Silakan sinkronkan Referensi Kode terlebih dahulu di menu Referensi.';
+                return redirect()->back()->withErrors(['message' => $errMsg]);
+            }
+
+            DB::beginTransaction();
+
+            // 1. Update pagu_anggaran di penganggaran
+            $paguArkas = (float) ($result['pagu'] ?? 0);
+            if ($paguArkas > 0) {
+                $penganggaran->pagu_anggaran = $paguArkas;
+                $penganggaran->save();
+            }
+
+            // 2. Insert items ke RKAS
+            $insertedCount = 0;
+            foreach ($items as $item) {
+                $kodeKeg = rtrim($item['kode_kegiatan'], '.') . '.';
+                $kegiatanId = $kegiatanMap[$kodeKeg];
+                $rekeningId = $rekenings[$item['kode_rekening']]->id;
+
+                ($this->Rkas)::create([
+                    $penganggaranFk => $penganggaran->id,
+                    'kode_id' => $kegiatanId,
+                    'kode_rekening_id' => $rekeningId,
+                    'uraian' => $item['uraian'] ?? '',
+                    'harga_satuan' => (float) ($item['harga_satuan'] ?? 0),
+                    'bulan' => $item['bulan'] ?? 'Januari',
+                    'jumlah' => (float) ($item['volume'] ?? 0),
+                    'satuan' => $item['satuan'] ?? '',
+                ]);
+
+                $insertedCount++;
+            }
+
+            DB::commit();
+
+            return redirect()->back()->with('success', "Berhasil menarik {$insertedCount} data alokasi bulanan dari ARKAS. Pagu anggaran diperbarui menjadi Rp " . number_format($paguArkas, 0, ',', '.') . ".");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('❌ [PULL ARKAS RKAS] Error: ' . $e->getMessage() . ' | ' . $e->getTraceAsString());
+            return redirect()->back()->withErrors(['message' => 'Gagal menarik data dari ARKAS: ' . $e->getMessage()]);
         }
     }
 

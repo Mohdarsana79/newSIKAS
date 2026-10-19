@@ -190,10 +190,24 @@
                     $kwitansis = [];
                     // Gunakan SEMUA rkas_ids dari item ini, jangan dibatasi.
                     // Filter bulan tertangani oleh in_array($kwt['bulan'], $relevantMonths)
+                    $isPerubahan = !empty($is_perubahan);
                     if (!empty($item['rkas_ids'])) {
                         foreach ($item['rkas_ids'] as $rkasId) {
-                            if (!empty($kwitansiMap[$rkasId])) {
-                                foreach ($kwitansiMap[$rkasId] as $kwt) {
+                            $key = $isPerubahan ? 'perubahan_' . $rkasId : 'rkas_' . $rkasId;
+                            if (!empty($kwitansiMap[$key])) {
+                                foreach ($kwitansiMap[$key] as $kwt) {
+                                    if (in_array($kwt['bulan'], $relevantMonths)) {
+                                        $kwitansis[$kwt['id_transaksi']] = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (!empty($item['murni_rkas_ids'])) {
+                        foreach ($item['murni_rkas_ids'] as $rkasId) {
+                            $key = 'murni_' . $rkasId;
+                            if (!empty($kwitansiMap[$key])) {
+                                foreach ($kwitansiMap[$key] as $kwt) {
                                     if (in_array($kwt['bulan'], $relevantMonths)) {
                                         $kwitansis[$kwt['id_transaksi']] = true;
                                     }

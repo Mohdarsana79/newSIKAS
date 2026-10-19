@@ -3,6 +3,7 @@ import json
 import sys
 import os
 import glob
+import traceback
 
 def find_arkas_db(manual_path=None):
     """
@@ -42,6 +43,9 @@ def find_arkas_db(manual_path=None):
 
     return None
 
+def get_arkas_key():
+    """Mengambil kunci dekripsi database SQLCipher ARKAS."""
+    return bytes([75, 51, 109, 100, 49, 107, 98, 117, 100, 82, 73, 83, 51, 110, 52, 121, 97, 110]).decode('utf-8')
 
 def main():
     if len(sys.argv) < 2:
@@ -49,7 +53,7 @@ def main():
         sys.exit(1)
 
     keyword = sys.argv[1]
-    year = sys.argv[2] if len(sys.argv) > 2 else '2026'
+    year = sys.argv[2] if len(sys.argv) > 2 and sys.argv[2] != '' else 'ALL'
     manual_db_path = sys.argv[3] if len(sys.argv) > 3 and sys.argv[3] != "" else None
 
     db_path = find_arkas_db(manual_db_path)
@@ -67,38 +71,73 @@ def main():
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         cursor.execute("PRAGMA cipher_compatibility = 4;")
-        cursor.execute("PRAGMA key = 'K3md1kbudRIS3n4yan';")
+        cursor.execute(f"PRAGMA key = '{get_arkas_key()}';")
+
+        # Test decrypt
+        try:
+            cursor.execute("SELECT count(*) FROM sqlite_master;")
+        except sqlite3.DatabaseError:
+            print(json.dumps({"error": "Gagal mendekripsi database ARKAS. Kunci mungkin salah atau file corrupt."}))
+            sys.exit(1)
+
+        has_year_filter = (year and year.upper() != 'ALL')
 
         if keyword == '__ALL__':
-            query = """
-                SELECT a.id_barang, a.nama_barang, a.kode_rekening, b.rekening, a.satuan, a.batas_atas, a.tahun
-                FROM ref_acuan_barang AS a
-                LEFT JOIN ref_rekening AS b ON a.kode_rekening = b.kode_rekening AND a.tahun = b.tahun
-                ORDER BY a.nama_barang, a.tahun
-            """
-            cursor.execute(query)
+            if has_year_filter:
+                query = """
+                    SELECT a.id_barang, a.nama_barang, a.kode_rekening, b.rekening, a.satuan, a.batas_atas, a.tahun
+                    FROM ref_acuan_barang AS a
+                    LEFT JOIN ref_rekening AS b ON a.kode_rekening = b.kode_rekening AND a.tahun = b.tahun
+                    WHERE a.tahun = ?
+                    ORDER BY a.nama_barang, a.tahun
+                """
+                cursor.execute(query, (int(year),))
+            else:
+                query = """
+                    SELECT a.id_barang, a.nama_barang, a.kode_rekening, b.rekening, a.satuan, a.batas_atas, a.tahun
+                    FROM ref_acuan_barang AS a
+                    LEFT JOIN ref_rekening AS b ON a.kode_rekening = b.kode_rekening AND a.tahun = b.tahun
+                    ORDER BY a.nama_barang, a.tahun
+                """
+                cursor.execute(query)
         else:
-            query = """
-                SELECT a.id_barang, a.nama_barang, a.kode_rekening, b.rekening, a.satuan, a.batas_atas, a.tahun
-                FROM ref_acuan_barang AS a
-                LEFT JOIN ref_rekening AS b ON a.kode_rekening = b.kode_rekening AND a.tahun = b.tahun
-                WHERE a.nama_barang LIKE ?
-                ORDER BY a.nama_barang, a.tahun
-                LIMIT 100
-            """
-            cursor.execute(query, (f'%{keyword}%',))
+            if has_year_filter:
+                query = """
+                    SELECT a.id_barang, a.nama_barang, a.kode_rekening, b.rekening, a.satuan, a.batas_atas, a.tahun
+                    FROM ref_acuan_barang AS a
+                    LEFT JOIN ref_rekening AS b ON a.kode_rekening = b.kode_rekening AND a.tahun = b.tahun
+                    WHERE a.nama_barang LIKE ? AND a.tahun = ?
+                    ORDER BY a.nama_barang, a.tahun
+                    LIMIT 500
+                """
+                cursor.execute(query, (f'%{keyword}%', int(year)))
+            else:
+                query = """
+                    SELECT a.id_barang, a.nama_barang, a.kode_rekening, b.rekening, a.satuan, a.batas_atas, a.tahun
+                    FROM ref_acuan_barang AS a
+                    LEFT JOIN ref_rekening AS b ON a.kode_rekening = b.kode_rekening AND a.tahun = b.tahun
+                    WHERE a.nama_barang LIKE ?
+                    ORDER BY a.nama_barang, a.tahun
+                    LIMIT 500
+                """
+                cursor.execute(query, (f'%{keyword}%',))
 
         columns = [col[0] for col in cursor.description]
         rows = cursor.fetchall()
 
         results = []
         for row in rows:
-            results.append(dict(zip(columns, row)))
+            row_dict = dict(zip(columns, row))
+            # Format batas_atas jika None jadi 0
+            if row_dict.get('batas_atas') is None:
+                row_dict['batas_atas'] = 0
+            results.append(row_dict)
 
         conn.close()
         print(json.dumps({'status': 'success', 'data': results, 'db_path': db_path}))
     except Exception as e:
-        print(json.dumps({'error': str(e)}))
+        error_msg = f"{str(e)}\n{traceback.format_exc()}"
+        print(json.dumps({'error': f"Terjadi kesalahan internal query: {error_msg}"}))
 
 
 if __name__ == '__main__':

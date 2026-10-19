@@ -29,7 +29,7 @@ export default function ChangelogModal() {
                         Informasi Rilis
                     </h2>
                     <span className="bg-indigo-100 text-indigo-800 text-sm font-semibold px-3 py-1 rounded-full dark:bg-indigo-900 dark:text-indigo-300">
-                        SIKAS V.2026.25
+                        SIKAS V.2026.28
                     </span>
                 </div>
 
@@ -43,15 +43,15 @@ export default function ChangelogModal() {
                             Pembaharuan
                         </h3>
                         <ul className="list-disc pl-6 text-sm text-gray-700 dark:text-gray-300 space-y-2 leading-relaxed">
-                            <li><span className="font-medium">Penambahan Rekapitulasi Barang Habis Pakai (BHP):</span> Penambahan format Rekapitulasi Belanja Dana BOSP (Barang Habis Pakai)</li>
-                            <li><span className="font-medium">Penambahan Rekapitulasi Belanja Dana BOSP (Barang Modal / Aset):</span> Penambahan format Rekapitulasi Belanja Dana BOSP (Barang Modal / Aset)</li>
-                            <li><span className="font-medium">Penambahan Format Kwitan 3:</span> Penambahan format kwitansi pembayaran pada fitur kwitansi</li>
-                            <li><span className="font-medium">Penambahan BOSP Kinerja:</span> Penambahan fitur BOSP Kinerja pada halaman Rencana Kerja Anggaran Sekolah.</li>
-                            <li><span className="font-medium">Penambahan SiLPA BOSP Reguler:</span> Penambahan fitur SiLPA BOSP Reguler pada halaman Rencana Kerja Anggaran Sekolah.</li>
-                            <li><span className="font-medium">Penambahan SiLPA BOSP Kinerja:</span> Penambahan fitur SiLPA BOSP Kinerja pada halaman Rencana Kerja Anggaran Sekolah.</li>
-                            <li><span className="font-medium">Penambahan Payrol Rincian Pencairan:</span> Penambahan fitur Payroll Rincian Pencairan Pada Rencana Kerja Anggaran Sekolah.</li>
-                            <li><span className="font-medium">Penambahan Alur Kas:</span> Penambahan fitur Alur KasPada Rencana Kerja Anggaran Sekolah.</li>
-                            <li><span className="font-medium">Penambahan Fitur BAST dan Surat Pesanan:</span> Penambahan fitur Berita Acara Serah Terima Barang (BAST) dan Surat Pesanan Barang dan Jasa pada Fitur Pelengkap.</li>
+                            <li>
+                                <span className="font-medium">Penambahan Fitur Tarik Rkas Online:</span> Penambahan fitur tarik dari ARKAS Online pada halaman RKAS Awal dan RKAS PERUBAHAN. Fitur ini berfungsi menarik data Rkas Langsung dari ARKAS Online
+                            </li>
+                            <li>
+                                <span className="font-medium">Penambahan Format RKA Tahapan V.1 dan V.2 Pada Rkas Perubahan:</span> Penambahan Format RKA Tahapan Baru pada Rkas Perubahan Sesuai dengan Format RKA Tahapan V.1 dan V.2.
+                            </li>
+                            <li>
+                                <span className="font-medium">Penambahan Fitur Tarik BKU Online:</span> Penambahan Fitur Tarik BKU Online pada halaman BKU yang langsung menarik BKU Online Satu Tahun atau Menariknya Perbulan langsung dari ARKAS Online.
+                            </li>
                         </ul>
                     </div>
 
@@ -64,20 +64,7 @@ export default function ChangelogModal() {
                             Perbaikan
                         </h3>
                         <ul className="list-disc pl-6 text-sm text-gray-700 dark:text-gray-300 space-y-2 leading-relaxed">
-                            <li><span className="font-medium">Perbaikan Bug Error 500:</span> Perbaikan Bug Error 500 saat melakukan instalasi aplikasi. </li>
-                            <li><span className="font-medium">Perbaikan BKU:</span> Perbaikan sistem pajak pada Buku Kas Umum (BKU) saat melakukan keterlambatan Setor Pajak </li>
-                            <li><span className="font-medium">Perbaikan BKP Pajak:</span> Perbaikan Buku Kas Pajak yang tidak menampilkan saldo awal pada saat melakukan setor pajak </li>
-                            <li><span className="font-medium">Perbaikan Tambah Pembelanjaan RKAS dan Perubahan:</span> Perbaikan bug pada form kegiatan dan rekening belanja saat tambah belanja pada rkas dan rkas perubahan yang melakukan sisip uraian sebelunya </li>
-                            <li><span className="font-medium">Perbaikan Form bulan pada Rkas dan Rkas Perubahan:</span> Perbaikanbug pada form bulan pada rkas dan rkas perubahan saat bulan sudah terpilih maka tidak akan tampil lagi pada pilihan bulan. </li>
-                            <li><span className="font-medium">Perbaikan Pajak PPN:</span> Perbaikan pada perhitungan pajak PPN yang tidak memperhitungkan nilai awal barang dan jasa. </li>
-                            <li><span className="font-medium">Perbaikan Optimalisasi Aplikasi:</span> Perbaikan Optimalisasi Aplikasi untuk penggunaan yang lebih lancar. </li>
-                            <li><span className="font-medium">Perbaikan RKA Tahapan Perubahan :</span> Perbaikan pada RKA Tahapan yang mengalami bug perhitungan total jumlah berkurang dan bertambah pada Tahapan RKAS Perubahan </li>
-                            <li><span className="font-medium">Perbaikan Rincian Pencairan :</span> Perbaikan Detail pada rincian pencairan saat menggabungkan uraian akan menampilkan uraian asli, jumlah satuan, dan harga satuan. </li>
-                            <li><span className="font-medium">Perbaikan Payroll :</span> Penambahan kolom nomor kwitansi pada payroll untuk identifikasi pembelanjaan. </li>
-                            <li><span className="font-medium">Perbaikan Rkas dan Rkas Perubahan :</span> Perbaikan Bug nomor kwitansi pada payroll yang tidak muncul pada bulan yang terdeteksi tidak memiliki belanja </li>
-                            <li><span className="font-medium">Perbaikan Form Search :</span> Perbaikan Form Search Rincian Pencairan Agar Dapat mencari data penerima dan rekening penerima </li>
-                            <li><span className="font-medium">Perbaikan Pajak PPN dan PPh 23 :</span> Perbaikan pada form pajak PPN yang tidak Mereset Otomatis Pajak jika belanja di ubah di bawah 2 jt dan perbaikan pajak makanan dan minuman yang mencentang otomatis PB1 dan SPPD. </li>
-                            <li><span className="font-medium">Perbaikan Uraian Pada Buku Bank :</span> Perbaikan uraian pada buku bank yang memprioritaskan uraian opsional. jika uraian opsional kosong maka sistem otomatis menggunakan uraian asli dari rekening belanja. </li>
+                            <li><span className="font-medium">Perbaikan Arkas Tools:</span> Perbaikan Arkas Tools Agar Data yang di tarik dapat masuk kedalam database aplikasi newSIKAS. </li>
                         </ul>
                     </div>
                 </div>

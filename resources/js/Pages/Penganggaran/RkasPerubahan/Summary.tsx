@@ -8,6 +8,8 @@ import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import TabAlurKas from './Partials/TabAlurKas';
 import TabRincianPencairan from '../Rkas/Partials/TabRincianPencairan';
+import TabRkaTahapanV1 from './Partials/TabRkaTahapanV1';
+import TabRkaTahapanV2 from './Partials/TabRkaTahapanV2';
 
 interface SummaryProps extends Record<string, unknown> {
     anggaran: {
@@ -82,6 +84,7 @@ interface SummaryProps extends Record<string, unknown> {
             }
         }
     };
+    tahapanV1Data?: any;
     rkaBulananData: Array<{
         kode: string;
         nama: string;
@@ -147,7 +150,7 @@ interface SummaryProps extends Record<string, unknown> {
     kwitansiMap?: Record<number, Array<{ id_transaksi: string; bulan: string }>>;
 }
 
-export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaBulananData, rekapData, perTahapData, lembarData, rincianData, grafikData, routePrefix = '', kwitansiMap }: PageProps<SummaryProps>) {
+export default function Summary({ auth, anggaran, groupedData, tahapanData, tahapanV1Data, rkaBulananData, rekapData, perTahapData, lembarData, rincianData, grafikData, routePrefix = '', kwitansiMap }: PageProps<SummaryProps>) {
     const [activeTab, setActiveTab] = useState('Rka Tahapan');
     const [selectedMonth, setSelectedMonth] = useState('Januari');
     const [isLoading, setIsLoading] = useState(false);
@@ -194,7 +197,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
     });
 
     const [showPrintModal, setShowPrintModal] = useState(false);
-    const [printTarget, setPrintTarget] = useState<'tahapan' | 'tahapan_v1' | 'rekap' | 'lembar' | 'bulanan' | 'rincian' | 'alur_kas' | 'rp'>('tahapan');
+    const [printTarget, setPrintTarget] = useState<'tahapan' | 'tahapan_v1' | 'tahapan_v2' | 'rekap' | 'lembar' | 'bulanan' | 'rincian' | 'alur_kas' | 'rp'>('tahapan');
     const [printSettings, setPrintSettings] = useState({
         paperSize: 'A4',
         orientation: 'portrait',
@@ -222,6 +225,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
             params.bulan = rpBulan;
         }
         if (printTarget === 'tahapan_v1') routeName = 'rkas-perubahan.export-tahapan-v1-pdf';
+        if (printTarget === 'tahapan_v2') routeName = 'rkas-perubahan.export-tahapan-v2-pdf';
         if (printTarget === 'rincian') routeName = 'rkas-perubahan.export-rincian-pdf';
         if (printTarget === 'alur_kas') routeName = 'rkas-perubahan.export-alur-kas-pdf';
 
@@ -247,6 +251,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
         };
 
         if (targetToUse === 'tahapan_v1') routeName = 'rkas-perubahan.export-tahapan-v1-excel';
+        if (targetToUse === 'tahapan_v2') routeName = 'rkas-perubahan.export-tahapan-v2-excel';
         if (targetToUse === 'rp') {
             routeName = 'rkas-perubahan.export-rp-excel';
             params.tahap = tahapOverride ?? rpTahap;
@@ -279,6 +284,8 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
 
     const tabs = [
         { name: 'Rka Tahapan', label: 'Rka Tahapan' },
+        { name: 'Rka Tahapan V.1', label: 'Rka Tahapan V.1' },
+        { name: 'Rka Tahapan V.2', label: 'Rka Tahapan V.2' },
         { name: 'Rka Rekap', label: 'Rka Rekap' },
         { name: 'Lembar Kerja 221', label: 'Lembar Kerja 221' },
         { name: 'Rka Bulanan', label: 'Rka Bulanan' },
@@ -401,7 +408,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                                     Cetak Semua Bulan
                                 </button>
                             )}
-                            {(printTarget === 'rincian' || printTarget === 'alur_kas' || printTarget === 'tahapan' || printTarget === 'rp') && (
+                            {(printTarget === 'rincian' || printTarget === 'alur_kas' || printTarget === 'tahapan' || printTarget === 'tahapan_v1' || printTarget === 'tahapan_v2' || printTarget === 'rp') && (
                                 <button
                                     onClick={() => handleExportExcel()}
                                     className="bg-green-600 text-white hover:bg-green-700 px-4 py-2 rounded-md text-sm font-medium shadow-sm transition-colors flex items-center gap-2"
@@ -794,8 +801,31 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                             </div>
                         )}
 
+                        {/* Tab: Rka Tahapan V.1 */}
+                        {activeTab === 'Rka Tahapan V.1' && (
+                            <TabRkaTahapanV1
+                                anggaran={anggaran}
+                                tahapanData={tahapanV1Data || tahapanData}
+                                onPrint={(target) => {
+                                    setPrintTarget(target as any);
+                                    setShowPrintModal(true);
+                                }}
+                                onExportExcel={(target) => handleExportExcel(target)}
+                            />
+                        )}
 
-
+                        {/* Tab: Rka Tahapan V.2 */}
+                        {activeTab === 'Rka Tahapan V.2' && (
+                            <TabRkaTahapanV2
+                                anggaran={anggaran}
+                                tahapanData={tahapanV1Data || tahapanData}
+                                onPrint={(target) => {
+                                    setPrintTarget(target as any);
+                                    setShowPrintModal(true);
+                                }}
+                                onExportExcel={(target) => handleExportExcel(target)}
+                            />
+                        )}
 
                         {activeTab === 'Rka Rekap' && (
                             <div className="space-y-8 animate-fade-in-up">

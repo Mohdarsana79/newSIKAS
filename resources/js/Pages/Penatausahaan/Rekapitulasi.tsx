@@ -1085,14 +1085,14 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                                     <span>Saldo Bank :</span>
                                                     <span className="font-bold">Rp. {formatCurrency(bkpUmumData?.data?.saldo_bank || 0)}</span>
                                                 </div>
-                                                <div className="pl-6 flex justify-between text-xs">
+                                                {/* <div className="pl-6 flex justify-between text-xs">
                                                     <span>1. Dana Sekolah :</span>
                                                     <span className="font-bold underline dotted">Rp. {formatCurrency(bkpUmumData?.data?.dana_sekolah || 0)}</span>
                                                 </div>
                                                 <div className="pl-6 flex justify-between text-xs">
                                                     <span>2. Dana BOSP :</span>
                                                     <span className="font-bold underline dotted">Rp. {formatCurrency(bkpUmumData?.data?.dana_bosp || 0)}</span>
-                                                </div>
+                                                </div> */}
                                                 <div className="flex justify-between">
                                                     <span>Saldo Kas Tunai :</span>
                                                     <span className="font-bold">Rp. {formatCurrency(bkpUmumData?.data?.saldo_tunai || 0)}</span>
