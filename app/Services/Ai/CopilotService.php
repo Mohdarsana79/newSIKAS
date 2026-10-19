@@ -35,7 +35,12 @@ class CopilotService
                     'description' => 'Mengambil ringkasan data resmi Pagu Anggaran BOSP tahun berjalan (Total penetapan anggaran pendapatan sekolah, rincian pagu Tahap 1 & Tahap 2, dan total rencana belanja RKAS per kelompok belanja). Panggil tool ini saat pengguna bertanya tentang pagu anggaran sekolah, total dana BOSP, atau alokasi penetapan pagu.',
                     'parameters' => [
                         'type' => 'object',
-                        'properties' => (object) [],
+                        'properties' => [
+                            'tahun' => [
+                                'type' => 'integer',
+                                'description' => 'Tahun anggaran data pagu yang diminta (contoh: 2025, 2026). Opsional, default adalah tahun aktif saat ini.',
+                            ],
+                        ],
                     ],
                 ],
             ],
@@ -54,6 +59,10 @@ class CopilotService
                                     'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
                                 ],
                                 'description' => 'Nama bulan pembukuan BKU yang diminta (Januari sampai Desember).',
+                            ],
+                            'tahun' => [
+                                'type' => 'integer',
+                                'description' => 'Tahun anggaran pembukuan BKU (contoh: 2025, 2026). Opsional, default adalah tahun aktif saat ini.',
                             ],
                         ],
                         'required' => ['bulan'],
@@ -76,6 +85,10 @@ class CopilotService
                                 ],
                                 'description' => 'Nama bulan pembukuan BKP Bank yang diminta (Januari sampai Desember).',
                             ],
+                            'tahun' => [
+                                'type' => 'integer',
+                                'description' => 'Tahun anggaran pembukuan BKP Bank (contoh: 2025, 2026). Opsional, default adalah tahun aktif saat ini.',
+                            ],
                         ],
                         'required' => ['bulan'],
                     ],
@@ -96,6 +109,10 @@ class CopilotService
                                     'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
                                 ],
                                 'description' => 'Nama bulan pembukuan BKP Tunai yang diminta (Januari sampai Desember).',
+                            ],
+                            'tahun' => [
+                                'type' => 'integer',
+                                'description' => 'Tahun anggaran pembukuan BKP Tunai (contoh: 2025, 2026). Opsional, default adalah tahun aktif saat ini.',
                             ],
                         ],
                         'required' => ['bulan'],
@@ -121,6 +138,10 @@ class CopilotService
                                     'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
                                 ],
                                 'description' => 'Nama bulan penganggaran RKAS (Januari sampai Desember).',
+                            ],
+                            'tahun' => [
+                                'type' => 'integer',
+                                'description' => 'Tahun anggaran RKAS yang dicari (contoh: 2025, 2026). Opsional, default adalah tahun aktif saat ini.',
                             ],
                         ],
                     ],
@@ -227,6 +248,10 @@ class CopilotService
                                 'enum' => ['triwulan', 'jenis_belanja'],
                                 'description' => 'Kategori pengelompokan data realisasi.',
                             ],
+                            'tahun' => [
+                                'type' => 'integer',
+                                'description' => 'Tahun anggaran analisis yang diminta (contoh: 2025, 2026). Opsional, default adalah tahun aktif saat ini.',
+                            ],
                         ],
                         'required' => ['group_by'],
                     ],
@@ -254,9 +279,20 @@ class CopilotService
         $sekolahNama = $sekolah?->nama_sekolah ?? 'Satuan Pendidikan';
         $variantTitle = VariantConfig::title($variant);
 
+        $penganggaranClass = VariantConfig::getModelClass('penganggaran', $variant);
+        $availableYears = $penganggaranClass::orderBy('tahun_anggaran', 'asc')->pluck('tahun_anggaran')->toArray();
+        $daftarTahunStr = ! empty($availableYears) ? implode(', ', $availableYears) : (string) $tahun;
+
         $systemPrompt = <<<PROMPT
 Anda adalah "SIKAS AI Copilot", teman akrab sekaligus partner kerja setia bendahara dan kepala sekolah di {$sekolahNama}.
-Aplikasi saat ini mengelola dana BOSP {$variantTitle} Tahun Anggaran {$tahun}.
+Aplikasi saat ini mengelola dana BOSP {$variantTitle}.
+Tahun Anggaran aktif yang sedang dibuka di layar adalah {$tahun}.
+Sistem database SIKAS juga menyimpan arsip resmi pembukuan untuk Tahun Anggaran: {$daftarTahunStr}.
+
+PEDOMAN AKSES MULTI-TAHUN:
+- Gunakan Tahun Anggaran aktif ({$tahun}) sebagai default apabila pengguna tidak menyebutkan tahun tertentu secara spesifik.
+- Apabila pengguna menanyakan data tahun anggaran lain (misalnya tahun 2025, atau perbandingan antara tahun 2025 dan 2026), Anda BISA dan WAJIB mengakses data tahun tersebut dengan menyertakan parameter `tahun` pada tool yang relevan (contoh: tahun: 2025).
+- JANGAN PERNAH menolak atau berkata bahwa Anda hanya berjalan di tahun {$tahun}. Sistem mendukung penuh pembacaan data tahun-tahun yang tercantum di arsip database ({$daftarTahunStr}).
 
 Karakter & Gaya Bicara Anda:
 1. GAYA BAHASA SANTAI SEPERTI TEMAN AKRAB:
@@ -413,20 +449,22 @@ PROMPT;
      */
     protected function executeTool(string $name, array $args, string $variant, int $tahun): array
     {
+        $targetTahun = ! empty($args['tahun']) ? (int) $args['tahun'] : $tahun;
+
         return match ($name) {
-            'get_budget_pagu_summary' => $this->getBudgetPaguSummary($tahun, $variant),
-            'get_bku_monthly_realization' => $this->getBkuMonthlyRealization($tahun, $args['bulan'] ?? 'Maret', $variant),
-            'get_bkp_bank_monthly' => $this->getBkpBankMonthly($tahun, $args['bulan'] ?? 'Maret', $variant),
-            'get_bkp_tunai_monthly' => $this->getBkpTunaiMonthly($tahun, $args['bulan'] ?? 'Maret', $variant),
-            'search_rkas_activity' => $this->searchRkasActivity($tahun, $args['query'] ?? '', $variant, $args['bulan'] ?? null),
+            'get_budget_pagu_summary' => $this->getBudgetPaguSummary($targetTahun, $variant),
+            'get_bku_monthly_realization' => $this->getBkuMonthlyRealization($targetTahun, $args['bulan'] ?? 'Maret', $variant),
+            'get_bkp_bank_monthly' => $this->getBkpBankMonthly($targetTahun, $args['bulan'] ?? 'Maret', $variant),
+            'get_bkp_tunai_monthly' => $this->getBkpTunaiMonthly($targetTahun, $args['bulan'] ?? 'Maret', $variant),
+            'search_rkas_activity' => $this->searchRkasActivity($targetTahun, $args['query'] ?? '', $variant, $args['bulan'] ?? null),
             'calculate_tax_recommendation' => $this->calculateTaxRecommendation(
                 (float) ($args['amount'] ?? 0),
                 $args['item_type'] ?? 'barang',
                 (bool) ($args['is_pkp'] ?? true),
                 (bool) ($args['has_npwp'] ?? true)
             ),
-            'prepare_bku_transaction_draft' => $this->prepareBkuDraft($args, $variant, $tahun),
-            'query_realization_comparison' => $this->queryRealizationComparison($tahun, $variant, $args['group_by'] ?? 'triwulan'),
+            'prepare_bku_transaction_draft' => $this->prepareBkuDraft($args, $variant, $targetTahun),
+            'query_realization_comparison' => $this->queryRealizationComparison($targetTahun, $variant, $args['group_by'] ?? 'triwulan'),
             default => ['error' => "Unknown tool: {$name}"],
         };
     }
