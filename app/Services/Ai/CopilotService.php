@@ -250,10 +250,13 @@ Karakter & Pedoman Kerja Anda:
    - Jika pengguna menanyakan performa belanja, grafik serapan triwulan atau kelompok belanja:
      a. Panggil tool `query_realization_comparison`.
 4. PENCARIAN RENCANA KEGIATAN RKAS:
-   - Jika pengguna menanyakan rencana kegiatan atau alokasi anggaran di dokumen perencanaan RKAS (contoh: "Apa saja rencana anggaran di RKAS bulan Maret?", "Cari kegiatan sarpras di RKAS"):
+   - Jika pengguna menanyakan rencana kegiatan atau alokasi anggaran di dokumen perencanaan RKAS (contoh: "Apa saja rencana anggaran di RKAS bulan Maret?", "Cari kegiatan sarpras di RKAS", "Tampilkan RKAS bulan Januari"):
      a. Panggil tool `search_rkas_activity` dengan parameter `bulan` atau `query`.
-     b. Tampilkan seluruh baris kegiatan dalam tabel HTML (kolom: No, Bulan, Uraian Kegiatan / Barang, Kode Rekening, Nama Rekening, Total Anggaran, Realisasi Belanja, Sisa Anggaran).
+     b. Tampilkan seluruh baris kegiatan dalam tabel HTML terstruktur rapi dengan kolom WAJIB:
+        <th>No</th><th>Bulan</th><th>Uraian Kegiatan / Barang</th><th>Kode Rekening</th><th>Nama Rekening</th><th>Total Anggaran</th><th>Realisasi Bulan Ini</th><th>Sisa Anggaran</th><th>Status Realisasi BKU</th>
      c. DILARANG KERAS membuat kolom "ID Kegiatan" atau menampilkan angka ID database apapun di tabel. Cukup gunakan nomor urut urutan baris (1, 2, 3...) di kolom "No".
+     d. Berikan Catatan Naratif Analisis Penatausahaan BKU:
+        - Jika pengguna menanyakan data RKAS bulan tertentu di mana kas belum keluar (contoh: bulan Januari dengan Realisasi Bulan Ini = Rp 0), jelaskan secara ramah dan profesional bahwa pada bulan tersebut kas belum dibelanjakan (Realisasi Rp 0), namun sistem mendeteksi bahwa kegiatan tersebut telah direalisasikan pada bulan berikutnya (merujuk pada kolom `Status Realisasi BKU`, contoh: Honorarium pengajar baru dibayarkan pada BKU bulan Maret 2026), serta sebutkan kegiatan mana saja yang masih berstatus Belum Direalisasikan.
 5. DRAFTING TRANSAKSI BKU:
    - Jika pengguna meminta mencatat belanja atau kuitansi (contoh: "Catat belanja ATK...", "Bayar katering..."):
      a. Panggil tool `search_rkas_activity` untuk mencari rincian kegiatan dan akun rekening yang relevan di RKAS {$tahun}.
@@ -644,27 +647,81 @@ PROMPT;
         $limit = $targetMonth ? 250 : 30;
         $items = $builder->take($limit)->get();
 
+        $itemIds = $items->pluck('id')->all();
+        $allBkuDetails = empty($itemIds) ? collect() : $bkuDetailClass::whereIn($bkuDetailFk, $itemIds)
+            ->whereHas('bukuKasUmum', function ($bq) use ($penganggaran, $tahun, $variant) {
+                $bq->where(VariantConfig::penganggaranFk($variant), (int) $penganggaran->id)
+                    ->where('is_bunga_record', false)
+                    ->whereYear('tanggal_transaksi', $tahun);
+            })
+            ->with(['bukuKasUmum' => function ($bq) {
+                $bq->select('id', 'tanggal_transaksi', 'nomor_nota', 'id_transaksi');
+            }])
+            ->get()
+            ->groupBy($bkuDetailFk);
+
+        $monthNames = [
+            1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
+            5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
+            9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember',
+        ];
+
         $results = [];
         foreach ($items as $item) {
             $budget = (float) $item->harga_satuan * (float) $item->jumlah;
+            $details = $allBkuDetails->get($item->id, collect());
 
-            // Hitung realisasi belanja BKU yang telah dibukukan untuk RKAS ID ini
-            // Dibatasi sampai periode bulan yang diminta (jika ada filter bulan) dan tahun aktif
-            $bkuDetailQuery = $bkuDetailClass::where($bkuDetailFk, (int) $item->id)
-                ->whereHas('bukuKasUmum', function ($bq) use ($penganggaran, $tahun, $targetMonthIndex, $variant) {
-                    $bq->where(VariantConfig::penganggaranFk($variant), (int) $penganggaran->id)
-                        ->where('is_bunga_record', false)
-                        ->whereYear('tanggal_transaksi', $tahun);
-                    if ($targetMonthIndex) {
-                        $bq->whereMonth('tanggal_transaksi', '<=', $targetMonthIndex);
-                    }
-                });
+            // 1. Realisasi s.d. periode bulan yang diminta (jika ada filter bulan) dan tahun aktif
+            $filteredDetails = $details->filter(function ($d) use ($targetMonthIndex) {
+                if (! $targetMonthIndex) {
+                    return true;
+                }
+                if (! $d->bukuKasUmum?->tanggal_transaksi) {
+                    return false;
+                }
+                $m = (int) Carbon::parse($d->bukuKasUmum->tanggal_transaksi)->format('n');
 
-            $rawSpent = (float) $bkuDetailQuery->sum('jumlah');
+                return $m <= $targetMonthIndex;
+            });
+
+            $rawSpent = (float) $filteredDetails->sum('jumlah');
 
             // Audit capping: realisasi untuk baris kegiatan ini tidak boleh melampaui pagu anggarannya
             $spent = min($budget, $rawSpent);
             $remaining = max(0, $budget - $spent);
+
+            // 2. Deteksi bulan realisasi riil pada BKU sepanjang tahun
+            $totalRealizedAllYear = min($budget, (float) $details->sum('jumlah'));
+
+            if ($details->isEmpty() || $totalRealizedAllYear <= 0) {
+                $statusRealisasi = 'Belum Direalisasikan';
+                $bulanRealisasiRiil = 'Belum Realisasi';
+            } else {
+                $firstMonth = null;
+                $sortedDetails = $details->sortBy(function ($d) {
+                    return $d->bukuKasUmum?->tanggal_transaksi ?? '9999-99-99';
+                });
+
+                foreach ($sortedDetails as $d) {
+                    if ($d->bukuKasUmum?->tanggal_transaksi) {
+                        $m = (int) Carbon::parse($d->bukuKasUmum->tanggal_transaksi)->format('n');
+                        if (isset($monthNames[$m])) {
+                            $firstMonth = $monthNames[$m];
+                            break;
+                        }
+                    }
+                }
+
+                $bulanRealisasiRiil = $firstMonth ?: 'Belum Realisasi';
+
+                if ($firstMonth && $firstMonth === $item->bulan) {
+                    $statusRealisasi = "Sesuai Jadwal ({$firstMonth} {$tahun})";
+                } elseif ($firstMonth) {
+                    $statusRealisasi = "Direalisasikan pd {$firstMonth} {$tahun} (Rp ".number_format($totalRealizedAllYear, 0, ',', '.').')';
+                } else {
+                    $statusRealisasi = 'Belum Direalisasikan';
+                }
+            }
 
             $results[] = [
                 'rkas_id' => (int) $item->id, // Disimpan internal untuk kebutuhan drafting transaksi BKU
@@ -679,6 +736,8 @@ PROMPT;
                 'total_anggaran' => $budget,
                 'terealisasi' => $spent,
                 'sisa_pagu' => $remaining,
+                'status_realisasi' => $statusRealisasi,
+                'bulan_realisasi_riil' => $bulanRealisasiRiil,
             ];
         }
 
