@@ -41,3 +41,5 @@ add_*_routes.php
 extracted_methods*.txt
 setup_db.sql
 panduan-*.txt
+__pycache__/
+*.pyc

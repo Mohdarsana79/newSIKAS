@@ -2,6 +2,7 @@
 
 use App\Config\VariantConfig;
 use App\Http\Controllers\AiCopilotController;
+use App\Http\Controllers\ArkasAiDiagnosticController;
 use App\Http\Controllers\ArkasSettingController;
 use App\Http\Controllers\ArkasToolController;
 use App\Http\Controllers\BastController;
@@ -164,6 +165,8 @@ Route::get('/arkas-tools/fetch-arkas', [ArkasToolController::class, 'fetchArkas'
 Route::post('/arkas-tools/sync', [ArkasToolController::class, 'sync'])->name('arkas-tools.sync');
 Route::get('/arkas-tools/path', [ArkasSettingController::class, 'getPath'])->name('arkas-tools.get-path');
 Route::post('/arkas-tools/path', [ArkasSettingController::class, 'savePath'])->name('arkas-tools.save-path');
+Route::post('/arkas-tools/ai-diagnose', [ArkasAiDiagnosticController::class, 'diagnoseSystem'])->name('arkas-tools.ai-diagnose');
+Route::post('/arkas-tools/ai-diagnose-context', [ArkasAiDiagnosticController::class, 'diagnoseContext'])->name('arkas-tools.ai-diagnose-context');
 
 // Referensi Kode Routes
 Route::get('/referensi-kode', [ReferensiKodeController::class, 'index'])->name('referensi-kode.index');

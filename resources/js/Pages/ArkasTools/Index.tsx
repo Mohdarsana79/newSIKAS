@@ -6,7 +6,10 @@ import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import Modal from '@/Components/Modal';
+import ArkasDiagnosticModal from '@/Components/Ai/ArkasDiagnosticModal';
+import { Brain, Sparkles, Database, ShieldCheck, AlertTriangle, ArrowRight, Settings, RotateCw, FileSearch, CheckCircle2, ShieldAlert } from 'lucide-react';
 import axios from 'axios';
+import { Link } from '@inertiajs/react';
 
 interface PaginatedData {
     data: any[];
@@ -66,6 +69,10 @@ export default function Index({ auth, initialData, defaultYear = '2026', localSt
 
     // Loading export state
     const [isExporting, setIsExporting] = useState(false);
+
+    // Phase 3: AI Diagnostic Tab & Modal
+    const [activeMainTab, setActiveMainTab] = useState<'katalog' | 'diagnosa'>('katalog');
+    const [isAiModalOpen, setIsAiModalOpen] = useState(false);
 
     // Memuat data dari database lokal dengan paginasi
     const loadPage = async (page: number, targetYear = year, targetKeyword = keyword, targetPerPage = perPage) => {
@@ -385,6 +392,38 @@ export default function Index({ auth, initialData, defaultYear = '2026', localSt
                         </div>
                     )}
 
+                    {/* Tab Switcher: Katalog Barang vs Diagnosa AI */}
+                    <div className="flex items-center gap-2 mb-6">
+                        <button
+                            type="button"
+                            onClick={() => setActiveMainTab('katalog')}
+                            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition shadow-sm ${
+                                activeMainTab === 'katalog'
+                                    ? 'bg-white dark:bg-gray-800 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shadow-indigo-100 dark:shadow-none'
+                                    : 'bg-gray-100 dark:bg-gray-800/50 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+                            }`}
+                        >
+                            <Database className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                            Katalog & Sinkronisasi Barang
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setActiveMainTab('diagnosa')}
+                            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition shadow-sm ${
+                                activeMainTab === 'diagnosa'
+                                    ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/20'
+                                    : 'bg-gray-100 dark:bg-gray-800/50 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+                            }`}
+                        >
+                            <Brain className="w-4 h-4 text-violet-400" />
+                            Pusat Diagnosa & Rekonsiliasi AI
+                            <span className="px-1.5 py-0.2 rounded-full bg-white/20 text-white text-[10px] font-bold">
+                                DeepSeek
+                            </span>
+                        </button>
+                    </div>
+
+                    {activeMainTab === 'katalog' ? (
                     <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
 
                         {/* Form Pencarian & Tombol Aksi */}
@@ -606,6 +645,94 @@ export default function Index({ auth, initialData, defaultYear = '2026', localSt
                             </div>
                         )}
                     </div>
+                    ) : (
+                        <div className="space-y-6">
+                            {/* Hero Card Diagnosa AI */}
+                            <div className="bg-gradient-to-br from-indigo-900 via-indigo-950 to-slate-900 rounded-2xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden border border-indigo-700/50">
+                                <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-indigo-500/10 blur-3xl pointer-events-none"></div>
+                                <div className="relative z-10 max-w-2xl">
+                                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/20 text-indigo-200 border border-indigo-400/30 mb-4">
+                                        <Sparkles className="w-3.5 h-3.5 text-indigo-300" />
+                                        SIKAS AI DeepSeek Suite v1.3
+                                    </div>
+                                    <h3 className="text-2xl font-black tracking-tight text-white sm:text-3xl">
+                                        Pusat Diagnosa & Rekonsiliasi ARKAS
+                                    </h3>
+                                    <p className="mt-2 text-sm text-indigo-200 leading-relaxed">
+                                        Inspeksi otomatis antara database desktop resmi ARKAS (<code className="bg-black/30 px-1.5 py-0.5 rounded text-xs font-mono text-indigo-300">arkas.db</code>) dan pembukuan PostgreSQL SIKAS. Mencegah risiko penimpaan SPJ lokal yang tidak disengaja, mendeteksi selisih pagu RKAS, serta memandu langkah perbaikan terpadu.
+                                    </p>
+                                    <div className="mt-6 flex flex-wrap items-center gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsAiModalOpen(true)}
+                                            className="px-5 py-2.5 rounded-xl text-xs font-bold bg-white text-indigo-900 hover:bg-indigo-50 shadow-lg shadow-black/20 transition flex items-center gap-2"
+                                        >
+                                            <Brain className="w-4 h-4 text-indigo-600" />
+                                            Jalankan Audit & Diagnosa AI Penuh
+                                            <ArrowRight className="w-3.5 h-3.5 text-indigo-500" />
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* 3 Pilar Diagnosa */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                                <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200/80 dark:border-gray-700 shadow-sm flex flex-col justify-between">
+                                    <div>
+                                        <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 flex items-center justify-center mb-3">
+                                            <FileSearch className="w-5 h-5" />
+                                        </div>
+                                        <h4 className="text-sm font-bold text-gray-900 dark:text-gray-100">
+                                            Integritas Pagu & RKAS
+                                        </h4>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5 leading-relaxed">
+                                            Membandingkan pagu anggaran murni dan perubahan serta rincian kegiatan belanja agar tidak terjadi penolakan penarikan RKAS.
+                                        </p>
+                                    </div>
+                                    <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700/60 flex items-center justify-between text-xs text-purple-700 dark:text-purple-300 font-semibold">
+                                        <span>Deteksi Selisih Alokasi</span>
+                                        <CheckCircle2 className="w-4 h-4" />
+                                    </div>
+                                </div>
+
+                                <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200/80 dark:border-gray-700 shadow-sm flex flex-col justify-between">
+                                    <div>
+                                        <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300 flex items-center justify-center mb-3">
+                                            <ShieldAlert className="w-5 h-5" />
+                                        </div>
+                                        <h4 className="text-sm font-bold text-gray-900 dark:text-gray-100">
+                                            Proteksi Overwrite BKU
+                                        </h4>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5 leading-relaxed">
+                                            Menghitung nominal dan jumlah transaksi lokal newSIKAS yang berpotensi terhapus sebelum Anda melakukan penarikan buku kas dari ARKAS.
+                                        </p>
+                                    </div>
+                                    <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700/60 flex items-center justify-between text-xs text-rose-700 dark:text-rose-300 font-semibold">
+                                        <span>Perlindungan Data SPJ</span>
+                                        <ShieldCheck className="w-4 h-4" />
+                                    </div>
+                                </div>
+
+                                <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200/80 dark:border-gray-700 shadow-sm flex flex-col justify-between">
+                                    <div>
+                                        <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 flex items-center justify-center mb-3">
+                                            <Database className="w-5 h-5" />
+                                        </div>
+                                        <h4 className="text-sm font-bold text-gray-900 dark:text-gray-100">
+                                            Standar Satuan Harga (SSH)
+                                        </h4>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5 leading-relaxed">
+                                            Memastikan puluhan ribu referensi barang, rekening belanja, dan batas atas harga selalu sinkron dengan database acuan dinas.
+                                        </p>
+                                    </div>
+                                    <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700/60 flex items-center justify-between text-xs text-emerald-700 dark:text-emerald-300 font-semibold">
+                                        <span>23.000+ Acuan Barang</span>
+                                        <CheckCircle2 className="w-4 h-4" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -690,6 +817,14 @@ export default function Index({ auth, initialData, defaultYear = '2026', localSt
                     )}
                 </div>
             </Modal>
+
+            {/* Modal Diagnosa & Rekonsiliasi AI */}
+            <ArkasDiagnosticModal
+                isOpen={isAiModalOpen}
+                onClose={() => setIsAiModalOpen(false)}
+                tahun={year !== 'ALL' ? parseInt(year, 10) : 2026}
+                scope="comprehensive"
+            />
         </AuthenticatedLayout>
     );
 }
