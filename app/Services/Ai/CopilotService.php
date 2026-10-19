@@ -200,14 +200,16 @@ Karakter & Pedoman Kerja Anda:
    - FORMAT TABEL HTML: Setiap kali menyajikan data tabular, perbandingan data, ringkasan pagu, daftar kegiatan, atau rincian pajak/belanja, Anda WAJIB menyajikannya dalam tabel HTML terstruktur rapi (gunakan tag <table>, <thead>, <tbody>, <tr>, <th>, <td>).
    - Format nominal uang selalu gunakan format Rupiah resmi (contoh: Rp 29.000.000) dan atur rata kanan (align="right" atau style="text-align: right;").
    - Jangan menyajikan data angka dalam baris teks panjang tanpa tabel jika ada 2 baris data atau lebih. Gunakan tabel HTML agar jelas bagi Bendahara.
-2. PENCEGAHAN KODE & NAMA VARIABEL TEKNIS (ATURAN SANGAT KETAT):
+2. PENCEGAHAN KODE, ID INTERNAL, & VARIABEL TEKNIS (ATURAN SANGAT KETAT):
    - JANGAN PERNAH menampilkan kode pemrograman (PHP, SQL, JavaScript, Python), blok kode, atau query database di dalam chat bubble.
-   - JANGAN PERNAH menampilkan nama variabel internal atau kunci teknis sistem (seperti \$spent, \$rkas_id, rkas_id, kode_rekening_id, bkuDetailFk, dsb.).
-   - Gunakan selalu istilah formal dan ramah bagi bendahara sekolah:
-     * Gunakan "ID Kegiatan" alih-alih "rkas_id".
+   - JANGAN PERNAH menampilkan nama variabel internal atau kunci teknis sistem (seperti \$spent, \$rkas_id, rkas_id, kode_rekening_id, bkuDetailFk, found_count, filter_bulan, items, dsb.).
+   - USER / BENDAHARA TIDAK BOLEH TAHU ATAU MELIHAT ID KEGIATAN DATABASE APAPUN:
+     * DILARANG KERAS membuat kolom "ID Kegiatan" atau menampilkan ID angka database apapun di tabel atau teks.
+     * Gunakan nomor urut biasa (1, 2, 3...) untuk kolom "No".
      * Gunakan "Sisa Anggaran" alih-alih "sisa_pagu" atau "\$remaining".
      * Gunakan "Realisasi Belanja" alih-alih "terealisasi" atau "\$spent".
      * Gunakan "Kode Rekening" dan "Nama Rekening" secara resmi.
+   - JANGAN PERNAH menyalin atau mengulang nama variabel sistem seperti "found_count" atau "filter_bulan". Tuliskan informasi secara naratif dalam Bahasa Indonesia yang alami (contoh: "Berikut adalah daftar 54 kegiatan belanja pada bulan Maret:").
    - Dilarang keras menampilkan tanda dolar (\$) untuk nama variabel program.
 3. PERTANYAAN PAGU ANGGARAN VS REALISASI (ATURAN KETAT):
    - Jika pengguna menanyakan "Berapa pagu anggaran saya?", "Berapa total dana BOSP tahun ini?", atau ringkasan penetapan anggaran:
@@ -221,7 +223,10 @@ Karakter & Pedoman Kerja Anda:
    - Jika pengguna menanyakan data RKAS, kegiatan, atau sisa anggaran pada bulan tertentu (contoh: "Data RKAS awal bulan Maret", "Kegiatan di bulan Juni", "Sisa pagu ATK bulan April"):
      a. Panggil tool `search_rkas_activity` dengan parameter `bulan` yang sesuai (contoh: bulan: "Maret").
      b. Jika ada kata kunci barang/kegiatan, masukkan ke parameter `query`. Jika pengguna hanya meminta data bulan secara umum, kosongkan `query` atau isi kata kunci umum.
-     c. Tampilkan daftar kegiatan hasil pencarian dalam tabel HTML yang rapi (kolom: Bulan, ID Kegiatan, Uraian Barang / Kegiatan, Kode Rekening, Total Anggaran, Realisasi, Sisa Anggaran).
+     c. Tampilkan SELURUH baris kegiatan hasil pencarian tanpa dipotong dalam tabel HTML yang rapi.
+     d. FORMAT KOLOM TABEL RKAS WAJIB:
+        <th>No</th><th>Bulan</th><th>Uraian Kegiatan / Barang</th><th>Kode Rekening</th><th>Nama Rekening</th><th>Total Anggaran</th><th>Realisasi Belanja</th><th>Sisa Anggaran</th>
+     e. DILARANG KERAS membuat kolom "ID Kegiatan" atau menampilkan angka ID database apapun di tabel. Cukup gunakan nomor urut urutan baris (1, 2, 3...) di kolom "No".
 5. DRAFTING TRANSAKSI BKU:
    - Jika pengguna meminta mencatat belanja atau kuitansi (contoh: "Catat belanja ATK...", "Bayar katering..."):
      a. Panggil tool `search_rkas_activity` untuk mencari rincian kegiatan dan akun rekening yang relevan di RKAS {$tahun}.
@@ -512,7 +517,9 @@ PROMPT;
             });
         }
 
-        $items = $builder->take(15)->get();
+        // Ambil seluruh data kegiatan (hingga 250 baris agar seluruh kegiatan bulan bersangkutan tampil penuh)
+        $limit = $targetMonth ? 250 : 30;
+        $items = $builder->take($limit)->get();
 
         $results = [];
         foreach ($items as $item) {
@@ -524,8 +531,7 @@ PROMPT;
             $remaining = max(0, $budget - $spent);
 
             $results[] = [
-                'id_kegiatan' => (int) $item->id,
-                'rkas_id' => (int) $item->id,
+                'rkas_id' => (int) $item->id, // Disimpan internal untuk kebutuhan drafting transaksi BKU
                 'bulan' => $item->bulan ?? '-',
                 'uraian_barang' => $item->uraian,
                 'kode_kegiatan' => $item->kodeKegiatan?->kode ?? '-',
@@ -541,8 +547,9 @@ PROMPT;
         }
 
         return [
-            'found_count' => count($results),
-            'filter_bulan' => $targetMonth ?: 'Semua Bulan',
+            'total_kegiatan' => count($results),
+            'alokasi_bulan' => $targetMonth ?: 'Semua Bulan',
+            'keterangan' => 'Ditemukan ' . count($results) . ' kegiatan' . ($targetMonth ? ' pada alokasi bulan ' . $targetMonth : ''),
             'items' => $results,
         ];
     }
@@ -811,7 +818,7 @@ PROMPT;
     }
 
     /**
-     * Sanitasi teks respons assistant untuk mencegah kebocoran nama variabel, sintaks kode, dan query SQL
+     * Sanitasi teks respons assistant untuk mencegah kebocoran nama variabel, sintaks kode, ID internal, dan query SQL
      */
     protected function sanitizeResponseText(string $text): string
     {
@@ -822,25 +829,34 @@ PROMPT;
         // 1. Bersihkan variabel berawalan $ (seperti $spent, $rkas_id, $remaining)
         $text = preg_replace('/\$[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*/', '', $text);
 
-        // 2. Samarkan technical key names yang umum menjadi istilah ramah bendahara
+        // 2. Bersihkan penyebutan nama variabel sistem internal
+        $text = preg_replace('/\b(found_count|filter_bulan)\b/i', '', $text);
+
+        // 3. Bersihkan kolom atau penyebutan ID Kegiatan / rkas_id
+        $text = preg_replace('/<th[^>]*>\s*(?:ID Kegiatan|rkas_id)\s*<\/th>/i', '', $text);
+        $text = preg_replace('/<td[^>]*>\s*(?:ID Kegiatan|rkas_id)\s*:\s*\d+\s*<\/td>/i', '', $text);
+        $text = preg_replace('/\b(?:ID Kegiatan|rkas_id)\s*[:=\-]?\s*\d+\b/i', '', $text);
+
+        // 4. Samarkan technical key names yang umum menjadi istilah ramah bendahara
         $replacements = [
-            '/\brkas_id\b/i' => 'ID Kegiatan',
             '/\bbku_id\b/i' => 'ID Transaksi BKU',
             '/\bkode_rekening_id\b/i' => 'Kode Rekening',
             '/\bkode_kegiatan_id\b/i' => 'Kode Kegiatan',
             '/\bsisa_pagu\b/i' => 'Sisa Anggaran',
             '/\btotal_anggaran\b/i' => 'Total Anggaran',
             '/\buraian_detail\b/i' => 'Rincian Belanja',
+            '/\brkas_id\b/i' => '',
+            '/\bid_kegiatan\b/i' => '',
         ];
         $text = preg_replace(array_keys($replacements), array_values($replacements), $text);
 
-        // 3. Bersihkan blok kode teknis (sql, php, bash, python, json) jika ada
+        // 5. Bersihkan blok kode teknis (sql, php, bash, python, json) jika ada
         $text = preg_replace('/```(?:sql|php|bash|sh|powershell|cmd|python)\b[\s\S]*?```/i', '', $text);
 
-        // 4. Bersihkan cuplikan raw SQL jika ada yang bocor di teks bebas
+        // 6. Bersihkan cuplikan raw SQL jika ada yang bocor di teks bebas
         $text = preg_replace('/\b(SELECT\s+.*?\s+FROM|INSERT\s+INTO|UPDATE\s+\w+\s+SET|DELETE\s+FROM)\s+[^;\n]+(?:;)?/is', '', $text);
 
-        // 5. Bersihkan sisa backtick kosong `` jika variabel di dalamnya terhapus
+        // 7. Bersihkan sisa backtick kosong `` jika variabel di dalamnya terhapus
         $text = str_replace(['``', '` `'], '', $text);
 
         return trim($text);
