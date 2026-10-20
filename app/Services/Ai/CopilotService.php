@@ -147,6 +147,35 @@ class CopilotService
             [
                 'type' => 'function',
                 'function' => [
+                    'name' => 'get_bkp_rob_monthly',
+                    'description' => 'Mengambil data resmi pembukuan Buku Pembantu Rincian Objek Belanja (BKP ROB) pada bulan tertentu dalam tahun anggaran aktif. Menyajikan saldo anggaran belanja tersedia, rincian serapan belanja yang dikelompokkan per Kode dan Nama Rekening Belanja (seperti ATK, Honorarium, Pemeliharaan, Internet, dll), daftar kuitansi transaksi per objek belanja beserta running total dan sisa anggaran kas, serta perbandingan terhadap Pagu RKAS akun tersebut. Panggil tool ini saat pengguna bertanya tentang Buku ROB, Rincian Objek Belanja, realisasi belanja per rekening, atau serapan akun belanja tertentu.',
+                    'parameters' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'bulan' => [
+                                'type' => 'string',
+                                'enum' => [
+                                    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+                                    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+                                ],
+                                'description' => 'Nama bulan pembukuan ROB yang diminta (Januari sampai Desember).',
+                            ],
+                            'tahun' => [
+                                'type' => 'integer',
+                                'description' => 'Tahun anggaran pembukuan ROB (contoh: 2025, 2026). Opsional, default adalah tahun aktif saat ini.',
+                            ],
+                            'rekening' => [
+                                'type' => 'string',
+                                'description' => 'Kata kunci nama rekening atau kode rekening belanja (contoh: "ATK", "Honorarium", "5.1.02..."). Opsional, jika dikosongkan akan menampilkan seluruh objek belanja.',
+                            ],
+                        ],
+                        'required' => ['bulan'],
+                    ],
+                ],
+            ],
+            [
+                'type' => 'function',
+                'function' => [
                     'name' => 'search_rkas_activity',
                     'description' => 'Mencari rincian kegiatan dan akun belanja pada RKAS tahun anggaran aktif berdasarkan kata kunci uraian/kegiatan dan/atau filter alokasi bulan penganggaran (Januari s/d Desember).',
                     'parameters' => [
@@ -339,7 +368,20 @@ Karakter & Gaya Bicara Anda:
      * Gunakan nomor urut biasa (1, 2, 3...) untuk kolom "No".
      * Gunakan istilah umum yang mudah dipahami: "Sisa Anggaran" alih-alih "sisa_pagu", "Realisasi Belanja" alih-alih "terealisasi".
    - Dilarang keras menampilkan tanda dolar (\$) untuk nama variabel program.
-4. PERTANYAAN BUKU KAS (PAJAK / TUNAI / BANK / BKU) VS RKAS:
+4. PERTANYAAN BUKU KAS & BUKU PEMBANTU (ROB / PAJAK / TUNAI / BANK / BKU) VS RKAS:
+   - Jika pengguna menanyakan "Buku ROB", "BKP ROB", "Rincian Objek Belanja", "Realisasi per rekening", "Serapan belanja per akun", atau rincian belanja objek tertentu (seperti belanja ATK, honorarium, internet, sewa, konsumsi, perabot, dsb) di bulan X:
+     a. WAJIB memanggil tool `get_bkp_rob_monthly` dengan parameter `bulan` yang diminta (contoh: bulan: "Maret"). Jika pengguna menanyakan rekening tertentu secara spesifik (misal: "Berapa ROB belanja ATK?"), sertakan parameter `rekening` (contoh: rekening: "ATK").
+     b. JANGAN memanggil `get_bku_monthly_realization` (yang hanya untuk belanja BKU kronologis tanpa grouping objek belanja) atau `search_rkas_activity`!
+     c. Tampilkan ringkasan posisi anggaran ROB secara santai & jelas di atas tabel:
+        - Anggaran Belanja Tersedia di Awal Bulan (format Rp - Saldo kas belanja yang siap digunakan)
+        - Total Realisasi Belanja Bulan Ini (format Rp - Akumulasi seluruh objek belanja yang terealisasi)
+        - Sisa Anggaran Kas Belanja Akhir Bulan (format Rp)
+     d. Tampilkan Tabel Rekapitulasi per Objek Belanja:
+        <th>No</th><th>Kode Rekening</th><th>Nama Objek Belanja</th><th>Pagu RKAS (Rp)</th><th>Realisasi Bulan Ini (Rp)</th><th>Total Realisasi Tahunan (Rp)</th><th>Sisa Pagu RKAS (Rp)</th>
+     e. Tampilkan Rincian Transaksi Belanja per Kelompok Objek Belanja:
+        Setiap kelompok rekening diawali judul kode dan nama rekening belanja, lalu sajikan daftar kuitansinya dalam tabel HTML:
+        <th>No</th><th>Tanggal</th><th>No. Bukti / Kuitansi</th><th>Uraian Belanja</th><th>Realisasi (Rp)</th><th>Jumlah Kumulatif (Rp)</th><th>Sisa Anggaran Kas (Rp)</th>
+     f. Jika bulan tersebut belum ada transaksi belanja sama sekali (rekap_objek_count = 0), jelaskan secara santai bahwa di bulan tersebut belum ada pencairan belanja objek apapun.
    - Jika pengguna menanyakan "Buku Kas Pajak", "BKP Pajak", "Buku Pembantu Pajak", "Setoran pajak", "Bukti NTPN", "Pajak belum setor", "Pemotongan pajak belanja", atau mutasi pajak bulan X:
      a. WAJIB memanggil tool `get_bkp_pajak_monthly` dengan parameter `bulan` yang diminta (contoh: bulan: "Maret").
      b. JANGAN memanggil `get_bkp_bank_monthly`, `get_bkp_tunai_monthly`, atau `get_bku_monthly_realization`!
@@ -496,6 +538,7 @@ PROMPT;
             'get_bkp_bank_monthly' => $this->getBkpBankMonthly($targetTahun, $args['bulan'] ?? 'Maret', $variant),
             'get_bkp_tunai_monthly' => $this->getBkpTunaiMonthly($targetTahun, $args['bulan'] ?? 'Maret', $variant),
             'get_bkp_pajak_monthly' => $this->getBkpPajakMonthly($targetTahun, $args['bulan'] ?? 'Maret', $variant),
+            'get_bkp_rob_monthly' => $this->getBkpRobMonthly($targetTahun, $args['bulan'] ?? 'Maret', $variant, $args['rekening'] ?? null),
             'search_rkas_activity' => $this->searchRkasActivity($targetTahun, $args['query'] ?? '', $variant, $args['bulan'] ?? null),
             'calculate_tax_recommendation' => $this->calculateTaxRecommendation(
                 (float) ($args['amount'] ?? 0),
@@ -1532,6 +1575,193 @@ PROMPT;
             'belum_disetor' => $belumDisetorList,
             'mutasi_count' => count($items),
             'items' => $items,
+        ];
+    }
+
+    /**
+     * Tool: Mengambil data resmi pembukuan Buku Pembantu Rincian Objek Belanja (BKP ROB) per bulan
+     */
+    protected function getBkpRobMonthly(int $tahun, string $bulan, string $variant, ?string $rekeningFilter = null): array
+    {
+        VariantConfig::validateVariant($variant);
+
+        $penganggaranClass = VariantConfig::getModelClass('penganggaran', $variant);
+        $bkuClass = VariantConfig::getModelClass('bku', $variant);
+        $rkasClass = VariantConfig::getModelClass('rkas', $variant);
+        $penganggaranFk = VariantConfig::penganggaranFk($variant);
+
+        $penganggaran = $penganggaranClass::where('tahun_anggaran', $tahun)->first();
+        if (! $penganggaran) {
+            return [
+                'error' => "Data penganggaran untuk tahun {$tahun} ({$variant}) belum ditemukan.",
+            ];
+        }
+
+        $bulanMap = [
+            'januari' => 1, 'februari' => 2, 'maret' => 3, 'april' => 4,
+            'mei' => 5, 'juni' => 6, 'juli' => 7, 'agustus' => 8,
+            'september' => 9, 'oktober' => 10, 'november' => 11, 'desember' => 12,
+        ];
+        $cleanBulan = strtolower(trim($bulan));
+        $bulanAngka = $bulanMap[$cleanBulan] ?? 3;
+        $bulanFormatted = ucfirst($cleanBulan);
+
+        $bukuKasService = new BukuKasService($variant);
+
+        // 1. Saldo Awal Anggaran Belanja Tersedia di Awal Bulan (ROB)
+        $totalDanaTersedia = (float) $bukuKasService->hitungTotalDanaTersedia($penganggaran->id);
+        $totalRealisasiSebelumBulan = 0.0;
+        if ($bulanAngka > 1) {
+            $totalRealisasiSebelumBulan = (float) $bkuClass::where($penganggaranFk, $penganggaran->id)
+                ->where(function ($query) {
+                    $query->where('is_bunga_record', false)->orWhereNull('is_bunga_record');
+                })
+                ->whereYear('tanggal_transaksi', $tahun)
+                ->whereMonth('tanggal_transaksi', '<', $bulanAngka)
+                ->sum('total_transaksi_kotor');
+        }
+        $saldoAwalAnggaran = max(0.0, $totalDanaTersedia - $totalRealisasiSebelumBulan);
+
+        // 2. Ambil Transaksi Belanja BKU pada Bulan Berjalan
+        $bkuData = $bkuClass::where($penganggaranFk, $penganggaran->id)
+            ->whereMonth('tanggal_transaksi', $bulanAngka)
+            ->whereYear('tanggal_transaksi', $tahun)
+            ->where(function ($query) {
+                $query->where('is_bunga_record', false)->orWhereNull('is_bunga_record');
+            })
+            ->with(['rekeningBelanja', 'kodeKegiatan'])
+            ->orderBy('rekening_belanja_id')
+            ->orderBy('tanggal_transaksi')
+            ->get();
+
+        // 3. Ambil Pagu RKAS dan Total Realisasi Tahunan per Rekening Belanja
+        $rkasPaguPerRekening = $rkasClass::where($penganggaranFk, $penganggaran->id)
+            ->selectRaw('kode_rekening_id, SUM(harga_satuan * jumlah) as pagu_rkas')
+            ->groupBy('kode_rekening_id')
+            ->pluck('pagu_rkas', 'kode_rekening_id')
+            ->toArray();
+
+        $realisasiTahunanPerRekening = $bkuClass::where($penganggaranFk, $penganggaran->id)
+            ->where(function ($query) {
+                $query->where('is_bunga_record', false)->orWhereNull('is_bunga_record');
+            })
+            ->whereYear('tanggal_transaksi', $tahun)
+            ->selectRaw('rekening_belanja_id, SUM(total_transaksi_kotor) as total_realisasi')
+            ->groupBy('rekening_belanja_id')
+            ->pluck('total_realisasi', 'rekening_belanja_id')
+            ->toArray();
+
+        // 4. Proses Transaksi dan Kelompokkan per Rekening Belanja
+        $kelompokMap = [];
+        $runningTotal = 0.0;
+        $totalRealisasiBulanIni = 0.0;
+        $cleanFilter = $rekeningFilter ? strtolower(trim($rekeningFilter)) : null;
+
+        // Alias ekspansi istilah populer
+        $searchTerms = [];
+        if ($cleanFilter !== null) {
+            $searchTerms = [$cleanFilter];
+            if ($cleanFilter === 'atk') {
+                $searchTerms[] = 'alat tulis';
+            } elseif ($cleanFilter === 'mamin') {
+                $searchTerms[] = 'makan';
+                $searchTerms[] = 'minum';
+            } elseif ($cleanFilter === 'sarpras') {
+                $searchTerms[] = 'prasarana';
+                $searchTerms[] = 'sarana';
+            } elseif ($cleanFilter === 'perdin') {
+                $searchTerms[] = 'perjalanan dinas';
+            }
+        }
+
+        foreach ($bkuData as $transaksi) {
+            $rekId = $transaksi->rekening_belanja_id;
+            $kodeRekening = $transaksi->rekeningBelanja?->kode_rekening ?? 'N/A';
+            $namaRekening = $transaksi->rekeningBelanja?->rincian_objek ?? 'Lain-lain';
+
+            // Filter rekening jika diminta
+            if ($cleanFilter !== null) {
+                $targetStr = strtolower($kodeRekening.' '.$namaRekening);
+                $matched = false;
+                foreach ($searchTerms as $term) {
+                    if (str_contains($targetStr, $term)) {
+                        $matched = true;
+                        break;
+                    }
+                }
+                if (! $matched) {
+                    continue;
+                }
+            }
+
+            if (! isset($kelompokMap[$kodeRekening])) {
+                $paguRkas = (float) ($rkasPaguPerRekening[$rekId] ?? 0);
+                $totalRealisasiTahunan = (float) ($realisasiTahunanPerRekening[$rekId] ?? 0);
+
+                $kelompokMap[$kodeRekening] = [
+                    'kode_rekening' => $kodeRekening,
+                    'nama_rekening' => $namaRekening,
+                    'pagu_rkas' => $paguRkas,
+                    'realisasi_bulan_ini' => 0.0,
+                    'total_realisasi_tahunan' => $totalRealisasiTahunan,
+                    'sisa_pagu_rkas' => max(0.0, $paguRkas - $totalRealisasiTahunan),
+                    'transaksi' => [],
+                ];
+            }
+
+            $realisasiKotor = (float) $transaksi->total_transaksi_kotor;
+            $runningTotal += $realisasiKotor;
+            $totalRealisasiBulanIni += $realisasiKotor;
+            $kelompokMap[$kodeRekening]['realisasi_bulan_ini'] += $realisasiKotor;
+
+            $sisaAnggaranKas = $saldoAwalAnggaran - $runningTotal;
+
+            $kelompokMap[$kodeRekening]['transaksi'][] = [
+                'tanggal' => Carbon::parse($transaksi->tanggal_transaksi)->format('Y-m-d'),
+                'tanggal_formatted' => Carbon::parse($transaksi->tanggal_transaksi)->format('d/m/Y'),
+                'no_bukti' => $transaksi->nomor_nota ?: ($transaksi->id_transaksi ?: '-'),
+                'uraian' => $transaksi->uraian_opsional ?: $transaksi->uraian,
+                'realisasi' => $realisasiKotor,
+                'jumlah_kumulatif' => $runningTotal,
+                'sisa_anggaran_kas' => $sisaAnggaranKas,
+            ];
+        }
+
+        // Susun daftar rekapitulasi eksekutif per rekening
+        $rekapObjek = [];
+        $kelompokObjek = [];
+
+        foreach ($kelompokMap as $kode => $kel) {
+            $rekapObjek[] = [
+                'kode_rekening' => $kel['kode_rekening'],
+                'nama_rekening' => $kel['nama_rekening'],
+                'pagu_rkas' => $kel['pagu_rkas'],
+                'realisasi_bulan_ini' => $kel['realisasi_bulan_ini'],
+                'total_realisasi_tahunan' => $kel['total_realisasi_tahunan'],
+                'sisa_pagu_rkas' => $kel['sisa_pagu_rkas'],
+                'transaksi_count' => count($kel['transaksi']),
+            ];
+
+            $kelompokObjek[] = [
+                'kode_rekening' => $kel['kode_rekening'],
+                'nama_rekening' => $kel['nama_rekening'],
+                'total_realisasi' => $kel['realisasi_bulan_ini'],
+                'transaksi' => $kel['transaksi'],
+            ];
+        }
+
+        $sisaAnggaranKasAkhir = $saldoAwalAnggaran - $totalRealisasiBulanIni;
+
+        return [
+            'bulan' => $bulanFormatted,
+            'tahun' => $tahun,
+            'saldo_awal_anggaran' => $saldoAwalAnggaran,
+            'total_realisasi_bulan_ini' => $totalRealisasiBulanIni,
+            'sisa_anggaran_kas' => $sisaAnggaranKasAkhir,
+            'filter_rekening' => $rekeningFilter,
+            'rekap_objek_count' => count($rekapObjek),
+            'rekap_objek' => $rekapObjek,
+            'kelompok_objek' => $kelompokObjek,
         ];
     }
 
