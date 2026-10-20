@@ -29,6 +29,7 @@ export default function Authenticated({
             <CopilotDrawer 
                 copilotState={copilotState}
                 setCopilotState={setCopilotState}
+                sidebarOpen={sidebarOpen}
             />
             {/* Sidebar */}
             <Sidebar

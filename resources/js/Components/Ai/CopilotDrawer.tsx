@@ -194,11 +194,13 @@ function sanitizeAndFormatHtml(content: string): string {
 interface CopilotDrawerProps {
     copilotState?: CopilotWindowState;
     setCopilotState?: (state: CopilotWindowState) => void;
+    sidebarOpen?: boolean;
 }
 
 export default function CopilotDrawer({
     copilotState,
     setCopilotState,
+    sidebarOpen = true,
 }: CopilotDrawerProps = {}) {
     const { auth, variant: pageVariant, tahun: pageTahun } = usePage<any>().props;
     const vroute = useVariantRoute();
@@ -470,9 +472,11 @@ export default function CopilotDrawer({
 
             {/* Slide-over Drawer Chat Panel */}
             {isOpen && (
-                <div className={`fixed z-50 flex flex-col bg-white dark:bg-gray-800 shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden transition-all duration-300 ${
+                <div className={`fixed z-40 flex flex-col bg-white dark:bg-gray-800 shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden transition-all duration-300 ${
                     isMaximized
-                        ? 'inset-2 md:inset-4 w-auto h-auto rounded-2xl copilot-maximized'
+                        ? `top-2 bottom-2 left-2 right-2 md:top-4 md:bottom-4 md:right-4 ${
+                            sidebarOpen ? 'md:left-[17rem]' : 'md:left-[6rem]'
+                          } w-auto h-auto rounded-2xl copilot-maximized`
                         : isMinimized
                         ? 'bottom-4 right-4 w-80 h-14 rounded-2xl'
                         : 'bottom-4 right-4 w-full sm:w-[500px] h-[650px] max-h-[90vh] rounded-2xl'
