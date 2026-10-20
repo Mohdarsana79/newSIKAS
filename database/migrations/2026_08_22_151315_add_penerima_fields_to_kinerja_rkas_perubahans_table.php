@@ -43,7 +43,7 @@ return new class extends Migration
                 'pot_pph21',
                 'pot_pph21_narasumber',
                 'status_penerima',
-                'golongan'
+                'golongan',
             ]);
         });
     }

@@ -15,7 +15,7 @@ return new class extends Migration
             'buku_kas_umum_uraian_details',
             'kinerja_buku_kas_umum_uraian_details',
             'silpa_buku_kas_umum_uraian_details',
-            'kinerja_silpa_buku_kas_umum_uraian_details'
+            'kinerja_silpa_buku_kas_umum_uraian_details',
         ];
 
         foreach ($tables as $table) {
@@ -36,7 +36,7 @@ return new class extends Migration
             'buku_kas_umum_uraian_details',
             'kinerja_buku_kas_umum_uraian_details',
             'silpa_buku_kas_umum_uraian_details',
-            'kinerja_silpa_buku_kas_umum_uraian_details'
+            'kinerja_silpa_buku_kas_umum_uraian_details',
         ];
 
         foreach ($tables as $table) {

@@ -17,7 +17,7 @@ return new class extends Migration
             $table->boolean('is_trk_saldo_awal')->default(false);
             $table->date('tanggal_trk_saldo_awal')->nullable();
             $table->decimal('jumlah_trk_saldo_awal', 15, 2)->nullable();
-            
+
             $table->bigInteger('pagu_anggaran');
             $table->year('tahun_anggaran');
             $table->string('kepala_sekolah');

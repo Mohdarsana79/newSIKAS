@@ -61,9 +61,9 @@ class DatabaseController extends Controller
                 'dbSize' => $this->formatBytes($dbSize),
                 'totalBackupSize' => $this->formatBytes($totalBackupSize),
                 'storagePercentage' => $storagePercentage,
-                'lastBackupDate' => count($backupFiles) > 0 ? $backupFiles[0]['created_at'] : '-'
+                'lastBackupDate' => count($backupFiles) > 0 ? $backupFiles[0]['created_at'] : '-',
             ],
-            'currentNpsn' => env('APP_NPSN_CODE', '')
+            'currentNpsn' => env('APP_NPSN_CODE', ''),
         ]);
     }
 
@@ -73,35 +73,36 @@ class DatabaseController extends Controller
     public function validatePassword(Request $request)
     {
         $request->validate([
-            'password' => 'required|string'
+            'password' => 'required|string',
         ]);
 
         try {
             $user = Auth::user();
 
-            if (!$user) {
+            if (! $user) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'User tidak terautentikasi'
+                    'message' => 'User tidak terautentikasi',
                 ], 401);
             }
 
-            if (!Hash::check($request->password, $user->password)) {
+            if (! Hash::check($request->password, $user->password)) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Password yang Anda masukkan salah'
+                    'message' => 'Password yang Anda masukkan salah',
                 ], 422);
             }
 
             return response()->json([
                 'success' => true,
-                'message' => 'Password valid'
+                'message' => 'Password valid',
             ]);
         } catch (Exception $e) {
-            Log::error('Password validation error: ' . $e->getMessage());
+            Log::error('Password validation error: '.$e->getMessage());
+
             return response()->json([
                 'success' => false,
-                'message' => 'Terjadi kesalahan saat validasi password'
+                'message' => 'Terjadi kesalahan saat validasi password',
             ], 500);
         }
     }
@@ -112,7 +113,7 @@ class DatabaseController extends Controller
     public function reset(Request $request)
     {
         try {
-            Log::info('Starting database reset process (preserve users) - User: ' . Auth::id());
+            Log::info('Starting database reset process (preserve users) - User: '.Auth::id());
 
             // Mulai transaksi database
             DB::beginTransaction();
@@ -133,6 +134,7 @@ class DatabaseController extends Controller
                 // Skip tabel yang dikecualikan
                 if (in_array($tableName, $excludedTables)) {
                     Log::info("Skipped table: {$tableName}");
+
                     continue;
                 }
 
@@ -141,13 +143,14 @@ class DatabaseController extends Controller
                     DB::statement("TRUNCATE TABLE \"{$tableName}\" RESTART IDENTITY CASCADE");
                     Log::info("Truncated table: {$tableName}");
                 } catch (Exception $e) {
-                    Log::warning("Failed to truncate table {$tableName}: " . $e->getMessage());
+                    Log::warning("Failed to truncate table {$tableName}: ".$e->getMessage());
                     // Jika truncate gagal, coba delete
                     try {
                         DB::table($tableName)->delete();
                         Log::info("Deleted all records from table: {$tableName}");
                     } catch (Exception $e2) {
-                        Log::error("Failed to delete from table {$tableName}: " . $e2->getMessage());
+                        Log::error("Failed to delete from table {$tableName}: ".$e2->getMessage());
+
                         // Lewati tabel yang bermasalah, lanjut ke tabel berikutnya
                         continue;
                     }
@@ -169,17 +172,17 @@ class DatabaseController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Database berhasil direset. Semua data telah dihapus kecuali data user.',
-                'redirect_url' => url('/dashboard')
+                'redirect_url' => url('/dashboard'),
             ], 200);
         } catch (Exception $e) {
             // Rollback transaksi jika ada error
             DB::rollback();
 
-            Log::error('Database reset failed: ' . $e->getMessage());
+            Log::error('Database reset failed: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Reset database gagal: ' . $e->getMessage()
+                'message' => 'Reset database gagal: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -204,7 +207,7 @@ class DatabaseController extends Controller
                 $tableName = str_replace('_id_seq', '', $sequence);
 
                 // Skip jika tabel user/excluded
-                 if (in_array($tableName, ['users', 'migrations'])) {
+                if (in_array($tableName, ['users', 'migrations'])) {
                     continue;
                 }
 
@@ -214,7 +217,8 @@ class DatabaseController extends Controller
 
                 DB::statement("SELECT setval('$sequence', $newStart, false);");
             } catch (Exception $e) {
-                Log::warning("Failed to reset sequence {$sequence}: " . $e->getMessage());
+                Log::warning("Failed to reset sequence {$sequence}: ".$e->getMessage());
+
                 continue;
             }
         }
@@ -226,7 +230,7 @@ class DatabaseController extends Controller
     public function backup(Request $request)
     {
         $request->validate([
-            'backup_name' => 'nullable|string|max:255|regex:/^[a-zA-Z0-9_-]+$/'
+            'backup_name' => 'nullable|string|max:255|regex:/^[a-zA-Z0-9_-]+$/',
         ]);
 
         try {
@@ -235,84 +239,91 @@ class DatabaseController extends Controller
             // Membuat nama file backup
             $timestamp = Carbon::now()->format('Y-m-d_H-i-s');
             // Changed extension to .rsv as requested
-            $backupName = $request->backup_name ? $request->backup_name . '_' . $timestamp : 'backup_' . $timestamp;
-            $fileName = $backupName . '.rsv';
+            $backupName = $request->backup_name ? $request->backup_name.'_'.$timestamp : 'backup_'.$timestamp;
+            $fileName = $backupName.'.rsv';
 
             // Path untuk menyimpan backup
             $backupPath = storage_path('app/backups');
 
             // Membuat direktori backup jika belum ada
-            if (!file_exists($backupPath)) {
+            if (! file_exists($backupPath)) {
                 mkdir($backupPath, 0755, true);
             }
 
-            $fullPath = $backupPath . '/' . $fileName;
+            $fullPath = $backupPath.'/'.$fileName;
 
-            // Gunakan command pg_dump
+            // Gunakan executable pg_dump
+            $pgDumpPath = $this->getPostgresBinaryPath('pg_dump');
+            if (! file_exists($pgDumpPath)) {
+                return back()->with('error', "Executable pg_dump tidak ditemukan di server: {$pgDumpPath}. Pastikan path PostgreSQL terkonfigurasi dengan benar.");
+            }
+
             // Added --clean --if-exists to make backup self-contained for replacements
             $command = sprintf(
-                '"%spg_dump" -h %s -p %s -U %s -d %s -f "%s" --no-owner --no-privileges --clean --if-exists',
-                $dbConfig['dump']['dump_binary_path'] ?? '', // Gunakan path dari config
+                '"%s" -h %s -p %s -U %s -d %s -f %s --no-owner --no-privileges --clean --if-exists',
+                $pgDumpPath,
                 escapeshellarg($dbConfig['host']),
                 escapeshellarg($dbConfig['port']),
                 escapeshellarg($dbConfig['username']),
                 escapeshellarg($dbConfig['database']),
-                $fullPath
+                escapeshellarg($fullPath)
             );
 
             // Set environment variable untuk password
-            putenv("PGPASSWORD=" . $dbConfig['password']);
+            putenv('PGPASSWORD='.$dbConfig['password']);
 
             // Jalankan perintah backup
             $output = [];
             $returnVar = 0;
-            exec($command . ' 2>&1', $output, $returnVar);
+            exec($command.' 2>&1', $output, $returnVar);
 
             // Hapus environment variable setelah digunakan
-            putenv("PGPASSWORD");
+            putenv('PGPASSWORD');
 
             // Periksa hasil backup
             $fileExists = file_exists($fullPath);
             $fileSize = $fileExists ? filesize($fullPath) : 0;
 
-            if ($returnVar !== 0 || !$fileExists || $fileSize == 0) {
+            if ($returnVar !== 0 || ! $fileExists || $fileSize == 0) {
                 // If failed, try without --clean --if-exists (in case pg_dump version issues)
-                 if ($returnVar !== 0) {
-                     Log::warning('Backup with --clean failed, retrying without cleanse options. Error: ' . implode("\n", $output));
-                     $commandRetry = sprintf(
-                        '"%spg_dump" -h %s -p %s -U %s -d %s -f "%s" --no-owner --no-privileges',
-                        $dbConfig['dump']['dump_binary_path'] ?? '',
+                if ($returnVar !== 0) {
+                    Log::warning('Backup with --clean failed, retrying without cleanse options. Error: '.implode("\n", $output));
+                    $commandRetry = sprintf(
+                        '"%s" -h %s -p %s -U %s -d %s -f %s --no-owner --no-privileges',
+                        $pgDumpPath,
                         escapeshellarg($dbConfig['host']),
                         escapeshellarg($dbConfig['port']),
                         escapeshellarg($dbConfig['username']),
                         escapeshellarg($dbConfig['database']),
-                        $fullPath
+                        escapeshellarg($fullPath)
                     );
-                    putenv("PGPASSWORD=" . $dbConfig['password']);
+                    putenv('PGPASSWORD='.$dbConfig['password']);
                     $output = [];
                     $returnVar = 0;
-                    exec($commandRetry . ' 2>&1', $output, $returnVar);
-                    putenv("PGPASSWORD");
-                 }
+                    exec($commandRetry.' 2>&1', $output, $returnVar);
+                    putenv('PGPASSWORD');
+                }
             }
 
             // Re-check after retry
             $fileExists = file_exists($fullPath);
             $fileSize = $fileExists ? filesize($fullPath) : 0;
 
-            if ($returnVar !== 0 || !$fileExists || $fileSize == 0) {
-                $errorMsg = $returnVar !== 0 ? implode("\n", $output) : (!$fileExists ? 'File backup tidak terbuat' : 'File backup kosong');
-                 if ($fileExists && $fileSize == 0) {
+            if ($returnVar !== 0 || ! $fileExists || $fileSize == 0) {
+                $errorMsg = $returnVar !== 0 ? implode("\n", $output) : (! $fileExists ? 'File backup tidak terbuat' : 'File backup kosong');
+                if ($fileExists && $fileSize == 0) {
                     unlink($fullPath);
                 }
                 Log::error('Backup Failed:', ['error' => $errorMsg]);
-                return back()->with('error', 'Backup gagal: ' . $errorMsg);
+
+                return back()->with('error', 'Backup gagal: '.$errorMsg);
             }
 
-            return back()->with('success', 'Backup database berhasil dibuat: ' . $fileName);
+            return back()->with('success', 'Backup database berhasil dibuat: '.$fileName);
         } catch (Exception $e) {
             Log::error('Backup Exception:', ['error' => $e->getMessage()]);
-            return back()->with('error', 'Backup gagal: ' . $e->getMessage());
+
+            return back()->with('error', 'Backup gagal: '.$e->getMessage());
         }
     }
 
@@ -323,70 +334,124 @@ class DatabaseController extends Controller
     {
         $request->validate([
             // Allow .rsv and .btb extensions
-            'backup_file' => 'required|file|extensions:rsv|max:102400' 
+            'backup_file' => 'required|file|extensions:rsv,btb,sql|max:102400',
         ]);
 
         try {
             $dbConfig = Config::get('database.connections.pgsql');
 
-            // Dapatkan path psql dari config atau gunakan default
-            $psqlPath = $dbConfig['dump']['dump_binary_path'] ?? '';
+            // Step 1: Validasi File Backup & Path psql SEBELUM memodifikasi database
+            $psqlPath = $this->getPostgresBinaryPath('psql');
+            if (! file_exists($psqlPath)) {
+                return back()->with('error', "Executable psql tidak ditemukan di server: {$psqlPath}. Pastikan path PostgreSQL terkonfigurasi dengan benar.");
+            }
 
-            // Step 1: Validasi File Backup
             $file = $request->file('backup_file');
-            $tempPath = $file->getRealPath();
+            if (! $file || ! $file->isValid()) {
+                return back()->with('error', 'Upload file backup tidak valid.');
+            }
 
-            // Step 2: Persiapan Database
-            
-            // Clean/Wipe Database Schema Public to ensure fresh restore
-            // This fixes the issue where restore fails due to existing relations/data
+            $tempPath = $file->getRealPath();
+            if (! file_exists($tempPath) || filesize($tempPath) === 0) {
+                return back()->with('error', 'File backup yang diunggah kosong atau tidak terbaca.');
+            }
+
+            // Step 2: Persiapan Database & Restore Data
             try {
-                // We use statements here. Note: this might kill the current session's visibility if not careful,
-                // but psql command below will re-establish.
+                // Bersihkan schema public untuk restore fresh
                 DB::statement('DROP SCHEMA public CASCADE');
                 DB::statement('CREATE SCHEMA public');
-                // Restore standard permissions
                 DB::statement('GRANT ALL ON SCHEMA public TO public');
+
+                // Step 3: Jalankan psql restore
+                putenv('PGPASSWORD='.$dbConfig['password']);
+
+                $command = sprintf(
+                    '"%s" -h %s -p %s -U %s -d %s -f %s',
+                    $psqlPath,
+                    escapeshellarg($dbConfig['host']),
+                    escapeshellarg($dbConfig['port']),
+                    escapeshellarg($dbConfig['username']),
+                    escapeshellarg($dbConfig['database']),
+                    escapeshellarg($tempPath)
+                );
+
+                $output = [];
+                $returnVar = 0;
+                exec($command.' 2>&1', $output, $returnVar);
+
+                putenv('PGPASSWORD');
+
+                if ($returnVar !== 0) {
+                    $errorSnippet = implode("\n", array_slice($output, -10));
+                    throw new Exception("Eksekusi psql gagal (code {$returnVar}): ".$errorSnippet);
+                }
+
+                // Reset sequences (Penting setelah restore)
+                $this->resetSequences();
+
+                // Run migrations to ensure schema is up to date with code
+                Artisan::call('migrate', ['--force' => true]);
+
+                return back()->with('success', 'Database berhasil di-restore');
             } catch (Exception $e) {
-                // If drop fails (e.g. other connections), log it but try to proceed with psql
-                // Note: Standard hosting/local env allows this.
-                Log::warning('Schema wipe failed: ' . $e->getMessage());
+                Log::error('Restore execution failed: '.$e->getMessage());
+
+                // SAFEGUARD: Jika restore gagal dan tabel hilang, jalankan migrasi agar sessions & users kembali ada!
+                try {
+                    Artisan::call('migrate', ['--force' => true]);
+                } catch (\Throwable $migError) {
+                    Log::error('Emergency migration failed: '.$migError->getMessage());
+                }
+
+                return back()->with('error', 'Restore gagal: '.$e->getMessage());
             }
-
-            // Step 3: Restore Data
-            putenv("PGPASSWORD=" . $dbConfig['password']);
-
-            // Menggunakan psql untuk restore (karena formatnya plain sql)
-            $command = sprintf(
-                '"%spsql" -h %s -p %s -U %s -d %s -f "%s"',
-                $psqlPath, // Gunakan path dari config
-                escapeshellarg($dbConfig['host']),
-                escapeshellarg($dbConfig['port']),
-                escapeshellarg($dbConfig['username']),
-                escapeshellarg($dbConfig['database']),
-                escapeshellarg($tempPath)
-            );
-
-            $output = [];
-            $returnVar = 0;
-            exec($command . ' 2>&1', $output, $returnVar);
-
-            putenv("PGPASSWORD");
-
-            if ($returnVar !== 0) {
-                throw new Exception('Restore gagal: ' . implode("\n", $output));
-            }
-
-            // Reset sequences (Penting setelah restore)
-            $this->resetSequences();
-
-            // Run migrations to ensure schema is up to date with code (e.g. restoring old backup on new version)
-            Artisan::call('migrate', ['--force' => true]);
-
-            return back()->with('success', 'Database berhasil di-restore');
         } catch (Exception $e) {
             return back()->with('error', $e->getMessage());
         }
+    }
+
+    /**
+     * Menemukan path executable PostgreSQL (psql / pg_dump) secara dinamis
+     */
+    protected function getPostgresBinaryPath(string $binary = 'psql'): string
+    {
+        $dbConfig = Config::get('database.connections.pgsql');
+        $configuredPath = $dbConfig['dump']['dump_binary_path'] ?? env('PG_DUMP_PATH', '');
+
+        $ext = PHP_OS_FAMILY === 'Windows' ? '.exe' : '';
+        $binaryWithExt = $binary.$ext;
+
+        $candidateDirs = [
+            $configuredPath,
+            'C:\\laragon\\bin\\postgresql\\pgsql\\bin\\',
+            'C:\\laragon\\www\\newSIKAS2\\pgsql\\bin\\',
+            'C:\\Program Files\\PostgreSQL\\18\\bin\\',
+            'C:\\Program Files\\PostgreSQL\\17\\bin\\',
+            'C:\\Program Files\\PostgreSQL\\16\\bin\\',
+        ];
+
+        foreach ($candidateDirs as $dir) {
+            if (empty($dir)) {
+                continue;
+            }
+            $dir = rtrim($dir, '\\/');
+            $fullPath = $dir.DIRECTORY_SEPARATOR.$binaryWithExt;
+            if (file_exists($fullPath)) {
+                return $fullPath;
+            }
+        }
+
+        if (PHP_OS_FAMILY === 'Windows') {
+            $whichOutput = [];
+            $whichReturn = 0;
+            @exec("where.exe {$binary} 2>NUL", $whichOutput, $whichReturn);
+            if ($whichReturn === 0 && ! empty($whichOutput[0]) && file_exists(trim($whichOutput[0]))) {
+                return trim($whichOutput[0]);
+            }
+        }
+
+        return ! empty($configuredPath) ? rtrim($configuredPath, '\\/').DIRECTORY_SEPARATOR.$binaryWithExt : $binaryWithExt;
     }
 
     /**
@@ -397,9 +462,9 @@ class DatabaseController extends Controller
         $fileName = $request->get('file');
         // Prevent path traversal
         $fileName = basename($fileName);
-        $backupPath = storage_path('app/backups/' . $fileName);
+        $backupPath = storage_path('app/backups/'.$fileName);
 
-        if (!file_exists($backupPath)) {
+        if (! file_exists($backupPath)) {
             return back()->with('error', 'File backup tidak ditemukan');
         }
 
@@ -416,9 +481,9 @@ class DatabaseController extends Controller
         $fileName = $request->get('file');
         // Prevent path traversal
         $fileName = basename($fileName);
-        $backupPath = storage_path('app/backups/' . $fileName);
+        $backupPath = storage_path('app/backups/'.$fileName);
 
-        if (!file_exists($backupPath)) {
+        if (! file_exists($backupPath)) {
             return back()->with('error', 'File backup tidak ditemukan');
         }
 
@@ -439,7 +504,7 @@ class DatabaseController extends Controller
 
         if (is_dir($backupPath)) {
             // Match .rsv, .btb, and .sql files
-            $backupFiles = glob($backupPath . '/*.{rsv,btb,sql}', GLOB_BRACE);
+            $backupFiles = glob($backupPath.'/*.{rsv,btb,sql}', GLOB_BRACE);
 
             foreach ($backupFiles as $file) {
                 $fileName = basename($file);
@@ -447,7 +512,7 @@ class DatabaseController extends Controller
                     'name' => $fileName,
                     'size' => $this->formatBytes(filesize($file)),
                     'created_at' => date('d/m/Y H:i:s', filemtime($file)),
-                    'path' => $file
+                    'path' => $file,
                 ];
             }
 
@@ -471,7 +536,7 @@ class DatabaseController extends Controller
             $size /= 1024;
         }
 
-        return round($size, $precision) . ' ' . $units[$i];
+        return round($size, $precision).' '.$units[$i];
     }
 
     /**
@@ -480,23 +545,23 @@ class DatabaseController extends Controller
     public function updateNpsn(Request $request)
     {
         $request->validate([
-            'npsn_code' => 'required|string|max:255'
+            'npsn_code' => 'required|string|max:255',
         ]);
 
         $path = base_path('.env');
 
         if (file_exists($path)) {
             $envContent = file_get_contents($path);
-            
+
             if (strpos($envContent, 'APP_NPSN_CODE=') !== false) {
                 $envContent = preg_replace(
                     '/^APP_NPSN_CODE=.*$/m',
-                    'APP_NPSN_CODE=' . $request->npsn_code,
+                    'APP_NPSN_CODE='.$request->npsn_code,
                     $envContent
                 );
             } else {
                 // Ensure newline before appending
-                $envContent = rtrim($envContent) . "\nAPP_NPSN_CODE=" . $request->npsn_code . "\n";
+                $envContent = rtrim($envContent)."\nAPP_NPSN_CODE=".$request->npsn_code."\n";
             }
 
             file_put_contents($path, $envContent);

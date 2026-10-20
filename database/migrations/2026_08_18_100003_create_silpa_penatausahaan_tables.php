@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -57,11 +57,11 @@ return new class extends Migration
             $table->string('id_transaksi')->nullable();
             $table->foreignId('silpa_penganggaran_id')->constrained('silpa_penganggarans')->onDelete('cascade');
             $table->date('tanggal_transaksi');
-            
+
             $table->foreignId('kode_kegiatan_id')->nullable()->constrained('kode_kegiatans')->nullOnDelete();
             $table->foreignId('rekening_belanja_id')->nullable()->constrained('rekening_belanjas')->nullOnDelete();
             $table->text('uraian')->nullable();
-            
+
             $table->enum('jenis_transaksi', ['tunai', 'non-tunai']);
 
             $table->decimal('anggaran', 20, 2)->default(0);
@@ -77,7 +77,7 @@ return new class extends Migration
             $table->string('kode_masa_pajak')->nullable();
             $table->string('ntpn')->nullable();
             $table->date('tanggal_tutup')->nullable();
-            
+
             // Bunga Bank
             $table->boolean('is_bunga_record')->default(false);
             $table->decimal('bunga_bank', 20, 2)->default(0);
@@ -103,10 +103,10 @@ return new class extends Migration
             $table->string('satuan')->nullable();
             $table->decimal('harga_satuan', 20, 2)->default(0);
             $table->decimal('jumlah', 20, 2)->default(0);
-            
+
             $table->foreignId('kode_kegiatan_id')->nullable()->constrained('kode_kegiatans');
             $table->foreignId('rekening_belanja_id')->nullable()->constrained('rekening_belanjas');
-            
+
             // Link ke RKAS SiLPA
             $table->unsignedBigInteger('silpa_rkas_id')->nullable();
 
@@ -127,7 +127,7 @@ return new class extends Migration
         });
 
         // Trigger for silpa_buku_kas_umum_uraian_details
-        DB::unprepared("
+        DB::unprepared('
             CREATE OR REPLACE FUNCTION silpa_auto_hitung_jumlah_bku()
             RETURNS TRIGGER AS $$
             BEGIN
@@ -137,20 +137,20 @@ return new class extends Migration
                 RETURN NEW;
             END;
             $$ LANGUAGE plpgsql;
-        ");
+        ');
 
-        DB::unprepared("
+        DB::unprepared('
             CREATE TRIGGER trg_silpa_auto_hitung_jumlah
             BEFORE INSERT OR UPDATE ON silpa_buku_kas_umum_uraian_details
             FOR EACH ROW
             EXECUTE FUNCTION silpa_auto_hitung_jumlah_bku();
-        ");
+        ');
     }
 
     public function down(): void
     {
-        DB::unprepared("DROP TRIGGER IF EXISTS trg_silpa_auto_hitung_jumlah ON silpa_buku_kas_umum_uraian_details;");
-        DB::unprepared("DROP FUNCTION IF EXISTS silpa_auto_hitung_jumlah_bku();");
+        DB::unprepared('DROP TRIGGER IF EXISTS trg_silpa_auto_hitung_jumlah ON silpa_buku_kas_umum_uraian_details;');
+        DB::unprepared('DROP FUNCTION IF EXISTS silpa_auto_hitung_jumlah_bku();');
 
         Schema::dropIfExists('silpa_kwitansis');
         Schema::dropIfExists('silpa_buku_kas_umum_uraian_details');

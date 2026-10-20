@@ -8,7 +8,7 @@ return new class extends Migration
 {
     protected $tables = [
         'rkas', 'kinerja_rkas', 'silpa_rkas', 'kinerja_silpa_rkas',
-        'rkas_perubahans', 'kinerja_rkas_perubahans'
+        'rkas_perubahans', 'kinerja_rkas_perubahans',
     ];
 
     /**

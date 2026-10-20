@@ -12,9 +12,15 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->text('deepseek_api_key')->nullable()->after('remember_token');
-            $table->string('deepseek_model_reasoner', 50)->default('deepseek-reasoner')->after('deepseek_api_key');
-            $table->string('deepseek_model_chat', 50)->default('deepseek-chat')->after('deepseek_model_reasoner');
+            if (! Schema::hasColumn('users', 'deepseek_api_key')) {
+                $table->text('deepseek_api_key')->nullable()->after('remember_token');
+            }
+            if (! Schema::hasColumn('users', 'deepseek_model_reasoner')) {
+                $table->string('deepseek_model_reasoner', 50)->default('deepseek-reasoner')->after('deepseek_api_key');
+            }
+            if (! Schema::hasColumn('users', 'deepseek_model_chat')) {
+                $table->string('deepseek_model_chat', 50)->default('deepseek-chat')->after('deepseek_model_reasoner');
+            }
         });
     }
 

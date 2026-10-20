@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('silpa_sp2bs', function (Blueprint $table) {
-                        $table->id();
+            $table->id();
             $table->string('nomor_sp2b');
             $table->date('tanggal_sp2b')->nullable();
             $table->string('jenis_periode')->default('tahap');

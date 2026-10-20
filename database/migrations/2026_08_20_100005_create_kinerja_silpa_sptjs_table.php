@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('kinerja_silpa_sptjs', function (Blueprint $table) {
-                        $table->id();
+            $table->id();
             $table->foreignId('kinerja_silpa_penganggaran_id')->constrained('kinerja_silpa_penganggarans')->onDelete('cascade');
             $table->foreignId('kinerja_silpa_penerimaan_dana_id')->nullable()->constrained('kinerja_silpa_penerimaan_danas')->onDelete('cascade');
             $table->foreignId('kinerja_silpa_buku_kas_umum_id')->nullable()->constrained('kinerja_silpa_buku_kas_umums')->onDelete('cascade');
@@ -38,4 +38,3 @@ return new class extends Migration
         Schema::dropIfExists('kinerja_silpa_sptjs');
     }
 };
-

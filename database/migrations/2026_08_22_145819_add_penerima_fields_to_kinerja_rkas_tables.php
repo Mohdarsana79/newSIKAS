@@ -46,7 +46,7 @@ return new class extends Migration
                     'pot_ppn',
                     'pot_pph23',
                     'pot_pph21',
-                    'pot_pph21_narasumber'
+                    'pot_pph21_narasumber',
                 ]);
             });
         }

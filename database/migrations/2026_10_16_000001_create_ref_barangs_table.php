@@ -11,19 +11,21 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('ref_barangs', function (Blueprint $table) {
-            $table->id();
-            $table->string('id_barang', 50)->index();
-            $table->string('nama_barang', 255);
-            $table->string('kode_rekening', 50)->nullable()->index();
-            $table->text('rekening')->nullable();
-            $table->string('satuan', 50)->nullable();
-            $table->decimal('batas_atas', 15, 2)->default(0);
-            $table->integer('tahun')->index();
-            $table->timestamps();
+        if (! Schema::hasTable('ref_barangs')) {
+            Schema::create('ref_barangs', function (Blueprint $table) {
+                $table->id();
+                $table->string('id_barang', 50)->index();
+                $table->string('nama_barang', 255);
+                $table->string('kode_rekening', 50)->nullable()->index();
+                $table->text('rekening')->nullable();
+                $table->string('satuan', 50)->nullable();
+                $table->decimal('batas_atas', 15, 2)->default(0);
+                $table->integer('tahun')->index();
+                $table->timestamps();
 
-            $table->unique(['id_barang', 'tahun'], 'ref_barangs_id_tahun_unique');
-        });
+                $table->unique(['id_barang', 'tahun'], 'ref_barangs_id_tahun_unique');
+            });
+        }
     }
 
     /**

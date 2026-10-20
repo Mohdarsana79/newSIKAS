@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('silpa_sptjs', function (Blueprint $table) {
-                        $table->id();
+            $table->id();
             $table->foreignId('silpa_penganggaran_id')->constrained('silpa_penganggarans')->onDelete('cascade');
             $table->foreignId('silpa_penerimaan_dana_id')->nullable()->constrained('silpa_penerimaan_danas')->onDelete('cascade');
             $table->foreignId('silpa_buku_kas_umum_id')->nullable()->constrained('silpa_buku_kas_umums')->onDelete('cascade');

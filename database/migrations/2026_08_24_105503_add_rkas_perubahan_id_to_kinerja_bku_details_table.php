@@ -18,7 +18,7 @@ return new class extends Migration
         // Data Migration: Pindahkan ID Tahap 2 dari kinerja_rkas_id ke kinerja_rkas_perubahan_id
         // berdasarkan tanggal transaksi BKU (Bulan Juli ke atas).
         if (DB::connection()->getDriverName() === 'pgsql') {
-            DB::statement("
+            DB::statement('
                 UPDATE kinerja_buku_kas_umum_uraian_details d
                 SET kinerja_rkas_perubahan_id = d.kinerja_rkas_id,
                     kinerja_rkas_id = NULL
@@ -26,7 +26,7 @@ return new class extends Migration
                 WHERE d.kinerja_buku_kas_umum_id = b.id
                   AND EXTRACT(MONTH FROM b.tanggal_transaksi) >= 7
                   AND d.kinerja_rkas_id IS NOT NULL
-            ");
+            ');
         }
     }
 

@@ -19,7 +19,7 @@ return new class extends Migration
         'rkas_perubahans',
         'kinerja_rkas_perubahans',
         'silpa_rkas_perubahans',
-        'kinerja_silpa_rkas_perubahans'
+        'kinerja_silpa_rkas_perubahans',
     ];
 
     /**

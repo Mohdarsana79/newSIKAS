@@ -18,7 +18,7 @@ return new class extends Migration
             $table->foreignId('sekolah_id')->constrained('sekolahs')->onDelete('cascade');
             $table->foreignId('buku_kas_umum_id')->nullable()->constrained('buku_kas_umums')->onDelete('cascade');
             $table->foreignId('penerimaan_dana_id')->nullable()->constrained('penerimaan_danas')->onDelete('cascade');
-            
+
             // Additional necessary columns for logic
             $table->enum('tahap', ['1', '2']); // 1 = Semester I, 2 = Semester II
             $table->decimal('realisasi_lalu', 15, 2)->default(0);
