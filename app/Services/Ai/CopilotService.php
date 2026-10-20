@@ -177,7 +177,7 @@ class CopilotService
                 'type' => 'function',
                 'function' => [
                     'name' => 'search_rkas_activity',
-                    'description' => 'Mencari rincian kegiatan dan akun belanja pada RKAS tahun anggaran aktif berdasarkan kata kunci uraian/kegiatan dan/atau filter alokasi bulan penganggaran (Januari s/d Desember).',
+                    'description' => 'Mencari rincian kegiatan dan akun belanja pada dokumen RKAS tahun anggaran aktif berdasarkan kata kunci uraian/kegiatan dan/atau filter alokasi bulan penganggaran (Januari s/d Desember). Jika terdapat RKAS Perubahan, kegiatan Tahap 2 (Juli–Desember) diambil otomatis dari RKAS Perubahan.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
@@ -382,6 +382,11 @@ Karakter & Gaya Bicara Anda:
         Setiap kelompok rekening diawali judul kode dan nama rekening belanja, lalu sajikan daftar kuitansinya dalam tabel HTML:
         <th>No</th><th>Tanggal</th><th>No. Bukti / Kuitansi</th><th>Uraian Belanja</th><th>Realisasi (Rp)</th><th>Jumlah Kumulatif (Rp)</th><th>Sisa Anggaran Kas (Rp)</th>
      f. Jika bulan tersebut belum ada transaksi belanja sama sekali (rekap_objek_count = 0), jelaskan secara santai bahwa di bulan tersebut belum ada pencairan belanja objek apapun.
+     g. PENTING - RKAS PERUBAHAN & PERGESERAN ANGGARAN PADA ROB:
+        - Jika sekolah memiliki dokumen RKAS Perubahan (`status_dokumen_anggaran` = "Perubahan"), angka `pagu_rkas` yang disajikan adalah Pagu Resmi Terakhir (RKAS Perubahan).
+        - Jika field `status_pergeseran` berisi informasi pergeseran (misalnya "[Perubahan +Rp 10.000 dari Tahap 2]" atau "[Perubahan -Rp 10.000]"):
+          1) Sertakan catatan pergeseran tersebut di kolom Pagu RKAS secara rapi, contoh: "Rp 130.000 <br><small style='color: #64748b;'>(Perubahan +Rp 10.000)</small>".
+          2) JANGAN PERNAH mengklaim ada kelebihan belanja / defisit anggaran / over-budget jika realisasi kumulatif masih sesuai atau tidak melebihi Pagu RKAS Perubahan (sisa_pagu_rkas >= 0). Jelaskan secara ramah bahwa anggaran objek belanja tersebut bertambah/berkurang secara sah lewat penetapan RKAS Perubahan (pergeseran anggaran Tahap 2).
    - Jika pengguna menanyakan "Buku Kas Pajak", "BKP Pajak", "Buku Pembantu Pajak", "Setoran pajak", "Bukti NTPN", "Pajak belum setor", "Pemotongan pajak belanja", atau mutasi pajak bulan X:
      a. WAJIB memanggil tool `get_bkp_pajak_monthly` dengan parameter `bulan` yang diminta (contoh: bulan: "Maret").
      b. JANGAN memanggil `get_bkp_bank_monthly`, `get_bkp_tunai_monthly`, atau `get_bku_monthly_realization`!
@@ -430,14 +435,15 @@ Karakter & Gaya Bicara Anda:
 5. PENCARIAN RENCANA KEGIATAN RKAS:
    - Jika pengguna menanyakan rencana kegiatan atau alokasi anggaran di dokumen perencanaan RKAS (contoh: "Apa saja rencana anggaran di RKAS bulan Maret?", "Cari kegiatan sarpras di RKAS", "Tampilkan RKAS bulan Januari"):
      a. Panggil tool `search_rkas_activity` dengan parameter `bulan` atau `query`.
-     b. Tampilkan seluruh baris kegiatan dalam tabel HTML terstruktur rapi dengan kolom WAJIB:
+     b. Jika sekolah memiliki RKAS Perubahan, kegiatan pada Tahap 2 (Juli–Desember) secara otomatis diambil dari alokasi resmi RKAS Perubahan (`sumber_anggaran` = "RKAS Perubahan").
+     c. Tampilkan seluruh baris kegiatan dalam tabel HTML terstruktur rapi dengan kolom WAJIB:
         <th>No</th><th>Bulan</th><th>Uraian Kegiatan / Barang</th><th>Kode Rekening</th><th>Nama Rekening</th><th>Total Anggaran</th><th>Realisasi Bulan Ini</th><th>Sisa Anggaran</th><th>Status Realisasi BKU</th>
-     c. DILARANG membuat kolom "ID Kegiatan" database. Gunakan nomor urut biasa (1, 2, 3...) di kolom "No".
-     d. Berikan Catatan Analisis Santai:
+     d. DILARANG membuat kolom "ID Kegiatan" database. Gunakan nomor urut biasa (1, 2, 3...) di kolom "No".
+     e. Berikan Catatan Analisis Santai:
         - Jika pengguna menanyakan data RKAS bulan tertentu di mana kas belum keluar (contoh: bulan Januari dengan Realisasi Bulan Ini = Rp 0), jelaskan secara santai dan bersahabat bahwa di bulan tersebut kasnya memang belum dicairkan (Rp 0), tapi sistem mendeteksi kegiatan mana saja yang udah dibayarin di bulan-bulan berikutnya (sesuai kolom `Status Realisasi BKU`, misalnya honor atau sabun yang dibayarkan di BKU Maret), dan sebutkan mana yang masih belum direalisasikan sama sekali.
 6. DRAFTING TRANSAKSI BKU:
    - Jika pengguna meminta mencatat belanja atau kuitansi (contoh: "Catat belanja ATK...", "Bayar katering..."):
-     a. Panggil tool `search_rkas_activity` untuk mencari rincian kegiatan dan akun rekening yang relevan di RKAS {$tahun}.
+     a. Panggil tool `search_rkas_activity` untuk mencari rincian kegiatan dan akun rekening yang relevan di RKAS {$tahun}. Jika belanja di Tahap 2 (Juli–Desember) dan terdapat RKAS Perubahan, sistem otomatis mengarahkan ke rincian RKAS Perubahan (`rkas_perubahan_id`).
      b. Panggil tool `calculate_tax_recommendation` untuk menghitung pajak resmi yang berlaku.
      c. Panggil tool `prepare_bku_transaction_draft` untuk menghasilkan Draf Staging Card transaksi.
      d. Beri tahu dengan santai bahwa draf kartu transaksi sudah siap di layar dan minta mereka klik konfirmasi untuk menyimpan ke BKU.
@@ -553,25 +559,71 @@ PROMPT;
     }
 
     /**
+     * Resolusi konteks RKAS (Awal vs Perubahan) sesuai tahun, varian, dan tahap/bulan
+     */
+    protected function getRkasContext(int $tahun, string $variant, ?int $bulanAngka = null): array
+    {
+        VariantConfig::validateVariant($variant);
+
+        $penganggaranClass = VariantConfig::getModelClass('penganggaran', $variant);
+        $rkasClass = VariantConfig::getModelClass('rkas', $variant);
+        $rkasPerubahanClass = VariantConfig::getModelClass('rkas_perubahan', $variant);
+        $penganggaranFk = VariantConfig::penganggaranFk($variant);
+
+        $penganggaran = $penganggaranClass::where('tahun_anggaran', $tahun)->first();
+        $hasPerubahan = false;
+
+        if ($rkasPerubahanClass && $penganggaran) {
+            $hasPerubahan = $rkasPerubahanClass::where($penganggaranFk, $penganggaran->id)->exists();
+        }
+
+        // Tentukan apakah bulan berada di Semester / Tahap 2 (Juli - Desember)
+        $isTahap2 = $bulanAngka !== null ? ($bulanAngka >= 7) : false;
+
+        // Model aktif tahunan untuk evaluasi Pagu resmi:
+        // Jika ada RKAS Perubahan, maka Pagu resmi tahunan adalah RKAS Perubahan
+        $activePaguClass = $hasPerubahan ? $rkasPerubahanClass : $rkasClass;
+
+        // Model target untuk bulan/transaksi spesifik:
+        // Bulan Jan-Jun selalu menunjuk ke RKAS Awal, bulan Jul-Des menunjuk ke RKAS Perubahan jika ada
+        $targetModelClass = ($isTahap2 && $hasPerubahan) ? $rkasPerubahanClass : $rkasClass;
+        $usageFk = VariantConfig::uraianDetailRkasFk($variant, $isTahap2 && $hasPerubahan);
+
+        return [
+            'penganggaran' => $penganggaran,
+            'penganggaran_fk' => $penganggaranFk,
+            'has_perubahan' => $hasPerubahan,
+            'rkas_class' => $rkasClass,
+            'rkas_perubahan_class' => $rkasPerubahanClass,
+            'active_pagu_class' => $activePaguClass,
+            'target_model_class' => $targetModelClass,
+            'usage_fk' => $usageFk,
+            'is_tahap_2' => $isTahap2,
+        ];
+    }
+
+    /**
      * Tool: Ringkasan resmi Pagu Anggaran BOSP tahun aktif (penetapan, penerimaan, dan RKAS)
      */
     protected function getBudgetPaguSummary(int $tahun, string $variant): array
     {
-        $penganggaranClass = VariantConfig::getModelClass('penganggaran', $variant);
-        $penerimaanClass = VariantConfig::getModelClass('penerimaan_dana', $variant);
-        $rkasClass = VariantConfig::getModelClass('rkas', $variant);
-        $penganggaranFk = VariantConfig::penganggaranFk($variant);
-
-        $penganggaran = $penganggaranClass::where('tahun_anggaran', $tahun)->first();
+        $rkasCtx = $this->getRkasContext($tahun, $variant);
+        $penganggaran = $rkasCtx['penganggaran'];
         if (! $penganggaran) {
             return [
                 'error' => "Data penganggaran untuk tahun {$tahun} ({$variant}) belum ditemukan.",
             ];
         }
 
+        $penganggaranFk = $rkasCtx['penganggaran_fk'];
+        $hasPerubahan = $rkasCtx['has_perubahan'];
+        $activePaguClass = $rkasCtx['active_pagu_class'];
+        $rkasClass = $rkasCtx['rkas_class'];
+
         $paguAnggaran = (float) ($penganggaran->pagu_anggaran ?? 0);
 
         // Penerimaan per tahap
+        $penerimaanClass = VariantConfig::getModelClass('penerimaan_dana', $variant);
         $penerimaans = $penerimaanClass::where($penganggaranFk, $penganggaran->id)->get();
         $tahap1Nominal = 0.0;
         $tahap2Nominal = 0.0;
@@ -593,8 +645,8 @@ PROMPT;
             }
         }
 
-        // Hitung rincian rencana belanja RKAS per kelompok rekening
-        $rkasItems = $rkasClass::with('rekeningBelanja')
+        // Hitung rincian rencana belanja RKAS per kelompok rekening dari RKAS aktif
+        $rkasItems = $activePaguClass::with('rekeningBelanja')
             ->where($penganggaranFk, $penganggaran->id)
             ->get();
 
@@ -615,6 +667,13 @@ PROMPT;
             } else {
                 $lainnyaTotal += $subtotal;
             }
+        }
+
+        $totalRencanaAwal = null;
+        if ($hasPerubahan) {
+            $totalRencanaAwal = (float) $rkasClass::where($penganggaranFk, $penganggaran->id)
+                ->selectRaw('SUM(harga_satuan * jumlah) as total')
+                ->value('total');
         }
 
         $kelompokBelanja = [
@@ -641,8 +700,11 @@ PROMPT;
         return [
             'tahun_anggaran' => $tahun,
             'variant' => $variant,
+            'status_dokumen_anggaran' => $hasPerubahan ? 'RKAS Perubahan' : 'RKAS Awal (Murni)',
+            'has_perubahan' => $hasPerubahan,
             'pagu_total_penetapan' => $paguAnggaran > 0 ? $paguAnggaran : $totalRencanaRkas,
             'total_rencana_rkas' => $totalRencanaRkas,
+            'total_rencana_rkas_awal' => $totalRencanaAwal,
             'total_dana_diterima' => $totalPenerimaan,
             'tahap_1' => $tahap1Nominal,
             'tahap_2' => $tahap2Nominal,
@@ -1585,18 +1647,6 @@ PROMPT;
     {
         VariantConfig::validateVariant($variant);
 
-        $penganggaranClass = VariantConfig::getModelClass('penganggaran', $variant);
-        $bkuClass = VariantConfig::getModelClass('bku', $variant);
-        $rkasClass = VariantConfig::getModelClass('rkas', $variant);
-        $penganggaranFk = VariantConfig::penganggaranFk($variant);
-
-        $penganggaran = $penganggaranClass::where('tahun_anggaran', $tahun)->first();
-        if (! $penganggaran) {
-            return [
-                'error' => "Data penganggaran untuk tahun {$tahun} ({$variant}) belum ditemukan.",
-            ];
-        }
-
         $bulanMap = [
             'januari' => 1, 'februari' => 2, 'maret' => 3, 'april' => 4,
             'mei' => 5, 'juni' => 6, 'juli' => 7, 'agustus' => 8,
@@ -1605,6 +1655,20 @@ PROMPT;
         $cleanBulan = strtolower(trim($bulan));
         $bulanAngka = $bulanMap[$cleanBulan] ?? 3;
         $bulanFormatted = ucfirst($cleanBulan);
+
+        $rkasCtx = $this->getRkasContext($tahun, $variant, $bulanAngka);
+        $penganggaran = $rkasCtx['penganggaran'];
+        if (! $penganggaran) {
+            return [
+                'error' => "Data penganggaran untuk tahun {$tahun} ({$variant}) belum ditemukan.",
+            ];
+        }
+
+        $bkuClass = VariantConfig::getModelClass('bku', $variant);
+        $penganggaranFk = $rkasCtx['penganggaran_fk'];
+        $hasPerubahan = $rkasCtx['has_perubahan'];
+        $activePaguClass = $rkasCtx['active_pagu_class'];
+        $rkasClass = $rkasCtx['rkas_class'];
 
         $bukuKasService = new BukuKasService($variant);
 
@@ -1634,12 +1698,21 @@ PROMPT;
             ->orderBy('tanggal_transaksi')
             ->get();
 
-        // 3. Ambil Pagu RKAS dan Total Realisasi Tahunan per Rekening Belanja
-        $rkasPaguPerRekening = $rkasClass::where($penganggaranFk, $penganggaran->id)
+        // 3. Ambil Pagu RKAS Resmi (dari RKAS Perubahan jika ada) dan RKAS Awal
+        $rkasPaguPerRekening = $activePaguClass::where($penganggaranFk, $penganggaran->id)
             ->selectRaw('kode_rekening_id, SUM(harga_satuan * jumlah) as pagu_rkas')
             ->groupBy('kode_rekening_id')
             ->pluck('pagu_rkas', 'kode_rekening_id')
             ->toArray();
+
+        $rkasAwalPaguPerRekening = [];
+        if ($hasPerubahan) {
+            $rkasAwalPaguPerRekening = $rkasClass::where($penganggaranFk, $penganggaran->id)
+                ->selectRaw('kode_rekening_id, SUM(harga_satuan * jumlah) as pagu_awal')
+                ->groupBy('kode_rekening_id')
+                ->pluck('pagu_awal', 'kode_rekening_id')
+                ->toArray();
+        }
 
         $realisasiTahunanPerRekening = $bkuClass::where($penganggaranFk, $penganggaran->id)
             ->where(function ($query) {
@@ -1696,12 +1769,28 @@ PROMPT;
 
             if (! isset($kelompokMap[$kodeRekening])) {
                 $paguRkas = (float) ($rkasPaguPerRekening[$rekId] ?? 0);
+                $paguAwal = $hasPerubahan ? (float) ($rkasAwalPaguPerRekening[$rekId] ?? 0) : $paguRkas;
+                $selisihPerubahan = $hasPerubahan ? ($paguRkas - $paguAwal) : 0.0;
+
+                $statusPergeseran = 'Tetap';
+                if ($hasPerubahan) {
+                    if ($selisihPerubahan > 0) {
+                        $statusPergeseran = 'Bertambah Rp '.number_format($selisihPerubahan, 0, ',', '.').' di RKAS Perubahan (Tahap 2)';
+                    } elseif ($selisihPerubahan < 0) {
+                        $statusPergeseran = 'Berkurang Rp '.number_format(abs($selisihPerubahan), 0, ',', '.').' di RKAS Perubahan (Tahap 2)';
+                    }
+                }
+
                 $totalRealisasiTahunan = (float) ($realisasiTahunanPerRekening[$rekId] ?? 0);
 
                 $kelompokMap[$kodeRekening] = [
                     'kode_rekening' => $kodeRekening,
                     'nama_rekening' => $namaRekening,
                     'pagu_rkas' => $paguRkas,
+                    'pagu_awal' => $paguAwal,
+                    'has_pergeseran' => abs($selisihPerubahan) > 0.01,
+                    'selisih_pergeseran' => $selisihPerubahan,
+                    'status_pergeseran' => $statusPergeseran,
                     'realisasi_bulan_ini' => 0.0,
                     'total_realisasi_tahunan' => $totalRealisasiTahunan,
                     'sisa_pagu_rkas' => max(0.0, $paguRkas - $totalRealisasiTahunan),
@@ -1736,6 +1825,10 @@ PROMPT;
                 'kode_rekening' => $kel['kode_rekening'],
                 'nama_rekening' => $kel['nama_rekening'],
                 'pagu_rkas' => $kel['pagu_rkas'],
+                'pagu_awal' => $kel['pagu_awal'],
+                'has_pergeseran' => $kel['has_pergeseran'],
+                'selisih_pergeseran' => $kel['selisih_pergeseran'],
+                'status_pergeseran' => $kel['status_pergeseran'],
                 'realisasi_bulan_ini' => $kel['realisasi_bulan_ini'],
                 'total_realisasi_tahunan' => $kel['total_realisasi_tahunan'],
                 'sisa_pagu_rkas' => $kel['sisa_pagu_rkas'],
@@ -1755,6 +1848,8 @@ PROMPT;
         return [
             'bulan' => $bulanFormatted,
             'tahun' => $tahun,
+            'status_dokumen_anggaran' => $hasPerubahan ? 'RKAS Perubahan' : 'RKAS Awal (Murni)',
+            'has_perubahan' => $hasPerubahan,
             'saldo_awal_anggaran' => $saldoAwalAnggaran,
             'total_realisasi_bulan_ini' => $totalRealisasiBulanIni,
             'sisa_anggaran_kas' => $sisaAnggaranKasAkhir,
@@ -1770,16 +1865,6 @@ PROMPT;
      */
     protected function searchRkasActivity(int $tahun, ?string $query, string $variant, ?string $bulan = null): array
     {
-        $penganggaranClass = VariantConfig::getModelClass('penganggaran', $variant);
-        $rkasClass = VariantConfig::getModelClass('rkas', $variant);
-        $bkuDetailClass = VariantConfig::getModelClass('bku_uraian_detail', $variant);
-        $bkuDetailFk = VariantConfig::uraianDetailRkasFk($variant);
-
-        $penganggaran = $penganggaranClass::where('tahun_anggaran', $tahun)->first();
-        if (! $penganggaran) {
-            return ['error' => 'Data penganggaran tidak ditemukan'];
-        }
-
         $validMonths = [
             'januari' => 'Januari',
             'februari' => 'Februari',
@@ -1828,33 +1913,96 @@ PROMPT;
         ];
         $targetMonthIndex = $targetMonth ? ($monthNumbers[$targetMonth] ?? null) : null;
 
-        $builder = $rkasClass::with(['kodeKegiatan', 'rekeningBelanja'])
-            ->where(VariantConfig::penganggaranFk($variant), (int) $penganggaran->id);
-
-        if ($targetMonth) {
-            $builder->where('bulan', $targetMonth);
+        $ctx = $this->getRkasContext($tahun, $variant, $targetMonthIndex);
+        if (isset($ctx['error'])) {
+            return ['error' => $ctx['error']];
         }
 
-        if (! empty($queryClean)) {
-            // Escape wildcard SQL (% dan _) untuk mencegah manipulasi query pattern
-            $escaped = addcslashes($queryClean, '%_\\');
-            $likeParam = "%{$escaped}%";
+        $penganggaran = $ctx['penganggaran'];
+        $penganggaranFk = $ctx['penganggaran_fk'];
+        $rkasClass = $ctx['rkas_class'];
+        $rkasPerubahanClass = $ctx['rkas_perubahan_class'];
+        $hasPerubahan = $ctx['has_perubahan'];
+        $tahap1Fk = VariantConfig::uraianDetailRkasFk($variant, false);
+        $tahap2Fk = VariantConfig::uraianDetailRkasFk($variant, true);
+        $bkuDetailClass = VariantConfig::getModelClass('bku_uraian_detail', $variant);
 
-            $builder->where(function ($q) use ($likeParam) {
-                $q->whereRaw('LOWER(uraian) LIKE ?', [$likeParam])
-                    ->orWhereHas('kodeKegiatan', function ($kq) use ($likeParam) {
-                        $kq->whereRaw('LOWER(uraian) LIKE ?', [$likeParam])
-                            ->orWhereRaw('LOWER(sub_program) LIKE ?', [$likeParam]);
-                    })
-                    ->orWhereHas('rekeningBelanja', function ($rq) use ($likeParam) {
-                        $rq->whereRaw('LOWER(rincian_objek) LIKE ?', [$likeParam]);
-                    });
+        $applyQueryFilter = function ($builder) use ($queryClean) {
+            if (! empty($queryClean)) {
+                $escaped = addcslashes($queryClean, '%_\\');
+                $likeParam = "%{$escaped}%";
+
+                $builder->where(function ($q) use ($likeParam) {
+                    $q->whereRaw('LOWER(uraian) LIKE ?', [$likeParam])
+                        ->orWhereHas('kodeKegiatan', function ($kq) use ($likeParam) {
+                            $kq->whereRaw('LOWER(uraian) LIKE ?', [$likeParam])
+                                ->orWhereRaw('LOWER(sub_program) LIKE ?', [$likeParam]);
+                        })
+                        ->orWhereHas('rekeningBelanja', function ($rq) use ($likeParam) {
+                            $rq->whereRaw('LOWER(rincian_objek) LIKE ?', [$likeParam]);
+                        });
+                });
+            }
+        };
+
+        $items = collect();
+        if ($targetMonthIndex !== null) {
+            $isT2 = ($targetMonthIndex >= 7);
+            $queryModel = ($isT2 && $hasPerubahan && $rkasPerubahanClass) ? $rkasPerubahanClass : $rkasClass;
+            $activeFk = ($isT2 && $hasPerubahan && $rkasPerubahanClass) ? $tahap2Fk : $tahap1Fk;
+            $rkasType = ($isT2 && $hasPerubahan && $rkasPerubahanClass) ? 'perubahan' : 'awal';
+
+            $builder = $queryModel::with(['kodeKegiatan', 'rekeningBelanja'])
+                ->where($penganggaranFk, (int) $penganggaran->id)
+                ->where('bulan', $targetMonth);
+            $applyQueryFilter($builder);
+
+            $items = $builder->take(250)->get()->map(function ($item) use ($activeFk, $rkasType) {
+                $item->_usage_fk = $activeFk;
+                $item->_rkas_type = $rkasType;
+
+                return $item;
             });
-        }
+        } else {
+            // Pencarian tanpa filter bulan (seluruh tahun)
+            if ($hasPerubahan && $rkasPerubahanClass) {
+                // Tahap 1 (Januari - Juni) dari RKAS Awal
+                $b1 = $rkasClass::with(['kodeKegiatan', 'rekeningBelanja'])
+                    ->where($penganggaranFk, (int) $penganggaran->id)
+                    ->whereIn('bulan', ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni']);
+                $applyQueryFilter($b1);
+                $t1Items = $b1->take(50)->get()->map(function ($item) use ($tahap1Fk) {
+                    $item->_usage_fk = $tahap1Fk;
+                    $item->_rkas_type = 'awal';
 
-        // Ambil seluruh data kegiatan (hingga 250 baris agar seluruh kegiatan bulan bersangkutan tampil penuh)
-        $limit = $targetMonth ? 250 : 30;
-        $items = $builder->take($limit)->get();
+                    return $item;
+                });
+
+                // Tahap 2 (Juli - Desember) dari RKAS Perubahan
+                $b2 = $rkasPerubahanClass::with(['kodeKegiatan', 'rekeningBelanja'])
+                    ->where($penganggaranFk, (int) $penganggaran->id)
+                    ->whereIn('bulan', ['Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']);
+                $applyQueryFilter($b2);
+                $t2Items = $b2->take(50)->get()->map(function ($item) use ($tahap2Fk) {
+                    $item->_usage_fk = $tahap2Fk;
+                    $item->_rkas_type = 'perubahan';
+
+                    return $item;
+                });
+
+                $items = $t1Items->concat($t2Items);
+            } else {
+                $builder = $rkasClass::with(['kodeKegiatan', 'rekeningBelanja'])
+                    ->where($penganggaranFk, (int) $penganggaran->id);
+                $applyQueryFilter($builder);
+                $items = $builder->take(60)->get()->map(function ($item) use ($tahap1Fk) {
+                    $item->_usage_fk = $tahap1Fk;
+                    $item->_rkas_type = 'awal';
+
+                    return $item;
+                });
+            }
+        }
 
         if ($items->isEmpty()) {
             return [
@@ -1865,38 +2013,94 @@ PROMPT;
             ];
         }
 
-        // Ambil seluruh RKAS tahun aktif untuk mengelompokkan kegiatan berulang (recurring items)
-        $allYearRkas = $rkasClass::where(VariantConfig::penganggaranFk($variant), (int) $penganggaran->id)->get();
+        // Ambil seluruh slot penganggaran aktif tahun berjalan untuk pengelompokan recurring items
+        if ($hasPerubahan && $rkasPerubahanClass) {
+            $t1Slots = $rkasClass::where($penganggaranFk, (int) $penganggaran->id)
+                ->whereIn('bulan', ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni'])
+                ->get()
+                ->map(function ($r) use ($tahap1Fk) {
+                    $r->_usage_fk = $tahap1Fk;
+                    $r->_rkas_type = 'awal';
+
+                    return $r;
+                });
+
+            $t2Slots = $rkasPerubahanClass::where($penganggaranFk, (int) $penganggaran->id)
+                ->whereIn('bulan', ['Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'])
+                ->get()
+                ->map(function ($r) use ($tahap2Fk) {
+                    $r->_usage_fk = $tahap2Fk;
+                    $r->_rkas_type = 'perubahan';
+
+                    return $r;
+                });
+
+            $allYearSlots = $t1Slots->concat($t2Slots);
+        } else {
+            $allYearSlots = $rkasClass::where($penganggaranFk, (int) $penganggaran->id)
+                ->get()
+                ->map(function ($r) use ($tahap1Fk) {
+                    $r->_usage_fk = $tahap1Fk;
+                    $r->_rkas_type = 'awal';
+
+                    return $r;
+                });
+        }
 
         // Identifikasi kelompok unik untuk item-item yang ditemukan
         $targetGroupKeys = $items->map(function ($item) {
             return $item->kode_id.'|'.$item->kode_rekening_id.'|'.strtolower(trim($item->uraian)).'|'.(float) $item->harga_satuan;
         })->unique()->all();
 
-        // Kumpulkan seluruh ID RKAS yang bersaudara dalam kelompok kegiatan tersebut
-        $relevantGroupItems = $allYearRkas->filter(function ($r) use ($targetGroupKeys) {
+        // Kumpulkan seluruh item bersaudara dalam kelompok kegiatan tersebut
+        $relevantGroupItems = $allYearSlots->filter(function ($r) use ($targetGroupKeys) {
             $key = $r->kode_id.'|'.$r->kode_rekening_id.'|'.strtolower(trim($r->uraian)).'|'.(float) $r->harga_satuan;
 
             return in_array($key, $targetGroupKeys, true);
         });
-        $allRelevantRkasIds = $relevantGroupItems->pluck('id')->all();
+
+        $tahap1RelevantIds = $relevantGroupItems->where('_usage_fk', $tahap1Fk)->pluck('id')->all();
+        $tahap2RelevantIds = $relevantGroupItems->where('_usage_fk', $tahap2Fk)->pluck('id')->all();
 
         // Pre-fetch seluruh kuitansi BKU tahun aktif yang terkait dengan kelompok kegiatan ini
-        $allBkuDetails = empty($allRelevantRkasIds) ? collect() : $bkuDetailClass::whereIn($bkuDetailFk, $allRelevantRkasIds)
-            ->whereHas('bukuKasUmum', function ($bq) use ($penganggaran, $tahun, $variant) {
-                $bq->where(VariantConfig::penganggaranFk($variant), (int) $penganggaran->id)
+        $allBkuDetails = collect();
+        if (! empty($tahap1RelevantIds) || ! empty($tahap2RelevantIds)) {
+            $bkuDetailQuery = $bkuDetailClass::whereHas('bukuKasUmum', function ($bq) use ($penganggaranFk, $penganggaran, $tahun) {
+                $bq->where($penganggaranFk, (int) $penganggaran->id)
                     ->where('is_bunga_record', false)
                     ->whereYear('tanggal_transaksi', $tahun);
-            })
-            ->with(['bukuKasUmum' => function ($bq) {
+            })->with(['bukuKasUmum' => function ($bq) {
                 $bq->select('id', 'tanggal_transaksi', 'nomor_nota', 'id_transaksi');
-            }])
-            ->get();
+            }]);
+
+            $bkuDetailQuery->where(function ($q) use ($tahap1Fk, $tahap1RelevantIds, $tahap2Fk, $tahap2RelevantIds) {
+                $hasCond = false;
+                if (! empty($tahap1RelevantIds)) {
+                    $q->whereIn($tahap1Fk, $tahap1RelevantIds);
+                    $hasCond = true;
+                }
+                if (! empty($tahap2RelevantIds)) {
+                    if ($hasCond) {
+                        $q->orWhereIn($tahap2Fk, $tahap2RelevantIds);
+                    } else {
+                        $q->whereIn($tahap2Fk, $tahap2RelevantIds);
+                    }
+                }
+            });
+
+            $allBkuDetails = $bkuDetailQuery->get();
+        }
 
         // Kelompokkan detail BKU berdasarkan kunci identitas kelompok kegiatan
         $bkuByGroup = [];
         foreach ($allBkuDetails as $bd) {
-            $r = $allYearRkas->firstWhere('id', $bd->{$bkuDetailFk});
+            $r = null;
+            if (! empty($bd->{$tahap1Fk})) {
+                $r = $allYearSlots->first(fn ($s) => $s->_usage_fk === $tahap1Fk && (int) $s->id === (int) $bd->{$tahap1Fk});
+            }
+            if (! $r && ! empty($bd->{$tahap2Fk})) {
+                $r = $allYearSlots->first(fn ($s) => $s->_usage_fk === $tahap2Fk && (int) $s->id === (int) $bd->{$tahap2Fk});
+            }
             if ($r) {
                 $key = $r->kode_id.'|'.$r->kode_rekening_id.'|'.strtolower(trim($r->uraian)).'|'.(float) $r->harga_satuan;
                 $bkuByGroup[$key][] = $bd;
@@ -1980,7 +2184,8 @@ PROMPT;
                     $bulanRiil = 'Belum Realisasi';
                 }
 
-                $groupRealizationMap[$slot->id] = [
+                $slotUniqKey = ($slot->_usage_fk ?? $tahap1Fk).'_'.$slot->id;
+                $groupRealizationMap[$slotUniqKey] = [
                     'spent' => $spentInPeriod,
                     'remaining' => $remainingInPeriod,
                     'status' => $status,
@@ -1992,7 +2197,8 @@ PROMPT;
         $results = [];
         foreach ($items as $item) {
             $budget = (float) $item->harga_satuan * (float) $item->jumlah;
-            $calc = $groupRealizationMap[$item->id] ?? null;
+            $itemUniqKey = ($item->_usage_fk ?? $tahap1Fk).'_'.$item->id;
+            $calc = $groupRealizationMap[$itemUniqKey] ?? null;
 
             $spent = $calc ? (float) $calc['spent'] : 0.0;
             $remaining = $calc ? (float) $calc['remaining'] : $budget;
@@ -2001,6 +2207,8 @@ PROMPT;
 
             $results[] = [
                 'rkas_id' => (int) $item->id, // Disimpan internal untuk kebutuhan drafting transaksi BKU
+                'rkas_fk_name' => $item->_usage_fk ?? $tahap1Fk,
+                'sumber_anggaran' => ($item->_rkas_type ?? 'awal') === 'perubahan' ? 'RKAS Perubahan' : 'RKAS Awal',
                 'bulan' => $item->bulan ?? '-',
                 'uraian_barang' => $item->uraian,
                 'kode_kegiatan' => $item->kodeKegiatan?->kode ?? '-',
@@ -2089,8 +2297,33 @@ PROMPT;
      */
     protected function prepareBkuDraft(array $params, string $variant, int $tahun): array
     {
-        $rkasClass = VariantConfig::getModelClass('rkas', $variant);
-        $rkas = $rkasClass::with(['kodeKegiatan', 'rekeningBelanja'])->find($params['rkas_id']);
+        $tanggal = $params['tanggal'] ?? now()->format('Y-m-d');
+        $monthIndex = (int) Carbon::parse($tanggal)->format('n');
+        $ctx = $this->getRkasContext($tahun, $variant, $monthIndex);
+        if (isset($ctx['error'])) {
+            return ['error' => $ctx['error']];
+        }
+
+        $rkasClass = $ctx['rkas_class'];
+        $rkasPerubahanClass = $ctx['rkas_perubahan_class'];
+        $hasPerubahan = $ctx['has_perubahan'];
+        $targetModelClass = $ctx['target_model_class'];
+        $usageFk = $ctx['usage_fk'];
+
+        // Coba cari di targetModelClass terlebih dahulu (sesuai tahap tanggal transaksi)
+        $rkas = $targetModelClass::with(['kodeKegiatan', 'rekeningBelanja'])->find($params['rkas_id']);
+        $actualFk = $usageFk;
+
+        // Jika tidak ditemukan di targetModelClass (misal item RKAS Awal atau ID dari Perubahan), cek model alternatif
+        if (! $rkas && $hasPerubahan && $rkasPerubahanClass) {
+            $altModel = ($targetModelClass === $rkasPerubahanClass) ? $rkasClass : $rkasPerubahanClass;
+            $rkas = $altModel::with(['kodeKegiatan', 'rekeningBelanja'])->find($params['rkas_id']);
+            if ($rkas) {
+                $actualFk = ($altModel === $rkasPerubahanClass)
+                    ? VariantConfig::uraianDetailRkasFk($variant, true)
+                    : VariantConfig::uraianDetailRkasFk($variant, false);
+            }
+        }
 
         if (! $rkas) {
             return ['error' => 'Data RKAS tidak ditemukan.'];
@@ -2102,9 +2335,8 @@ PROMPT;
 
         // Periksa sisa pagu
         $budget = (float) $rkas->harga_satuan * (float) $rkas->jumlah;
-        $bkuDetailFk = VariantConfig::uraianDetailRkasFk($variant);
         $bkuDetailClass = VariantConfig::getModelClass('bku_uraian_detail', $variant);
-        $rawSpent = (float) $bkuDetailClass::where($bkuDetailFk, $rkas->id)->sum('jumlah');
+        $rawSpent = (float) $bkuDetailClass::where($actualFk, $rkas->id)->sum('jumlah');
         $spent = min($budget, $rawSpent);
         $remainingBefore = max(0, $budget - $spent);
         $remainingAfter = $remainingBefore - $amount;
@@ -2113,9 +2345,10 @@ PROMPT;
             'type' => 'bku_transaction_draft',
             'variant' => $variant,
             'tahun' => $tahun,
-            'tanggal' => $params['tanggal'] ?? now()->format('Y-m-d'),
+            'tanggal' => $tanggal,
             'jenis_transaksi' => $params['jenis_transaksi'] ?? 'tunai',
             'rkas_id' => $rkas->id,
+            'rkas_fk_name' => $actualFk,
             'kode_kegiatan_id' => $rkas->kode_id,
             'nama_kegiatan' => $rkas->kodeKegiatan?->uraian ?? 'Kegiatan Belanja',
             'kode_rekening_id' => $rkas->kode_rekening_id,
@@ -2234,7 +2467,12 @@ PROMPT;
         }
 
         $bkuFk = VariantConfig::penganggaranFk($variant);
-        $rkasFk = VariantConfig::uraianDetailRkasFk($variant);
+        $isTahap2 = false;
+        if (! empty($payload['tanggal'])) {
+            $month = (int) Carbon::parse($payload['tanggal'])->format('n');
+            $isTahap2 = ($month >= 7);
+        }
+        $rkasFk = $payload['rkas_fk_name'] ?? VariantConfig::uraianDetailRkasFk($variant, $isTahap2);
 
         try {
             return DB::transaction(function () use ($variant, $penganggaran, $bkuClass, $bkuDetailClass, $bkuFk, $rkasFk, $payload) {
