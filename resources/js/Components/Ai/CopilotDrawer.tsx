@@ -75,7 +75,7 @@ function renderParsedTable(rows: string[]): string {
 
     const dataRows = rows.slice(2);
 
-    let html = '<div class="overflow-x-auto overflow-y-auto max-h-72 my-2.5 rounded-xl border border-slate-200 dark:border-gray-700 shadow-xs bg-white dark:bg-gray-800 scroll-smooth">';
+    let html = '<div class="overflow-x-auto overflow-y-auto max-h-80 my-2.5 rounded-xl border border-slate-200 dark:border-gray-700 shadow-xs bg-white dark:bg-gray-800 scroll-smooth">';
     html += '<table class="min-w-full text-xs divide-y divide-slate-200 dark:divide-gray-700">';
     
     // Header (Sticky on vertical scroll)
@@ -165,13 +165,16 @@ function sanitizeAndFormatHtml(content: string): string {
         .replace(/\son\w+\s*=\s*["'][^"']*["']/gi, '')
         .replace(/javascript:/gi, '');
 
-    // 4. If there are raw HTML <table> tags without overflow container, wrap them
-    if (processed.includes('<table') && !processed.includes('overflow-x-auto')) {
-        processed = processed.replace(
-            /(<table[\s\S]*?<\/table>)/gi,
-            '<div class="overflow-x-auto overflow-y-auto max-h-72 my-2.5 rounded-xl border border-slate-200 dark:border-gray-700 shadow-xs bg-white dark:bg-gray-800 scroll-smooth">$1</div>'
-        );
-    }
+    // 4. Wrap any raw HTML <table> tags that are not already enclosed in an overflow container
+    processed = processed.replace(
+        /(<div class="[^"]*overflow-x-auto[^"]*">[\s\S]*?<\/table><\/div>)|(<table[\s\S]*?<\/table>)/gi,
+        (match, alreadyWrapped, unwrappedTable) => {
+            if (alreadyWrapped) {
+                return alreadyWrapped;
+            }
+            return `<div class="overflow-x-auto overflow-y-auto max-h-80 my-2.5 rounded-xl border border-slate-200 dark:border-gray-700 shadow-xs bg-white dark:bg-gray-800 scroll-smooth">${unwrappedTable}</div>`;
+        }
+    );
 
     // 5. Convert markdown headers: ### Title -> <h6 ...>Title</h6>
     processed = processed.replace(/^###\s+(.+)$/gm, '<h6 class="font-bold text-gray-900 dark:text-gray-100 mt-2 mb-1 text-xs">$1</h6>');
@@ -377,8 +380,17 @@ export default function CopilotDrawer({
                     font-size: 0.725rem;
                     line-height: 1.25rem;
                 }
+                .ai-html-content thead {
+                    position: sticky;
+                    top: 0;
+                    z-index: 10;
+                }
                 .ai-html-content th {
-                    background-color: rgba(241, 245, 249, 0.95);
+                    position: sticky;
+                    top: 0;
+                    z-index: 10;
+                    background-color: rgba(241, 245, 249, 0.98);
+                    backdrop-filter: blur(4px);
                     color: #334155;
                     font-weight: 700;
                     padding: 6px 8px;
@@ -387,7 +399,8 @@ export default function CopilotDrawer({
                     white-space: nowrap;
                 }
                 .dark .ai-html-content th {
-                    background-color: rgba(30, 41, 59, 0.95);
+                    background-color: rgba(30, 41, 59, 0.98);
+                    backdrop-filter: blur(4px);
                     color: #e2e8f0;
                     border-bottom: 1px solid #475569;
                 }

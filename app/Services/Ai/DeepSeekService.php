@@ -202,6 +202,7 @@ class DeepSeekService
             'model' => $options['model'] ?? 'deepseek-chat',
             'messages' => $messages,
             'temperature' => $options['temperature'] ?? 0.3,
+            'max_tokens' => $options['max_tokens'] ?? 8192,
         ];
 
         if (! empty($tools)) {
@@ -230,11 +231,21 @@ class DeepSeekService
                 ];
             }
 
+            $statusCode = $response->status();
             $errorMessage = $response->json('error.message') ?? $response->body();
+
+            if ($statusCode === 401) {
+                $errorMessage = 'Kunci API DeepSeek tidak valid atau telah kedaluwarsa.';
+            } elseif ($statusCode === 402) {
+                $errorMessage = 'Saldo kuota API DeepSeek Anda telah habis. Silakan isi ulang saldo di platform DeepSeek.';
+            } elseif ($statusCode === 429) {
+                $errorMessage = 'Batas laju permintaan (Rate Limit) DeepSeek tercapai. Mohon tunggu beberapa saat.';
+            }
 
             return [
                 'success' => false,
                 'message' => "DeepSeek Tools error: {$errorMessage}",
+                'status_code' => $statusCode,
             ];
         } catch (\Throwable $e) {
             Log::error('DeepSeek callChatWithTools exception: '.$e->getMessage());
