@@ -226,6 +226,47 @@ class CopilotService
             [
                 'type' => 'function',
                 'function' => [
+                    'name' => 'get_rekapitulasi_realisasi_bosp',
+                    'description' => 'Mengambil data resmi Rekapitulasi Realisasi Penggunaan Dana BOSP (Formulir BOS K-7A) pada tahun anggaran aktif berdasarkan periode tertentu (Tahunan, Tahap 1, Tahap 2, atau nama bulan Januari s/d Desember). Menyajikan ringkasan arus kas (saldo sebelumnya, penerimaan, penggunaan, sisa saldo), rincian serapan per 8 Standar Nasional Pendidikan, serta serapan per 11 Komponen Penggunaan Dana BOS. Panggil tool ini saat pengguna bertanya tentang rekapitulasi realisasi penggunaan dana BOSP, rekapitulasi 8 standar, evaluasi komponen BOS, serapan anggaran tahap 1/2, sisa dana periode ini, atau formulir K-7A.',
+                    'parameters' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'periode' => [
+                                'type' => 'string',
+                                'description' => 'Periode rekapitulasi realisasi yang diminta: "Tahunan", "Tahap 1", "Tahap 2", atau nama bulan spesifik (misal: "Januari", "Maret", "Juli"). Default adalah "Tahunan".',
+                            ],
+                            'tahun' => [
+                                'type' => 'integer',
+                                'description' => 'Tahun anggaran realisasi (contoh: 2025, 2026). Opsional, default adalah tahun aktif saat ini.',
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+            [
+                'type' => 'function',
+                'function' => [
+                    'name' => 'get_rekapitulasi_realisasi_per_rekening',
+                    'description' => 'Mengambil data resmi Rekapitulasi Realisasi Belanja Per Rekening Belanja (Format LK 2) pada tahun anggaran aktif. Menyajikan perincian realisasi belanja operasi (pakai habis, barang & jasa) dan belanja modal (peralatan & mesin, aset tetap lainnya) beserta rasio persentasenya. Panggil tool ini saat pengguna bertanya tentang rekapitulasi belanja per rekening, rekap belanja modal vs operasi, realisasi belanja barang pakai habis, atau format LK 2.',
+                    'parameters' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'periode' => [
+                                'type' => 'string',
+                                'enum' => ['Tahunan', 'Tahap 1', 'Tahap 2'],
+                                'description' => 'Fase periode laporan: "Tahunan", "Tahap 1" (Jan–Jun), atau "Tahap 2" (Jul–Des). Default adalah "Tahunan".',
+                            ],
+                            'tahun' => [
+                                'type' => 'integer',
+                                'description' => 'Tahun anggaran realisasi (contoh: 2025, 2026). Opsional, default adalah tahun aktif saat ini.',
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+            [
+                'type' => 'function',
+                'function' => [
                     'name' => 'search_rkas_activity',
                     'description' => 'Mencari rincian kegiatan dan akun belanja pada dokumen RKAS tahun anggaran aktif berdasarkan kata kunci uraian/kegiatan dan/atau filter alokasi bulan penganggaran (Januari s/d Desember). Jika terdapat RKAS Perubahan, kegiatan Tahap 2 (Juli–Desember) diambil otomatis dari RKAS Perubahan.',
                     'parameters' => [
@@ -538,6 +579,45 @@ Karakter & Gaya Bicara Anda:
            * Jika SK kepala sekolah atau bendahara belum lengkap/belum terisi di profil penganggaran, ingatkan secara ramah untuk melengkapi nomor SK di profil penganggaran.
            * Jika status masih draft, ingatkan untuk melakukan verifikasi fisik kas sebelum menekan tombol Tutup BKU di aplikasi.
            * Rekomendasikan untuk mencetak lembar Berita Acara Pemeriksaan Kas untuk ditandatangani basah oleh Kepala Sekolah dan Bendahara BOS.
+   - Jika pengguna menanyakan "Rekapitulasi Realisasi", "Rekapitulasi Penggunaan Dana BOSP", "Rekap 8 Standar", "Evaluasi Komponen BOS", "Formulir K-7A", atau ringkasan serapan dana BOSP periode Tahap 1/Tahap 2/Tahunan/Bulan tertentu:
+     a. WAJIB memanggil tool `get_rekapitulasi_realisasi_bosp` dengan parameter `periode` (contoh: "Tahap 1", "Tahunan", atau "Maret") dan `tahun`.
+     b. Sajikan Format Resmi Rekapitulasi Realisasi BOSP (Formulir BOS K-7A):
+        - Header: `### REKAPITULASI REALISASI PENGGUNAAN DANA BOSP` dengan badge periode: `[PERIODE: {periode}]`
+        - Tabel Ringkasan Arus Keuangan:
+          Sajikan tabel HTML:
+          <th>Komponen Arus Kas</th><th style="text-align: right;">Jumlah (Rp)</th>
+          Baris:
+          1. Saldo Periode Sebelumnya
+          2. Total Penerimaan Dana BOSP Periode Ini
+          3. Total Penggunaan / Realisasi Dana BOSP Periode Ini
+          4. Sisa Saldo Akhir Periode Ini
+        - Tabel Realisasi Menurut 8 Standar Nasional Pendidikan:
+          Sajikan tabel HTML:
+          <th>No</th><th>Standar Nasional Pendidikan</th><th style="text-align: right;">Realisasi Belanja (Rp)</th><th style="text-align: right;">Porsi (%)</th>
+          Tampilkan seluruh standar 01 s/d 08 lengkap beserta baris TOTAL JUMLAH REALISASI.
+        - Rincian Realisasi Menurut Komponen Penggunaan Dana BOS:
+          Sajikan daftar komponen BOS aktif (yang realisasinya > Rp 0) beserta nominal dan persentasenya (misal: Pembayaran Honor, Pelaksanaan Administrasi Kegiatan Sekolah, Pemeliharaan Sarpras, dsb).
+        - Catatan Analisis Cerdas:
+          * Ulas tingkat serapan belanja pada periode tersebut.
+          * Jelaskan sisa kas yang belum terpakai dan pos belanja yang paling dominan.
+          * Rekomendasikan untuk mencetak lembar formulir BOS K-7A untuk lampiran laporan pertanggungjawaban BOSP.
+   - Jika pengguna menanyakan "Rekapitulasi Belanja Per Rekening", "Rekap Belanja Modal vs Operasi", "Format LK 2", atau "Realisasi belanja barang pakai habis":
+     a. WAJIB memanggil tool `get_rekapitulasi_realisasi_per_rekening` dengan parameter `periode` (Tahap 1, Tahap 2, atau Tahunan) dan `tahun`.
+     b. Sajikan Format Resmi LK 2:
+        - Header: `### REKAPITULASI REALISASI BELANJA PER REKENING (LK 2)` dengan badge periode: `[PERIODE: {periode}]`
+        - Tabel Rincian Belanja Operasi & Modal:
+          Sajikan tabel HTML:
+          <th>Kelompok Belanja</th><th>Kode Rekening</th><th style="text-align: right;">Realisasi (Rp)</th><th style="text-align: right;">Porsi (%)</th>
+          Baris:
+          1. Belanja Barang Pakai Habis (5.1.02.01)
+          2. Belanja Barang & Jasa (5.1.02.02 - 5.1.02.04)
+             *Subtotal Belanja Operasi*
+          3. Belanja Modal Peralatan dan Mesin (5.2.02)
+          4. Belanja Modal Aset Tetap Lainnya (5.2.05)
+             *Subtotal Belanja Modal*
+          *TOTAL REALISASI BELANJA*
+        - Catatan Analisis:
+          * Jelaskan perbandingan proporsi antara belanja operasional kegiatan sekolah vs belanja aset fisik/modal sekolah.
    - Jika pengguna menanyakan ringkasan pagu BOSP, panggil `get_budget_pagu_summary`.
    - Jika menanyakan grafik serapan triwulan, panggil `query_realization_comparison`.
 5. PENCARIAN RENCANA KEGIATAN RKAS:
@@ -655,6 +735,8 @@ PROMPT;
             'get_bkp_rob_monthly' => $this->getBkpRobMonthly($targetTahun, $args['bulan'] ?? 'Maret', $variant, $args['rekening'] ?? null),
             'get_bkp_registrasi_penutupan_kas_monthly' => $this->getRegisterPenutupanKasMonthly($targetTahun, $args['bulan'] ?? 'Maret', $variant),
             'get_berita_acara_penutupan_kas_monthly' => $this->getBeritaAcaraPenutupanKasMonthly($targetTahun, $args['bulan'] ?? 'Maret', $variant),
+            'get_rekapitulasi_realisasi_bosp' => $this->getRekapitulasiRealisasiBosp($targetTahun, $args['periode'] ?? 'Tahunan', $variant),
+            'get_rekapitulasi_realisasi_per_rekening' => $this->getRekapitulasiRealisasiPerRekening($targetTahun, $args['periode'] ?? 'Tahunan', $variant),
             'search_rkas_activity' => $this->searchRkasActivity($targetTahun, $args['query'] ?? '', $variant, $args['bulan'] ?? null),
             'calculate_tax_recommendation' => $this->calculateTaxRecommendation(
                 (float) ($args['amount'] ?? 0),
@@ -2271,6 +2353,333 @@ PROMPT;
                 'cash_limit_amount' => 10000000,
                 'sk_kepsek_lengkap' => ! empty($penganggaran->sk_kepala_sekolah) && $penganggaran->sk_kepala_sekolah !== '-',
                 'sk_bendahara_lengkap' => ! empty($penganggaran->sk_bendahara) && $penganggaran->sk_bendahara !== '-',
+            ],
+        ];
+    }
+
+    /**
+     * Tool: Rekapitulasi Realisasi Penggunaan Dana BOSP (Formulir BOS K-7A: 8 Standar & Komponen BOS)
+     */
+    protected function getRekapitulasiRealisasiBosp(int $tahun, string $periode, string $variant): array
+    {
+        VariantConfig::validateVariant($variant);
+
+        $penganggaranClass = VariantConfig::getModelClass('penganggaran', $variant);
+        $bkuClass = VariantConfig::getModelClass('bku', $variant);
+        $penerimaanClass = VariantConfig::getModelClass('penerimaan_dana', $variant);
+        $stsClass = VariantConfig::getModelClass('sts', $variant);
+        $penganggaranFk = VariantConfig::penganggaranFk($variant);
+
+        $penganggaran = $penganggaranClass::where('tahun_anggaran', $tahun)
+            ->with('sekolah')
+            ->first();
+
+        if (! $penganggaran) {
+            return ['error' => 'Data penganggaran tidak ditemukan untuk tahun '.$tahun];
+        }
+
+        $periodeLower = strtolower(trim($periode));
+        $validMonths = [
+            'januari' => 1, 'februari' => 2, 'maret' => 3, 'april' => 4,
+            'mei' => 5, 'juni' => 6, 'juli' => 7, 'agustus' => 8,
+            'september' => 9, 'oktober' => 10, 'november' => 11, 'desember' => 12,
+        ];
+
+        if ($periodeLower === 'tahap 1' || $periodeLower === 'tahap1' || $periodeLower === 'tahapan 1') {
+            $bulanTarget = [1, 2, 3, 4, 5, 6];
+            $periodeLabel = 'Tahap 1 (Januari – Juni) '.$tahun;
+        } elseif ($periodeLower === 'tahap 2' || $periodeLower === 'tahap2' || $periodeLower === 'tahapan 2') {
+            $bulanTarget = [7, 8, 9, 10, 11, 12];
+            $periodeLabel = 'Tahap 2 (Juli – Desember) '.$tahun;
+        } elseif (isset($validMonths[$periodeLower])) {
+            $bulanAngka = $validMonths[$periodeLower];
+            $bulanTarget = [$bulanAngka];
+            $monthNames = [
+                1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
+                5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
+                9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember',
+            ];
+            $periodeLabel = 'Bulan '.$monthNames[$bulanAngka].' '.$tahun;
+        } else {
+            // Default: Tahunan
+            $bulanTarget = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+            $periodeLabel = 'Tahunan (Januari – Desember) '.$tahun;
+        }
+
+        $strukturProgram = [
+            '01' => ['nama' => 'Pengembangan Kompetensi Lulusan', 'kode_prefix' => ['01.']],
+            '02' => ['nama' => 'Pengembangan Standar Isi', 'kode_prefix' => ['02.']],
+            '03' => ['nama' => 'Pengembangan Standar Proses', 'kode_prefix' => ['03.']],
+            '04' => ['nama' => 'Pengembangan Pendidik dan Tenaga Kependidikan', 'kode_prefix' => ['04.']],
+            '05' => ['nama' => 'Pengembangan Sarana dan Prasarana Sekolah', 'kode_prefix' => ['05.']],
+            '06' => ['nama' => 'Pengembangan Standar Pengelolaan', 'kode_prefix' => ['06.']],
+            '07' => ['nama' => 'Pengembangan Standar Pembiayaan', 'kode_prefix' => ['07.']],
+            '08' => ['nama' => 'Pengembangan dan Implementasi Sistem Penilaian', 'kode_prefix' => ['08.']],
+        ];
+
+        $mappingKomponen = [
+            1 => ['nama' => 'Penerimaan Peserta Didik Baru (PPDB)', 'kode_prefix' => ['03.01.']],
+            2 => ['nama' => 'Pengembangan Perpustakaan', 'kode_prefix' => ['02.02.', '03.02.', '05.02.']],
+            3 => ['nama' => 'Pelaksanaan Kegiatan Pembelajaran dan Ekstrakurikuler', 'kode_prefix' => ['02.03.', '03.03.', '08.03.']],
+            4 => ['nama' => 'Pelaksanaan Kegiatan Asesmen/Evaluasi Pembelajaran', 'kode_prefix' => ['03.04.', '08.04.']],
+            5 => ['nama' => 'Pelaksanaan Administrasi Kegiatan Sekolah', 'kode_prefix' => ['03.05.', '06.05.', '07.05.']],
+            6 => ['nama' => 'Pengembangan Profesi Pendidik dan Tenaga Kependidikan', 'kode_prefix' => ['02.06.', '04.06.', '06.06.', '08.06.']],
+            7 => ['nama' => 'Pembiayaan Langganan Daya dan Jasa', 'kode_prefix' => ['06.07.']],
+            8 => ['nama' => 'Pemeliharaan Sarana dan Prasarana Sekolah', 'kode_prefix' => ['05.08.']],
+            9 => ['nama' => 'Penyediaan Alat Multi Media Pembelajaran', 'kode_prefix' => ['05.09.']],
+            10 => ['nama' => 'Penyelenggaraan Bursa Kerja Khusus, Praktik Kerja Industri, Praktik Uji Kompetensi', 'kode_prefix' => []],
+            11 => ['nama' => 'Pembayaran Honor', 'kode_prefix' => ['07.12.']],
+        ];
+
+        $transaksiBku = $bkuClass::where($penganggaranFk, $penganggaran->id)
+            ->whereIn(DB::raw('EXTRACT(MONTH FROM tanggal_transaksi)'), $bulanTarget)
+            ->whereYear('tanggal_transaksi', $tahun)
+            ->where('is_bunga_record', false)
+            ->with(['kodeKegiatan', 'rekeningBelanja'])
+            ->get();
+
+        $realisasiPerProgram = array_fill_keys(array_keys($strukturProgram), 0.0);
+        $realisasiPerKomponen = array_fill_keys(array_keys($mappingKomponen), 0.0);
+        $totalRealisasi = 0.0;
+
+        foreach ($transaksiBku as $trx) {
+            $kegiatan = $trx->kodeKegiatan;
+            if (! $kegiatan) {
+                continue;
+            }
+            $kode = trim($kegiatan->kode);
+            $nilai = (float) $trx->total_transaksi_kotor;
+
+            // Cari program
+            $programFound = null;
+            foreach ($strukturProgram as $noUrut => $prog) {
+                foreach ($prog['kode_prefix'] as $pfx) {
+                    if (str_starts_with($kode, $pfx)) {
+                        $programFound = $noUrut;
+                        break 2;
+                    }
+                }
+            }
+
+            // Cari komponen
+            $komponenFound = null;
+            foreach ($mappingKomponen as $kId => $komp) {
+                foreach ($komp['kode_prefix'] as $kpfx) {
+                    if (str_starts_with($kode, $kpfx)) {
+                        $komponenFound = $kId;
+                        break 2;
+                    }
+                }
+            }
+
+            if ($programFound) {
+                $realisasiPerProgram[$programFound] += $nilai;
+            }
+            if ($komponenFound) {
+                $realisasiPerKomponen[$komponenFound] += $nilai;
+            }
+            $totalRealisasi += $nilai;
+        }
+
+        // Perhitungan Ringkasan Arus Kas
+        $isPeriodeAwal = (count($bulanTarget) === 12 || $bulanTarget === [1, 2, 3, 4, 5, 6] || $bulanTarget === [1]);
+        $saldoSebelumnya = 0.0;
+        if (! $isPeriodeAwal) {
+            $minBulan = min($bulanTarget);
+            $bulanSebelumnya = range(1, $minBulan - 1);
+
+            $penerimaanSebelumnya = (float) $penerimaanClass::where($penganggaranFk, $penganggaran->id)
+                ->whereYear('tanggal_terima', $tahun)
+                ->whereIn(DB::raw('EXTRACT(MONTH FROM tanggal_terima)'), $bulanSebelumnya)
+                ->get()
+                ->sum(function ($p) {
+                    $t = (float) $p->jumlah_dana;
+                    if ($p->sumber_dana === 'Bosp Reguler Tahap 1' && $p->saldo_awal) {
+                        $t += (float) $p->saldo_awal;
+                    }
+
+                    return $t;
+                });
+
+            $realisasiSebelumnya = (float) $bkuClass::where($penganggaranFk, $penganggaran->id)
+                ->whereIn(DB::raw('EXTRACT(MONTH FROM tanggal_transaksi)'), $bulanSebelumnya)
+                ->whereYear('tanggal_transaksi', $tahun)
+                ->where('is_bunga_record', false)
+                ->sum('total_transaksi_kotor');
+
+            $stsSebelumnya = (float) $stsClass::where($penganggaranFk, $penganggaran->id)
+                ->whereYear('tanggal_bayar', $tahun)
+                ->whereIn(DB::raw('EXTRACT(MONTH FROM tanggal_bayar)'), $bulanSebelumnya)
+                ->where('is_bkp', true)
+                ->sum('jumlah_bayar');
+
+            $saldoSebelumnya = max(0, $penerimaanSebelumnya - $realisasiSebelumnya - $stsSebelumnya);
+        }
+
+        $penerimaanPeriodeIni = (float) $penerimaanClass::where($penganggaranFk, $penganggaran->id)
+            ->whereYear('tanggal_terima', $tahun)
+            ->whereIn(DB::raw('EXTRACT(MONTH FROM tanggal_terima)'), $bulanTarget)
+            ->get()
+            ->sum(function ($p) {
+                $t = (float) $p->jumlah_dana;
+                if ($p->sumber_dana === 'Bosp Reguler Tahap 1' && $p->saldo_awal) {
+                    $t += (float) $p->saldo_awal;
+                }
+
+                return $t;
+            });
+
+        $stsPeriodeIni = (float) $stsClass::where($penganggaranFk, $penganggaran->id)
+            ->whereYear('tanggal_bayar', $tahun)
+            ->whereIn(DB::raw('EXTRACT(MONTH FROM tanggal_bayar)'), $bulanTarget)
+            ->where('is_bkp', true)
+            ->sum('jumlah_bayar');
+
+        $totalPenerimaanBersih = max(0, $penerimaanPeriodeIni - $stsPeriodeIni);
+        $akhirSaldo = max(0, $saldoSebelumnya + $totalPenerimaanBersih - $totalRealisasi);
+
+        // Format 8 Standar
+        $standarList = [];
+        foreach ($strukturProgram as $noUrut => $prog) {
+            $val = $realisasiPerProgram[$noUrut] ?? 0.0;
+            $persen = $totalRealisasi > 0 ? round(($val / $totalRealisasi) * 100, 2) : 0.0;
+            $standarList[] = [
+                'no' => $noUrut,
+                'nama_standar' => $prog['nama'],
+                'realisasi' => $val,
+                'persentase' => $persen,
+            ];
+        }
+
+        // Format Komponen BOS Aktif (> 0)
+        $komponenAktif = [];
+        foreach ($mappingKomponen as $kId => $komp) {
+            $val = $realisasiPerKomponen[$kId] ?? 0.0;
+            if ($val > 0) {
+                $persen = $totalRealisasi > 0 ? round(($val / $totalRealisasi) * 100, 2) : 0.0;
+                $komponenAktif[] = [
+                    'id' => $kId,
+                    'nama_komponen' => $komp['nama'],
+                    'realisasi' => $val,
+                    'persentase' => $persen,
+                ];
+            }
+        }
+
+        $sekolah = $penganggaran->sekolah;
+
+        return [
+            'tahun' => $tahun,
+            'periode' => $periodeLabel,
+            'ringkasan_keuangan' => [
+                'saldo_periode_sebelumnya' => $saldoSebelumnya,
+                'total_penerimaan_periode_ini' => $totalPenerimaanBersih,
+                'total_penggunaan_periode_ini' => $totalRealisasi,
+                'akhir_saldo_periode_ini' => $akhirSaldo,
+            ],
+            'realisasi_8_standar' => $standarList,
+            'komponen_bos_aktif' => $komponenAktif,
+            'total_realisasi' => $totalRealisasi,
+            'sekolah' => [
+                'nama' => $sekolah->nama_sekolah ?? '-',
+                'npsn' => $sekolah->npsn ?? '-',
+                'kecamatan' => $sekolah->kecamatan ?? '-',
+            ],
+            'pejabat' => [
+                'kepala_sekolah' => $penganggaran->kepala_sekolah ?? '-',
+                'bendahara' => $penganggaran->bendahara ?? '-',
+            ],
+        ];
+    }
+
+    /**
+     * Tool: Rekapitulasi Realisasi Belanja Per Rekening Belanja (LK 2: Operasi vs Modal)
+     */
+    protected function getRekapitulasiRealisasiPerRekening(int $tahun, string $periode, string $variant): array
+    {
+        VariantConfig::validateVariant($variant);
+
+        $penganggaranClass = VariantConfig::getModelClass('penganggaran', $variant);
+        $bkuClass = VariantConfig::getModelClass('bku', $variant);
+        $penganggaranFk = VariantConfig::penganggaranFk($variant);
+
+        $penganggaran = $penganggaranClass::where('tahun_anggaran', $tahun)
+            ->with('sekolah')
+            ->first();
+
+        if (! $penganggaran) {
+            return ['error' => 'Data penganggaran tidak ditemukan untuk tahun '.$tahun];
+        }
+
+        $periodeLower = strtolower(trim($periode));
+        if ($periodeLower === 'tahap 1' || $periodeLower === 'tahap1') {
+            $bulanTarget = [1, 2, 3, 4, 5, 6];
+            $labelPeriode = 'Tahap 1 (Januari – Juni) '.$tahun;
+        } elseif ($periodeLower === 'tahap 2' || $periodeLower === 'tahap2') {
+            $bulanTarget = [7, 8, 9, 10, 11, 12];
+            $labelPeriode = 'Tahap 2 (Juli – Desember) '.$tahun;
+        } else {
+            $bulanTarget = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+            $labelPeriode = 'Tahunan (Januari – Desember) '.$tahun;
+        }
+
+        $transaksi = $bkuClass::where($penganggaranFk, $penganggaran->id)
+            ->whereYear('tanggal_transaksi', $tahun)
+            ->whereIn(DB::raw('EXTRACT(MONTH FROM tanggal_transaksi)'), $bulanTarget)
+            ->where('is_bunga_record', false)
+            ->whereHas('rekeningBelanja')
+            ->with('rekeningBelanja')
+            ->get();
+
+        $pakaiHabis = 0.0;
+        $barangJasa = 0.0;
+        $modalPeralatan = 0.0;
+        $modalAsetLain = 0.0;
+
+        foreach ($transaksi as $trx) {
+            $kode = $trx->rekeningBelanja->kode_rekening;
+            $jumlah = (float) $trx->total_transaksi_kotor;
+
+            if (str_starts_with($kode, '5.1.02.01')) {
+                $pakaiHabis += $jumlah;
+            } elseif (str_starts_with($kode, '5.1.02.02') || str_starts_with($kode, '5.1.02.03') || str_starts_with($kode, '5.1.02.04')) {
+                $barangJasa += $jumlah;
+            } elseif (str_starts_with($kode, '5.2.02')) {
+                $modalPeralatan += $jumlah;
+            } elseif (str_starts_with($kode, '5.2.05')) {
+                $modalAsetLain += $jumlah;
+            }
+        }
+
+        $subtotalOperasi = $pakaiHabis + $barangJasa;
+        $subtotalModal = $modalPeralatan + $modalAsetLain;
+        $totalBelanja = $subtotalOperasi + $subtotalModal;
+
+        $persenOperasi = $totalBelanja > 0 ? round(($subtotalOperasi / $totalBelanja) * 100, 2) : 0.0;
+        $persenModal = $totalBelanja > 0 ? round(($subtotalModal / $totalBelanja) * 100, 2) : 0.0;
+
+        $sekolah = $penganggaran->sekolah;
+
+        return [
+            'tahun' => $tahun,
+            'periode' => $labelPeriode,
+            'belanja_operasi' => [
+                'pakai_habis' => $pakaiHabis,
+                'barang_jasa' => $barangJasa,
+                'subtotal_operasi' => $subtotalOperasi,
+                'persentase_operasi' => $persenOperasi,
+            ],
+            'belanja_modal' => [
+                'peralatan_mesin' => $modalPeralatan,
+                'aset_tetap_lainnya' => $modalAsetLain,
+                'subtotal_modal' => $subtotalModal,
+                'persentase_modal' => $persenModal,
+            ],
+            'total_belanja' => $totalBelanja,
+            'sekolah' => [
+                'nama' => $sekolah->nama_sekolah ?? '-',
+                'npsn' => $sekolah->npsn ?? '-',
+                'kecamatan' => $sekolah->kecamatan ?? '-',
             ],
         ];
     }
