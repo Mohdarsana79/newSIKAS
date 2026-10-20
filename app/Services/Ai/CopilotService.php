@@ -267,6 +267,46 @@ class CopilotService
             [
                 'type' => 'function',
                 'function' => [
+                    'name' => 'get_buku_pembantu_bhp',
+                    'description' => 'Mengambil data resmi Buku Pembantu Barang Habis Pakai (BHP) pada tahun anggaran aktif berdasarkan periode tertentu (Tahunan, Tahap 1, Tahap 2, atau nama bulan Januari s/d Desember). Menyajikan rincian barang habis pakai (ATK, kertas, materai, bahan cetak/penggandaan, kebersihan, konsumsi) lengkap dengan tanggal, nomor bukti, volume, satuan, harga satuan, dan total realisasi. Panggil tool ini saat pengguna bertanya tentang laporan BHP, belanja barang habis pakai, daftar pembelian ATK/kertas/materai, atau buku pembantu persediaan barang habis pakai.',
+                    'parameters' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'periode' => [
+                                'type' => 'string',
+                                'description' => 'Periode laporan BHP yang diminta: "Tahunan", "Tahap 1", "Tahap 2", atau nama bulan tertentu (misal: "Januari", "Maret", "Juli"). Default adalah "Tahunan".',
+                            ],
+                            'tahun' => [
+                                'type' => 'integer',
+                                'description' => 'Tahun anggaran pembukuan (contoh: 2025, 2026). Opsional, default adalah tahun aktif saat ini.',
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+            [
+                'type' => 'function',
+                'function' => [
+                    'name' => 'get_buku_pembantu_bhm',
+                    'description' => 'Mengambil data resmi Buku Pembantu Barang Modal / Aset (BHM) pada tahun anggaran aktif berdasarkan periode tertentu (Tahunan, Tahap 1, Tahap 2, atau nama bulan tertentu). Menyajikan rincian barang modal atau aset tetap sekolah (peralatan, mesin, buku teks aset perpustakaan) lengkap dengan tanggal, nomor bukti, volume, satuan, harga satuan, total belanja modal, serta kategori rekening belanja (5.2.02 peralatan & mesin vs 5.2.05 aset tetap lainnya). Panggil tool ini saat pengguna bertanya tentang laporan BHM, belanja modal aset, pengadaan peralatan/mesin, buku pembantu barang modal, atau inventaris aset BOSP.',
+                    'parameters' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'periode' => [
+                                'type' => 'string',
+                                'description' => 'Periode laporan BHM yang diminta: "Tahunan", "Tahap 1", "Tahap 2", atau nama bulan tertentu (misal: "Januari", "Maret", "Juli"). Default adalah "Tahunan".',
+                            ],
+                            'tahun' => [
+                                'type' => 'integer',
+                                'description' => 'Tahun anggaran pembukuan (contoh: 2025, 2026). Opsional, default adalah tahun aktif saat ini.',
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+            [
+                'type' => 'function',
+                'function' => [
                     'name' => 'search_rkas_activity',
                     'description' => 'Mencari rincian kegiatan dan akun belanja pada dokumen RKAS tahun anggaran aktif berdasarkan kata kunci uraian/kegiatan dan/atau filter alokasi bulan penganggaran (Januari s/d Desember). Jika terdapat RKAS Perubahan, kegiatan Tahap 2 (Juli–Desember) diambil otomatis dari RKAS Perubahan.',
                     'parameters' => [
@@ -618,6 +658,37 @@ Karakter & Gaya Bicara Anda:
           *TOTAL REALISASI BELANJA*
         - Catatan Analisis:
           * Jelaskan perbandingan proporsi antara belanja operasional kegiatan sekolah vs belanja aset fisik/modal sekolah.
+   - Jika pengguna menanyakan "Buku Pembantu Barang Habis Pakai", "BHP", "Belanja barang pakai habis", "Daftar pembelian ATK/kertas/materai/kebersihan/konsumsi", atau "Buku pembantu persediaan":
+     a. WAJIB memanggil tool `get_buku_pembantu_bhp` dengan parameter `periode` (Tahunan, Tahap 1, Tahap 2, atau nama bulan) dan `tahun`.
+     b. Sajikan Format Resmi Buku Pembantu BHP:
+        - Header: `### BUKU PEMBANTU BARANG HABIS PAKAI (BHP)` dengan badge periode: `[PERIODE: {periode}]`
+        - Ringkasan Singkat: Sebutkan Total Belanja BHP dan Jumlah Item Barang yang dibelanjakan.
+        - Jika data transaksi kosong / nihil (Rp 0):
+          * Jelaskan secara santai bahwa pada periode tersebut tidak ada catatan pengeluaran belanja barang habis pakai (nihil).
+        - Jika terdapat data transaksi:
+          * Sajikan tabel HTML terstruktur rapi:
+            <th>No</th><th>Tanggal</th><th>Kode Rekening</th><th>No. Bukti</th><th>Uraian Barang</th><th>Kuantitas</th><th style="text-align: right;">Harga Satuan (Rp)</th><th style="text-align: right;">Realisasi (Rp)</th>
+            Lengkapi dengan baris TOTAL REALISASI BHP di bagian bawah tabel.
+        - Catatan Pengelolaan Persediaan:
+          * Ingatkan bendahara atau pengurus barang untuk memastikan barang persediaan yang dibeli dicatat ke dalam buku persediaan / mutasi barang persediaan.
+          * Rekomendasikan mencetak lembar Buku Pembantu BHP jika diperlukan untuk kelengkapan berkas SPJ.
+   - Jika pengguna menanyakan "Buku Pembantu Barang Modal", "BHM", "Belanja Modal / Aset", "Pengadaan peralatan dan mesin", "Pembelian aset buku perpustakaan", "Inventaris aset", atau "Buku pembantu aset tetap":
+     a. WAJIB memanggil tool `get_buku_pembantu_bhm` dengan parameter `periode` (Tahunan, Tahap 1, Tahap 2, atau nama bulan) dan `tahun`.
+     b. Sajikan Format Resmi Buku Pembantu BHM:
+        - Header: `### BUKU PEMBANTU BARANG MODAL / ASET (BHM)` dengan badge periode: `[PERIODE: {periode}]`
+        - Ringkasan Komposisi Belanja Modal:
+          * Total Belanja Modal
+          * Subtotal Peralatan & Mesin (Akun 5.2.02)
+          * Subtotal Aset Tetap Lainnya / Buku Perpustakaan (Akun 5.2.05)
+        - Jika data transaksi kosong / nihil (Rp 0):
+          * Jelaskan secara santai bahwa pada periode tersebut tidak ada pengadaan belanja modal atau penambahan aset tetap (nihil).
+        - Jika terdapat data transaksi:
+          * Sajikan tabel HTML terstruktur rapi:
+            <th>No</th><th>Tanggal</th><th>Kode Rekening</th><th>No. Bukti</th><th>Uraian Barang / Aset</th><th>Kuantitas</th><th style="text-align: right;">Harga Satuan (Rp)</th><th style="text-align: right;">Realisasi (Rp)</th>
+            Lengkapi dengan baris TOTAL REALISASI BELANJA MODAL di bagian bawah tabel.
+        - Smart Compliance Audit & Kepatuhan Aset:
+          * WAJIB memberikan peringatan kepatuhan audit: Seluruh pengadaan belanja modal WAJIB dicatatkan ke dalam KIB (Kartu Inventaris Barang / KIB B untuk Peralatan & Mesin, KIB E untuk Buku Perpustakaan) dan dibuatkan BAST (Berita Acara Serah Terima) serta label/nomor kode inventaris barang agar tertib penatausahaan aset sekolah dan bebas dari temuan pemeriksaan BPK/Inspektorat.
+          * Rekomendasikan mencetak lembar Buku Pembantu BHM untuk kelengkapan SPJ belanja modal.
    - Jika pengguna menanyakan ringkasan pagu BOSP, panggil `get_budget_pagu_summary`.
    - Jika menanyakan grafik serapan triwulan, panggil `query_realization_comparison`.
 5. PENCARIAN RENCANA KEGIATAN RKAS:
@@ -737,6 +808,8 @@ PROMPT;
             'get_berita_acara_penutupan_kas_monthly' => $this->getBeritaAcaraPenutupanKasMonthly($targetTahun, $args['bulan'] ?? 'Maret', $variant),
             'get_rekapitulasi_realisasi_bosp' => $this->getRekapitulasiRealisasiBosp($targetTahun, $args['periode'] ?? 'Tahunan', $variant),
             'get_rekapitulasi_realisasi_per_rekening' => $this->getRekapitulasiRealisasiPerRekening($targetTahun, $args['periode'] ?? 'Tahunan', $variant),
+            'get_buku_pembantu_bhp' => $this->getBukuPembantuBhp($targetTahun, $args['periode'] ?? 'Tahunan', $variant),
+            'get_buku_pembantu_bhm' => $this->getBukuPembantuBhm($targetTahun, $args['periode'] ?? 'Tahunan', $variant),
             'search_rkas_activity' => $this->searchRkasActivity($targetTahun, $args['query'] ?? '', $variant, $args['bulan'] ?? null),
             'calculate_tax_recommendation' => $this->calculateTaxRecommendation(
                 (float) ($args['amount'] ?? 0),
@@ -2680,6 +2753,310 @@ PROMPT;
                 'nama' => $sekolah->nama_sekolah ?? '-',
                 'npsn' => $sekolah->npsn ?? '-',
                 'kecamatan' => $sekolah->kecamatan ?? '-',
+            ],
+        ];
+    }
+
+    /**
+     * Tool: Buku Pembantu Barang Habis Pakai (BHP)
+     */
+    protected function getBukuPembantuBhp(int $tahun, string $periode, string $variant): array
+    {
+        VariantConfig::validateVariant($variant);
+
+        $penganggaranClass = VariantConfig::getModelClass('penganggaran', $variant);
+        $bkuClass = VariantConfig::getModelClass('bku', $variant);
+        $penganggaranFk = VariantConfig::penganggaranFk($variant);
+
+        $penganggaran = $penganggaranClass::where('tahun_anggaran', $tahun)
+            ->with('sekolah')
+            ->first();
+
+        if (! $penganggaran) {
+            return ['error' => 'Data penganggaran tidak ditemukan untuk tahun '.$tahun];
+        }
+
+        $monthNames = [
+            1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
+            5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
+            9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember',
+        ];
+
+        $monthMap = [
+            'januari' => 1, 'februari' => 2, 'maret' => 3, 'april' => 4,
+            'mei' => 5, 'juni' => 6, 'juli' => 7, 'agustus' => 8,
+            'september' => 9, 'oktober' => 10, 'november' => 11, 'desember' => 12,
+        ];
+
+        $periodeLower = strtolower(trim($periode));
+        if (str_contains($periodeLower, 'tahap 1') || str_contains($periodeLower, 'tahap1')) {
+            $bulanTarget = [1, 2, 3, 4, 5, 6];
+            $labelPeriode = 'Tahap 1 (Januari – Juni) '.$tahun;
+        } elseif (str_contains($periodeLower, 'tahap 2') || str_contains($periodeLower, 'tahap2')) {
+            $bulanTarget = [7, 8, 9, 10, 11, 12];
+            $labelPeriode = 'Tahap 2 (Juli – Desember) '.$tahun;
+        } else {
+            $foundMonth = null;
+            foreach ($monthMap as $mKey => $mIndex) {
+                if (str_contains($periodeLower, $mKey)) {
+                    $foundMonth = $mIndex;
+                    break;
+                }
+            }
+
+            if ($foundMonth !== null) {
+                $bulanTarget = [$foundMonth];
+                $labelPeriode = 'Bulan '.$monthNames[$foundMonth].' '.$tahun;
+            } else {
+                $bulanTarget = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+                $labelPeriode = 'Tahunan (Januari – Desember) '.$tahun;
+            }
+        }
+
+        $transaksis = $bkuClass::where($penganggaranFk, $penganggaran->id)
+            ->whereYear('tanggal_transaksi', $tahun)
+            ->whereIn(DB::raw('EXTRACT(MONTH FROM tanggal_transaksi)'), $bulanTarget)
+            ->where('is_bunga_record', false)
+            ->whereHas('rekeningBelanja', function ($q) {
+                $q->where('kode_rekening', 'like', '5.1.02.01.01%');
+            })
+            ->with(['kodeKegiatan', 'rekeningBelanja', 'uraianDetails'])
+            ->orderBy('tanggal_transaksi', 'asc')
+            ->get();
+
+        $items = [];
+        $totalRealisasi = 0.0;
+        $nomorUrut = 1;
+
+        foreach ($transaksis as $bku) {
+            $bkuKegiatan = $bku->kodeKegiatan;
+            $bkuRekening = $bku->rekeningBelanja;
+
+            if ($bku->uraianDetails && $bku->uraianDetails->isNotEmpty()) {
+                foreach ($bku->uraianDetails as $detail) {
+                    $kegiatan = $detail->kodeKegiatan ?? $bkuKegiatan;
+                    $rekening = $detail->rekeningBelanja ?? $bkuRekening;
+                    $subtotal = (float) $detail->jumlah;
+                    $totalRealisasi += $subtotal;
+
+                    $items[] = [
+                        'no' => $nomorUrut++,
+                        'tanggal' => Carbon::parse($bku->tanggal_transaksi)->format('d-m-Y'),
+                        'kode_kegiatan' => $kegiatan ? $kegiatan->kode : '-',
+                        'kode_rekening' => $rekening ? $rekening->kode_rekening : '-',
+                        'nama_rekening' => $rekening ? ($rekening->rincian_objek ?? $rekening->nama_rekening ?? '-') : '-',
+                        'no_bukti' => $bku->id_transaksi,
+                        'uraian' => $detail->uraian ?: $bku->uraian_transaksi,
+                        'volume' => (float) $detail->volume,
+                        'satuan' => $detail->satuan ?: 'Item',
+                        'harga_satuan' => (float) $detail->harga_satuan,
+                        'realisasi' => $subtotal,
+                    ];
+                }
+            } else {
+                $subtotal = (float) $bku->total_transaksi_kotor;
+                $totalRealisasi += $subtotal;
+
+                $items[] = [
+                    'no' => $nomorUrut++,
+                    'tanggal' => Carbon::parse($bku->tanggal_transaksi)->format('d-m-Y'),
+                    'kode_kegiatan' => $bkuKegiatan ? $bkuKegiatan->kode : '-',
+                    'kode_rekening' => $bkuRekening ? $bkuRekening->kode_rekening : '-',
+                    'nama_rekening' => $bkuRekening ? ($bkuRekening->rincian_objek ?? $bkuRekening->nama_rekening ?? '-') : '-',
+                    'no_bukti' => $bku->id_transaksi,
+                    'uraian' => $bku->uraian_transaksi,
+                    'volume' => 1.0,
+                    'satuan' => 'Paket',
+                    'harga_satuan' => $subtotal,
+                    'realisasi' => $subtotal,
+                ];
+            }
+        }
+
+        $sekolah = $penganggaran->sekolah;
+
+        return [
+            'tahun' => $tahun,
+            'periode' => $labelPeriode,
+            'jenis' => 'Buku Pembantu Barang Habis Pakai (BHP)',
+            'total_realisasi' => $totalRealisasi,
+            'total_item' => count($items),
+            'items' => $items,
+            'sekolah' => [
+                'nama' => $sekolah->nama_sekolah ?? '-',
+                'npsn' => $sekolah->npsn ?? '-',
+                'kecamatan' => $sekolah->kecamatan ?? '-',
+            ],
+            'pejabat' => [
+                'kepala_sekolah' => $penganggaran->kepala_sekolah ?? '-',
+                'bendahara' => $penganggaran->bendahara ?? '-',
+            ],
+        ];
+    }
+
+    /**
+     * Tool: Buku Pembantu Barang Modal / Aset (BHM)
+     */
+    protected function getBukuPembantuBhm(int $tahun, string $periode, string $variant): array
+    {
+        VariantConfig::validateVariant($variant);
+
+        $penganggaranClass = VariantConfig::getModelClass('penganggaran', $variant);
+        $bkuClass = VariantConfig::getModelClass('bku', $variant);
+        $penganggaranFk = VariantConfig::penganggaranFk($variant);
+
+        $penganggaran = $penganggaranClass::where('tahun_anggaran', $tahun)
+            ->with('sekolah')
+            ->first();
+
+        if (! $penganggaran) {
+            return ['error' => 'Data penganggaran tidak ditemukan untuk tahun '.$tahun];
+        }
+
+        $monthNames = [
+            1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
+            5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
+            9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember',
+        ];
+
+        $monthMap = [
+            'januari' => 1, 'februari' => 2, 'maret' => 3, 'april' => 4,
+            'mei' => 5, 'juni' => 6, 'juli' => 7, 'agustus' => 8,
+            'september' => 9, 'oktober' => 10, 'november' => 11, 'desember' => 12,
+        ];
+
+        $periodeLower = strtolower(trim($periode));
+        if (str_contains($periodeLower, 'tahap 1') || str_contains($periodeLower, 'tahap1')) {
+            $bulanTarget = [1, 2, 3, 4, 5, 6];
+            $labelPeriode = 'Tahap 1 (Januari – Juni) '.$tahun;
+        } elseif (str_contains($periodeLower, 'tahap 2') || str_contains($periodeLower, 'tahap2')) {
+            $bulanTarget = [7, 8, 9, 10, 11, 12];
+            $labelPeriode = 'Tahap 2 (Juli – Desember) '.$tahun;
+        } else {
+            $foundMonth = null;
+            foreach ($monthMap as $mKey => $mIndex) {
+                if (str_contains($periodeLower, $mKey)) {
+                    $foundMonth = $mIndex;
+                    break;
+                }
+            }
+
+            if ($foundMonth !== null) {
+                $bulanTarget = [$foundMonth];
+                $labelPeriode = 'Bulan '.$monthNames[$foundMonth].' '.$tahun;
+            } else {
+                $bulanTarget = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+                $labelPeriode = 'Tahunan (Januari – Desember) '.$tahun;
+            }
+        }
+
+        $transaksis = $bkuClass::where($penganggaranFk, $penganggaran->id)
+            ->whereYear('tanggal_transaksi', $tahun)
+            ->whereIn(DB::raw('EXTRACT(MONTH FROM tanggal_transaksi)'), $bulanTarget)
+            ->where('is_bunga_record', false)
+            ->whereHas('rekeningBelanja', function ($q) {
+                $q->where('kode_rekening', 'like', '5.2%');
+            })
+            ->with(['kodeKegiatan', 'rekeningBelanja', 'uraianDetails'])
+            ->orderBy('tanggal_transaksi', 'asc')
+            ->get();
+
+        $items = [];
+        $totalRealisasi = 0.0;
+        $subtotalPeralatan = 0.0;
+        $subtotalAsetLain = 0.0;
+        $nomorUrut = 1;
+
+        foreach ($transaksis as $bku) {
+            $bkuKegiatan = $bku->kodeKegiatan;
+            $bkuRekening = $bku->rekeningBelanja;
+
+            if ($bku->uraianDetails && $bku->uraianDetails->isNotEmpty()) {
+                foreach ($bku->uraianDetails as $detail) {
+                    $kegiatan = $detail->kodeKegiatan ?? $bkuKegiatan;
+                    $rekening = $detail->rekeningBelanja ?? $bkuRekening;
+                    $subtotal = (float) $detail->jumlah;
+                    $totalRealisasi += $subtotal;
+
+                    $kodeRek = $rekening ? $rekening->kode_rekening : '';
+                    if (str_starts_with($kodeRek, '5.2.02')) {
+                        $subtotalPeralatan += $subtotal;
+                        $kategori = 'Peralatan dan Mesin';
+                    } elseif (str_starts_with($kodeRek, '5.2.05')) {
+                        $subtotalAsetLain += $subtotal;
+                        $kategori = 'Aset Tetap Lainnya (Buku Perpustakaan)';
+                    } else {
+                        $kategori = 'Belanja Modal';
+                    }
+
+                    $items[] = [
+                        'no' => $nomorUrut++,
+                        'tanggal' => Carbon::parse($bku->tanggal_transaksi)->format('d-m-Y'),
+                        'kode_kegiatan' => $kegiatan ? $kegiatan->kode : '-',
+                        'kode_rekening' => $rekening ? $rekening->kode_rekening : '-',
+                        'nama_rekening' => $rekening ? ($rekening->rincian_objek ?? $rekening->nama_rekening ?? '-') : '-',
+                        'kategori_aset' => $kategori,
+                        'no_bukti' => $bku->id_transaksi,
+                        'uraian' => $detail->uraian ?: $bku->uraian_transaksi,
+                        'volume' => (float) $detail->volume,
+                        'satuan' => $detail->satuan ?: 'Unit',
+                        'harga_satuan' => (float) $detail->harga_satuan,
+                        'realisasi' => $subtotal,
+                    ];
+                }
+            } else {
+                $subtotal = (float) $bku->total_transaksi_kotor;
+                $totalRealisasi += $subtotal;
+
+                $kodeRek = $bkuRekening ? $bkuRekening->kode_rekening : '';
+                if (str_starts_with($kodeRek, '5.2.02')) {
+                    $subtotalPeralatan += $subtotal;
+                    $kategori = 'Peralatan dan Mesin';
+                } elseif (str_starts_with($kodeRek, '5.2.05')) {
+                    $subtotalAsetLain += $subtotal;
+                    $kategori = 'Aset Tetap Lainnya (Buku Perpustakaan)';
+                } else {
+                    $kategori = 'Belanja Modal';
+                }
+
+                $items[] = [
+                    'no' => $nomorUrut++,
+                    'tanggal' => Carbon::parse($bku->tanggal_transaksi)->format('d-m-Y'),
+                    'kode_kegiatan' => $bkuKegiatan ? $bkuKegiatan->kode : '-',
+                    'kode_rekening' => $bkuRekening ? $bkuRekening->kode_rekening : '-',
+                    'nama_rekening' => $bkuRekening ? ($bkuRekening->rincian_objek ?? $bkuRekening->nama_rekening ?? '-') : '-',
+                    'kategori_aset' => $kategori,
+                    'no_bukti' => $bku->id_transaksi,
+                    'uraian' => $bku->uraian_transaksi,
+                    'volume' => 1.0,
+                    'satuan' => 'Paket',
+                    'harga_satuan' => $subtotal,
+                    'realisasi' => $subtotal,
+                ];
+            }
+        }
+
+        $sekolah = $penganggaran->sekolah;
+
+        return [
+            'tahun' => $tahun,
+            'periode' => $labelPeriode,
+            'jenis' => 'Buku Pembantu Barang Modal / Aset (BHM)',
+            'total_realisasi' => $totalRealisasi,
+            'total_item' => count($items),
+            'komposisi' => [
+                'peralatan_mesin' => $subtotalPeralatan,
+                'aset_tetap_lainnya' => $subtotalAsetLain,
+            ],
+            'items' => $items,
+            'sekolah' => [
+                'nama' => $sekolah->nama_sekolah ?? '-',
+                'npsn' => $sekolah->npsn ?? '-',
+                'kecamatan' => $sekolah->kecamatan ?? '-',
+            ],
+            'pejabat' => [
+                'kepala_sekolah' => $penganggaran->kepala_sekolah ?? '-',
+                'bendahara' => $penganggaran->bendahara ?? '-',
             ],
         ];
     }
