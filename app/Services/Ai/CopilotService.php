@@ -407,6 +407,91 @@ class CopilotService
             [
                 'type' => 'function',
                 'function' => [
+                    'name' => 'get_lembar_kerja_221',
+                    'description' => 'Mengambil data resmi formulir Lembar Kerja 221 (RKA SKPD 2.2.1) untuk tahun anggaran aktif. Menyajikan hierarki rekening belanja berjenjang (5, 5.1, 5.1.02, 5.2, dst.) yang diselingi dengan rincian item belanja (volume, satuan, harga satuan, subtotal). Mendukung filter kode rekening (misal hanya belanja barang atau modal) dan tipe dokumen (aktif/murni/perubahan). Panggil tool ini saat pengguna bertanya tentang Lembar Kerja 221, Formulir 221, rincian kertas kerja belanja, atau daftar rincian barang/jasa menurut rekening.',
+                    'parameters' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'tahun' => [
+                                'type' => 'integer',
+                                'description' => 'Tahun anggaran RKAS (contoh: 2025, 2026). Opsional, default adalah tahun aktif saat ini.',
+                            ],
+                            'tipe_dokumen' => [
+                                'type' => 'string',
+                                'enum' => ['aktif', 'murni', 'perubahan'],
+                                'description' => 'Pilihan jenis dokumen: "aktif" (default), "murni" (RKAS Awal), atau "perubahan" (RKAS Perubahan).',
+                            ],
+                            'kode_rekening' => [
+                                'type' => 'string',
+                                'description' => 'Filter kode rekening tertentu (contoh: "5.1.02.01" untuk Belanja Barang, "5.2" untuk Belanja Modal). Opsional.',
+                            ],
+                            'limit' => [
+                                'type' => 'integer',
+                                'description' => 'Maksimal jumlah baris data yang ditampilkan (default: 50). Opsional.',
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+            [
+                'type' => 'function',
+                'function' => [
+                    'name' => 'get_rincian_pencairan',
+                    'description' => 'Mengambil daftar rincian pencairan dana BOSP (Formulir Rincian Pencairan / RP) per tahap (Tahap 1 / Tahap 2) dan per bulan (Januari s.d. Desember) pada tahun anggaran aktif. Menyajikan total anggaran bruto, potongan pajak (PPN, PPh 21, PPh 23), jumlah neto yang diterima, serta rincian kegiatan lengkap dengan nama penerima, jabatan, nomor rekening, dan nama bank. Panggil tool ini saat pengguna bertanya tentang Rincian Pencairan, daftar pencairan tahap 1 atau tahap 2, pencairan dana bulan tertentu, penerima dana, atau potongan pajak pencairan.',
+                    'parameters' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'tahun' => [
+                                'type' => 'integer',
+                                'description' => 'Tahun anggaran RKAS (contoh: 2025, 2026). Opsional, default adalah tahun aktif saat ini.',
+                            ],
+                            'tahap' => [
+                                'type' => 'integer',
+                                'enum' => [1, 2],
+                                'description' => 'Filter tahapan pencairan (1 untuk Tahap 1, 2 untuk Tahap 2). Opsional.',
+                            ],
+                            'bulan' => [
+                                'type' => 'string',
+                                'description' => 'Filter nama bulan pencairan (misal: "Maret", "September", atau "Semua"). Default "Semua".',
+                            ],
+                            'tipe_dokumen' => [
+                                'type' => 'string',
+                                'enum' => ['aktif', 'murni', 'perubahan'],
+                                'description' => 'Pilihan jenis dokumen: "aktif" (default), "murni", atau "perubahan".',
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+            [
+                'type' => 'function',
+                'function' => [
+                    'name' => 'get_alur_kas',
+                    'description' => 'Mengambil data Alur Kas BOSP penggunaan dana 12 bulan (Januari s.d. Desember) terbagi Tahap I dan Tahap II. Menyajikan alokasi penerimaan per tahap (50%–50%), sebaran belanja bulanan per program/kegiatan, total belanja tiap bulan, dan pergerakan saldo kas kumulatif bulanan (saldo awal, penerimaan, belanja, saldo akhir). Panggil tool ini saat pengguna bertanya tentang Alur Kas, pergerakan kas bulanan, jadwal kas keluar masuk, saldo kas per bulan, atau sebaran 12 bulan anggaran.',
+                    'parameters' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'tahun' => [
+                                'type' => 'integer',
+                                'description' => 'Tahun anggaran RKAS (contoh: 2025, 2026). Opsional, default adalah tahun aktif saat ini.',
+                            ],
+                            'tahap' => [
+                                'type' => 'integer',
+                                'enum' => [1, 2],
+                                'description' => 'Filter tahapan alur kas (1 untuk Januari–Juni, 2 untuk Juli–Desember). Opsional.',
+                            ],
+                            'tipe_dokumen' => [
+                                'type' => 'string',
+                                'enum' => ['aktif', 'murni', 'perubahan'],
+                                'description' => 'Pilihan jenis dokumen: "aktif" (default), "murni", atau "perubahan".',
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+            [
+                'type' => 'function',
+                'function' => [
                     'name' => 'calculate_tax_recommendation',
                     'description' => 'Menghitung rekomendasi pemotongan pajak resmi (PPN 11%, PPh 21, PPh 22, PPh 23, Pajak Daerah).',
                     'parameters' => [
@@ -972,6 +1057,26 @@ PROMPT;
                 $targetTahun,
                 $variant,
                 $args['tipe_dokumen'] ?? 'komparasi'
+            ),
+            'get_lembar_kerja_221' => $this->getLembarKerja221(
+                $targetTahun,
+                $variant,
+                $args['tipe_dokumen'] ?? 'aktif',
+                $args['kode_rekening'] ?? null,
+                ! empty($args['limit']) ? (int) $args['limit'] : 50
+            ),
+            'get_rincian_pencairan' => $this->getRincianPencairan(
+                $targetTahun,
+                $variant,
+                isset($args['tahap']) ? (int) $args['tahap'] : null,
+                $args['bulan'] ?? 'Semua',
+                $args['tipe_dokumen'] ?? 'aktif'
+            ),
+            'get_alur_kas' => $this->getAlurKas(
+                $targetTahun,
+                $variant,
+                isset($args['tahap']) ? (int) $args['tahap'] : null,
+                $args['tipe_dokumen'] ?? 'aktif'
             ),
             'search_rkas_activity' => $this->searchRkasActivity($targetTahun, $args['query'] ?? '', $variant, $args['bulan'] ?? null),
             'calculate_tax_recommendation' => $this->calculateTaxRecommendation(
@@ -4524,6 +4629,417 @@ PROMPT;
             'status' => 'draft_prepared',
             'message' => 'Draf transaksi berhasil disiapkan dan ditampilkan pada layar.',
             'staging_card' => $stagingCard,
+        ];
+    }
+
+    /**
+     * Tool: Lembar Kerja 221 (Formulir RKA SKPD 2.2.1)
+     */
+    protected function getLembarKerja221(
+        int $tahun,
+        string $variant,
+        string $tipeDokumen = 'aktif',
+        ?string $kodeRekening = null,
+        int $limit = 50
+    ): array {
+        VariantConfig::validateVariant($variant);
+
+        $penganggaranClass = VariantConfig::getModelClass('penganggaran', $variant);
+        $rkasClass = VariantConfig::getModelClass('rkas', $variant);
+        $rkasPerubahanClass = VariantConfig::getModelClass('rkas_perubahan', $variant);
+        $penganggaranFk = VariantConfig::penganggaranFk($variant);
+
+        $penganggaran = $penganggaranClass::where('tahun_anggaran', $tahun)->with('sekolah')->first();
+        if (! $penganggaran) {
+            return ['error' => "Data penganggaran untuk tahun {$tahun} ({$variant}) tidak ditemukan."];
+        }
+
+        $paguAnggaran = (float) $penganggaran->pagu_anggaran;
+        $hasPerubahan = $rkasPerubahanClass && $rkasPerubahanClass::where($penganggaranFk, $penganggaran->id)->exists();
+
+        $mode = strtolower(trim($tipeDokumen));
+        if ($mode === 'perubahan' && ! $hasPerubahan) {
+            $mode = 'murni';
+        } elseif ($mode === 'aktif') {
+            $mode = $hasPerubahan ? 'perubahan' : 'murni';
+        }
+
+        $activeModelClass = ($mode === 'perubahan') ? $rkasPerubahanClass : $rkasClass;
+
+        $allItems = $activeModelClass::where($penganggaranFk, $penganggaran->id)
+            ->with(['rekeningBelanja', 'kodeKegiatan'])
+            ->get();
+
+        $hierarchyNames = [
+            '5' => 'BELANJA',
+            '5.1' => 'BELANJA OPERASI',
+            '5.1.02' => 'BELANJA BARANG DAN JASA',
+            '5.1.02.01' => 'BELANJA BARANG',
+            '5.1.02.02' => 'BELANJA JASA',
+            '5.1.02.03' => 'BELANJA PEMELIHARAAN',
+            '5.1.02.04' => 'BELANJA PERJALANAN DINAS',
+            '5.2' => 'BELANJA MODAL',
+            '5.2.02' => 'BELANJA MODAL PERALATAN DAN MESIN',
+            '5.2.04' => 'BELANJA MODAL JALAN, JARINGAN, DAN IRIGASI',
+            '5.2.05' => 'BELANJA MODAL ASET TETAP LAINNYA',
+        ];
+
+        // Hitung total header
+        $headerTotals = [];
+        foreach ($allItems as $item) {
+            $code = $item->rekeningBelanja->kode_rekening ?? '';
+            $val = (float) $item->jumlah * (float) $item->harga_satuan;
+            foreach ($hierarchyNames as $hCode => $hName) {
+                if (str_starts_with($code, $hCode)) {
+                    $headerTotals[$hCode] = ($headerTotals[$hCode] ?? 0.0) + $val;
+                }
+            }
+        }
+
+        $headerRows = collect();
+        foreach ($hierarchyNames as $hCode => $hName) {
+            $total = $headerTotals[$hCode] ?? 0.0;
+            if ($kodeRekening && ! str_starts_with($hCode, $kodeRekening) && ! str_starts_with($kodeRekening, $hCode)) {
+                continue;
+            }
+            $headerRows->push([
+                'type' => 'header',
+                'kode_rekening' => $hCode,
+                'uraian' => $hName,
+                'volume' => null,
+                'satuan' => null,
+                'harga_satuan' => null,
+                'jumlah' => $total,
+                'sort_key' => $hCode,
+            ]);
+        }
+
+        // Siapkan item rows
+        $itemRows = $allItems->filter(function ($item) use ($kodeRekening) {
+            if (! $kodeRekening) {
+                return true;
+            }
+            $code = $item->rekeningBelanja->kode_rekening ?? '';
+
+            return str_starts_with($code, $kodeRekening);
+        })->map(function ($item) {
+            $code = $item->rekeningBelanja->kode_rekening ?? '';
+            $val = (float) $item->jumlah * (float) $item->harga_satuan;
+
+            return [
+                'type' => 'item',
+                'kode_rekening' => $code,
+                'uraian' => $item->uraian,
+                'volume' => (float) $item->jumlah,
+                'satuan' => $item->satuan,
+                'harga_satuan' => (float) $item->harga_satuan,
+                'jumlah' => $val,
+                'bulan' => $item->bulan,
+                'sort_key' => $code.'Z',
+            ];
+        });
+
+        $merged = $headerRows->merge($itemRows)->sortBy('sort_key')->values();
+        $totalItemsCount = $itemRows->count();
+        $slicedRows = $merged->take($limit)->values()->all();
+
+        $totalBelanja = $headerTotals['5'] ?? 0.0;
+
+        return [
+            'tahun' => $tahun,
+            'sekolah' => $penganggaran->sekolah?->nama_sekolah ?? '-',
+            'sumber_dana' => VariantConfig::title($variant),
+            'tipe_dokumen' => $mode,
+            'pagu_anggaran' => $paguAnggaran,
+            'total_belanja' => $totalBelanja,
+            'defisit' => $paguAnggaran - $totalBelanja,
+            'filter_kode_rekening' => $kodeRekening,
+            'total_baris_item' => $totalItemsCount,
+            'limit_tampil' => $limit,
+            'hierarki_summary' => collect($hierarchyNames)->map(fn ($name, $code) => [
+                'kode_rekening' => $code,
+                'uraian' => $name,
+                'jumlah' => $headerTotals[$code] ?? 0.0,
+            ])->values()->all(),
+            'rows' => $slicedRows,
+        ];
+    }
+
+    /**
+     * Tool: Rincian Pencairan (RP) per Tahap dan Bulan
+     */
+    protected function getRincianPencairan(
+        int $tahun,
+        string $variant,
+        ?int $tahap = null,
+        string $bulan = 'Semua',
+        string $tipeDokumen = 'aktif'
+    ): array {
+        VariantConfig::validateVariant($variant);
+
+        $penganggaranClass = VariantConfig::getModelClass('penganggaran', $variant);
+        $rkasClass = VariantConfig::getModelClass('rkas', $variant);
+        $rkasPerubahanClass = VariantConfig::getModelClass('rkas_perubahan', $variant);
+        $penganggaranFk = VariantConfig::penganggaranFk($variant);
+
+        $penganggaran = $penganggaranClass::where('tahun_anggaran', $tahun)->with('sekolah')->first();
+        if (! $penganggaran) {
+            return ['error' => "Data penganggaran untuk tahun {$tahun} ({$variant}) tidak ditemukan."];
+        }
+
+        $hasPerubahan = $rkasPerubahanClass && $rkasPerubahanClass::where($penganggaranFk, $penganggaran->id)->exists();
+
+        $mode = strtolower(trim($tipeDokumen));
+        if ($mode === 'perubahan' && ! $hasPerubahan) {
+            $mode = 'murni';
+        } elseif ($mode === 'aktif') {
+            $mode = $hasPerubahan ? 'perubahan' : 'murni';
+        }
+
+        $sem1 = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni'];
+        $sem2 = ['Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
+        // Aturan SIKAS: Jika dokumen perubahan aktif, Tahap 1 dari Murni, Tahap 2 dari Perubahan
+        $sourceItems = collect();
+        if ($mode === 'perubahan') {
+            $murniT1 = $rkasClass::where($penganggaranFk, $penganggaran->id)
+                ->whereIn('bulan', $sem1)
+                ->with(['rekeningBelanja', 'kodeKegiatan'])
+                ->get();
+            $perubahanT2 = $rkasPerubahanClass::where($penganggaranFk, $penganggaran->id)
+                ->whereIn('bulan', $sem2)
+                ->with(['rekeningBelanja', 'kodeKegiatan'])
+                ->get();
+            $sourceItems = $murniT1->concat($perubahanT2);
+        } else {
+            $sourceItems = $rkasClass::where($penganggaranFk, $penganggaran->id)
+                ->with(['rekeningBelanja', 'kodeKegiatan'])
+                ->get();
+        }
+
+        // Filter tahap & bulan
+        $filtered = $sourceItems->filter(function ($item) use ($tahap, $bulan, $sem1) {
+            $itemTahap = in_array($item->bulan, $sem1) ? 1 : 2;
+            if ($tahap !== null && (int) $tahap !== $itemTahap) {
+                return false;
+            }
+            if ($bulan !== 'Semua' && strcasecmp($item->bulan, $bulan) !== 0) {
+                return false;
+            }
+
+            return true;
+        });
+
+        $mappedItems = [];
+        $no = 1;
+        $totalBruto = 0.0;
+        $totalPpn = 0.0;
+        $totalPph21 = 0.0;
+        $totalPph23 = 0.0;
+
+        foreach ($filtered as $item) {
+            $val = (float) $item->jumlah * (float) $item->harga_satuan;
+            $ppn = (float) ($item->pot_ppn ?? 0);
+            $pph21 = (float) ($item->pot_pph21 ?? 0) + (float) ($item->pot_pph21_narasumber ?? 0);
+            $pph23 = (float) ($item->pot_pph23 ?? 0);
+            $pajak = $ppn + $pph21 + $pph23;
+            $neto = $val - $pajak;
+
+            $itemTahap = in_array($item->bulan, $sem1) ? 1 : 2;
+
+            $totalBruto += $val;
+            $totalPpn += $ppn;
+            $totalPph21 += $pph21;
+            $totalPph23 += $pph23;
+
+            $mappedItems[] = [
+                'no' => $no++,
+                'kode_rekening' => $item->rekeningBelanja->kode_rekening ?? '-',
+                'kode_kegiatan' => $item->kodeKegiatan->kode ?? '-',
+                'nama_kegiatan' => $item->uraian_gabungan ?: $item->uraian,
+                'bulan' => $item->bulan,
+                'tahap' => $itemTahap,
+                'nama_penerima' => $item->nama_penerima ?: '-',
+                'jabatan' => $item->jabatan ?: '-',
+                'nomor_rekening' => $item->nomor_rekening ?: '-',
+                'bank' => $item->bank ?: '-',
+                'nomor_kwitansi' => $item->nomor_kwitansi ?: '-',
+                'bruto' => $val,
+                'pot_ppn' => $ppn,
+                'pot_pph21' => $pph21,
+                'pot_pph23' => $pph23,
+                'total_pajak' => $pajak,
+                'diterima_neto' => $neto,
+            ];
+        }
+
+        $totalPajakAll = $totalPpn + $totalPph21 + $totalPph23;
+
+        return [
+            'tahun' => $tahun,
+            'sekolah' => $penganggaran->sekolah?->nama_sekolah ?? '-',
+            'sumber_dana' => VariantConfig::title($variant),
+            'tipe_dokumen' => $mode,
+            'filter_tahap' => $tahap,
+            'filter_bulan' => $bulan,
+            'ringkasan' => [
+                'total_anggaran_bruto' => $totalBruto,
+                'total_pot_ppn' => $totalPpn,
+                'total_pot_pph21' => $totalPph21,
+                'total_pot_pph23' => $totalPph23,
+                'total_pajak' => $totalPajakAll,
+                'total_diterima_neto' => $totalBruto - $totalPajakAll,
+                'jumlah_transaksi' => count($mappedItems),
+            ],
+            'items' => array_slice($mappedItems, 0, 100),
+        ];
+    }
+
+    /**
+     * Tool: Alur Kas Penggunaan Dana BOSP (12 Bulan, Tahap 1 & 2, Saldo Kumulatif)
+     */
+    protected function getAlurKas(
+        int $tahun,
+        string $variant,
+        ?int $tahap = null,
+        string $tipeDokumen = 'aktif'
+    ): array {
+        VariantConfig::validateVariant($variant);
+
+        $penganggaranClass = VariantConfig::getModelClass('penganggaran', $variant);
+        $rkasClass = VariantConfig::getModelClass('rkas', $variant);
+        $rkasPerubahanClass = VariantConfig::getModelClass('rkas_perubahan', $variant);
+        $penganggaranFk = VariantConfig::penganggaranFk($variant);
+
+        $penganggaran = $penganggaranClass::where('tahun_anggaran', $tahun)->with('sekolah')->first();
+        if (! $penganggaran) {
+            return ['error' => "Data penganggaran untuk tahun {$tahun} ({$variant}) tidak ditemukan."];
+        }
+
+        $paguAnggaran = (float) $penganggaran->pagu_anggaran;
+        $hasPerubahan = $rkasPerubahanClass && $rkasPerubahanClass::where($penganggaranFk, $penganggaran->id)->exists();
+
+        $mode = strtolower(trim($tipeDokumen));
+        if ($mode === 'perubahan' && ! $hasPerubahan) {
+            $mode = 'murni';
+        } elseif ($mode === 'aktif') {
+            $mode = $hasPerubahan ? 'perubahan' : 'murni';
+        }
+
+        $sem1 = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni'];
+        $sem2 = ['Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+        $allMonths = array_merge($sem1, $sem2);
+
+        $sourceItems = collect();
+        if ($mode === 'perubahan') {
+            $murniT1 = $rkasClass::where($penganggaranFk, $penganggaran->id)
+                ->whereIn('bulan', $sem1)
+                ->with(['rekeningBelanja', 'kodeKegiatan'])
+                ->get();
+            $perubahanT2 = $rkasPerubahanClass::where($penganggaranFk, $penganggaran->id)
+                ->whereIn('bulan', $sem2)
+                ->with(['rekeningBelanja', 'kodeKegiatan'])
+                ->get();
+            $sourceItems = $murniT1->concat($perubahanT2);
+        } else {
+            $sourceItems = $rkasClass::where($penganggaranFk, $penganggaran->id)
+                ->with(['rekeningBelanja', 'kodeKegiatan'])
+                ->get();
+        }
+
+        // Hitung total belanja per bulan
+        $belanjaBulanan = [];
+        foreach ($allMonths as $m) {
+            $belanjaBulanan[$m] = 0.0;
+        }
+        foreach ($sourceItems as $item) {
+            $m = $item->bulan;
+            if (isset($belanjaBulanan[$m])) {
+                $belanjaBulanan[$m] += (float) $item->jumlah * (float) $item->harga_satuan;
+            }
+        }
+
+        // Simulasi Alur Kas Bulanan
+        $penerimaanT1 = $paguAnggaran / 2;
+        $penerimaanT2 = $paguAnggaran / 2;
+
+        $alurBulanan = [];
+        $runningSaldo = 0.0;
+
+        foreach ($allMonths as $m) {
+            $mTahap = in_array($m, $sem1) ? 1 : 2;
+            $masuk = 0.0;
+            if ($m === 'Januari') {
+                $masuk = $penerimaanT1;
+            } elseif ($m === 'Juli') {
+                $masuk = $penerimaanT2;
+            }
+
+            $keluar = $belanjaBulanan[$m] ?? 0.0;
+            $saldoAwal = $runningSaldo;
+            $saldoAkhir = $saldoAwal + $masuk - $keluar;
+            $runningSaldo = $saldoAkhir;
+
+            $alurBulanan[] = [
+                'bulan' => $m,
+                'tahap' => $mTahap,
+                'saldo_awal' => $saldoAwal,
+                'penerimaan' => $masuk,
+                'belanja' => $keluar,
+                'saldo_akhir' => $saldoAkhir,
+            ];
+        }
+
+        if ($tahap === 1) {
+            $alurBulananFiltered = array_values(array_filter($alurBulanan, fn ($b) => $b['tahap'] === 1));
+        } elseif ($tahap === 2) {
+            $alurBulananFiltered = array_values(array_filter($alurBulanan, fn ($b) => $b['tahap'] === 2));
+        } else {
+            $alurBulananFiltered = $alurBulanan;
+        }
+
+        $kegiatanGroups = $sourceItems->groupBy(function ($item) {
+            return $item->kodeKegiatan?->kode ?? 'Lainnya';
+        })->map(function ($items, $kode) use ($allMonths) {
+            $first = $items->first();
+            $namaKegiatan = $first->kodeKegiatan?->uraian ?? $first->uraian;
+            $totalPagu = $items->sum(fn ($i) => (float) $i->jumlah * (float) $i->harga_satuan);
+            $sebaran = [];
+            foreach ($allMonths as $m) {
+                $sebaran[$m] = $items->filter(fn ($i) => $i->bulan === $m)->sum(fn ($i) => (float) $i->jumlah * (float) $i->harga_satuan);
+            }
+
+            return [
+                'kode_kegiatan' => $kode,
+                'nama_kegiatan' => $namaKegiatan,
+                'pagu' => $totalPagu,
+                'sebaran_bulan' => $sebaran,
+            ];
+        })->values()->take(20)->all();
+
+        $totalBelanjaT1 = collect($alurBulanan)->where('tahap', 1)->sum('belanja');
+        $totalBelanjaT2 = collect($alurBulanan)->where('tahap', 2)->sum('belanja');
+        $totalBelanjaTahun = $totalBelanjaT1 + $totalBelanjaT2;
+
+        return [
+            'tahun' => $tahun,
+            'sekolah' => $penganggaran->sekolah?->nama_sekolah ?? '-',
+            'sumber_dana' => VariantConfig::title($variant),
+            'tipe_dokumen' => $mode,
+            'pagu_anggaran' => $paguAnggaran,
+            'penerimaan' => [
+                'tahap_1' => $penerimaanT1,
+                'tahap_2' => $penerimaanT2,
+                'total' => $paguAnggaran,
+            ],
+            'belanja' => [
+                'tahap_1' => $totalBelanjaT1,
+                'tahap_2' => $totalBelanjaT2,
+                'total' => $totalBelanjaTahun,
+            ],
+            'saldo_akhir_tahun' => $runningSaldo,
+            'alur_bulanan' => $alurBulananFiltered,
+            'kegiatan_sample' => $kegiatanGroups,
         ];
     }
 
