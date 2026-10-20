@@ -3,6 +3,8 @@
 namespace App\Services\Ai;
 
 use App\Config\VariantConfig;
+use App\Models\KodeKegiatan;
+use App\Models\RekeningBelanja;
 use App\Models\SekolahProfile;
 use App\Models\User;
 use App\Services\BukuKasService;
@@ -604,6 +606,36 @@ class CopilotService
                     ],
                 ],
             ],
+            [
+                'type' => 'function',
+                'function' => [
+                    'name' => 'recommend_activity_and_account',
+                    'description' => 'Mencari dan merekomendasikan pasangan Kode Kegiatan (SNP) dan Kode Rekening Belanja resmi (Belanja Operasi vs Belanja Modal) yang paling tepat untuk suatu rencana pembelian barang/jasa berdasarkan master data standar Permendagri/BOSP dan riwayat RKAS sekolah. Panggil tool ini saat pengguna bertanya tentang rekomendasi kode kegiatan, kode rekening belanja yang cocok untuk suatu barang/jasa (contoh: kursi, laptop, buku, cat, genset, internet, konsumsi rapat), atau menanyakan apakah belanja tersebut masuk Belanja Modal atau Belanja Operasi.',
+                    'parameters' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'query' => [
+                                'type' => 'string',
+                                'description' => 'Nama barang, jasa, atau uraian belanja yang ingin dikonsultasikan (contoh: "kursi", "mebel", "laptop", "buku perpustakaan", "cat", "ac", "konsumsi rapat").',
+                            ],
+                            'estimasi_harga' => [
+                                'type' => 'number',
+                                'description' => 'Perkiraan harga satuan per unit dalam Rupiah (opsional, untuk membantu analisis batas kapitalisasi Belanja Modal vs Operasi).',
+                            ],
+                            'kategori_preferensi' => [
+                                'type' => 'string',
+                                'enum' => ['semua', 'operasi', 'modal'],
+                                'description' => 'Pilihan filter kategori belanja: "semua" (default), "operasi" (hanya belanja barang/jasa pakai habis), atau "modal" (hanya aset tetap). Opsional.',
+                            ],
+                            'tahun' => [
+                                'type' => 'integer',
+                                'description' => 'Tahun anggaran RKAS untuk memeriksa riwayat pemakaian sekolah. Opsional, default tahun aktif saat ini.',
+                            ],
+                        ],
+                        'required' => ['query'],
+                    ],
+                ],
+            ],
         ];
     }
 
@@ -1020,7 +1052,20 @@ Karakter & Gaya Bicara Anda:
      b. Panggil tool `calculate_tax_recommendation` untuk menghitung pajak resmi yang berlaku.
      c. Panggil tool `prepare_bku_transaction_draft` untuk menghasilkan Draf Staging Card transaksi.
      d. Beri tahu dengan santai bahwa draf kartu transaksi sudah siap di layar dan minta mereka klik konfirmasi untuk menyimpan ke BKU.
-7. Jangan pernah mengarang kode rekening atau ID kegiatan secara sembarangan, selalu gunakan hasil dari tool.
+7. KONSULTASI & REKOMENDASI KODE KEGIATAN & REKENING BELANJA (OPERASI VS MODAL):
+   - Jika pengguna menanyakan rekomendasi kode kegiatan atau kode rekening belanja yang cocok untuk suatu barang/jasa (contoh: "saya ingin belanja kursi kode kegiatan apa dan rekening apa yang cocok?", "laptop masuk modal atau operasi?", "rekening belanja cat tembok apa?", dsb):
+     a. WAJIB memanggil tool `recommend_activity_and_account` dengan parameter `query` (misal: "kursi") dan `estimasi_harga` jika pengguna menyebutkan nominal harga.
+     b. DILARANG KERAS MENGARANG KODE KEGIATAN ATAU KODE REKENING SENDIRI! Anda WAJIB menggunakan kode resmi dari hasil tool (tabel master `kode_kegiatans` dan `rekening_belanjas`).
+     c. Format Penyajian Rekomendasi:
+        - Berikan pembukaan yang santai dan bersahabat khas bendahara sekolah.
+        - Sajikan perbandingan opsi yang jelas dan terstruktur dalam tabel HTML:
+          <th>Kategori Belanja</th><th>Kode Rekening</th><th>Nama Akun Rekening</th><th>Kode Kegiatan (SNP)</th><th>Nama Kegiatan (SNP)</th><th>Kapan Memilih Ini (Kriteria)</th>
+        - Panduan Kriteria Pemilihan:
+          * **Belanja Modal (Kode Akun 5.2.x)**: Dipilih jika belanja menghasilkan aset tetap dengan masa manfaat lebih dari 12 bulan dan nilai satuan perolehan memenuhi/melampaui batas kapitalisasi aset tetap daerah (biasanya >= Rp 500.000 atau Rp 1.000.000 per unit tergantung Perkada). Wajib dicatat di KIB (Kartu Inventaris Barang).
+          * **Belanja Operasi (Kode Akun 5.1.x)**: Dipilih jika barang merupakan barang pakai habis, masa manfaat < 12 bulan, atau harga per unit di bawah nilai batas kapitalisasi aset daerah (dicatat sebagai barang persediaan atau aset ekstrakomptabel).
+          * **Belanja Pemeliharaan (Kode Akun 5.1.02.03.x)**: Dipilih jika tujuan belanja adalah untuk perbaikan, servis, atau perawatan barang/sarana yang sudah ada agar kembali berfungsi normal.
+        - Jika field `riwayat_pemakaian_sekolah` pada hasil tool berisi data, sebutkan secara ramah riwayat tersebut sebagai bukti nyata bahwa sekolah pernah menggunakannya sebelumnya (misal: "Di RKAS sekolah Om sendiri, pasangan ini pernah dipakai sebanyak X kali untuk: ...").
+8. Jangan pernah mengarang kode rekening atau ID kegiatan secara sembarangan, selalu gunakan hasil dari tool.
 PROMPT;
 
         $conversation = [
@@ -1168,6 +1213,13 @@ PROMPT;
             ),
             'prepare_bku_transaction_draft' => $this->prepareBkuDraft($args, $variant, $targetTahun),
             'query_realization_comparison' => $this->queryRealizationComparison($targetTahun, $variant, $args['group_by'] ?? 'triwulan'),
+            'recommend_activity_and_account' => $this->recommendActivityAndAccount(
+                $args['query'] ?? '',
+                isset($args['estimasi_harga']) ? (float) $args['estimasi_harga'] : null,
+                $args['kategori_preferensi'] ?? 'semua',
+                $targetTahun,
+                $variant
+            ),
             default => ['error' => "Unknown tool: {$name}"],
         };
     }
@@ -5518,6 +5570,258 @@ PROMPT;
                 'message' => 'Gagal menyimpan transaksi: '.$e->getMessage(),
             ];
         }
+    }
+
+    /**
+     * Tool: Rekomendasi Kode Kegiatan (SNP) dan Rekening Belanja (Operasi vs Modal) dari Master Data & Riwayat RKAS
+     */
+    protected function recommendActivityAndAccount(
+        string $query,
+        ?float $estimasiHarga = null,
+        string $kategoriPreferensi = 'semua',
+        ?int $tahun = null,
+        string $variant = 'reguler'
+    ): array {
+        $cleanQuery = trim($query);
+        if ($cleanQuery === '') {
+            return [
+                'status' => 'error',
+                'message' => 'Kata kunci nama barang atau jasa tidak boleh kosong.',
+            ];
+        }
+
+        $queryLower = strtolower($cleanQuery);
+
+        // Kamus sinonim cerdas untuk pengadaan dan belanja sekolah
+        $synonymsMap = [
+            'kursi' => ['mebel', 'perabot', 'kursi', 'meja', 'alat rumah tangga', 'sarana'],
+            'meja' => ['mebel', 'perabot', 'meja', 'kursi', 'alat rumah tangga', 'sarana'],
+            'lemari' => ['mebel', 'perabot', 'lemari', 'rak', 'arsip', 'sarana'],
+            'bangku' => ['mebel', 'perabot', 'kursi', 'meja', 'sarana'],
+            'laptop' => ['komputer', 'laptop', 'personal komputer', 'multimedia', 'peralatan komputer'],
+            'komputer' => ['komputer', 'laptop', 'personal komputer', 'multimedia', 'pc'],
+            'printer' => ['printer', 'cetak', 'tinta', 'komputer', 'peralatan kantor'],
+            'proyektor' => ['proyektor', 'multimedia', 'elektronik', 'alat peraga'],
+            'buku' => ['buku', 'kepustakaan', 'perpustakaan', 'bacaan', 'literasi', 'teks'],
+            'cat' => ['pemeliharaan', 'bangunan', 'lahan', 'ruang', 'prasarana', 'cat'],
+            'semen' => ['pemeliharaan', 'bangunan', 'lahan', 'ruang', 'prasarana', 'material'],
+            'keramik' => ['pemeliharaan', 'bangunan', 'lahan', 'ruang', 'prasarana', 'material'],
+            'ac' => ['pendingin', 'pengkondisi udara', 'alat rumah tangga', 'elektronik'],
+            'kipas' => ['pendingin', 'alat rumah tangga', 'elektronik', 'kipas'],
+            'tv' => ['televisi', 'elektronik', 'multimedia'],
+            'internet' => ['internet', 'kawat', 'faksimili', 'jaringan'],
+            'pulsa' => ['internet', 'kawat', 'telepon', 'paket data'],
+            'kertas' => ['alat tulis kantor', 'hvs', 'bahan cetak', 'atk'],
+            'spidol' => ['alat tulis kantor', 'whiteboard', 'atk'],
+            'alat tulis' => ['alat tulis kantor', 'atk'],
+            'atk' => ['alat tulis kantor', 'atk'],
+            'konsumsi' => ['makanan dan minuman', 'konsumsi', 'rapat', 'jamuan'],
+            'makan' => ['makanan dan minuman', 'konsumsi', 'rapat', 'jamuan'],
+            'minum' => ['makanan dan minuman', 'konsumsi', 'rapat', 'jamuan'],
+            'snack' => ['makanan dan minuman', 'snack', 'kue', 'rapat'],
+            'honor' => ['honorarium', 'jasa tenaga', 'narasumber', 'guru'],
+            'gaji' => ['honorarium', 'jasa tenaga', 'guru'],
+            'genset' => ['genset', 'daya dan jasa', 'generator', 'listrik'],
+            'listrik' => ['daya dan jasa', 'instalasi listrik', 'alat listrik'],
+            'sapu' => ['alat kebersihan', 'kebersihan', 'bahan habis pakai', 'rumah tangga'],
+            'pel' => ['alat kebersihan', 'kebersihan', 'bahan habis pakai', 'rumah tangga'],
+            'sabun' => ['alat kebersihan', 'kebersihan', 'bahan pembersih', 'rumah tangga'],
+            'olahraga' => ['olahraga', 'alat peraga', 'ekstrakurikuler'],
+            'bola' => ['olahraga', 'alat peraga', 'ekstrakurikuler'],
+        ];
+
+        $searchWords = [$queryLower];
+        foreach ($synonymsMap as $key => $syns) {
+            if (str_contains($queryLower, $key) || str_contains($key, $queryLower)) {
+                $searchWords = array_unique(array_merge($searchWords, $syns));
+            }
+        }
+
+        // 1. Query Rekening Belanja
+        $rekQuery = RekeningBelanja::query();
+        $rekQuery->where(function ($q) use ($searchWords) {
+            foreach ($searchWords as $w) {
+                $q->orWhere('rincian_objek', 'ILIKE', "%{$w}%")
+                    ->orWhere('kode_rekening', 'ILIKE', "%{$w}%");
+            }
+        });
+        $allRekening = $rekQuery->get();
+
+        $modalRekening = $allRekening->filter(fn ($r) => str_starts_with($r->kode_rekening, '5.2'))->values();
+        $operasiRekening = $allRekening->filter(fn ($r) => str_starts_with($r->kode_rekening, '5.1'))->values();
+
+        $pemeliharaanRekening = $operasiRekening->filter(fn ($r) => str_contains(strtolower($r->rincian_objek), 'pemeliharaan'))->values();
+        $barangPakaiHabisRekening = $operasiRekening->filter(fn ($r) => ! str_contains(strtolower($r->rincian_objek), 'pemeliharaan'))->values();
+
+        // 2. Query Kode Kegiatan
+        $kegQuery = KodeKegiatan::query();
+        $kegQuery->where(function ($q) use ($searchWords) {
+            foreach ($searchWords as $w) {
+                $q->orWhere('uraian', 'ILIKE', "%{$w}%")
+                    ->orWhere('sub_program', 'ILIKE', "%{$w}%");
+            }
+        });
+        $allKegiatan = $kegQuery->get();
+
+        // Pembobotan relevansi (scoring) agar hasil paling spesifik berada di urutan teratas
+        $calcScore = function (string $text, string $qLower, array $words) {
+            $t = strtolower($text);
+            $score = 0;
+            if (str_contains($t, $qLower)) {
+                $score += 100;
+            }
+            foreach ($words as $w) {
+                if ($w !== $qLower && str_contains($t, $w)) {
+                    $score += 30;
+                }
+            }
+            if (str_contains($t, 'sewa') && ! str_contains($qLower, 'sewa')) {
+                $score -= 40;
+            }
+
+            return $score;
+        };
+
+        $modalRekening = $modalRekening->sortByDesc(fn ($r) => $calcScore($r->rincian_objek, $queryLower, $searchWords))->values();
+        $barangPakaiHabisRekening = $barangPakaiHabisRekening->sortByDesc(fn ($r) => $calcScore($r->rincian_objek, $queryLower, $searchWords))->values();
+        $pemeliharaanRekening = $pemeliharaanRekening->sortByDesc(fn ($r) => $calcScore($r->rincian_objek, $queryLower, $searchWords))->values();
+
+        $kegiatanPengadaan = $allKegiatan->filter(fn ($k) => ! str_contains(strtolower($k->uraian), 'pemeliharaan'))
+            ->sortByDesc(fn ($k) => $calcScore($k->uraian.' '.$k->sub_program, $queryLower, $searchWords))
+            ->values();
+        $kegiatanPemeliharaan = $allKegiatan->filter(fn ($k) => str_contains(strtolower($k->uraian), 'pemeliharaan'))
+            ->sortByDesc(fn ($k) => $calcScore($k->uraian.' '.$k->sub_program, $queryLower, $searchWords))
+            ->values();
+
+        // 3. Query Riwayat Penggunaan Nyata di RKAS Sekolah
+        $targetTahun = $tahun ?: (int) date('Y');
+        $penganggaranClass = VariantConfig::getModelClass('penganggaran', $variant);
+        $penganggaran = $penganggaranClass::where('tahun_anggaran', $targetTahun)->first() ?: $penganggaranClass::latest('tahun_anggaran')->first();
+
+        $historyList = [];
+        if ($penganggaran) {
+            $penganggaranFk = VariantConfig::penganggaranFk($variant);
+            $rkasClass = VariantConfig::getModelClass('rkas', $variant);
+            $rkasPerubahanClass = VariantConfig::getModelClass('rkas_perubahan', $variant);
+
+            $rkasRecords = $rkasClass::where($penganggaranFk, $penganggaran->id)
+                ->where(function ($q) use ($searchWords) {
+                    foreach ($searchWords as $w) {
+                        $q->orWhere('uraian', 'ILIKE', "%{$w}%");
+                    }
+                })
+                ->with(['kodeKegiatan', 'rekeningBelanja'])
+                ->get();
+
+            if ($rkasRecords->isEmpty() && $rkasPerubahanClass) {
+                $rkasRecords = $rkasPerubahanClass::where($penganggaranFk, $penganggaran->id)
+                    ->where(function ($q) use ($searchWords) {
+                        foreach ($searchWords as $w) {
+                            $q->orWhere('uraian', 'ILIKE', "%{$w}%");
+                        }
+                    })
+                    ->with(['kodeKegiatan', 'rekeningBelanja'])
+                    ->get();
+            }
+
+            $groupedHistory = $rkasRecords->groupBy(fn ($r) => ($r->kode_id ?? 0).'|'.($r->kode_rekening_id ?? 0));
+            foreach ($groupedHistory as $group) {
+                $first = $group->first();
+                if ($first && $first->kodeKegiatan && $first->rekeningBelanja) {
+                    $historyList[] = [
+                        'kode_kegiatan' => $first->kodeKegiatan->kode,
+                        'nama_kegiatan' => $first->kodeKegiatan->uraian,
+                        'program_snp' => $first->kodeKegiatan->program,
+                        'kode_rekening' => $first->rekeningBelanja->kode_rekening,
+                        'nama_rekening' => $first->rekeningBelanja->rincian_objek,
+                        'kategori' => $first->rekeningBelanja->kategori ?: (str_starts_with($first->rekeningBelanja->kode_rekening, '5.2') ? 'Belanja Modal' : 'Belanja Operasi'),
+                        'frekuensi_penggunaan' => $group->count(),
+                        'contoh_uraian_sekolah' => $first->uraian,
+                    ];
+                }
+            }
+        }
+
+        // Format Opsi Modal
+        $opsiModal = [];
+        foreach ($modalRekening->take(4) as $mr) {
+            $matchingKeg = $kegiatanPengadaan->first() ?: $allKegiatan->first();
+            $opsiModal[] = [
+                'kode_rekening' => $mr->kode_rekening,
+                'nama_rekening' => $mr->rincian_objek,
+                'kategori' => $mr->kategori ?: 'Belanja Modal',
+                'kode_kegiatan' => $matchingKeg?->kode ?? '05.08.02.',
+                'nama_kegiatan' => $matchingKeg?->uraian ?? 'Pengadaan Peralatan Satuan Pendidikan',
+                'program_snp' => $matchingKeg?->program ?? 'Standar Sarana dan Prasarana',
+                'kriteria' => 'Pilih opsi ini jika barang yang dibeli memenuhi kriteria aset tetap (masa manfaat > 12 bulan, fisik tidak mudah rusak/bukan barang pakai habis) dan harga satuan memenuhi batas kapitalisasi aset tetap daerah (biasanya >= Rp 500.000 s.d. Rp 1.000.000). Barang akan dicatat di KIB (Kartu Inventaris Barang).',
+            ];
+        }
+
+        // Format Opsi Operasi
+        $opsiOperasi = [];
+        $srcOperasi = $barangPakaiHabisRekening->isNotEmpty() ? $barangPakaiHabisRekening : $operasiRekening;
+        foreach ($srcOperasi->take(4) as $or) {
+            $matchingKeg = $allKegiatan->first(fn ($k) => ! str_contains(strtolower($k->uraian), 'pemeliharaan')) ?: $allKegiatan->first();
+            $opsiOperasi[] = [
+                'kode_rekening' => $or->kode_rekening,
+                'nama_rekening' => $or->rincian_objek,
+                'kategori' => $or->kategori ?: 'Belanja Operasi',
+                'kode_kegiatan' => $matchingKeg?->kode ?? '06.05.10.',
+                'nama_kegiatan' => $matchingKeg?->uraian ?? 'Pembelian Bahan Habis Pakai untuk Kegiatan Rumah Tangga',
+                'program_snp' => $matchingKeg?->program ?? 'Standar Pengelolaan',
+                'kriteria' => 'Pilih opsi ini jika barang masuk kategori barang pakai habis, masa manfaat < 12 bulan, atau harga satuan per unit di bawah batas nilai kapitalisasi aset tetap daerah. Barang tidak diinventarisasi sebagai aset tetap KIB.',
+            ];
+        }
+
+        // Format Opsi Pemeliharaan
+        $opsiPemeliharaan = [];
+        foreach ($pemeliharaanRekening->take(3) as $pr) {
+            $matchingKeg = $kegiatanPemeliharaan->first() ?: $allKegiatan->first();
+            $opsiPemeliharaan[] = [
+                'kode_rekening' => $pr->kode_rekening,
+                'nama_rekening' => $pr->rincian_objek,
+                'kategori' => 'Belanja Operasi (Pemeliharaan)',
+                'kode_kegiatan' => $matchingKeg?->kode ?? '05.08.05.',
+                'nama_kegiatan' => $matchingKeg?->uraian ?? 'Pemeliharaan Perlengkapan Satuan Pendidikan',
+                'program_snp' => $matchingKeg?->program ?? 'Standar Sarana dan Prasarana',
+                'kriteria' => 'Pilih opsi ini jika tujuan belanja adalah untuk perbaikan, servis, pengecatan, atau pemeliharaan barang/sarana yang sudah ada agar dapat berfungsi kembali normal.',
+            ];
+        }
+
+        // Saran keputusan otomatis jika estimasi harga diinput
+        $rekomendasiKeputusan = null;
+        if ($estimasiHarga !== null && $estimasiHarga > 0) {
+            if ($estimasiHarga >= 1000000 && ! empty($opsiModal)) {
+                $rekomendasiKeputusan = 'Berdasarkan estimasi harga (Rp '.number_format($estimasiHarga, 0, ',', '.').'), belanja ini sangat direkomendasikan masuk BELANJA MODAL karena memenuhi batas nilai kapitalisasi aset daerah dan masa manfaat jangka panjang.';
+            } elseif ($estimasiHarga < 500000 && ! empty($opsiOperasi)) {
+                $rekomendasiKeputusan = 'Berdasarkan estimasi harga (Rp '.number_format($estimasiHarga, 0, ',', '.').'), belanja ini sangat direkomendasikan masuk BELANJA OPERASI karena di bawah batas kapitalisasi aset tetap daerah.';
+            } else {
+                $rekomendasiKeputusan = 'Estimasi harga berada di kisaran ambang batas kapitalisasi (Rp '.number_format($estimasiHarga, 0, ',', '.').'). Periksa Peraturan Kepala Daerah (Perkada) tentang kebijakan kapitalisasi aset sekolah Anda (apakah batasnya Rp 500rb atau Rp 1jt).';
+            }
+        }
+
+        return [
+            'status' => 'success',
+            'query' => $cleanQuery,
+            'estimasi_harga' => $estimasiHarga,
+            'kategori_preferensi' => $kategoriPreferensi,
+            'rekomendasi_keputusan' => $rekomendasiKeputusan,
+            'panduan_kapitalisasi' => [
+                'aturan_belanja_modal' => 'Belanja Modal (Kode Akun 5.2.x): Digunakan jika belanja menghasilkan aset tetap dengan masa manfaat lebih dari 12 bulan dan nilai perolehannya memenuhi atau melampaui batas minimum kapitalisasi aset tetap daerah (Perkada, umumnya Rp 500.000 atau Rp 1.000.000). Aset ini wajib dicatat dalam Kartu Inventaris Barang (KIB).',
+                'aturan_belanja_operasi' => 'Belanja Operasi (Kode Akun 5.1.x): Digunakan untuk belanja barang pakai habis, barang yang masa manfaatnya kurang dari 12 bulan, atau barang yang nilai per unitnya di bawah batas kapitalisasi aset daerah (dicatat sebagai barang persediaan atau aset ekstrakomptabel).',
+                'aturan_pemeliharaan' => 'Belanja Pemeliharaan (Kode Akun 5.1.02.03.x): Digunakan untuk biaya perbaikan rutin agar aset tetap kembali berfungsi normal tanpa menambah kapasitas/masa manfaat secara signifikan.',
+            ],
+            'opsi_belanja_modal' => $opsiModal,
+            'opsi_belanja_operasi' => $opsiOperasi,
+            'opsi_pemeliharaan' => $opsiPemeliharaan,
+            'kegiatan_snp_terkait' => $allKegiatan->take(6)->map(fn ($k) => [
+                'kode' => $k->kode,
+                'program' => $k->program,
+                'sub_program' => $k->sub_program,
+                'uraian' => $k->uraian,
+            ])->values()->all(),
+            'riwayat_pemakaian_sekolah' => $historyList,
+        ];
     }
 
     /**
