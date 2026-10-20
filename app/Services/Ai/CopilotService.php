@@ -177,7 +177,7 @@ class CopilotService
                 'type' => 'function',
                 'function' => [
                     'name' => 'get_bkp_registrasi_penutupan_kas_monthly',
-                    'description' => 'Mengambil data resmi Register Penutupan Kas (Formulir BOS-K7B) pada bulan tertentu dalam tahun anggaran aktif. Menyajikan status tutup buku BKU, tanggal penutupan kas, ringkasan penerimaan (D), pengeluaran (K), saldo buku (A = D - K), saldo kas tunai (B), rincian pecahan fisik uang kertas dan uang logam, saldo rekening bank (3), total kas fisik (1+2+3), rekonsiliasi selisih kas, dan data pejabat pemeriksa (Kepala Sekolah & Bendahara). Panggil tool ini saat pengguna bertanya tentang Register Penutupan Kas, K7B, penutupan kas bulanan, posisi kas fisik uang brankas/bank, atau berita acara pemeriksaan kas.',
+                    'description' => 'Mengambil data resmi Register Penutupan Kas (Formulir BOS-K7B) pada bulan tertentu dalam tahun anggaran aktif. Menyajikan status tutup buku BKU, tanggal penutupan kas, ringkasan penerimaan (D), pengeluaran (K), saldo buku (A = D - K), saldo kas tunai (B), rincian pecahan fisik uang kertas dan uang logam, saldo rekening bank (3), total kas fisik (1+2+3), rekonsiliasi selisih kas, dan data pejabat pemeriksa (Kepala Sekolah & Bendahara). Panggil tool ini saat pengguna bertanya tentang Register Penutupan Kas, Formulir K7B, penutupan kas bulanan, atau posisi fisik pecahan uang brankas dan bank.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
@@ -188,6 +188,31 @@ class CopilotService
                                     'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
                                 ],
                                 'description' => 'Nama bulan penutupan kas yang diminta (Januari sampai Desember).',
+                            ],
+                            'tahun' => [
+                                'type' => 'integer',
+                                'description' => 'Tahun anggaran penutupan kas (contoh: 2025, 2026). Opsional, default adalah tahun aktif saat ini.',
+                            ],
+                        ],
+                        'required' => ['bulan'],
+                    ],
+                ],
+            ],
+            [
+                'type' => 'function',
+                'function' => [
+                    'name' => 'get_berita_acara_penutupan_kas_monthly',
+                    'description' => 'Mengambil data resmi Berita Acara Pemeriksaan Kas bulanan dalam tahun anggaran aktif. Menyajikan data legalitas SK Kepala Sekolah & SK Bendahara (nomor & tanggal SK), hari & tanggal pemeriksaan kas, rincian fisik uang kertas & logam di hadapan bendahara, saldo rekening bank, total kas dihitung, saldo uang menurut Buku Kas Umum (BKU), serta rekonsiliasi kesesuaian kas. Panggil tool ini saat pengguna bertanya tentang Berita Acara Penutupan Kas, Berita Acara Pemeriksaan Kas, pemeriksaan kas bendahara, atau legalitas penutupan kas bulanan.',
+                    'parameters' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'bulan' => [
+                                'type' => 'string',
+                                'enum' => [
+                                    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+                                    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+                                ],
+                                'description' => 'Nama bulan pemeriksaan/penutupan kas yang diminta (Januari sampai Desember).',
                             ],
                             'tahun' => [
                                 'type' => 'integer',
@@ -455,7 +480,7 @@ Karakter & Gaya Bicara Anda:
         - Total belanja bulan ini, belanja kumulatif, dan jumlah kuitansi.
      d. Sajikan kuitansi belanja dalam tabel HTML terstruktur rapi dengan kolom:
         <th>No</th><th>Tanggal Transaksi</th><th>No. Bukti / Nota</th><th>Uraian Belanja BKU</th><th>Rekanan / Toko</th><th>Rekening Belanja</th><th>Nominal Belanja (Rp)</th>
-    - Jika pengguna menanyakan "Register Penutupan Kas", "Formulir K7B", "Penutupan kas bulanan", "Posisi uang brankas dan bank", "Berita acara penutupan kas", "Berita acara pemeriksaan kas", atau status tutup buku bulan X:
+    - Jika pengguna menanyakan "Register Penutupan Kas", "Formulir K7B", "Penutupan kas bulanan", "Posisi uang brankas dan bank", "Rincian pecahan uang kas tunai", atau status tutup buku bulan X:
       a. WAJIB memanggil tool `get_bkp_registrasi_penutupan_kas_monthly` dengan parameter `bulan` yang diminta (contoh: bulan: "Maret").
       b. JANGAN memanggil `get_bku_monthly_realization` atau `get_bkp_tunai_monthly` saja karena tidak mencakup rekonsiliasi lengkap K7B dan denominasi fisik kas!
       c. Tampilkan Header & Status Penutupan:
@@ -482,6 +507,37 @@ Karakter & Gaya Bicara Anda:
          - Konfirmasi apakah kas klop/seimbang (Rp 0 selisih).
          - Peringatan Batas Kas Tunai: Jika `is_cash_limit_exceeded` = true (saldo kas tunai brankas > Rp 10.000.000), ingatkan bendahara bahwa saldo tunai melebihi batas regulasi BOSP (Rp 10.000.000) dan disarankan untuk disetor ke bank.
          - Rekomendasi untuk mencetak lembar formulir BOS-K7B jika pemeriksaan kas telah selesai.
+    - Jika pengguna menanyakan "Berita Acara Penutupan Kas", "Berita Acara Pemeriksaan Kas", "Pemeriksaan kas bendahara", atau legalitas penutupan kas bulan X:
+      a. WAJIB memanggil tool `get_berita_acara_penutupan_kas_monthly` dengan parameter `bulan` yang diminta (contoh: bulan: "Maret").
+      b. Sajikan Format Naratif Resmi Berita Acara Pemeriksaan Kas:
+         - Header: `### BERITA ACARA PEMERIKSAAN KAS`
+         - Badge Status: `[STATUS: RESMI DITUTUP]` atau `[STATUS: DRAFT POSISI BERJALAN - BKU BELUM DITUTUP RESMI]`.
+         - Klausul Pembuka Legal:
+           "Pada hari ini, **{hari_pemeriksaan}** tanggal **{tanggal_pemeriksaan}**, yang bertanda tangan di bawah ini Kepala Sekolah yang ditunjuk berdasarkan Surat Keputusan No. **{sk_nomor_kepsek}** Tanggal **{sk_tanggal_kepsek}**:
+           - **Nama**: {nama_kepala_sekolah} (NIP. {nip_kepala_sekolah})
+           - **Jabatan**: Kepala Sekolah
+           Melakukan pemeriksaan kas kepada:
+           - **Nama**: {nama_bendahara} (NIP. {nip_bendahara})
+           - **Jabatan**: Bendahara BOS
+           Yang berdasarkan Surat Keputusan No. **{sk_nomor_bendahara}** Tanggal **{sk_tanggal_bendahara}** ditugaskan dengan pengurusan uang Bantuan Operasional Sekolah (BOS)."
+         - Klausul Hasil Pemeriksaan:
+           "Berdasarkan pemeriksaan kas serta bukti-bukti dalam pengurusan itu, kami menemui kenyataan sebagai berikut:"
+           Sajikan tabel HTML perhitungan uang yang dihitung di hadapan Bendahara:
+           <th>Poin</th><th>Uraian Komponen Kas</th><th style="text-align: right;">Jumlah (Rp)</th>
+           Baris:
+           - a) Uang kertas bank dan uang logam
+           - b) Saldo Bank
+           - c) Surat Berharga dll (Rp 0 / -)
+           - **Jumlah Kas Dihitung (a + b + c)**
+           - **Saldo Uang Menurut Buku Kas Umum**
+         - Kesimpulan & Rekonsiliasi:
+           * Konfirmasi status klop penuh: Kas fisik + saldo bank seimbang dengan Saldo Buku Kas Umum (selisih Rp 0).
+           * Jelaskan bahwa perbedaan antara Saldo Buku dan Kas Tunai Brankas adalah sisa dana yang tersimpan dengan aman pada rekening bank sekolah.
+         - Catatan Kepatuhan & Rekomendasi:
+           * Jika `is_cash_limit_exceeded` = true, peringatkan bahwa kas tunai brankas melebihi Rp 10.000.000.
+           * Jika SK kepala sekolah atau bendahara belum lengkap/belum terisi di profil penganggaran, ingatkan secara ramah untuk melengkapi nomor SK di profil penganggaran.
+           * Jika status masih draft, ingatkan untuk melakukan verifikasi fisik kas sebelum menekan tombol Tutup BKU di aplikasi.
+           * Rekomendasikan untuk mencetak lembar Berita Acara Pemeriksaan Kas untuk ditandatangani basah oleh Kepala Sekolah dan Bendahara BOS.
    - Jika pengguna menanyakan ringkasan pagu BOSP, panggil `get_budget_pagu_summary`.
    - Jika menanyakan grafik serapan triwulan, panggil `query_realization_comparison`.
 5. PENCARIAN RENCANA KEGIATAN RKAS:
@@ -598,6 +654,7 @@ PROMPT;
             'get_bkp_pajak_monthly' => $this->getBkpPajakMonthly($targetTahun, $args['bulan'] ?? 'Maret', $variant),
             'get_bkp_rob_monthly' => $this->getBkpRobMonthly($targetTahun, $args['bulan'] ?? 'Maret', $variant, $args['rekening'] ?? null),
             'get_bkp_registrasi_penutupan_kas_monthly' => $this->getRegisterPenutupanKasMonthly($targetTahun, $args['bulan'] ?? 'Maret', $variant),
+            'get_berita_acara_penutupan_kas_monthly' => $this->getBeritaAcaraPenutupanKasMonthly($targetTahun, $args['bulan'] ?? 'Maret', $variant),
             'search_rkas_activity' => $this->searchRkasActivity($targetTahun, $args['query'] ?? '', $variant, $args['bulan'] ?? null),
             'calculate_tax_recommendation' => $this->calculateTaxRecommendation(
                 (float) ($args['amount'] ?? 0),
@@ -2069,6 +2126,151 @@ PROMPT;
                 'nama_kepala_sekolah' => $penganggaran->kepala_sekolah ?? '-',
                 'nip_kepala_sekolah' => $penganggaran->nip_kepala_sekolah ?? '-',
                 'kecamatan' => $sekolah->kecamatan ?? '-',
+            ],
+        ];
+    }
+
+    /**
+     * Tool: Mengambil data resmi Berita Acara Pemeriksaan Kas bulanan (Legalitas SK, Kas Fisik & BKU)
+     */
+    protected function getBeritaAcaraPenutupanKasMonthly(int $tahun, string $bulan, string $variant): array
+    {
+        VariantConfig::validateVariant($variant);
+
+        $penganggaranClass = VariantConfig::getModelClass('penganggaran', $variant);
+        $bkuClass = VariantConfig::getModelClass('bku', $variant);
+        $penganggaranFk = VariantConfig::penganggaranFk($variant);
+
+        $penganggaran = $penganggaranClass::where('tahun_anggaran', $tahun)
+            ->with('sekolah')
+            ->first();
+
+        if (! $penganggaran) {
+            return ['error' => 'Data penganggaran tidak ditemukan untuk tahun '.$tahun];
+        }
+
+        $validMonths = [
+            'januari' => 1, 'februari' => 2, 'maret' => 3, 'april' => 4,
+            'mei' => 5, 'juni' => 6, 'juli' => 7, 'agustus' => 8,
+            'september' => 9, 'oktober' => 10, 'november' => 11, 'desember' => 12,
+        ];
+
+        $monthKey = strtolower(trim($bulan));
+        $bulanAngka = $validMonths[$monthKey] ?? 3;
+        $monthNames = [
+            1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
+            5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
+            9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember',
+        ];
+        $bulanFormatted = $monthNames[$bulanAngka] ?? 'Maret';
+
+        $bukuKasService = new BukuKasService($variant);
+
+        // 1. Ambil data penerimaan dan pengeluaran umum (BKP Umum)
+        $dataUmum = $bukuKasService->getDataFromBkpUmumCalculation($penganggaran->id, $tahun, $bulanFormatted, $bulanAngka);
+        $totalPenerimaan = (float) ($dataUmum['totalPenerimaan'] ?? 0);
+        $totalPengeluaran = (float) ($dataUmum['totalPengeluaran'] ?? 0);
+        $saldoBuku = max(0, $totalPenerimaan - $totalPengeluaran);
+
+        // 2. Ambil saldo kas tunai dan saldo bank
+        $saldoKas = max(0, (float) $bukuKasService->getSaldoKasFromPembantu($penganggaran->id, $tahun, $bulanFormatted, $bulanAngka));
+        $saldoBank = max(0, (float) $bukuKasService->hitungSaldoAkhirBkpBank($penganggaran->id, $tahun, $bulanFormatted));
+        $totalKasHitung = $saldoKas + $saldoBank;
+
+        // 3. Deteksi status penutupan resmi dari record bunga bank BKU
+        $bungaRecord = $bkuClass::where($penganggaranFk, $penganggaran->id)
+            ->whereMonth('tanggal_transaksi', $bulanAngka)
+            ->whereYear('tanggal_transaksi', $tahun)
+            ->where('is_bunga_record', true)
+            ->first();
+
+        $isClosed = ($bungaRecord && ! empty($bungaRecord->tanggal_tutup));
+        if ($isClosed) {
+            $tanggalTutupCarbon = Carbon::parse($bungaRecord->tanggal_tutup);
+        } else {
+            $tanggalTutupCarbon = Carbon::create($tahun, $bulanAngka, 1)->endOfMonth();
+        }
+
+        $hariMap = [
+            0 => 'Minggu',
+            1 => 'Senin',
+            2 => 'Selasa',
+            3 => 'Rabu',
+            4 => 'Kamis',
+            5 => 'Jumat',
+            6 => 'Sabtu',
+        ];
+        $namaHari = $hariMap[$tanggalTutupCarbon->dayOfWeek] ?? 'Senin';
+        $tanggalPemeriksaan = $tanggalTutupCarbon->locale('id')->translatedFormat('d F Y');
+
+        // 4. Data SK Pejabat
+        $tglSkKepsek = ! empty($penganggaran->tanggal_sk_kepala_sekolah)
+            ? Carbon::parse($penganggaran->tanggal_sk_kepala_sekolah)->locale('id')->translatedFormat('d F Y')
+            : '-';
+        $tglSkBendahara = ! empty($penganggaran->tanggal_sk_bendahara)
+            ? Carbon::parse($penganggaran->tanggal_sk_bendahara)->locale('id')->translatedFormat('d F Y')
+            : '-';
+
+        // 5. Rekonsiliasi
+        $selisihTotal = $totalKasHitung - $saldoBuku;
+        $selisihBukuTunai = $saldoBuku - $saldoKas;
+        $isBalanced = abs($selisihTotal) < 0.01;
+
+        if ($isBalanced) {
+            $penjelasanRekonsiliasi = 'Saldo kas fisik yang dihitung di hadapan Bendahara (tunai brankas Rp '.number_format($saldoKas, 0, ',', '.').' + saldo bank Rp '.number_format($saldoBank, 0, ',', '.').') klop/seimbang dengan Saldo Buku Kas Umum (selisih Rp 0). Perbedaan antara Saldo Buku dan Kas Tunai Brankas sebesar Rp '.number_format($selisihBukuTunai, 0, ',', '.').' merupakan sisa dana yang tersimpan aman pada rekening bank.';
+        } else {
+            $penjelasanRekonsiliasi = 'Terdapat selisih antara Total Kas Fisik dan Saldo Buku Kas Umum sebesar Rp '.number_format(abs($selisihTotal), 0, ',', '.').'. Disarankan memeriksa kembali mutasi rekening koran atau pencatatan transaksi kuitansi belanja.';
+        }
+
+        $sekolah = $penganggaran->sekolah;
+
+        return [
+            'tahun' => $tahun,
+            'bulan' => $bulanFormatted,
+            'status_penutupan' => $isClosed ? 'Resmi Ditutup pada '.$tanggalPemeriksaan : 'Draft / Posisi Berjalan (Belum Ditutup di BKU)',
+            'is_closed_officially' => $isClosed,
+            'hari_pemeriksaan' => $namaHari,
+            'tanggal_pemeriksaan' => $tanggalPemeriksaan,
+            'pejabat_pemeriksa' => [
+                'kepala_sekolah' => [
+                    'nama' => $penganggaran->kepala_sekolah ?? '-',
+                    'nip' => $penganggaran->nip_kepala_sekolah ?? '-',
+                    'sk_nomor' => $penganggaran->sk_kepala_sekolah ?? '-',
+                    'sk_tanggal' => $tglSkKepsek,
+                    'jabatan' => 'Kepala Sekolah',
+                ],
+                'bendahara' => [
+                    'nama' => $penganggaran->bendahara ?? '-',
+                    'nip' => $penganggaran->nip_bendahara ?? '-',
+                    'sk_nomor' => $penganggaran->sk_bendahara ?? '-',
+                    'sk_tanggal' => $tglSkBendahara,
+                    'jabatan' => 'Bendahara BOS',
+                ],
+            ],
+            'lokasi' => [
+                'nama_sekolah' => $sekolah->nama_sekolah ?? '-',
+                'kecamatan' => $sekolah->kecamatan ?? '-',
+            ],
+            'posisi_kas_hitung' => [
+                'uang_kertas_logam' => $saldoKas,
+                'saldo_bank' => $saldoBank,
+                'surat_berharga' => 0.0,
+                'total_kas_hitung' => $totalKasHitung,
+            ],
+            'posisi_bku' => [
+                'saldo_buku' => $saldoBuku,
+            ],
+            'rekonsiliasi' => [
+                'selisih_total' => $selisihTotal,
+                'is_balanced' => $isBalanced,
+                'selisih_buku_tunai' => $selisihBukuTunai,
+                'penjelasan_rekonsiliasi' => $penjelasanRekonsiliasi,
+            ],
+            'audit_compliance' => [
+                'is_cash_limit_exceeded' => $saldoKas > 10000000,
+                'cash_limit_amount' => 10000000,
+                'sk_kepsek_lengkap' => ! empty($penganggaran->sk_kepala_sekolah) && $penganggaran->sk_kepala_sekolah !== '-',
+                'sk_bendahara_lengkap' => ! empty($penganggaran->sk_bendahara) && $penganggaran->sk_bendahara !== '-',
             ],
         ];
     }
