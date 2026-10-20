@@ -385,6 +385,28 @@ class CopilotService
             [
                 'type' => 'function',
                 'function' => [
+                    'name' => 'get_rka_rekap_anggaran',
+                    'description' => 'Mendapatkan rekapitulasi anggaran resmi (Formulir RKA Rekap) tahunan untuk RKAS Awal, RKAS Perubahan, atau Komparasi Murni vs Perubahan. Menyajikan Bagian A (Penerimaan), Bagian B (Hierarki Akun Belanja 5/5.1/5.2), dan Bagian C (Rencana Anggaran per Tahap 1 & 2). Panggil tool ini saat pengguna bertanya tentang RKA Rekap, Rekapitulasi Anggaran, rekap akun belanja, atau perbandingan rencana per tahap.',
+                    'parameters' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'tahun' => [
+                                'type' => 'integer',
+                                'description' => 'Tahun anggaran RKAS (contoh: 2025, 2026). Opsional, default adalah tahun aktif saat ini.',
+                            ],
+                            'tipe_dokumen' => [
+                                'type' => 'string',
+                                'enum' => ['komparasi', 'murni', 'perubahan'],
+                                'description' => 'Pilihan jenis dokumen: "komparasi" (default jika ada perubahan aktif), "murni" (RKAS Awal saja), atau "perubahan" (RKAS Perubahan saja).',
+                            ],
+                        ],
+                        'required' => ['tahun'],
+                    ],
+                ],
+            ],
+            [
+                'type' => 'function',
+                'function' => [
                     'name' => 'calculate_tax_recommendation',
                     'description' => 'Menghitung rekomendasi pemotongan pajak resmi (PPN 11%, PPh 21, PPh 22, PPh 23, Pajak Daerah).',
                     'parameters' => [
@@ -779,6 +801,43 @@ Karakter & Gaya Bicara Anda:
           Tampilkan item kegiatan dengan kolom status yang jelas (Bertambah, Berkurang, Baru (Ditambahkan), Dihapus dari Perubahan, atau Tetap).
         - Catatan Analisis Pergeseran:
           * Berikan ulasan singkat mengenai kegiatan apa saja yang mendapatkan tambahan dana atau pengurangan dana dan alasan pergeseran tersebut.
+   - Jika pengguna menanyakan "RKA Rekap", "Rekapitulasi Anggaran", "Rekap RKAS awal dan perubahan", "Komparasi rekap belanja operasi dan modal", atau "Tampilkan RKA Rekap tahun {tahun}":
+     a. WAJIB memanggil tool `get_rka_rekap_anggaran` dengan parameter `tahun` dan `tipe_dokumen` ('komparasi' jika ada perubahan aktif, atau 'murni'/'perubahan' jika pengguna secara spesifik meminta salah satunya).
+     b. Sajikan Format Resmi Formulir RKA Rekapitulasi Anggaran Sekolah:
+        - Header: `### REKAPITULASI ANGGARAN (RKA REKAP) TAHUN {tahun}` dengan badge mode: `[MODE: KOMPARASI RKAS MURNI VS PERUBAHAN]` atau `[DOKUMEN: RKAS PERUBAHAN]`
+        - Tampilkan nama sekolah dan sumber dana (contoh: **{nama_sekolah}** — Sumber Dana: {sumber_dana}).
+        - **Bagian A. Penerimaan:**
+          Sajikan tabel HTML:
+          <th>No. Kode</th><th>Sumber Dana / Penerimaan</th><th style="text-align: right;">RKAS Murni (Rp)</th><th style="text-align: right;">RKAS Perubahan (Rp)</th><th style="text-align: right;">Selisih (Rp)</th>
+          Tampilkan baris akun `4.3.1.01` dan baris Total Penerimaan.
+        - **Bagian B. Rekapitulasi Anggaran Belanja:**
+          Sajikan tabel HTML dengan hierarki akun belanja lengkap (semua baris standar tetap dicantumkan termasuk yang Rp 0):
+          <th>Kode Rekening</th><th>Uraian Akun Belanja</th><th style="text-align: right;">RKAS Murni (Rp)</th><th style="text-align: right;">RKAS Perubahan (Rp)</th><th style="text-align: right;">Selisih (Rp)</th>
+          Baris akun:
+          1. `5` — BELANJA
+          2. `5.1` — BELANJA OPERASI
+          3. `5.1.01` — Belanja Pegawai (tampilkan Rp 0 jika nihil)
+          4. `5.1.02` — Belanja Barang dan Jasa
+          5. `5.1.02.01` — Belanja Barang
+          6. `5.1.02.02` — Belanja Jasa
+          7. `5.1.02.03` — Belanja Pemeliharaan (tampilkan Rp 0 jika nihil)
+          8. `5.1.02.04` — Belanja Perjalanan Dinas
+          9. `5.2` — BELANJA MODAL
+          10. `5.2.02` — Belanja Modal Peralatan dan Mesin
+          11. `5.2.04` — Belanja Modal Jalan, Jaringan, dan Irigasi (tampilkan Rp 0 jika nihil)
+          12. `5.2.05` — Belanja Modal Aset Tetap Lainnya (Buku Perpustakaan)
+          *JUMLAH BELANJA*
+          *SURPLUS / (DEFISIT)* (Wajib bernilai Rp 0 seimbang).
+        - **Bagian C. Rencana Pelaksanaan Anggaran per Tahap:**
+          Sajikan tabel HTML per tahap:
+          <th>No</th><th>Uraian</th><th style="text-align: right;">Tahap 1 (Rp)</th><th style="text-align: right;">Tahap 2 (Rp)</th><th style="text-align: right;">Total (Rp)</th>
+          Baris data:
+          1. Pendapatan (50% Tahap 1, 50% Tahap 2)
+          2. Belanja Operasi
+          3. Belanja Modal
+          *Total Belanja*
+        - **Catatan Analisis Santai:**
+          Berikan ulasan singkat mengenai kondisi anggaran: pagu seimbang Rp 0, dan jelaskan pergeseran belanja operasi ke belanja modal jika terdapat dokumen perubahan.
    - Jika pengguna menanyakan ringkasan pagu BOSP, panggil `get_budget_pagu_summary`.
    - Jika menanyakan grafik serapan triwulan, panggil `query_realization_comparison`.
 5. PENCARIAN RENCANA KEGIATAN RKAS:
@@ -908,6 +967,11 @@ PROMPT;
                 $args['tahap'] ?? null,
                 $args['filter_perubahan'] ?? 'berubah',
                 $args['query'] ?? null
+            ),
+            'get_rka_rekap_anggaran' => $this->getRkaRekapAnggaran(
+                $targetTahun,
+                $variant,
+                $args['tipe_dokumen'] ?? 'komparasi'
             ),
             'search_rkas_activity' => $this->searchRkasActivity($targetTahun, $args['query'] ?? '', $variant, $args['bulan'] ?? null),
             'calculate_tax_recommendation' => $this->calculateTaxRecommendation(
@@ -3752,6 +3816,200 @@ PROMPT;
             'total_item_ditemukan' => count($finalItems),
             'jumlah_ditampilkan' => count($cappedItems),
             'items' => $cappedItems,
+        ];
+    }
+
+    /**
+     * Tool: Rekapitulasi Anggaran Resmi (Formulir RKA Rekap) Murni, Perubahan, dan Komparasi
+     */
+    protected function getRkaRekapAnggaran(int $tahun, string $variant, string $tipeDokumen = 'komparasi'): array
+    {
+        VariantConfig::validateVariant($variant);
+
+        $penganggaranClass = VariantConfig::getModelClass('penganggaran', $variant);
+        $rkasClass = VariantConfig::getModelClass('rkas', $variant);
+        $rkasPerubahanClass = VariantConfig::getModelClass('rkas_perubahan', $variant);
+        $penganggaranFk = VariantConfig::penganggaranFk($variant);
+
+        $penganggaran = $penganggaranClass::where('tahun_anggaran', $tahun)->with('sekolah')->first();
+        if (! $penganggaran) {
+            return ['error' => 'Data penganggaran tidak ditemukan untuk tahun '.$tahun];
+        }
+
+        $sekolah = $penganggaran->sekolah;
+        $paguAnggaran = (float) $penganggaran->pagu_anggaran;
+
+        $hasPerubahan = $rkasPerubahanClass && $rkasPerubahanClass::where($penganggaranFk, $penganggaran->id)->exists();
+
+        // Mode penentuan tampilan
+        $mode = strtolower(trim($tipeDokumen));
+        if (! in_array($mode, ['komparasi', 'murni', 'perubahan'])) {
+            $mode = $hasPerubahan ? 'komparasi' : 'murni';
+        }
+        if ($mode === 'perubahan' && ! $hasPerubahan) {
+            $mode = 'murni';
+        }
+
+        $murniItems = $rkasClass::where($penganggaranFk, $penganggaran->id)
+            ->with('rekeningBelanja')
+            ->get();
+
+        $perubahanItems = $hasPerubahan
+            ? $rkasPerubahanClass::where($penganggaranFk, $penganggaran->id)
+                ->with('rekeningBelanja')
+                ->get()
+            : collect();
+
+        $sumberDana = VariantConfig::title($variant);
+
+        // Bagian A: Penerimaan
+        $penerimaan = [
+            'kode_rekening' => '4.3.1.01',
+            'uraian' => $sumberDana,
+            'murni' => $paguAnggaran,
+            'perubahan' => $hasPerubahan ? $paguAnggaran : $paguAnggaran,
+            'selisih' => 0.0,
+        ];
+
+        // Hierarki Akun Belanja Standar Resmi (Sesuai Permendagri / kelolaDataRkas SIKAS)
+        $hierarchyStructure = [
+            ['code' => '5', 'label' => 'BELANJA', 'level' => 1],
+            ['code' => '5.1', 'label' => 'BELANJA OPERASI', 'level' => 2],
+            ['code' => '5.1.01', 'label' => 'Belanja Pegawai', 'level' => 3],
+            ['code' => '5.1.02', 'label' => 'Belanja Barang dan Jasa', 'level' => 3],
+            ['code' => '5.1.02.01', 'label' => 'Belanja Barang', 'level' => 4],
+            ['code' => '5.1.02.02', 'label' => 'Belanja Jasa', 'level' => 4],
+            ['code' => '5.1.02.03', 'label' => 'Belanja Pemeliharaan', 'level' => 4],
+            ['code' => '5.1.02.04', 'label' => 'Belanja Perjalanan Dinas', 'level' => 4],
+            ['code' => '5.2', 'label' => 'BELANJA MODAL', 'level' => 2],
+            ['code' => '5.2.02', 'label' => 'Belanja Modal Peralatan dan Mesin', 'level' => 3],
+            ['code' => '5.2.04', 'label' => 'Belanja Modal Jalan, Jaringan, dan Irigasi', 'level' => 3],
+            ['code' => '5.2.05', 'label' => 'Belanja Modal Aset Tetap Lainnya', 'level' => 3],
+        ];
+
+        $rekapRows = [];
+        foreach ($hierarchyStructure as $h) {
+            $prefix = $h['code'];
+            $sumMurni = (float) $murniItems->filter(function ($item) use ($prefix) {
+                $kode = $item->rekeningBelanja?->kode_rekening ?? '';
+
+                return str_starts_with($kode, $prefix);
+            })->sum(fn ($i) => (float) $i->jumlah * (float) $i->harga_satuan);
+
+            $sumPerubahan = (float) $perubahanItems->filter(function ($item) use ($prefix) {
+                $kode = $item->rekeningBelanja?->kode_rekening ?? '';
+
+                return str_starts_with($kode, $prefix);
+            })->sum(fn ($i) => (float) $i->jumlah * (float) $i->harga_satuan);
+
+            $rekapRows[] = [
+                'kode_rekening' => $prefix,
+                'uraian' => $h['label'],
+                'level' => $h['level'],
+                'murni' => $sumMurni,
+                'perubahan' => $hasPerubahan ? $sumPerubahan : 0.0,
+                'selisih' => $hasPerubahan ? ($sumPerubahan - $sumMurni) : 0.0,
+            ];
+        }
+
+        $totalBelanjaMurni = collect($rekapRows)->firstWhere('kode_rekening', '5')['murni'] ?? 0.0;
+        $totalBelanjaPerubahan = $hasPerubahan ? (collect($rekapRows)->firstWhere('kode_rekening', '5')['perubahan'] ?? 0.0) : $totalBelanjaMurni;
+
+        $ringkasanBelanja = [
+            'total_belanja_murni' => $totalBelanjaMurni,
+            'total_belanja_perubahan' => $totalBelanjaPerubahan,
+            'selisih_belanja' => $totalBelanjaPerubahan - $totalBelanjaMurni,
+            'defisit_murni' => $paguAnggaran - $totalBelanjaMurni,
+            'defisit_perubahan' => $paguAnggaran - $totalBelanjaPerubahan,
+            'status_keseimbangan' => ($paguAnggaran == $totalBelanjaPerubahan) ? 'Seimbang (Surplus/Defisit Rp 0)' : 'Tidak Seimbang',
+        ];
+
+        // Bagian C: Rencana Pelaksanaan Anggaran per Tahap
+        $sem1 = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni'];
+
+        // Pendapatan: 50% Tahap 1, 50% Tahap 2
+        $pendapatanT1 = $paguAnggaran / 2;
+        $pendapatanT2 = $paguAnggaran / 2;
+
+        // Belanja Operasi (5.1)
+        $mOpsT1 = (float) $murniItems->filter(fn ($i) => str_starts_with($i->rekeningBelanja?->kode_rekening ?? '', '5.1') && in_array($i->bulan, $sem1))->sum(fn ($i) => $i->jumlah * $i->harga_satuan);
+        $mOpsT2 = (float) $murniItems->filter(fn ($i) => str_starts_with($i->rekeningBelanja?->kode_rekening ?? '', '5.1') && ! in_array($i->bulan, $sem1))->sum(fn ($i) => $i->jumlah * $i->harga_satuan);
+        $pOpsT1 = (float) $perubahanItems->filter(fn ($i) => str_starts_with($i->rekeningBelanja?->kode_rekening ?? '', '5.1') && in_array($i->bulan, $sem1))->sum(fn ($i) => $i->jumlah * $i->harga_satuan);
+        $pOpsT2 = (float) $perubahanItems->filter(fn ($i) => str_starts_with($i->rekeningBelanja?->kode_rekening ?? '', '5.1') && ! in_array($i->bulan, $sem1))->sum(fn ($i) => $i->jumlah * $i->harga_satuan);
+
+        // Belanja Modal (5.2)
+        $mModT1 = (float) $murniItems->filter(fn ($i) => str_starts_with($i->rekeningBelanja?->kode_rekening ?? '', '5.2') && in_array($i->bulan, $sem1))->sum(fn ($i) => $i->jumlah * $i->harga_satuan);
+        $mModT2 = (float) $murniItems->filter(fn ($i) => str_starts_with($i->rekeningBelanja?->kode_rekening ?? '', '5.2') && ! in_array($i->bulan, $sem1))->sum(fn ($i) => $i->jumlah * $i->harga_satuan);
+        $pModT1 = (float) $perubahanItems->filter(fn ($i) => str_starts_with($i->rekeningBelanja?->kode_rekening ?? '', '5.2') && in_array($i->bulan, $sem1))->sum(fn ($i) => $i->jumlah * $i->harga_satuan);
+        $pModT2 = (float) $perubahanItems->filter(fn ($i) => str_starts_with($i->rekeningBelanja?->kode_rekening ?? '', '5.2') && ! in_array($i->bulan, $sem1))->sum(fn ($i) => $i->jumlah * $i->harga_satuan);
+
+        $rencanaTahap = [
+            [
+                'no' => '1',
+                'uraian' => 'Pendapatan',
+                'murni' => ['tahap1' => $pendapatanT1, 'tahap2' => $pendapatanT2, 'total' => $paguAnggaran],
+                'perubahan' => ['tahap1' => $pendapatanT1, 'tahap2' => $pendapatanT2, 'total' => $paguAnggaran],
+                'selisih' => ['tahap1' => 0.0, 'tahap2' => 0.0, 'total' => 0.0],
+            ],
+            [
+                'no' => '2.1',
+                'uraian' => 'Belanja Operasi',
+                'murni' => ['tahap1' => $mOpsT1, 'tahap2' => $mOpsT2, 'total' => $mOpsT1 + $mOpsT2],
+                'perubahan' => ['tahap1' => $hasPerubahan ? $pOpsT1 : $mOpsT1, 'tahap2' => $hasPerubahan ? $pOpsT2 : $mOpsT2, 'total' => $hasPerubahan ? ($pOpsT1 + $pOpsT2) : ($mOpsT1 + $mOpsT2)],
+                'selisih' => [
+                    'tahap1' => $hasPerubahan ? ($pOpsT1 - $mOpsT1) : 0.0,
+                    'tahap2' => $hasPerubahan ? ($pOpsT2 - $mOpsT2) : 0.0,
+                    'total' => $hasPerubahan ? (($pOpsT1 + $pOpsT2) - ($mOpsT1 + $mOpsT2)) : 0.0,
+                ],
+            ],
+            [
+                'no' => '2.2',
+                'uraian' => 'Belanja Modal',
+                'murni' => ['tahap1' => $mModT1, 'tahap2' => $mModT2, 'total' => $mModT1 + $mModT2],
+                'perubahan' => ['tahap1' => $hasPerubahan ? $pModT1 : $mModT1, 'tahap2' => $hasPerubahan ? $pModT2 : $mModT2, 'total' => $hasPerubahan ? ($pModT1 + $pModT2) : ($mModT1 + $mModT2)],
+                'selisih' => [
+                    'tahap1' => $hasPerubahan ? ($pModT1 - $mModT1) : 0.0,
+                    'tahap2' => $hasPerubahan ? ($pModT2 - $mModT2) : 0.0,
+                    'total' => $hasPerubahan ? (($pModT1 + $pModT2) - ($mModT1 + $mModT2)) : 0.0,
+                ],
+            ],
+            [
+                'no' => '',
+                'uraian' => 'Total Belanja',
+                'murni' => ['tahap1' => $mOpsT1 + $mModT1, 'tahap2' => $mOpsT2 + $mModT2, 'total' => $mOpsT1 + $mOpsT2 + $mModT1 + $mModT2],
+                'perubahan' => [
+                    'tahap1' => $hasPerubahan ? ($pOpsT1 + $pModT1) : ($mOpsT1 + $mModT1),
+                    'tahap2' => $hasPerubahan ? ($pOpsT2 + $pModT2) : ($mOpsT2 + $mModT2),
+                    'total' => $hasPerubahan ? ($pOpsT1 + $pOpsT2 + $pModT1 + $pModT2) : ($mOpsT1 + $mOpsT2 + $mModT1 + $mModT2),
+                ],
+                'selisih' => [
+                    'tahap1' => $hasPerubahan ? (($pOpsT1 + $pModT1) - ($mOpsT1 + $mModT1)) : 0.0,
+                    'tahap2' => $hasPerubahan ? (($pOpsT2 + $pModT2) - ($mOpsT2 + $mModT2)) : 0.0,
+                    'total' => $hasPerubahan ? (($pOpsT1 + $pOpsT2 + $pModT1 + $pModT2) - ($mOpsT1 + $mOpsT2 + $mModT1 + $mModT2)) : 0.0,
+                ],
+            ],
+        ];
+
+        return [
+            'tahun' => $tahun,
+            'status_perubahan' => $hasPerubahan,
+            'mode_tampilan' => $mode,
+            'sekolah' => [
+                'nama_sekolah' => $sekolah?->nama_sekolah ?? '-',
+                'npsn' => $sekolah?->npsn ?? '-',
+                'sumber_dana' => $sumberDana,
+            ],
+            'bagian_a_penerimaan' => $penerimaan,
+            'bagian_b_rekapitulasi_belanja' => $rekapRows,
+            'ringkasan_belanja' => $ringkasanBelanja,
+            'bagian_c_rencana_per_tahap' => $rencanaTahap,
+            'ringkasan_analisis' => [
+                'pagu_total' => $paguAnggaran,
+                'pergeseran_operasi_ke_modal' => $hasPerubahan ? abs($pOpsT2 - $mOpsT2) : 0.0,
+                'catatan' => $hasPerubahan
+                    ? 'Pagu anggaran seimbang Rp '.number_format($paguAnggaran, 0, ',', '.').'. Pada RKAS Perubahan, terjadi pergeseran anggaran sebesar Rp '.number_format(abs($pOpsT2 - $mOpsT2), 0, ',', '.').' pada Tahap 2 dari Belanja Operasi ke Belanja Modal Buku Perpustakaan.'
+                    : 'Pagu anggaran RKAS Awal seimbang di Rp '.number_format($paguAnggaran, 0, ',', '.').' dengan alokasi Belanja Operasi Rp '.number_format($mOpsT1 + $mOpsT2, 0, ',', '.').' dan Belanja Modal Rp '.number_format($mModT1 + $mModT2, 0, ',', '.').'.',
+            ],
         ];
     }
 
