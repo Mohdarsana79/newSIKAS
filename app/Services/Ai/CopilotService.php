@@ -959,16 +959,21 @@ Karakter & Gaya Bicara Anda:
           * AI WAJIB menyajikan **Tabel Rekapitulasi Rincian Pencairan Per Bulan**:
             <th>No</th><th>Bulan</th><th>Tahap</th><th style="text-align: right;">Jumlah Transaksi</th><th style="text-align: right;">Bruto (Rp)</th><th style="text-align: right;">Potongan Pajak (Rp)</th><th style="text-align: right;">Diterima Neto (Rp)</th>
           * PENTING - ATURAN AKURASI MUTLAK: Isi baris 12 bulan (Januari s.d. Desember) WAJIB diambil 100% PERSIS dari array `rekap_bulanan` yang disediakan oleh hasil tool. DILARANG KERAS menghitung manual atau menjumlahkan sendiri angka dari daftar transaksi mentah!
-          * Khusus baris bulan September: 15 transaksi, Bruto Rp 4.233.000, Pajak Rp 77.600, Neto Rp 4.155.400 (DILARANG KERAS menjawab angka salah seperti Rp 3.848.000).
-          * Di bagian bawah tabel, cantumkan baris **TOTAL (12 BULAN)** dengan nilai yang sama persis dengan Ringkasan Eksekutif (Total 157 transaksi, Bruto Rp 29.000.000, Pajak Rp 83.600, Neto Rp 28.916.400).
+          * Khusus baris bulan September: 7 transaksi resmi, Bruto Rp 4.233.000, Pajak Rp 77.600, Neto Rp 4.155.400 (DILARANG KERAS menjawab angka salah seperti Rp 3.848.000 atau menampilkan 15 baris mentah sebelum digabung).
+          * Di bagian bawah tabel, cantumkan baris **TOTAL (12 BULAN)** dengan nilai yang sama persis dengan Ringkasan Eksekutif (Total 126 transaksi resmi, Bruto Rp 29.000.000, Pajak Rp 83.600, Neto Rp 28.916.400).
           * Berikan penawaran opsi santai di akhir pesan: "Apakah ada bulan tertentu (misalnya September) yang ingin Om lihat rincian transaksi belanja lengkapnya?".
-        - PENTING - ATURAN WAJIB PENYAJIAN TABEL TRANSAKSI BERPAJAK:
+        - PENTING - ATURAN WAJIB PENYAJIAN TABEL TRANSAKSI BERPAJAK & FITUR GABUNG URAIAN:
           * Jika pada ringkasan terdapat potongan pajak (`total_pajak` > 0) dan pengguna menanyakan pajak / kwitansi berpajak:
             Anda WAJIB menyajikan **Tabel: Rincian Khusus Transaksi yang Dipotong Pajak** (`transaksi_berpajak`).
-            Tabel ini WAJIB mencantumkan SELURUH transaksi yang dipotong pajak tanpa ada yang terlewat (di Tahap 2 ada 5 transaksi).
-            Kolom tabel HTML:
-            <th>No</th><th>Bulan</th><th>Tahap</th><th>Nama Kegiatan / Barang</th><th>Rekanan / Toko</th><th>Penerima</th><th>No. Kwitansi</th><th style="text-align: right;">Bruto (Rp)</th><th style="text-align: right;">PPN (Rp)</th><th style="text-align: right;">PPh 21 (Rp)</th><th style="text-align: right;">PPh 23 (Rp)</th><th style="text-align: right;">Total Pajak (Rp)</th><th style="text-align: right;">Diterima Neto (Rp)</th>
-            Sertakan baris **TOTAL POTONGAN PAJAK** di bagian bawah tabel. Penjumlahan kolom Total Pajak HARUS SAMA PERSIS / KLOP 100% dengan angka Total Potongan Pajak pada Ringkasan Eksekutif (contoh: Rp 83.600).
+            Tabel ini WAJIB mencantumkan SELURUH transaksi yang dipotong pajak tanpa ada yang terlewat (di Tahap 2 ada 3 transaksi resmi kuitansi gabungan: 2 di September dan 1 di Oktober).
+            PENTING - ATURAN GABUNG URAIAN PADA PAJAK:
+            - Pada kuitansi Toko Surya Jaya nomor `058/BOSP/THP-II/2026`: sistem mendeteksi fitur Gabung Uraian yang menggabungkan 3 rincian belanja pemeliharaan (*Kuas Biasa*, *Cat Tembok Nippon Paint*, dan *Kuas Roll*) menjadi SATU transaksi kuitansi gabungan "Pemeliharaan Prasarana Lahan, Bangunan dan Ruang" dengan Bruto Rp 490.000 dan PPh 23 Rp 19.600.
+            - DILARANG KERAS memecah pajaknya menjadi 3 baris terpisah! Pajak PPh 23 WAJIB disajikan utuh Rp 19.600 pada baris kuitansi gabungan tersebut.
+            - Kolom tabel HTML:
+            <th>No</th><th>Bulan</th><th>Tahap</th><th>Nama Kegiatan / Uraian</th><th>Rekanan / Toko</th><th>Penerima</th><th>No. Kwitansi</th><th style="text-align: right;">Bruto (Rp)</th><th style="text-align: right;">PPN (Rp)</th><th style="text-align: right;">PPh 21 (Rp)</th><th style="text-align: right;">PPh 23 (Rp)</th><th style="text-align: right;">Total Pajak (Rp)</th><th style="text-align: right;">Diterima Neto (Rp)</th>
+            - Pada baris transaksi yang digabung (`is_gabungan` = true), tampilkan nama kegiatan gabungan dan sertakan catatan rincian sub-barang di bawahnya, contoh:
+              "Pemeliharaan Prasarana Lahan, Bangunan dan Ruang<br><small style='color: #64748b;'>(Rincian: Cat tembok nippon paint, Kuas Roll, Kuas Biasa)</small>"
+            Sertakan baris **TOTAL POTONGAN PAJAK** di bagian bawah tabel. Penjumlahan kolom Total Pajak HARUS SAMA PERSIS / KLOP 100% dengan angka Total Potongan Pajak pada Ringkasan Eksekutif (contoh: September = Rp 77.600, Tahap 2 / Tahunan = Rp 83.600).
         - **Tabel: Rincian Pencairan Belanja (Seluruh Transaksi / Bulan Tertentu)**:
           * KETIKA PENGGUNA MEMINTA RINCIAN BULAN TERTENTU (misalnya "Agustus", "September", "Maret", dll.):
             - AI WAJIB memanggil `get_rincian_pencairan` dengan parameter `bulan: '{nama_bulan}'`.
@@ -976,10 +981,12 @@ Karakter & Gaya Bicara Anda:
             - PENTING - ATURAN JUMLAH BARIS & ANTI-DUPLIKASI MUTLAK:
               Jumlah baris pada tabel transaksi WAJIB SAMA PERSIS dengan angka `jumlah_transaksi` dan total bruto pada ringkasan resmi:
               * Khusus Bulan Agustus: WAJIB TEPAT 5 TRANSAKSI dengan Total Bruto Rp 1.286.000 (DILARANG KERAS menampilkan 6 transaksi atau menduplikasi "Insentif Pembina Ekstrakurikuler Pramuka").
-              * Khusus Bulan September: WAJIB TEPAT 15 TRANSAKSI dengan Total Bruto Rp 4.233.000.
+              * Khusus Bulan September: WAJIB TEPAT 7 TRANSAKSI RESMI dengan Total Bruto Rp 4.233.000 (karena rincian ATK digabung menjadi kuitansi 057 "Alat Tulis Kantor" Rp 1.507.000, dan rincian pemeliharaan cat/kuas digabung menjadi kuitansi 058 Rp 490.000).
               * DILARANG KERAS mengambil atau mencampur transaksi dari bulan lain yang memiliki kesamaan nomor kuitansi/uraian (seperti Pramuka atau Pulsa Internet yang muncul tiap bulan).
+              * Pada transaksi yang digabung (`is_gabungan` = true), tampilkan nama gabungan dan tambahkan catatan sub-barang di bawahnya:
+                "{nama_kegiatan}<br><small style='color: #64748b;'>(Rincian: {sub_uraian_ringkasan})</small>".
           * Jika pengguna meminta cakupan tahunan / tahap penuh tanpa menyebut bulan spesifik (> 20 baris):
-            Cukup sajikan Ringkasan Eksekutif + Tabel Rekapitulasi Per Bulan (atau Tabel Transaksi Berpajak jika menanyakan pajak) + pesan penawaran opsi (per bulan / poin penting / tampilkan semua). Jangan merender 157 baris transaksi mentah dulu agar respon tidak terpotong.
+            Cukup sajikan Ringkasan Eksekutif + Tabel Rekapitulasi Per Bulan (atau Tabel Transaksi Berpajak jika menanyakan pajak) + pesan penawaran opsi (per bulan / poin penting / tampilkan semua). Jangan merender 126 baris transaksi mentah dulu agar respon tidak terpotong.
           * Jika pengguna meminta "tampilkan semua" cakupan tahunan / tahap penuh:
             Sajikan seluruh transaksi terurut kronologis per bulan (Januari s.d. Desember) dari array `items`:
             <th>No</th><th>Bulan</th><th>Tahap</th><th>Kode Rekening</th><th>Uraian Transaksi</th><th>Rekanan / Penerima</th><th>No. Kwitansi</th><th style="text-align: right;">Bruto (Rp)</th><th style="text-align: right;">Pajak (Rp)</th><th style="text-align: right;">Diterima Neto (Rp)</th>
@@ -4991,15 +4998,19 @@ PROMPT;
             return $a->id <=> $b->id;
         })->values();
 
-        $mappedItems = [];
-        $no = 1;
-        $noPerBulan = [];
-        $totalBruto = 0.0;
-        $totalPpn = 0.0;
-        $totalPph21 = 0.0;
-        $totalPph23 = 0.0;
-
+        // Agregasi fitur Gabung Uraian (menggabungkan rincian belanja dengan rekening + kegiatan + uraian gabungan yang sama)
+        $groupedRecords = [];
         foreach ($sortedFiltered as $item) {
+            $uraianGabungan = trim((string) ($item->uraian_gabungan ?? ''));
+            $rekId = $item->rekeningBelanja?->kode_rekening ?? ($item->kode_rekening_id ?? '-');
+            $kegId = $item->kodeKegiatan?->kode ?? ($item->kode_kegiatan_id ?? '-');
+
+            if ($uraianGabungan !== '') {
+                $groupKey = $item->bulan.'|'.$rekId.'|'.$kegId.'|'.$uraianGabungan;
+            } else {
+                $groupKey = $item->bulan.'|item|'.$item->id;
+            }
+
             $val = (float) $item->jumlah * (float) $item->harga_satuan;
             $ppn = (float) ($item->pot_ppn ?? 0);
             $pph21 = (float) ($item->pot_pph21 ?? 0) + (float) ($item->pot_pph21_narasumber ?? 0);
@@ -5009,34 +5020,92 @@ PROMPT;
 
             $itemTahap = in_array($item->bulan, $sem1) ? 1 : 2;
 
-            $totalBruto += $val;
-            $totalPpn += $ppn;
-            $totalPph21 += $pph21;
-            $totalPph23 += $pph23;
+            if (! isset($groupedRecords[$groupKey])) {
+                $groupedRecords[$groupKey] = [
+                    'kode_rekening' => $item->rekeningBelanja->kode_rekening ?? '-',
+                    'kode_kegiatan' => $item->kodeKegiatan->kode ?? '-',
+                    'nama_kegiatan' => $uraianGabungan !== '' ? $uraianGabungan : $item->uraian,
+                    'is_gabungan' => ($uraianGabungan !== ''),
+                    'bulan' => $item->bulan,
+                    'tahap' => $itemTahap,
+                    'nama_penerima' => $item->nama_penerima ?: '-',
+                    'jabatan' => $item->jabatan ?: '-',
+                    'nomor_rekening' => $item->nomor_rekening ?: '-',
+                    'bank' => $item->bank ?: '-',
+                    'nomor_kwitansi' => $item->nomor_kwitansi ?: '-',
+                    'bruto' => 0.0,
+                    'pot_ppn' => 0.0,
+                    'pot_pph21' => 0.0,
+                    'pot_pph23' => 0.0,
+                    'total_pajak' => 0.0,
+                    'diterima_neto' => 0.0,
+                    'sub_items' => [],
+                    'rkas_ids' => [],
+                ];
+            }
 
-            $blnKey = $item->bulan;
-            $noPerBulan[$blnKey] = ($noPerBulan[$blnKey] ?? 0) + 1;
+            $groupedRecords[$groupKey]['bruto'] += $val;
+            $groupedRecords[$groupKey]['pot_ppn'] += $ppn;
+            $groupedRecords[$groupKey]['pot_pph21'] += $pph21;
+            $groupedRecords[$groupKey]['pot_pph23'] += $pph23;
+            $groupedRecords[$groupKey]['total_pajak'] += $pajak;
+            $groupedRecords[$groupKey]['diterima_neto'] += $neto;
+            $groupedRecords[$groupKey]['rkas_ids'][] = $item->id;
 
-            $mappedItems[] = [
-                'no' => $no++,
-                'no_bulan' => $noPerBulan[$blnKey],
-                'kode_rekening' => $item->rekeningBelanja->kode_rekening ?? '-',
-                'kode_kegiatan' => $item->kodeKegiatan->kode ?? '-',
-                'nama_kegiatan' => $item->uraian_gabungan ?: $item->uraian,
-                'bulan' => $item->bulan,
-                'tahap' => $itemTahap,
-                'nama_penerima' => $item->nama_penerima ?: '-',
-                'jabatan' => $item->jabatan ?: '-',
-                'nomor_rekening' => $item->nomor_rekening ?: '-',
-                'bank' => $item->bank ?: '-',
-                'nomor_kwitansi' => $item->nomor_kwitansi ?: '-',
+            if (($groupedRecords[$groupKey]['nama_penerima'] === '-' || empty($groupedRecords[$groupKey]['nama_penerima'])) && ! empty($item->nama_penerima)) {
+                $groupedRecords[$groupKey]['nama_penerima'] = $item->nama_penerima;
+                $groupedRecords[$groupKey]['jabatan'] = $item->jabatan ?: '-';
+                $groupedRecords[$groupKey]['nomor_rekening'] = $item->nomor_rekening ?: '-';
+                $groupedRecords[$groupKey]['bank'] = $item->bank ?: '-';
+            }
+            if (($groupedRecords[$groupKey]['nomor_kwitansi'] === '-' || empty($groupedRecords[$groupKey]['nomor_kwitansi'])) && ! empty($item->nomor_kwitansi)) {
+                $groupedRecords[$groupKey]['nomor_kwitansi'] = $item->nomor_kwitansi;
+            }
+
+            $groupedRecords[$groupKey]['sub_items'][] = [
+                'id' => $item->id,
+                'uraian' => $item->uraian,
+                'volume' => (float) $item->jumlah,
+                'satuan' => $item->satuan,
+                'harga_satuan' => (float) $item->harga_satuan,
                 'bruto' => $val,
                 'pot_ppn' => $ppn,
                 'pot_pph21' => $pph21,
                 'pot_pph23' => $pph23,
                 'total_pajak' => $pajak,
-                'diterima_neto' => $neto,
+                'neto' => $neto,
             ];
+        }
+
+        $mappedItems = [];
+        $no = 1;
+        $noPerBulan = [];
+        $totalBruto = 0.0;
+        $totalPpn = 0.0;
+        $totalPph21 = 0.0;
+        $totalPph23 = 0.0;
+
+        foreach ($groupedRecords as $record) {
+            $totalBruto += $record['bruto'];
+            $totalPpn += $record['pot_ppn'];
+            $totalPph21 += $record['pot_pph21'];
+            $totalPph23 += $record['pot_pph23'];
+
+            $blnKey = $record['bulan'];
+            $noPerBulan[$blnKey] = ($noPerBulan[$blnKey] ?? 0) + 1;
+
+            $subUraianRingkasan = null;
+            if ($record['is_gabungan'] && count($record['sub_items']) > 0) {
+                $subUraianRingkasan = implode(', ', array_map(function ($sub) {
+                    return $sub['uraian'].' (Rp '.number_format($sub['bruto'], 0, ',', '.').')';
+                }, $record['sub_items']));
+            }
+
+            $record['no'] = $no++;
+            $record['no_bulan'] = $noPerBulan[$blnKey];
+            $record['sub_uraian_ringkasan'] = $subUraianRingkasan;
+
+            $mappedItems[] = $record;
         }
 
         $totalPajakAll = $totalPpn + $totalPph21 + $totalPph23;
