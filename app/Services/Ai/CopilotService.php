@@ -437,7 +437,7 @@ class CopilotService
                 'type' => 'function',
                 'function' => [
                     'name' => 'get_rincian_pencairan',
-                    'description' => 'Mengambil daftar rincian pencairan dana BOSP (Formulir Rincian Pencairan / RP) per tahap (Tahap 1 / Tahap 2) dan per bulan (Januari s.d. Desember) pada tahun anggaran aktif. Menyajikan total anggaran bruto, potongan pajak (PPN, PPh 21, PPh 23), jumlah neto yang diterima, serta rincian kegiatan lengkap dengan nama penerima, jabatan, nomor rekening, dan nama bank. Panggil tool ini saat pengguna bertanya tentang Rincian Pencairan, daftar pencairan tahap 1 atau tahap 2, pencairan dana bulan tertentu, penerima dana, atau potongan pajak pencairan.',
+                    'description' => 'Mengambil daftar rincian pencairan dana BOSP (Formulir Rincian Pencairan / RP / Payroll belanja) per tahap (Tahap 1 / Tahap 2) dan per bulan (Januari s.d. Desember) pada tahun anggaran aktif. Menyajikan data terstruktur rekapitulasi bulanan resmi 12 bulan (rekap_bulanan), total anggaran bruto, potongan pajak (PPN, PPh 21, PPh 23), jumlah neto yang diterima, serta rincian kegiatan lengkap dengan nama penerima, jabatan, nomor rekening, dan nama bank. Panggil tool ini saat pengguna bertanya tentang Rincian Pencairan, payroll perbulan, rekapitulasi pencairan bulanan, daftar pencairan tahap 1 atau tahap 2, pencairan dana bulan tertentu, penerima dana, atau potongan pajak pencairan.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
@@ -950,28 +950,36 @@ Karakter & Gaya Bicara Anda:
         - Ringkasan Eksekutif: Total Belanja dan Status Anggaran (Defisit Rp 0 seimbang).
         - Sajikan tabel HTML dengan baris hierarki akun ditebalkan (bold):
           <th>Kode Rekening</th><th>Uraian Rekening / Item Belanja</th><th>Volume</th><th>Satuan</th><th style="text-align: right;">Harga Satuan (Rp)</th><th style="text-align: right;">Jumlah (Rp)</th>
-   - Jika pengguna menanyakan "Rincian Pencairan", "RP", "Daftar pencairan per tahap", "Penerima belanja dan nomor rekening", "Potongan pajak rincian pencairan", atau daftar kwitansi pencairan dana:
+   - Jika pengguna menanyakan "Rincian Pencairan", "RP", "Daftar pencairan per tahap", "Penerima belanja dan nomor rekening", "Potongan pajak rincian pencairan", daftar kwitansi pencairan dana, atau "Payroll":
      a. WAJIB memanggil tool `get_rincian_pencairan` dengan parameter `tahun`, `tahap` (1 atau 2 jika pengguna meminta per tahap), `bulan` (jika pengguna meminta per bulan), `tipe_dokumen`, dan `filter_pajak`.
      b. Sajikan Format Resmi Rincian Pencairan:
         - Header: `### DAFTAR RINCIAN PENCAIRAN (RP) TAHUN {tahun}` dengan badge filter cakupan yang diminta: `[CAKUPAN: {cakupan}]`.
         - Ringkasan Eksekutif: Total Bruto, Total Potongan Pajak (PPN, PPh 21, PPh 23), Total Diterima Neto, Jumlah Transaksi, dan Jumlah Transaksi Berpajak.
+        - KHUSUS JIKA PENGGUNA MEMINTA "REKAP PER BULAN", "RINCIAN PENCAIRAN PERBULAN", "PAYROLL PERBULAN", ATAU SEBARAN BULANAN:
+          * AI WAJIB menyajikan **Tabel Rekapitulasi Rincian Pencairan Per Bulan**:
+            <th>No</th><th>Bulan</th><th>Tahap</th><th style="text-align: right;">Jumlah Transaksi</th><th style="text-align: right;">Bruto (Rp)</th><th style="text-align: right;">Potongan Pajak (Rp)</th><th style="text-align: right;">Diterima Neto (Rp)</th>
+          * PENTING - ATURAN AKURASI MUTLAK: Isi baris 12 bulan (Januari s.d. Desember) WAJIB diambil 100% PERSIS dari array `rekap_bulanan` yang disediakan oleh hasil tool. DILARANG KERAS menghitung manual atau menjumlahkan sendiri angka dari daftar transaksi mentah!
+          * Khusus baris bulan September: 15 transaksi, Bruto Rp 4.233.000, Pajak Rp 77.600, Neto Rp 4.155.400 (DILARANG KERAS menjawab angka salah seperti Rp 3.848.000).
+          * Di bagian bawah tabel, cantumkan baris **TOTAL (12 BULAN)** dengan nilai yang sama persis dengan Ringkasan Eksekutif (Total 157 transaksi, Bruto Rp 29.000.000, Pajak Rp 83.600, Neto Rp 28.916.400).
+          * Berikan penawaran opsi santai di akhir pesan: "Apakah ada bulan tertentu (misalnya September) yang ingin Om lihat rincian transaksi belanja lengkapnya?".
         - PENTING - ATURAN WAJIB PENYAJIAN TABEL TRANSAKSI BERPAJAK:
-          * Jika pada ringkasan terdapat potongan pajak (`total_pajak` > 0):
-            Anda WAJIB menyajikan **Tabel 1: Rincian Khusus Transaksi yang Dipotong Pajak** (`transaksi_berpajak`).
+          * Jika pada ringkasan terdapat potongan pajak (`total_pajak` > 0) dan pengguna menanyakan pajak / kwitansi berpajak:
+            Anda WAJIB menyajikan **Tabel: Rincian Khusus Transaksi yang Dipotong Pajak** (`transaksi_berpajak`).
             Tabel ini WAJIB mencantumkan SELURUH transaksi yang dipotong pajak tanpa ada yang terlewat (di Tahap 2 ada 5 transaksi).
             Kolom tabel HTML:
             <th>No</th><th>Bulan</th><th>Tahap</th><th>Nama Kegiatan / Barang</th><th>Rekanan / Toko</th><th>Penerima</th><th>No. Kwitansi</th><th style="text-align: right;">Bruto (Rp)</th><th style="text-align: right;">PPN (Rp)</th><th style="text-align: right;">PPh 21 (Rp)</th><th style="text-align: right;">PPh 23 (Rp)</th><th style="text-align: right;">Total Pajak (Rp)</th><th style="text-align: right;">Diterima Neto (Rp)</th>
             Sertakan baris **TOTAL POTONGAN PAJAK** di bagian bawah tabel. Penjumlahan kolom Total Pajak HARUS SAMA PERSIS / KLOP 100% dengan angka Total Potongan Pajak pada Ringkasan Eksekutif (contoh: Rp 83.600).
-        - **Tabel 2: Rincian Pencairan Belanja (Seluruh Transaksi)**:
-          * Jika jumlah transaksi > 20 baris dan pengguna belum meminta "tampilkan semua":
-            Cukup sajikan Ringkasan Eksekutif + Tabel 1 (Transaksi Berpajak jika ada) + pesan penawaran opsi (per bulan / poin penting / tampilkan semua). Jangan merender Tabel 2 dulu.
-          * Jika pengguna meminta "tampilkan semua" atau transaksi <= 20 baris:
+        - **Tabel: Rincian Pencairan Belanja (Seluruh Transaksi)**:
+          * Jika jumlah transaksi > 20 baris dan pengguna belum meminta "tampilkan semua" atau meminta rekap per bulan:
+            Cukup sajikan Ringkasan Eksekutif + Tabel Rekapitulasi Per Bulan (atau Tabel Transaksi Berpajak jika menanyakan pajak) + pesan penawaran opsi (per bulan / poin penting / tampilkan semua). Jangan merender 157 baris transaksi mentah dulu agar respon tidak terpotong.
+          * Jika pengguna meminta "tampilkan semua" atau transaksi <= 20 baris (misalnya saat meminta bulan tertentu seperti September):
             Sajikan seluruh transaksi sesuai cakupan yang diminta:
             <th>No</th><th>Bulan</th><th>Tahap</th><th>Kode Rekening</th><th>Uraian Transaksi</th><th>Rekanan / Penerima</th><th>No. Kwitansi</th><th style="text-align: right;">Bruto (Rp)</th><th style="text-align: right;">Pajak (Rp)</th><th style="text-align: right;">Diterima Neto (Rp)</th>
    - Jika pengguna menanyakan "Payroll", "Daftar Honor", "Honorarium Guru / Pegawai", "Gaji BOSP", "Insentif", atau rincian pencairan honor:
-     a. Jika menanyakan perencanaan/pencairan dana honor, panggil `get_rincian_pencairan` atau `search_rkas_activity` dengan query "honor".
-     b. Jika menanyakan realisasi pembayaran honor di BKU/BKP ROB, panggil `get_bkp_rob_monthly` dengan parameter `rekening: "honor"`.
-     c. Terapkan aturan penanganan data > 20 transaksi jika data honor mencakup banyak bulan/item.
+     a. Jika pengguna meminta "payroll perbulan", "rekap payroll", atau pencairan bulanan, perlakukan sama dengan rincian pencairan per bulan: panggil `get_rincian_pencairan(bulan: 'Semua')` dan sajikan Tabel Rekapitulasi Per Bulan dari `rekap_bulanan` (dengan September = Rp 4.233.000).
+     b. Jika pengguna menanyakan daftar rencana/pencairan khusus honor guru/pegawai, panggil `get_rincian_pencairan` atau `search_rkas_activity` dengan query "honor".
+     c. Jika menanyakan realisasi pembayaran honor di BKU/BKP ROB, panggil `get_bkp_rob_monthly` dengan parameter `rekening: "honor"`.
+     d. Terapkan aturan penanganan data > 20 transaksi jika data honor mencakup banyak bulan/item.
    - Jika pengguna menanyakan "Alur Kas", "Pergerakan Kas Bulanan", "Jadwal Kas Keluar Masuk", "Saldo Kas per Bulan", atau sebaran 12 bulan anggaran BOSP:
      a. WAJIB memanggil tool `get_alur_kas` dengan parameter `tahun`, `tahap` (1 untuk Jan–Jun, 2 untuk Jul–Des, atau kosong untuk 12 bulan), dan `tipe_dokumen`.
      b. Sajikan Format Resmi Alur Kas BOSP:
@@ -5021,6 +5029,42 @@ PROMPT;
             $outputItems = $mappedItems; // Seluruh transaksi sesuai cakupan yang diminta tanpa batas baris
         }
 
+        // Agregasi bulanan matematis (12 bulan resmi BOSP)
+        $allMonths = array_merge($sem1, $sem2);
+        $rekapBulanan = [];
+        $noBulan = 1;
+
+        foreach ($allMonths as $bln) {
+            $blnTahap = in_array($bln, $sem1) ? 1 : 2;
+            if ($tahap !== null && (int) $tahap !== $blnTahap) {
+                continue;
+            }
+            if ($bulan !== 'Semua' && strcasecmp($bln, $bulan) !== 0) {
+                continue;
+            }
+
+            $blnItems = array_values(array_filter($mappedItems, fn ($i) => strcasecmp($i['bulan'], $bln) === 0));
+            $bBruto = (float) array_sum(array_column($blnItems, 'bruto'));
+            $bPotPpn = (float) array_sum(array_column($blnItems, 'pot_ppn'));
+            $bPotPph21 = (float) array_sum(array_column($blnItems, 'pot_pph21'));
+            $bPotPph23 = (float) array_sum(array_column($blnItems, 'pot_pph23'));
+            $bPajak = (float) array_sum(array_column($blnItems, 'total_pajak'));
+            $bNeto = (float) array_sum(array_column($blnItems, 'diterima_neto'));
+
+            $rekapBulanan[] = [
+                'no' => $noBulan++,
+                'bulan' => $bln,
+                'tahap' => $blnTahap,
+                'jumlah_transaksi' => count($blnItems),
+                'total_bruto' => $bBruto,
+                'total_pot_ppn' => $bPotPpn,
+                'total_pot_pph21' => $bPotPph21,
+                'total_pot_pph23' => $bPotPph23,
+                'total_pajak' => $bPajak,
+                'total_neto' => $bNeto,
+            ];
+        }
+
         return [
             'status' => 'success',
             'data_ditemukan' => true,
@@ -5042,6 +5086,7 @@ PROMPT;
                 'jumlah_transaksi' => count($mappedItems),
                 'jumlah_transaksi_berpajak' => count($transaksiBerpajak),
             ],
+            'rekap_bulanan' => $rekapBulanan,
             'transaksi_berpajak' => $transaksiBerpajak,
             'items' => $outputItems,
         ];
