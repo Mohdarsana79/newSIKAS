@@ -6,7 +6,6 @@ use App\Config\VariantConfig;
 use App\Models\RefBarang;
 use App\Models\SekolahProfile;
 use App\Models\User;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\Process\Process;
 
@@ -201,10 +200,11 @@ class ArkasDiagnosticService
 
         if (! $process->isSuccessful()) {
             Log::error('Arkas diagnostic script failed: '.$process->getErrorOutput());
+
             return [
                 'status' => 'error',
                 'error_type' => 'PROCESS_EXECUTION_FAILED',
-                'message' => 'Gagal menjalankan proses Python: ' . $process->getErrorOutput(),
+                'message' => 'Gagal menjalankan proses Python: '.$process->getErrorOutput(),
             ];
         }
 
@@ -213,6 +213,7 @@ class ArkasDiagnosticService
 
         if (! $decoded) {
             Log::error('Arkas diagnostic script returned non-JSON: '.$output);
+
             return [
                 'status' => 'error',
                 'error_type' => 'INVALID_JSON_OUTPUT',
@@ -255,7 +256,7 @@ class ArkasDiagnosticService
                     ->where('is_bunga_record', false);
 
                 $belanjaCount = (clone $belanjaQuery)->count();
-                $belanjaNominal = (float) (clone $belanjaQuery)->sum('nominal_transaksi');
+                $belanjaNominal = (float) (clone $belanjaQuery)->sum('total_transaksi_kotor');
 
                 // Penerimaan
                 $terimaQuery = $penerimaanClass::where($fk, $penganggaran->id)
@@ -467,7 +468,7 @@ class ArkasDiagnosticService
             ];
         }
 
-        $systemPrompt = <<<PROMPT
+        $systemPrompt = <<<'PROMPT'
 Anda adalah Auditor Ahli Sistem Keuangan Sekolah Indonesia & Rekonsiliasi Database ARKAS (Aplikasi Rencana Kegiatan dan Anggaran Sekolah - Kemendikbudristek) dan newSIKAS (Sistem Informasi Keuangan Sekolah).
 
 TUGAS ANDA:
@@ -513,6 +514,7 @@ PROMPT;
 
         if (! $response['success']) {
             Log::warning('DeepSeek diagnostic call failed: '.($response['message'] ?? 'Unknown error'));
+
             return [
                 'overall_status' => $diffData['heuristic_status'] ?? 'WARNING_DIFFERENCE',
                 'headline' => $diffData['heuristic_headline'] ?? 'Analisis Berdasarkan Pola Heuristik',
@@ -535,6 +537,7 @@ PROMPT;
         $parsed = json_decode($rawContent, true);
         if (! is_array($parsed)) {
             Log::warning('DeepSeek diagnostic invalid JSON: '.$rawContent);
+
             return [
                 'overall_status' => $diffData['heuristic_status'] ?? 'WARNING_DIFFERENCE',
                 'headline' => 'Hasil Diagnosa Terdeteksi',
@@ -546,6 +549,7 @@ PROMPT;
         }
 
         $parsed['is_ai_powered'] = true;
+
         return $parsed;
     }
 
@@ -612,6 +616,7 @@ PROMPT;
             5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
             9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember',
         ];
+
         return $names[$m] ?? "Bulan {$m}";
     }
 }

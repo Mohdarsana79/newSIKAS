@@ -4,6 +4,7 @@ namespace App\Services\Ai;
 
 use App\Config\VariantConfig;
 use App\Models\KodeKegiatan;
+use App\Models\RefBarang;
 use App\Models\RekeningBelanja;
 use App\Models\SekolahProfile;
 use App\Models\User;
@@ -11,6 +12,7 @@ use App\Services\BukuKasService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Symfony\Component\Process\Process;
 
 class CopilotService
 {
@@ -18,10 +20,16 @@ class CopilotService
 
     protected BukuKasService $bukuKasService;
 
-    public function __construct(DeepSeekService $deepSeekService, BukuKasService $bukuKasService)
-    {
+    protected ?ArkasDiagnosticService $arkasDiagnosticService = null;
+
+    public function __construct(
+        DeepSeekService $deepSeekService,
+        BukuKasService $bukuKasService,
+        ?ArkasDiagnosticService $arkasDiagnosticService = null
+    ) {
         $this->deepSeekService = $deepSeekService;
         $this->bukuKasService = $bukuKasService;
+        $this->arkasDiagnosticService = $arkasDiagnosticService ?? app(ArkasDiagnosticService::class);
     }
 
     /**
@@ -636,6 +644,68 @@ class CopilotService
                     ],
                 ],
             ],
+            [
+                'type' => 'function',
+                'function' => [
+                    'name' => 'search_arkas_reference_item',
+                    'description' => 'Mencari standar satuan harga (SSH) dan katalog acuan barang resmi ARKAS (nama barang/jasa acuan, kode rekening belanja, nama rekening belanja, satuan, dan batas atas harga resmi). Panggil tool ini saat pengguna bertanya tentang harga standar barang, batas atas harga, SSH ARKAS, mengecek apakah rencana belanja suatu barang diizinkan/ada di katalog ARKAS, atau mengecek apakah perkiraan harga belanja bendahara wajar / tidak melampaui batas atas SSH resmi.',
+                    'parameters' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'query' => [
+                                'type' => 'string',
+                                'description' => 'Nama barang, jasa, atau spesifikasi acuan yang dicari di katalog ARKAS (contoh: "kursi", "laptop", "kertas hvs", "printer", "semen", "ac", "konsumsi").',
+                            ],
+                            'estimasi_harga' => [
+                                'type' => 'number',
+                                'description' => 'Perkiraan harga satuan perolehan dalam Rupiah yang ingin dibelanjakan (opsional, untuk mengevaluasi apakah harga di bawah atau melampaui batas atas SSH resmi ARKAS).',
+                            ],
+                            'tahun' => [
+                                'type' => 'integer',
+                                'description' => 'Tahun anggaran acuan ARKAS (contoh: 2026, 2025). Opsional, default adalah tahun aktif saat ini.',
+                            ],
+                            'kode_rekening' => [
+                                'type' => 'string',
+                                'description' => 'Filter kode rekening belanja spesifik jika ingin mempersempit hasil (contoh: "5.2.02.05.02.0001", "5.1.02.01.01.0024"). Opsional.',
+                            ],
+                            'limit' => [
+                                'type' => 'integer',
+                                'description' => 'Batas jumlah item acuan yang ditampilkan (default: 10, maksimal: 25). Opsional.',
+                            ],
+                        ],
+                        'required' => ['query'],
+                    ],
+                ],
+            ],
+            [
+                'type' => 'function',
+                'function' => [
+                    'name' => 'diagnose_arkas_integration',
+                    'description' => 'Menjalankan audit dan diagnosa integrasi sistem komprehensif atau kontekstual antara SIKAS dan aplikasi desktop ARKAS (memeriksa kesehatan file database arkas.db, status kunci SQLCipher, selisih pagu penetapan RKAS Murni & Perubahan, selisih realisasi belanja BKU bulanan, saldo kas tunai/bank, serta mendeteksi transaksi/kuitansi yang belum sinkron atau berbeda nilai antara SIKAS dan ARKAS). Panggil tool ini saat pengguna bertanya tentang status koneksi ARKAS, apakah BKU SIKAS sudah klop dengan ARKAS, cek selisih data ARKAS vs SIKAS, audit sinkronisasi ARKAS, atau kendala sinkronisasi.',
+                    'parameters' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'scope' => [
+                                'type' => 'string',
+                                'enum' => ['comprehensive', 'bku_month', 'rkas'],
+                                'description' => 'Cakupan audit: "comprehensive" (audit menyeluruh sistem, koneksi, RKAS, dan seluruh BKU 12 bulan), "bku_month" (fokus audit rekonsiliasi BKU bulan tertentu), atau "rkas" (fokus audit komparasi pagu RKAS). Default: "comprehensive".',
+                            ],
+                            'bulan' => [
+                                'type' => 'string',
+                                'enum' => [
+                                    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+                                    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+                                ],
+                                'description' => 'Nama bulan pembukuan jika scope adalah "bku_month" (contoh: "Agustus", "September"). Opsional.',
+                            ],
+                            'tahun' => [
+                                'type' => 'integer',
+                                'description' => 'Tahun anggaran diagnosa (contoh: 2026, 2025). Opsional, default adalah tahun aktif saat ini.',
+                            ],
+                        ],
+                    ],
+                ],
+            ],
         ];
     }
 
@@ -1065,7 +1135,35 @@ Karakter & Gaya Bicara Anda:
           * **Belanja Operasi (Kode Akun 5.1.x)**: Dipilih jika barang merupakan barang pakai habis, masa manfaat < 12 bulan, atau harga per unit di bawah nilai batas kapitalisasi aset daerah (dicatat sebagai barang persediaan atau aset ekstrakomptabel).
           * **Belanja Pemeliharaan (Kode Akun 5.1.02.03.x)**: Dipilih jika tujuan belanja adalah untuk perbaikan, servis, atau perawatan barang/sarana yang sudah ada agar kembali berfungsi normal.
         - Jika field `riwayat_pemakaian_sekolah` pada hasil tool berisi data, sebutkan secara ramah riwayat tersebut sebagai bukti nyata bahwa sekolah pernah menggunakannya sebelumnya (misal: "Di RKAS sekolah Om sendiri, pasangan ini pernah dipakai sebanyak X kali untuk: ...").
-8. Jangan pernah mengarang kode rekening atau ID kegiatan secara sembarangan, selalu gunakan hasil dari tool.
+8. KATALOG STANDAR SATUAN HARGA (SSH) & ACUAN BARANG ARKAS:
+   - Jika pengguna menanyakan acuan barang, harga standar barang, batas atas harga, SSH ARKAS, atau mengecek apakah perkiraan harga beli suatu barang masih dalam batas yang wajar (contoh: "berapa batas atas harga laptop di ARKAS?", "cek harga semen di ARKAS", "saya mau beli laptop 7 juta apakah aman di ARKAS?", "katalog kertas hvs di ARKAS"):
+     a. WAJIB memanggil tool `search_arkas_reference_item` dengan parameter `query` (kata kunci barang), `estimasi_harga` (jika pengguna menyebutkan nominal rencana belanja), dan `tahun`.
+     b. DILARANG KERAS MENGARANG NAMA BARANG ATAU HARGA BATAS ATAS SENDIRI! Anda WAJIB menggunakan data resmi hasil tool (tabel master `ref_barangs` / katalog acuan ARKAS).
+     c. Format Penyajian Respons Katalog ARKAS:
+        - Sapa pengguna dengan santai dan hangat khas bendahara ("Om", "Bos").
+        - Tampilkan tabel HTML rapi acuan barang ARKAS:
+          <th>No</th><th>Nama Barang Acuan ARKAS</th><th>Kode Rekening</th><th>Akun Rekening Belanja</th><th>Satuan</th><th style="text-align: right;">Batas Atas Harga (SSH) (Rp)</th>
+        - Evaluasi Kewajaran & Kepatuhan Belanja:
+          * Jika pengguna menyebutkan rencana harga belanja: Bandingkan secara gamblang apakah harga tersebut aman di bawah batas atas SSH atau melampaui batas.
+          * Jika AMAN: Beri tahu bahwa harga tersebut wajar dan aman untuk dianggarkan/dibelanjakan karena masih dalam pagu batas atas SSH ARKAS.
+          * Jika MELEBIHI BATAS: Berikan peringatan ramah bahwa harga tersebut melampaui pagu standar satuan harga resmi ARKAS daerah sehingga berisiko mendapat catatan audit atau ditolak saat pelaporan SPJ.
+9. DIAGNOSA INTEGRASI & REKONSILIASI APLIKASI DESKTOP ARKAS:
+   - Jika pengguna menanyakan status koneksi ARKAS, apakah pembukuan BKU SIKAS sudah klop/sinkron dengan ARKAS, ada selisih apa antara SIKAS dan ARKAS, atau masalah integrasi ARKAS (contoh: "cek koneksi ARKAS", "apakah BKU kita sudah klop sama ARKAS?", "ada selisih transaksi di bulan Agustus?", "audit rekonsiliasi ARKAS"):
+     a. WAJIB memanggil tool `diagnose_arkas_integration` dengan parameter `scope` ('comprehensive' atau 'bku_month') dan `bulan` (jika menanyakan bulan tertentu).
+     b. Format Penyajian Dashboard Diagnosa ARKAS:
+        - Header: `### 🛡️ DIAGNOSA INTEGRASI SIKAS & APLIKASI DESKTOP ARKAS`
+        - Status Kesehatan Koneksi:
+          * Sebutkan status koneksi (Terhubung & Sehat / Terputus / File Terkunci), lokasi path database, dan waktu pembaruan terakhir.
+        - Komparasi Pagu RKAS (SIKAS vs ARKAS):
+          * Tampilkan tabel HTML komparasi pagu penetapan RKAS Murni & Perubahan.
+        - Komparasi BKU Bulanan (Rekonsiliasi Kas):
+          * Sajikan tabel HTML ringkasan per bulan:
+            <th>Bulan</th><th style="text-align: right;">Belanja SIKAS (Rp)</th><th style="text-align: right;">Belanja ARKAS (Rp)</th><th style="text-align: right;">Selisih (Rp)</th><th>Status Rekonsiliasi</th>
+        - Rincian Transaksi Belum Klop (jika ada transaksi yang hanya ada di salah satu aplikasi atau berbeda kuitansi):
+          * Jelaskan nomor bukti, uraian, dan selisih nominalnya.
+        - Panduan Solusi Santai:
+          * Berikan instruksi langkah praktis bagi bendahara (contoh: "Buka menu BKU bulan X lalu klik Tarik Data dari ARKAS", "Pastikan aplikasi ARKAS desktop ditutup agar file database tidak terkunci", dll.).
+10. Jangan pernah mengarang kode rekening atau ID kegiatan secara sembarangan, selalu gunakan hasil dari tool.
 PROMPT;
 
         $conversation = [
@@ -1123,7 +1221,7 @@ PROMPT;
                 $rawArgs = $toolCall['function']['arguments'] ?? '{}';
                 $args = json_decode($rawArgs, true) ?: [];
 
-                $toolResult = $this->executeTool($fnName, $args, $variant, $tahun);
+                $toolResult = $this->executeTool($fnName, $args, $variant, $tahun, $user);
 
                 if ($fnName === 'prepare_bku_transaction_draft' && isset($toolResult['staging_card'])) {
                     $stagingCard = $toolResult['staging_card'];
@@ -1152,7 +1250,7 @@ PROMPT;
     /**
      * Dispatcher eksekusi fungsi lokal
      */
-    protected function executeTool(string $name, array $args, string $variant, int $tahun): array
+    protected function executeTool(string $name, array $args, string $variant, int $tahun, ?User $user = null): array
     {
         $targetTahun = ! empty($args['tahun']) ? (int) $args['tahun'] : $tahun;
 
@@ -1219,6 +1317,20 @@ PROMPT;
                 $args['kategori_preferensi'] ?? 'semua',
                 $targetTahun,
                 $variant
+            ),
+            'search_arkas_reference_item' => $this->searchArkasReferenceItem(
+                $args['query'] ?? '',
+                isset($args['estimasi_harga']) ? (float) $args['estimasi_harga'] : null,
+                $targetTahun,
+                $args['kode_rekening'] ?? null,
+                ! empty($args['limit']) ? (int) $args['limit'] : 10
+            ),
+            'diagnose_arkas_integration' => $this->diagnoseArkasIntegration(
+                $user ?? User::first(),
+                $variant,
+                $targetTahun,
+                $args['scope'] ?? 'comprehensive',
+                $args['bulan'] ?? null
             ),
             default => ['error' => "Unknown tool: {$name}"],
         };
@@ -5822,6 +5934,293 @@ PROMPT;
             ])->values()->all(),
             'riwayat_pemakaian_sekolah' => $historyList,
         ];
+    }
+
+    /**
+     * Mencari acuan barang dan standar satuan harga (SSH) resmi ARKAS
+     */
+    public function searchArkasReferenceItem(
+        string $query,
+        ?float $estimasiHarga = null,
+        int $tahun = 2026,
+        ?string $kodeRekening = null,
+        int $limit = 10
+    ): array {
+        $cleanQuery = trim($query);
+        if ($cleanQuery === '') {
+            return [
+                'status' => 'empty',
+                'message' => 'Kata kunci pencarian acuan barang ARKAS tidak boleh kosong.',
+                'items' => [],
+            ];
+        }
+
+        $limit = max(1, min(25, $limit));
+        $source = 'local_database';
+
+        // 1. Query ke database lokal PostgreSQL ref_barangs
+        $dbQuery = RefBarang::query()->where('tahun', $tahun);
+        if (! empty($kodeRekening)) {
+            $dbQuery->where('kode_rekening', $kodeRekening);
+        }
+
+        // Pencarian nama_barang case-insensitive
+        $dbQuery->where('nama_barang', 'ILIKE', "%{$cleanQuery}%");
+
+        $totalFound = (clone $dbQuery)->count();
+        $records = $dbQuery->orderBy('batas_atas', 'desc')->limit($limit)->get();
+
+        // 2. Fallback cerdas: Jika lokal belum terisi atau 0 item, coba query langsung via Python ke arkas.db
+        if ($records->isEmpty()) {
+            $pyResult = $this->runPythonArkasQuery($cleanQuery, (string) $tahun);
+            if (! empty($pyResult['data'])) {
+                $source = 'arkas_engine_fallback';
+                $pyItems = $pyResult['data'];
+                if (! empty($kodeRekening)) {
+                    $pyItems = array_filter($pyItems, fn ($i) => ($i['kode_rekening'] ?? '') === $kodeRekening);
+                }
+                $totalFound = count($pyItems);
+                usort($pyItems, fn ($a, $b) => ($b['batas_atas'] ?? 0) <=> ($a['batas_atas'] ?? 0));
+                $records = collect(array_slice($pyItems, 0, $limit));
+            }
+        }
+
+        if ($records->isEmpty()) {
+            return [
+                'status' => 'not_found',
+                'query' => $cleanQuery,
+                'tahun' => $tahun,
+                'source' => $source,
+                'message' => "Tidak ditemukan acuan barang atau SSH untuk kata kunci '{$cleanQuery}' pada tahun {$tahun} di katalog ARKAS.",
+                'items' => [],
+            ];
+        }
+
+        $itemsList = [];
+        $batasAtasValues = [];
+
+        foreach ($records as $row) {
+            $nama = is_array($row) ? ($row['nama_barang'] ?? '') : $row->nama_barang;
+            $kodeRek = is_array($row) ? ($row['kode_rekening'] ?? null) : $row->kode_rekening;
+            $rek = is_array($row) ? ($row['rekening'] ?? null) : $row->rekening;
+            $satuan = is_array($row) ? ($row['satuan'] ?? null) : $row->satuan;
+            $batasAtas = (float) (is_array($row) ? ($row['batas_atas'] ?? 0) : $row->batas_atas);
+
+            $itemData = [
+                'nama_barang' => $nama,
+                'kode_rekening' => $kodeRek,
+                'rekening' => $rek,
+                'satuan' => $satuan,
+                'batas_atas' => $batasAtas,
+                'tahun' => $tahun,
+            ];
+
+            if ($estimasiHarga !== null && $batasAtas > 0) {
+                if ($estimasiHarga <= $batasAtas) {
+                    $hematNominal = $batasAtas - $estimasiHarga;
+                    $hematPersen = round(($hematNominal / $batasAtas) * 100, 1);
+                    $itemData['evaluasi_harga'] = [
+                        'status' => 'AMAN_SESUAI_SSH',
+                        'keterangan' => 'Harga Rp '.number_format($estimasiHarga, 0, ',', '.').' aman di bawah batas atas SSH (hemat Rp '.number_format($hematNominal, 0, ',', '.')." / {$hematPersen}%).",
+                    ];
+                } else {
+                    $selisihLebih = $estimasiHarga - $batasAtas;
+                    $lebihPersen = round(($selisihLebih / $batasAtas) * 100, 1);
+                    $itemData['evaluasi_harga'] = [
+                        'status' => 'MELEBIHI_BATAS_SSH',
+                        'keterangan' => 'Perhatian: Harga Rp '.number_format($estimasiHarga, 0, ',', '.').' melebihi batas atas SSH sebesar Rp '.number_format($selisihLebih, 0, ',', '.')." (+{$lebihPersen}%).",
+                    ];
+                }
+            }
+
+            $itemsList[] = $itemData;
+            if ($batasAtas > 0) {
+                $batasAtasValues[] = $batasAtas;
+            }
+        }
+
+        $minPrice = ! empty($batasAtasValues) ? min($batasAtasValues) : 0;
+        $maxPrice = ! empty($batasAtasValues) ? max($batasAtasValues) : 0;
+        $avgPrice = ! empty($batasAtasValues) ? round(array_sum($batasAtasValues) / count($batasAtasValues)) : 0;
+
+        $overallEvaluasi = null;
+        if ($estimasiHarga !== null && $maxPrice > 0) {
+            if ($estimasiHarga <= $maxPrice) {
+                $overallEvaluasi = [
+                    'status' => 'AMAN_DI_BAWAH_BATAS_SSH',
+                    'estimasi_harga' => $estimasiHarga,
+                    'batas_atas_tertinggi_arkas' => $maxPrice,
+                    'kesimpulan' => 'Rencana belanja sebesar Rp '.number_format($estimasiHarga, 0, ',', '.').' masih berada di bawah pagu batas atas acuan ARKAS tertinggi (Rp '.number_format($maxPrice, 0, ',', '.').'). Aman dianggarkan.',
+                ];
+            } else {
+                $overallEvaluasi = [
+                    'status' => 'MELEBIHI_PAGU_SSH_RESMI',
+                    'estimasi_harga' => $estimasiHarga,
+                    'batas_atas_tertinggi_arkas' => $maxPrice,
+                    'kesimpulan' => 'Perhatian Om! Rencana belanja Rp '.number_format($estimasiHarga, 0, ',', '.').' melampaui pagu tertinggi acuan ARKAS (Rp '.number_format($maxPrice, 0, ',', '.').'). Berpotensi menjadi temuan jika tidak ada justifikasi SSH/SBU khusus.',
+                ];
+            }
+        }
+
+        return [
+            'status' => 'success',
+            'query' => $cleanQuery,
+            'tahun' => $tahun,
+            'source' => $source,
+            'total_ditemukan' => $totalFound,
+            'limit' => $limit,
+            'summary_harga_acuan' => [
+                'batas_atas_terendah' => $minPrice,
+                'batas_atas_tertinggi' => $maxPrice,
+                'batas_atas_rata_rata' => $avgPrice,
+            ],
+            'evaluasi_kewajaran' => $overallEvaluasi,
+            'items' => $itemsList,
+        ];
+    }
+
+    /**
+     * Menjalankan audit dan diagnosa integrasi sistem antara SIKAS dan aplikasi desktop ARKAS
+     */
+    public function diagnoseArkasIntegration(
+        User $user,
+        string $variant,
+        int $tahun = 2026,
+        string $scope = 'comprehensive',
+        ?string $bulan = null
+    ): array {
+        try {
+            $service = $this->arkasDiagnosticService ?? app(ArkasDiagnosticService::class);
+
+            if ($scope === 'bku_month' && ! empty($bulan)) {
+                $raw = $service->runContextualDiagnostic($user, $variant, $tahun, 'bku_month', ['bulan' => $bulan]);
+            } elseif ($scope === 'rkas') {
+                $raw = $service->runContextualDiagnostic($user, $variant, $tahun, 'rkas', []);
+            } else {
+                $raw = $service->runComprehensiveDiagnostic($user, $variant, $tahun);
+            }
+
+            $diffSummary = $raw['diff_summary'] ?? $raw['diff'] ?? [];
+            $connection = $raw['connection_health'] ?? $raw['connection'] ?? [];
+            $rkasDiff = $diffSummary['rkas'] ?? [];
+            $bkuDiff = $diffSummary['bku'] ?? [];
+            $monthsData = $diffSummary['months'] ?? [];
+            $actionable = $raw['ai_analysis']['actionable_recommendations'] ?? $raw['recommendations'] ?? [];
+
+            $monthlySummary = [];
+            foreach ($monthsData as $mItem) {
+                $mName = $mItem['nama_bulan'] ?? ('Bulan '.($mItem['bulan'] ?? ''));
+                $sikasSpent = (float) ($mItem['sikas']['belanja_nominal'] ?? 0);
+                $arkasSpent = (float) ($mItem['arkas']['belanja_nominal'] ?? 0);
+                $selisih = abs($sikasSpent - $arkasSpent);
+                $hasDiff = $mItem['diff']['has_difference'] ?? ($selisih > 1.0);
+
+                $monthlySummary[] = [
+                    'bulan' => $mName,
+                    'belanja_sikas' => $sikasSpent,
+                    'belanja_arkas' => $arkasSpent,
+                    'selisih' => $selisih,
+                    'status' => ! $hasDiff ? 'KLOP_SEIMBANG' : 'ADA_SELISIH',
+                    'arkas_tutup_buku' => (bool) ($mItem['arkas']['is_closed'] ?? false),
+                ];
+            }
+
+            return [
+                'status' => 'success',
+                'headline' => $raw['headline'] ?? 'Diagnosa Integrasi ARKAS',
+                'overall_status' => $raw['overall_status'] ?? 'UNKNOWN',
+                'scope' => $scope,
+                'tahun' => $tahun,
+                'variant' => $variant,
+                'koneksi_database_arkas' => [
+                    'status' => ($connection['is_connected'] ?? true) ? 'CONNECTED' : 'DISCONNECTED',
+                    'db_path' => $connection['db_path'] ?? 'arkas.db',
+                    'ukuran_file_mb' => isset($connection['size_bytes']) ? round($connection['size_bytes'] / (1024 * 1024), 2) : ($connection['size_mb'] ?? null),
+                    'terakhir_diperbarui_arkas' => $connection['last_modified'] ?? null,
+                    'status_kunci_sqlcipher' => $connection['cipher_unlocked'] ?? true,
+                ],
+                'komparasi_pagu_rkas' => [
+                    'pagu_sikas' => (float) ($rkasDiff['sikas_pagu'] ?? 0),
+                    'pagu_arkas' => (float) ($rkasDiff['arkas_pagu'] ?? 0),
+                    'selisih' => (float) ($rkasDiff['diff'] ?? 0),
+                    'status_pagu' => abs((float) ($rkasDiff['diff'] ?? 0)) < 1.0 ? 'KLOP_SEIMBANG' : 'TERDAPAT_SELISIH',
+                ],
+                'ringkasan_bku_tahunan' => [
+                    'total_belanja_sikas' => (float) ($bkuDiff['total_sikas_belanja'] ?? 0),
+                    'total_belanja_arkas' => (float) ($bkuDiff['total_arkas_belanja'] ?? 0),
+                    'total_selisih' => (float) ($bkuDiff['total_belanja_diff'] ?? 0),
+                    'jumlah_bulan_selisih' => (int) ($bkuDiff['differing_months_count'] ?? 0),
+                ],
+                'ringkasan_bku_bulanan' => $monthlySummary,
+                'rekomendasi_tindakan' => $actionable,
+            ];
+        } catch (\Throwable $e) {
+            Log::error('diagnoseArkasIntegration Copilot error: '.$e->getMessage());
+
+            return [
+                'status' => 'error',
+                'scope' => $scope,
+                'tahun' => $tahun,
+                'message' => 'Gagal menjalankan diagnosa ARKAS: '.$e->getMessage(),
+                'rekomendasi_tindakan' => [
+                    'Pastikan file database ARKAS (arkas.db) tidak sedang terkunci oleh proses desktop ARKAS.',
+                    'Periksa kembali menu Pengaturan Path Arkas di SIKAS.',
+                ],
+            ];
+        }
+    }
+
+    /**
+     * Helper privat untuk menjalankan query python ke arkas.db secara aman
+     */
+    protected function runPythonArkasQuery(string $keyword, string $year = 'ALL'): array
+    {
+        $pythonPath = storage_path('app/arkas_engine/python.exe');
+        $scriptPath = storage_path('app/arkas_engine/query.py');
+
+        if (! file_exists($pythonPath) || ! file_exists($scriptPath)) {
+            return ['error' => 'Arkas Engine tidak ditemukan.'];
+        }
+
+        $env = $_SERVER;
+        unset($env['OPENSSL_CONF']);
+
+        $appdata = $env['APPDATA'] ?? null;
+        $userprofile = $env['USERPROFILE'] ?? null;
+
+        if (empty($appdata)) {
+            $appdata = trim(shell_exec("powershell -Command \"[Environment]::GetFolderPath('ApplicationData')\""));
+        }
+        if (empty($userprofile)) {
+            $userprofile = trim(shell_exec("powershell -Command \"[Environment]::GetFolderPath('UserProfile')\""));
+        }
+        if (empty($userprofile) && ! empty($appdata)) {
+            $userprofile = dirname(dirname($appdata));
+        }
+        if (empty($appdata) && ! empty($userprofile)) {
+            $appdata = $userprofile.'\\AppData\\Roaming';
+        }
+
+        $env['SystemRoot'] = $env['SystemRoot'] ?? 'C:\\Windows';
+        $env['SystemDrive'] = $env['SystemDrive'] ?? 'C:';
+        $env['USERPROFILE'] = ! empty($userprofile) ? $userprofile : ($env['USERPROFILE'] ?? 'C:\\Users\\Digitalisasi');
+        $env['APPDATA'] = ! empty($appdata) ? $appdata : ($env['APPDATA'] ?? 'C:\\Users\\Digitalisasi\\AppData\\Roaming');
+
+        $dbPathManual = env('ARKAS_DB_PATH', '');
+        $dbPathManual = trim($dbPathManual, '"\' ');
+        $dbPathManual = str_replace('\\', '/', $dbPathManual);
+
+        $process = new Process([$pythonPath, $scriptPath, $keyword, (string) $year, $dbPathManual], null, $env);
+        $process->setTimeout(30);
+        $process->run();
+
+        if (! $process->isSuccessful()) {
+            return ['error' => 'Gagal query ARKAS: '.$process->getErrorOutput()];
+        }
+
+        $result = json_decode($process->getOutput(), true);
+
+        return is_array($result) ? $result : ['error' => 'Format output ARKAS tidak valid.'];
     }
 
     /**
