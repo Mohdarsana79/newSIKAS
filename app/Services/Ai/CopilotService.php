@@ -335,6 +335,56 @@ class CopilotService
             [
                 'type' => 'function',
                 'function' => [
+                    'name' => 'get_rkas_perubahan_summary',
+                    'description' => 'Mengambil ringkasan eksekutif dokumen perencanaan RKAS Perubahan pada tahun anggaran aktif. Menyajikan status ketersediaan dokumen perubahan, perbandingan alokasi pagu total & tahapan (Tahap 1 vs Tahap 2: Murni vs Perubahan vs Selisih), pergeseran belanja operasi vs belanja modal, indikator kepatuhan regulasi BOSP (belanja buku min 10%, honor max 20%/40%, pemeliharaan sarpras max 20%), statistik jumlah item yang bergeser, serta histori log rekaman perubahan terbaru. Panggil tool ini saat pengguna bertanya tentang ringkasan RKAS Perubahan, pergeseran anggaran tahun ini, evaluasi pagu perubahan, atau perbandingan umum RKAS Murni vs Perubahan.',
+                    'parameters' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'tahun' => [
+                                'type' => 'integer',
+                                'description' => 'Tahun anggaran RKAS Perubahan (contoh: 2025, 2026). Opsional, default adalah tahun aktif saat ini.',
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+            [
+                'type' => 'function',
+                'function' => [
+                    'name' => 'get_rkas_perubahan_activities',
+                    'description' => 'Mengambil rincian komparasi kegiatan antar dokumen RKAS Murni dan RKAS Perubahan pada tahun anggaran aktif. Menyajikan perbandingan volume, satuan, harga satuan, total alokasi murni vs perubahan, selisih anggaran, dan status pergeseran per kegiatan. Mendukung filter bulan, tahap, filter jenis perubahan (hanya item yang berubah, bertambah, berkurang, item baru, atau dihapus), serta pencarian kata kunci kegiatan. Panggil tool ini saat pengguna bertanya tentang kegiatan yang berubah di RKAS Perubahan, item belanja apa saja yang ditambah/dikurangi, atau rincian kegiatan RKAS Perubahan pada bulan tertentu.',
+                    'parameters' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'tahun' => [
+                                'type' => 'integer',
+                                'description' => 'Tahun anggaran RKAS Perubahan (contoh: 2025, 2026). Opsional, default adalah tahun aktif saat ini.',
+                            ],
+                            'bulan' => [
+                                'type' => 'string',
+                                'description' => 'Filter nama bulan alokasi (misal: "September", "November"). Opsional.',
+                            ],
+                            'tahap' => [
+                                'type' => 'string',
+                                'enum' => ['Tahap 1', 'Tahap 2'],
+                                'description' => 'Filter tahapan anggaran ("Tahap 1" untuk Januari–Juni, "Tahap 2" untuk Juli–Desember). Opsional.',
+                            ],
+                            'filter_perubahan' => [
+                                'type' => 'string',
+                                'enum' => ['berubah', 'semua', 'bertambah', 'berkurang', 'baru', 'dihapus'],
+                                'description' => 'Kategori filter pergeseran: "berubah" (default: hanya item yang mengalami perubahan), "semua" (seluruh item termasuk yang tetap), "bertambah", "berkurang", "baru", atau "dihapus".',
+                            ],
+                            'query' => [
+                                'type' => 'string',
+                                'description' => 'Kata kunci nama kegiatan, rekening belanja, atau uraian barang (contoh: "buku", "spidol", "sarpras"). Opsional.',
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+            [
+                'type' => 'function',
+                'function' => [
                     'name' => 'calculate_tax_recommendation',
                     'description' => 'Menghitung rekomendasi pemotongan pajak resmi (PPN 11%, PPh 21, PPh 22, PPh 23, Pajak Daerah).',
                     'parameters' => [
@@ -689,6 +739,40 @@ Karakter & Gaya Bicara Anda:
         - Smart Compliance Audit & Kepatuhan Aset:
           * WAJIB memberikan peringatan kepatuhan audit: Seluruh pengadaan belanja modal WAJIB dicatatkan ke dalam KIB (Kartu Inventaris Barang / KIB B untuk Peralatan & Mesin, KIB E untuk Buku Perpustakaan) dan dibuatkan BAST (Berita Acara Serah Terima) serta label/nomor kode inventaris barang agar tertib penatausahaan aset sekolah dan bebas dari temuan pemeriksaan BPK/Inspektorat.
           * Rekomendasikan mencetak lembar Buku Pembantu BHM untuk kelengkapan SPJ belanja modal.
+   - Jika pengguna menanyakan "RKAS Perubahan", "Ringkasan RKAS Perubahan", "Pergeseran anggaran tahun ini", "Perubahan anggaran BOSP", "Evaluasi pagu perubahan", atau "Komparasi RKAS Murni vs Perubahan secara umum":
+     a. WAJIB memanggil tool `get_rkas_perubahan_summary` dengan parameter `tahun`.
+     b. Jika status_perubahan = false:
+        - Jelaskan dengan santai dan ramah bahwa sekolah belum menyusun/mengesahkan dokumen RKAS Perubahan untuk tahun tersebut dan masih menggunakan dokumen RKAS Murni awal tahun.
+     c. Jika status_perubahan = true, sajikan Format Resmi Executive Summary RKAS Perubahan:
+        - Header: `### EXECUTIVE SUMMARY: RKAS PERUBAHAN TAHUN {tahun}` dengan badge: `[STATUS: RESMI DITETAPKAN & AKTIF]`
+        - Tabel Komparasi Pagu Total & Tahapan:
+          Sajikan tabel HTML:
+          <th>Komponen Anggaran</th><th style="text-align: right;">RKAS Murni (Rp)</th><th style="text-align: right;">RKAS Perubahan (Rp)</th><th style="text-align: right;">Selisih Pergeseran (Rp)</th>
+          Baris data:
+          1. Alokasi Tahap 1 (Januari – Juni)
+          2. Alokasi Tahap 2 (Juli – Desember)
+          *TOTAL PAGU ANGGARAN BOSP*
+        - Tabel Evaluasi Kepatuhan Batas Regulasi BOSP:
+          Sajikan tabel HTML:
+          <th>Pos Belanja Regulasi</th><th style="text-align: right;">Alokasi Anggaran (Rp)</th><th style="text-align: right;">Porsi (%)</th><th>Ambang Batas Regulasi</th><th>Status Kepatuhan</th>
+          Baris data:
+          1. Belanja Buku Perpustakaan (Min. 10%)
+          2. Pembayaran Honorarium (Maks. 20% Negeri / 40% Swasta)
+          3. Pemeliharaan Sarpras (Maks. 20%)
+        - Ringkasan Statistik Pergeseran Item:
+          Sebutkan total item murni vs perubahan, jumlah item tetap, bertambah, berkurang, item baru ditambahkan, dan item yang dihapus.
+        - Riwayat Log Perubahan Terakhir:
+          Jika terdapat catatan log perubahan, sebutkan 3-5 aksi terakhir yang dilakukan bendahara/pengguna (tanggal, aksi, dan uraian aksi).
+   - Jika pengguna menanyakan kegiatan apa saja yang berubah di RKAS Perubahan, item yang bertambah/berkurang, atau rincian kegiatan RKAS Perubahan pada bulan/tahap tertentu (contoh: "Kegiatan apa saja yang berubah di RKAS Perubahan?", "Tampilkan RKAS Perubahan bulan September", "Cari belanja buku di RKAS Perubahan"):
+     a. WAJIB memanggil tool `get_rkas_perubahan_activities` dengan parameter `tahun`, `bulan` (jika spesifik), `tahap` (jika spesifik), `filter_perubahan` (default: 'berubah', atau 'semua' jika diminta seluruhnya), dan `query` (jika ada kata kunci).
+     b. Sajikan Format Komparasi Kegiatan:
+        - Header: `### KOMPARASI PERGESERAN KEGIATAN RKAS PERUBAHAN` dengan badge: `[FILTER: {keterangan_filter}]`
+        - Sajikan tabel HTML terstruktur rapi:
+          <th>No</th><th>Bulan</th><th>Kode Kegiatan</th><th>Uraian Kegiatan / Barang</th><th>Kode Rekening</th><th style="text-align: right;">Anggaran Murni (Rp)</th><th style="text-align: right;">Anggaran Perubahan (Rp)</th><th style="text-align: right;">Selisih (Rp)</th><th>Status Perubahan</th>
+          Baris data:
+          Tampilkan item kegiatan dengan kolom status yang jelas (Bertambah, Berkurang, Baru (Ditambahkan), Dihapus dari Perubahan, atau Tetap).
+        - Catatan Analisis Pergeseran:
+          * Berikan ulasan singkat mengenai kegiatan apa saja yang mendapatkan tambahan dana atau pengurangan dana dan alasan pergeseran tersebut.
    - Jika pengguna menanyakan ringkasan pagu BOSP, panggil `get_budget_pagu_summary`.
    - Jika menanyakan grafik serapan triwulan, panggil `query_realization_comparison`.
 5. PENCARIAN RENCANA KEGIATAN RKAS:
@@ -810,6 +894,15 @@ PROMPT;
             'get_rekapitulasi_realisasi_per_rekening' => $this->getRekapitulasiRealisasiPerRekening($targetTahun, $args['periode'] ?? 'Tahunan', $variant),
             'get_buku_pembantu_bhp' => $this->getBukuPembantuBhp($targetTahun, $args['periode'] ?? 'Tahunan', $variant),
             'get_buku_pembantu_bhm' => $this->getBukuPembantuBhm($targetTahun, $args['periode'] ?? 'Tahunan', $variant),
+            'get_rkas_perubahan_summary' => $this->getRkasPerubahanSummary($targetTahun, $variant),
+            'get_rkas_perubahan_activities' => $this->getRkasPerubahanActivities(
+                $targetTahun,
+                $variant,
+                $args['bulan'] ?? null,
+                $args['tahap'] ?? null,
+                $args['filter_perubahan'] ?? 'berubah',
+                $args['query'] ?? null
+            ),
             'search_rkas_activity' => $this->searchRkasActivity($targetTahun, $args['query'] ?? '', $variant, $args['bulan'] ?? null),
             'calculate_tax_recommendation' => $this->calculateTaxRecommendation(
                 (float) ($args['amount'] ?? 0),
@@ -3058,6 +3151,535 @@ PROMPT;
                 'kepala_sekolah' => $penganggaran->kepala_sekolah ?? '-',
                 'bendahara' => $penganggaran->bendahara ?? '-',
             ],
+        ];
+    }
+
+    /**
+     * Tool: Ringkasan Eksekutif RKAS Perubahan & Kepatuhan Regulasi BOSP
+     */
+    protected function getRkasPerubahanSummary(int $tahun, string $variant): array
+    {
+        VariantConfig::validateVariant($variant);
+
+        $penganggaranClass = VariantConfig::getModelClass('penganggaran', $variant);
+        $rkasClass = VariantConfig::getModelClass('rkas', $variant);
+        $rkasPerubahanClass = VariantConfig::getModelClass('rkas_perubahan', $variant);
+        $rekamanClass = VariantConfig::getModelClass('rekaman_perubahan', $variant);
+        $penganggaranFk = VariantConfig::penganggaranFk($variant);
+
+        $penganggaran = $penganggaranClass::where('tahun_anggaran', $tahun)
+            ->with('sekolah')
+            ->first();
+
+        if (! $penganggaran) {
+            return ['error' => 'Data penganggaran tidak ditemukan untuk tahun '.$tahun];
+        }
+
+        $paguAnggaran = (float) ($penganggaran->pagu_anggaran ?? 0);
+        $sekolah = $penganggaran->sekolah;
+        $statusSekolah = $sekolah?->status_sekolah ?? 'Swasta';
+
+        $hasPerubahan = $rkasPerubahanClass && $rkasPerubahanClass::where($penganggaranFk, $penganggaran->id)->exists();
+
+        if (! $hasPerubahan) {
+            return [
+                'tahun' => $tahun,
+                'status_perubahan' => false,
+                'keterangan_status' => "Dokumen RKAS Perubahan belum disusun/aktif untuk Tahun Anggaran {$tahun}. Sekolah saat ini masih menggunakan dokumen perencanaan RKAS Murni awal tahun.",
+                'pagu_anggaran' => $paguAnggaran,
+                'sekolah' => [
+                    'nama' => $sekolah?->nama_sekolah ?? '-',
+                    'npsn' => $sekolah?->npsn ?? '-',
+                    'status_sekolah' => $statusSekolah,
+                ],
+            ];
+        }
+
+        $murniItems = $rkasClass::where($penganggaranFk, $penganggaran->id)
+            ->with(['kodeKegiatan', 'rekeningBelanja'])
+            ->get();
+
+        $perubahanItems = $rkasPerubahanClass::where($penganggaranFk, $penganggaran->id)
+            ->with(['kodeKegiatan', 'rekeningBelanja'])
+            ->get();
+
+        $tahap1Months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni'];
+
+        $totMurni = 0.0;
+        $totMurniT1 = 0.0;
+        $totMurniT2 = 0.0;
+        $murniOperasi = 0.0;
+        $murniModal = 0.0;
+
+        foreach ($murniItems as $m) {
+            $sub = (float) $m->jumlah * (float) $m->harga_satuan;
+            $totMurni += $sub;
+            if (in_array($m->bulan, $tahap1Months)) {
+                $totMurniT1 += $sub;
+            } else {
+                $totMurniT2 += $sub;
+            }
+            $kodeRek = $m->rekeningBelanja?->kode_rekening ?? '';
+            if (str_starts_with($kodeRek, '5.2')) {
+                $murniModal += $sub;
+            } else {
+                $murniOperasi += $sub;
+            }
+        }
+
+        $totPerubahan = 0.0;
+        $totPerubahanT1 = 0.0;
+        $totPerubahanT2 = 0.0;
+        $perubahanOperasi = 0.0;
+        $perubahanModal = 0.0;
+
+        $bukuAnggaran = 0.0;
+        $honorAnggaran = 0.0;
+        $sarprasAnggaran = 0.0;
+
+        foreach ($perubahanItems as $c) {
+            $sub = (float) $c->jumlah * (float) $c->harga_satuan;
+            $totPerubahan += $sub;
+            if (in_array($c->bulan, $tahap1Months)) {
+                $totPerubahanT1 += $sub;
+            } else {
+                $totPerubahanT2 += $sub;
+            }
+            $kodeRek = $c->rekeningBelanja?->kode_rekening ?? '';
+            if (str_starts_with($kodeRek, '5.2')) {
+                $perubahanModal += $sub;
+            } else {
+                $perubahanOperasi += $sub;
+            }
+
+            // Kepatuhan regulasi BOSP
+            $kegiatan = $c->kodeKegiatan;
+            $kegKode = $kegiatan?->kode ?? '';
+            $subProg = $kegiatan?->sub_program ?? '';
+            $kegUraian = $kegiatan?->uraian ?? '';
+            $itemUraian = $c->uraian ?? '';
+
+            if (str_starts_with($kegKode, '05.02.') || str_starts_with($kegKode, '02.02.') || str_starts_with($kegKode, '03.02.') ||
+                stripos($subProg, 'perpustakaan') !== false || stripos($kegUraian, 'buku') !== false || stripos($kegUraian, 'perpustakaan') !== false) {
+                $bukuAnggaran += $sub;
+            }
+
+            if (str_starts_with($kegKode, '07.12.') || stripos($subProg, 'honor') !== false || stripos($subProg, 'gaji') !== false ||
+                stripos($kegUraian, 'honor') !== false || stripos($kegUraian, 'gaji') !== false ||
+                stripos($itemUraian, 'honor') !== false || stripos($itemUraian, 'gaji') !== false) {
+                $honorAnggaran += $sub;
+            }
+
+            if (str_starts_with($kegKode, '05.08.')) {
+                $sarprasAnggaran += $sub;
+            }
+        }
+
+        // Matching signature untuk statistik pergeseran
+        $makeSig = function ($item) {
+            return $item->kode_id.'|'.$item->kode_rekening_id.'|'.strtolower(trim($item->uraian)).'|'.$item->bulan;
+        };
+
+        $murniMap = [];
+        foreach ($murniItems as $m) {
+            $murniMap[$makeSig($m)] = $m;
+        }
+
+        $perubahanMap = [];
+        foreach ($perubahanItems as $c) {
+            $perubahanMap[$makeSig($c)] = $c;
+        }
+
+        $itemTetap = 0;
+        $itemBertambah = 0;
+        $itemBerkurang = 0;
+        $itemBaru = 0;
+        $itemDihapus = 0;
+
+        foreach ($perubahanMap as $sig => $c) {
+            if (! isset($murniMap[$sig])) {
+                $itemBaru++;
+            } else {
+                $m = $murniMap[$sig];
+                $totM = (float) ($m->jumlah * $m->harga_satuan);
+                $totC = (float) ($c->jumlah * $c->harga_satuan);
+                if ($totC > $totM) {
+                    $itemBertambah++;
+                } elseif ($totC < $totM) {
+                    $itemBerkurang++;
+                } else {
+                    $itemTetap++;
+                }
+            }
+        }
+
+        foreach ($murniMap as $sig => $m) {
+            if (! isset($perubahanMap[$sig])) {
+                $itemDihapus++;
+            }
+        }
+
+        // Kepatuhan regulasi BOSP
+        $bukuPersen = $paguAnggaran > 0 ? round(($bukuAnggaran / $paguAnggaran) * 100, 2) : 0;
+        $isNegeri = stripos($statusSekolah, 'negeri') !== false;
+        $honorMaxBatas = $isNegeri ? 20.0 : 40.0;
+        $honorPersen = $paguAnggaran > 0 ? round(($honorAnggaran / $paguAnggaran) * 100, 2) : 0;
+        $sarprasPersen = $paguAnggaran > 0 ? round(($sarprasAnggaran / $paguAnggaran) * 100, 2) : 0;
+
+        // Log rekaman perubahan terbaru
+        $logs = [];
+        if ($rekamanClass) {
+            $logs = $rekamanClass::where($penganggaranFk, $penganggaran->id)
+                ->orderBy('created_at', 'desc')
+                ->take(5)
+                ->get()
+                ->map(function ($log) {
+                    return [
+                        'tanggal' => $log->created_at ? Carbon::parse($log->created_at)->format('d-m-Y H:i') : '-',
+                        'aksi' => $log->action,
+                        'keterangan' => $log->description,
+                    ];
+                })
+                ->toArray();
+        }
+
+        return [
+            'tahun' => $tahun,
+            'status_perubahan' => true,
+            'keterangan_status' => "Dokumen RKAS Perubahan telah ditetapkan dan aktif di sistem untuk Tahun Anggaran {$tahun}.",
+            'pagu_anggaran' => $paguAnggaran,
+            'komparasi_tahapan' => [
+                'total_anggaran' => [
+                    'murni' => $totMurni,
+                    'perubahan' => $totPerubahan,
+                    'selisih' => $totPerubahan - $totMurni,
+                ],
+                'tahap_1' => [
+                    'murni' => $totMurniT1,
+                    'perubahan' => $totPerubahanT1,
+                    'selisih' => $totPerubahanT1 - $totMurniT1,
+                ],
+                'tahap_2' => [
+                    'murni' => $totMurniT2,
+                    'perubahan' => $totPerubahanT2,
+                    'selisih' => $totPerubahanT2 - $totMurniT2,
+                ],
+            ],
+            'komparasi_kelompok_belanja' => [
+                'belanja_operasi' => [
+                    'murni' => $murniOperasi,
+                    'perubahan' => $perubahanOperasi,
+                    'selisih' => $perubahanOperasi - $murniOperasi,
+                    'persentase_perubahan' => $totPerubahan > 0 ? round(($perubahanOperasi / $totPerubahan) * 100, 2) : 0,
+                ],
+                'belanja_modal' => [
+                    'murni' => $murniModal,
+                    'perubahan' => $perubahanModal,
+                    'selisih' => $perubahanModal - $murniModal,
+                    'persentase_perubahan' => $totPerubahan > 0 ? round(($perubahanModal / $totPerubahan) * 100, 2) : 0,
+                ],
+            ],
+            'kepatuhan_regulasi_bosp' => [
+                'belanja_buku' => [
+                    'anggaran' => $bukuAnggaran,
+                    'persentase' => $bukuPersen,
+                    'ambang_batas' => 'Minimal 10%',
+                    'status' => $bukuPersen >= 10.0 ? 'Memenuhi' : 'Belum Memenuhi',
+                    'catatan' => $bukuPersen >= 10.0
+                        ? "Anggaran penyediaan buku ({$bukuPersen}%) sudah memenuhi batas minimal 10% dari total pagu."
+                        : "Anggaran penyediaan buku ({$bukuPersen}%) belum memenuhi ketentuan minimal 10% dari total pagu anggaran.",
+                ],
+                'honorarium' => [
+                    'anggaran' => $honorAnggaran,
+                    'persentase' => $honorPersen,
+                    'ambang_batas' => "Maksimal {$honorMaxBatas}% (".($isNegeri ? 'Sekolah Negeri' : 'Sekolah Swasta').')',
+                    'status' => $honorPersen <= $honorMaxBatas ? 'Memenuhi' : 'Melebihi Batas Maksimal',
+                    'catatan' => $honorPersen <= $honorMaxBatas
+                        ? "Porsi belanja honorarium ({$honorPersen}%) aman dan sesuai batas maksimal {$honorMaxBatas}%."
+                        : "Porsi belanja honorarium ({$honorPersen}%) melebihi ambang batas maksimal {$honorMaxBatas}%.",
+                ],
+                'pemeliharaan_sarpras' => [
+                    'anggaran' => $sarprasAnggaran,
+                    'persentase' => $sarprasPersen,
+                    'ambang_batas' => 'Maksimal 20%',
+                    'status' => $sarprasPersen <= 20.0 ? 'Memenuhi' : 'Melebihi Batas Maksimal',
+                    'catatan' => $sarprasPersen <= 20.0
+                        ? "Porsi belanja pemeliharaan sarpras ({$sarprasPersen}%) aman dan sesuai batas maksimal 20%."
+                        : "Porsi belanja pemeliharaan sarpras ({$sarprasPersen}%) melebihi ambang batas maksimal 20%.",
+                ],
+            ],
+            'statistik_pergeseran' => [
+                'total_item_murni' => count($murniItems),
+                'total_item_perubahan' => count($perubahanItems),
+                'item_tetap' => $itemTetap,
+                'item_bertambah' => $itemBertambah,
+                'item_berkurang' => $itemBerkurang,
+                'item_baru' => $itemBaru,
+                'item_dihapus' => $itemDihapus,
+            ],
+            'riwayat_log_perubahan' => $logs,
+            'sekolah' => [
+                'nama' => $sekolah?->nama_sekolah ?? '-',
+                'npsn' => $sekolah?->npsn ?? '-',
+                'status_sekolah' => $statusSekolah,
+            ],
+        ];
+    }
+
+    /**
+     * Tool: Rincian Komparasi Kegiatan RKAS Murni vs RKAS Perubahan
+     */
+    protected function getRkasPerubahanActivities(
+        int $tahun,
+        string $variant,
+        ?string $bulan = null,
+        ?string $tahap = null,
+        string $filterPerubahan = 'berubah',
+        ?string $query = null
+    ): array {
+        VariantConfig::validateVariant($variant);
+
+        $penganggaranClass = VariantConfig::getModelClass('penganggaran', $variant);
+        $rkasClass = VariantConfig::getModelClass('rkas', $variant);
+        $rkasPerubahanClass = VariantConfig::getModelClass('rkas_perubahan', $variant);
+        $penganggaranFk = VariantConfig::penganggaranFk($variant);
+
+        $penganggaran = $penganggaranClass::where('tahun_anggaran', $tahun)
+            ->with('sekolah')
+            ->first();
+
+        if (! $penganggaran) {
+            return ['error' => 'Data penganggaran tidak ditemukan untuk tahun '.$tahun];
+        }
+
+        $hasPerubahan = $rkasPerubahanClass && $rkasPerubahanClass::where($penganggaranFk, $penganggaran->id)->exists();
+
+        if (! $hasPerubahan) {
+            return [
+                'tahun' => $tahun,
+                'status_perubahan' => false,
+                'keterangan_status' => "Dokumen RKAS Perubahan belum disusun/aktif untuk Tahun Anggaran {$tahun}.",
+                'total_item_ditemukan' => 0,
+                'items' => [],
+            ];
+        }
+
+        $murniItems = $rkasClass::where($penganggaranFk, $penganggaran->id)
+            ->with(['kodeKegiatan', 'rekeningBelanja'])
+            ->get();
+
+        $perubahanItems = $rkasPerubahanClass::where($penganggaranFk, $penganggaran->id)
+            ->with(['kodeKegiatan', 'rekeningBelanja'])
+            ->get();
+
+        $makeSig = function ($item) {
+            return $item->kode_id.'|'.$item->kode_rekening_id.'|'.strtolower(trim($item->uraian)).'|'.$item->bulan;
+        };
+
+        $murniMap = [];
+        foreach ($murniItems as $m) {
+            $murniMap[$makeSig($m)] = $m;
+        }
+
+        $perubahanMap = [];
+        foreach ($perubahanItems as $c) {
+            $perubahanMap[$makeSig($c)] = $c;
+        }
+
+        $monthOrder = [
+            'Januari' => 1, 'Februari' => 2, 'Maret' => 3, 'April' => 4,
+            'Mei' => 5, 'Juni' => 6, 'Juli' => 7, 'Agustus' => 8,
+            'September' => 9, 'Oktober' => 10, 'November' => 11, 'Desember' => 12,
+        ];
+
+        $tahap1Months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni'];
+        $tahap2Months = ['Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
+        $allItems = [];
+
+        // Evaluasi item di RKAS Perubahan
+        foreach ($perubahanMap as $sig => $c) {
+            $keg = $c->kodeKegiatan;
+            $rek = $c->rekeningBelanja;
+
+            $totC = (float) ($c->jumlah * $c->harga_satuan);
+
+            if (! isset($murniMap[$sig])) {
+                $allItems[] = [
+                    'bulan' => $c->bulan,
+                    'bulan_order' => $monthOrder[$c->bulan] ?? 99,
+                    'kode_kegiatan' => $keg?->kode ?? '-',
+                    'nama_kegiatan' => $keg?->sub_program ?? ($keg?->uraian ?? '-'),
+                    'kode_rekening' => $rek?->kode_rekening ?? '-',
+                    'nama_rekening' => $rek?->rincian_objek ?? '-',
+                    'uraian' => $c->uraian,
+                    'murni' => [
+                        'volume' => 0,
+                        'satuan' => $c->satuan,
+                        'harga_satuan' => 0,
+                        'total' => 0,
+                    ],
+                    'perubahan' => [
+                        'volume' => (float) $c->jumlah,
+                        'satuan' => $c->satuan,
+                        'harga_satuan' => (float) $c->harga_satuan,
+                        'total' => $totC,
+                    ],
+                    'selisih' => $totC,
+                    'status' => 'Baru (Ditambahkan)',
+                ];
+            } else {
+                $m = $murniMap[$sig];
+                $totM = (float) ($m->jumlah * $m->harga_satuan);
+                $diff = $totC - $totM;
+
+                if ($totC > $totM) {
+                    $status = 'Bertambah';
+                } elseif ($totC < $totM) {
+                    $status = 'Berkurang';
+                } else {
+                    $status = 'Tetap';
+                }
+
+                $allItems[] = [
+                    'bulan' => $c->bulan,
+                    'bulan_order' => $monthOrder[$c->bulan] ?? 99,
+                    'kode_kegiatan' => $keg?->kode ?? '-',
+                    'nama_kegiatan' => $keg?->sub_program ?? ($keg?->uraian ?? '-'),
+                    'kode_rekening' => $rek?->kode_rekening ?? '-',
+                    'nama_rekening' => $rek?->rincian_objek ?? '-',
+                    'uraian' => $c->uraian,
+                    'murni' => [
+                        'volume' => (float) $m->jumlah,
+                        'satuan' => $m->satuan,
+                        'harga_satuan' => (float) $m->harga_satuan,
+                        'total' => $totM,
+                    ],
+                    'perubahan' => [
+                        'volume' => (float) $c->jumlah,
+                        'satuan' => $c->satuan,
+                        'harga_satuan' => (float) $c->harga_satuan,
+                        'total' => $totC,
+                    ],
+                    'selisih' => $diff,
+                    'status' => $status,
+                ];
+            }
+        }
+
+        // Evaluasi item di RKAS Murni yang dihapus pada RKAS Perubahan
+        foreach ($murniMap as $sig => $m) {
+            if (! isset($perubahanMap[$sig])) {
+                $keg = $m->kodeKegiatan;
+                $rek = $m->rekeningBelanja;
+                $totM = (float) ($m->jumlah * $m->harga_satuan);
+
+                $allItems[] = [
+                    'bulan' => $m->bulan,
+                    'bulan_order' => $monthOrder[$m->bulan] ?? 99,
+                    'kode_kegiatan' => $keg?->kode ?? '-',
+                    'nama_kegiatan' => $keg?->sub_program ?? ($keg?->uraian ?? '-'),
+                    'kode_rekening' => $rek?->kode_rekening ?? '-',
+                    'nama_rekening' => $rek?->rincian_objek ?? '-',
+                    'uraian' => $m->uraian,
+                    'murni' => [
+                        'volume' => (float) $m->jumlah,
+                        'satuan' => $m->satuan,
+                        'harga_satuan' => (float) $m->harga_satuan,
+                        'total' => $totM,
+                    ],
+                    'perubahan' => [
+                        'volume' => 0,
+                        'satuan' => $m->satuan,
+                        'harga_satuan' => 0,
+                        'total' => 0,
+                    ],
+                    'selisih' => -$totM,
+                    'status' => 'Dihapus dari Perubahan',
+                ];
+            }
+        }
+
+        // Urutkan berdasarkan urutan bulan kalender
+        usort($allItems, function ($a, $b) {
+            if ($a['bulan_order'] === $b['bulan_order']) {
+                return strcmp($a['uraian'], $b['uraian']);
+            }
+
+            return $a['bulan_order'] <=> $b['bulan_order'];
+        });
+
+        // Terapkan Filter
+        $filtered = array_filter($allItems, function ($item) use ($bulan, $tahap, $filterPerubahan, $query, $tahap1Months, $tahap2Months) {
+            // Filter Tahap
+            if (! empty($tahap)) {
+                $tahapLower = strtolower(trim($tahap));
+                if (str_contains($tahapLower, '1')) {
+                    if (! in_array($item['bulan'], $tahap1Months)) {
+                        return false;
+                    }
+                } elseif (str_contains($tahapLower, '2')) {
+                    if (! in_array($item['bulan'], $tahap2Months)) {
+                        return false;
+                    }
+                }
+            }
+
+            // Filter Bulan
+            if (! empty($bulan)) {
+                if (stripos($item['bulan'], trim($bulan)) === false) {
+                    return false;
+                }
+            }
+
+            // Filter Jenis Perubahan
+            $filterP = strtolower(trim($filterPerubahan));
+            if ($filterP === 'bertambah' && $item['status'] !== 'Bertambah') {
+                return false;
+            } elseif ($filterP === 'berkurang' && $item['status'] !== 'Berkurang') {
+                return false;
+            } elseif ($filterP === 'baru' && $item['status'] !== 'Baru (Ditambahkan)') {
+                return false;
+            } elseif ($filterP === 'dihapus' && $item['status'] !== 'Dihapus dari Perubahan') {
+                return false;
+            } elseif ($filterP === 'berubah' && $item['status'] === 'Tetap') {
+                return false; // Default: hanya yang berubah
+            }
+
+            // Filter Query Kata Kunci
+            if (! empty($query)) {
+                $q = strtolower(trim($query));
+                $haystack = strtolower($item['uraian'].' '.$item['nama_kegiatan'].' '.$item['nama_rekening'].' '.$item['kode_rekening']);
+                if (strpos($haystack, $q) === false) {
+                    return false;
+                }
+            }
+
+            return true;
+        });
+
+        $finalItems = [];
+        $no = 1;
+        foreach ($filtered as $item) {
+            unset($item['bulan_order']);
+            $item['no'] = $no++;
+            $finalItems[] = $item;
+        }
+
+        // Batasi maksimal 100 baris agar aman untuk context window
+        $cappedItems = array_slice($finalItems, 0, 100);
+
+        return [
+            'tahun' => $tahun,
+            'filter_diterapkan' => [
+                'bulan' => $bulan ?: 'Semua Bulan',
+                'tahap' => $tahap ?: 'Semua Tahap',
+                'filter_perubahan' => $filterPerubahan,
+                'query' => $query ?: null,
+            ],
+            'total_item_ditemukan' => count($finalItems),
+            'jumlah_ditampilkan' => count($cappedItems),
+            'items' => $cappedItems,
         ];
     }
 
