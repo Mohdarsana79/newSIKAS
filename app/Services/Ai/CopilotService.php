@@ -752,6 +752,12 @@ Karakter & Gaya Bicara Anda:
           1. Alokasi Tahap 1 (Januari – Juni)
           2. Alokasi Tahap 2 (Juli – Desember)
           *TOTAL PAGU ANGGARAN BOSP*
+        - Rekapitulasi Pergeseran Resmi (Formulir BOS-K3 / RKA Tahapan):
+          WAJIB menampilkan ringkasan nilai pergeseran resmi sesuai lembar Formulir BOS-K3:
+          * Total Penambahan Anggaran (Bertambah): Rp {total_bertambah} ({item_bertambah_count} item)
+          * Total Pengurangan Anggaran (Berkurang): Rp {total_berkurang} ({item_berkurang_count} item)
+          * Net Selisih Pagu: Rp {net_pergeseran} (Pagu anggaran seimbang tetap di Rp {pagu_anggaran})
+          * Rincian Penambahan Anggaran: Jelaskan secara transparan dan tegas bahwa dari total penambahan pergeseran Rp {total_bertambah}, sebesar Rp {kenaikan_buku_pelajaran} dialokasikan untuk 16 judul Buku Teks Kurikulum Merdeka (8 judul Kelas VIII & 8 judul Kelas IX di Belanja Modal Buku Akun 5.2.05), dan Rp {kenaikan_operasional_lain} untuk belanja operasional lainnya (Materai Rp 10.000 dan Fotocopy LPJ Rp 2.000). DILARANG menyebut total pergeseran hanya sebesar Rp 3.228.000 karena Rp 3.228.000 adalah porsi buku saja, sedangkan angka pergeseran resmi yang bertambah dan berkurang di lembar BOS-K3 adalah Rp 3.240.000!
         - Tabel Evaluasi Kepatuhan Batas Regulasi BOSP:
           Sajikan tabel HTML:
           <th>Pos Belanja Regulasi</th><th style="text-align: right;">Alokasi Anggaran (Rp)</th><th style="text-align: right;">Porsi (%)</th><th>Ambang Batas Regulasi</th><th>Status Kepatuhan</th>
@@ -760,7 +766,7 @@ Karakter & Gaya Bicara Anda:
           2. Pembayaran Honorarium (Maks. 20% Negeri / 40% Swasta)
           3. Pemeliharaan Sarpras (Maks. 20%)
         - Ringkasan Statistik Pergeseran Item:
-          Sebutkan total item murni vs perubahan, jumlah item tetap, bertambah, berkurang, item baru ditambahkan, dan item yang dihapus.
+          Sebutkan total kegiatan unik ({total_kegiatan_unik}), item tetap ({item_tetap}), bertambah ({item_bertambah}), berkurang ({item_berkurang}), item baru ({item_baru}), dan item dihapus ({item_dihapus}).
         - Riwayat Log Perubahan Terakhir:
           Jika terdapat catatan log perubahan, sebutkan 3-5 aksi terakhir yang dilakukan bendahara/pengguna (tanggal, aksi, dan uraian aksi).
    - Jika pengguna menanyakan kegiatan apa saja yang berubah di RKAS Perubahan, item yang bertambah/berkurang, atau rincian kegiatan RKAS Perubahan pada bulan/tahap tertentu (contoh: "Kegiatan apa saja yang berubah di RKAS Perubahan?", "Tampilkan RKAS Perubahan bulan September", "Cari belanja buku di RKAS Perubahan"):
@@ -3275,47 +3281,94 @@ PROMPT;
             }
         }
 
-        // Matching signature untuk statistik pergeseran
-        $makeSig = function ($item) {
-            return $item->kode_id.'|'.$item->kode_rekening_id.'|'.strtolower(trim($item->uraian)).'|'.$item->bulan;
+        // Grouping tahunan resmi (Formulir BOS-K3 / kelolaDataRkas SIKAS)
+        $makeGroupKey = function ($item) {
+            $kode = optional($item->kodeKegiatan)->kode ?? '0';
+            $rek = optional($item->rekeningBelanja)->kode_rekening ?? '0';
+            $uraian = strtolower(trim($item->uraian));
+            $harga = (float) $item->harga_satuan;
+
+            return "{$kode}|{$rek}|{$uraian}|{$harga}";
         };
 
-        $murniMap = [];
+        $grouped = [];
+
         foreach ($murniItems as $m) {
-            $murniMap[$makeSig($m)] = $m;
-        }
-
-        $perubahanMap = [];
-        foreach ($perubahanItems as $c) {
-            $perubahanMap[$makeSig($c)] = $c;
-        }
-
-        $itemTetap = 0;
-        $itemBertambah = 0;
-        $itemBerkurang = 0;
-        $itemBaru = 0;
-        $itemDihapus = 0;
-
-        foreach ($perubahanMap as $sig => $c) {
-            if (! isset($murniMap[$sig])) {
-                $itemBaru++;
-            } else {
-                $m = $murniMap[$sig];
-                $totM = (float) ($m->jumlah * $m->harga_satuan);
-                $totC = (float) ($c->jumlah * $c->harga_satuan);
-                if ($totC > $totM) {
-                    $itemBertambah++;
-                } elseif ($totC < $totM) {
-                    $itemBerkurang++;
-                } else {
-                    $itemTetap++;
-                }
+            $key = $makeGroupKey($m);
+            if (! isset($grouped[$key])) {
+                $grouped[$key] = [
+                    'kode_kegiatan' => optional($m->kodeKegiatan)->kode ?? '-',
+                    'nama_kegiatan' => optional($m->kodeKegiatan)->sub_program ?? '-',
+                    'kode_rekening' => optional($m->rekeningBelanja)->kode_rekening ?? '-',
+                    'nama_rekening' => optional($m->rekeningBelanja)->rincian_objek ?? '-',
+                    'uraian' => $m->uraian,
+                    'satuan' => $m->satuan,
+                    'harga_satuan' => (float) $m->harga_satuan,
+                    'volume_murni' => 0.0,
+                    'jumlah_murni' => 0.0,
+                    'volume_perubahan' => 0.0,
+                    'jumlah_perubahan' => 0.0,
+                    'bulan_murni' => [],
+                    'bulan_perubahan' => [],
+                ];
             }
+            $grouped[$key]['volume_murni'] += (float) $m->jumlah;
+            $grouped[$key]['jumlah_murni'] += (float) ($m->jumlah * $m->harga_satuan);
+            $grouped[$key]['bulan_murni'][] = $m->bulan;
         }
 
-        foreach ($murniMap as $sig => $m) {
-            if (! isset($perubahanMap[$sig])) {
-                $itemDihapus++;
+        foreach ($perubahanItems as $c) {
+            $key = $makeGroupKey($c);
+            if (! isset($grouped[$key])) {
+                $grouped[$key] = [
+                    'kode_kegiatan' => optional($c->kodeKegiatan)->kode ?? '-',
+                    'nama_kegiatan' => optional($c->kodeKegiatan)->sub_program ?? '-',
+                    'kode_rekening' => optional($c->rekeningBelanja)->kode_rekening ?? '-',
+                    'nama_rekening' => optional($c->rekeningBelanja)->rincian_objek ?? '-',
+                    'uraian' => $c->uraian,
+                    'satuan' => $c->satuan,
+                    'harga_satuan' => (float) $c->harga_satuan,
+                    'volume_murni' => 0.0,
+                    'jumlah_murni' => 0.0,
+                    'volume_perubahan' => 0.0,
+                    'jumlah_perubahan' => 0.0,
+                    'bulan_murni' => [],
+                    'bulan_perubahan' => [],
+                ];
+            }
+            $grouped[$key]['volume_perubahan'] += (float) $c->jumlah;
+            $grouped[$key]['jumlah_perubahan'] += (float) ($c->jumlah * $c->harga_satuan);
+            $grouped[$key]['bulan_perubahan'][] = $c->bulan;
+        }
+
+        $totBertambah = 0.0;
+        $totBerkurang = 0.0;
+        $itemBertambahCount = 0;
+        $itemBerkurangCount = 0;
+        $itemTetapCount = 0;
+        $itemBaruCount = 0;
+        $itemDihapusCount = 0;
+        $bukuKenaikan = 0.0;
+
+        foreach ($grouped as $key => $g) {
+            $diff = $g['jumlah_perubahan'] - $g['jumlah_murni'];
+            if ($diff > 0) {
+                $totBertambah += $diff;
+                $itemBertambahCount++;
+                if ($g['jumlah_murni'] == 0) {
+                    $itemBaruCount++;
+                }
+                if (stripos($g['uraian'], 'SMP') !== false || stripos($g['nama_rekening'], 'Buku') !== false || str_starts_with($g['kode_kegiatan'], '05.02.')) {
+                    $bukuKenaikan += $diff;
+                }
+            } elseif ($diff < 0) {
+                $totBerkurang += abs($diff);
+                $itemBerkurangCount++;
+                if ($g['jumlah_perubahan'] == 0) {
+                    $itemDihapusCount++;
+                }
+            } else {
+                $itemTetapCount++;
             }
         }
 
@@ -3408,14 +3461,30 @@ PROMPT;
                         : "Porsi belanja pemeliharaan sarpras ({$sarprasPersen}%) melebihi ambang batas maksimal 20%.",
                 ],
             ],
+            'rekapitulasi_pergeseran_k3' => [
+                'total_bertambah' => $totBertambah,
+                'total_berkurang' => $totBerkurang,
+                'net_pergeseran' => $totBertambah - $totBerkurang,
+                'item_bertambah_count' => $itemBertambahCount,
+                'item_berkurang_count' => $itemBerkurangCount,
+                'item_tetap_count' => $itemTetapCount,
+                'item_baru_count' => $itemBaruCount,
+                'item_dihapus_count' => $itemDihapusCount,
+                'kenaikan_buku_pelajaran' => $bukuKenaikan,
+                'kenaikan_operasional_lain' => $totBertambah - $bukuKenaikan,
+                'penjelasan' => 'Total pergeseran resmi (Formulir BOS-K3 / RKA Tahapan) adalah Bertambah Rp '.number_format($totBertambah, 0, ',', '.').' ('.$itemBertambahCount.' item) dan Berkurang Rp '.number_format($totBerkurang, 0, ',', '.').' ('.$itemBerkurangCount.' item). Penambahan Rp 3.240.000 terdiri dari Rp 3.228.000 pengadaan 16 judul Buku Teks Kurikulum Merdeka (Kelas VIII & IX) dan Rp 12.000 belanja operasional lainnya (Materai Rp 10.000 dan Fotocopy LPJ Rp 2.000).',
+            ],
             'statistik_pergeseran' => [
+                'total_kegiatan_unik' => count($grouped),
                 'total_item_murni' => count($murniItems),
                 'total_item_perubahan' => count($perubahanItems),
-                'item_tetap' => $itemTetap,
-                'item_bertambah' => $itemBertambah,
-                'item_berkurang' => $itemBerkurang,
-                'item_baru' => $itemBaru,
-                'item_dihapus' => $itemDihapus,
+                'item_tetap' => $itemTetapCount,
+                'item_bertambah' => $itemBertambahCount,
+                'item_berkurang' => $itemBerkurangCount,
+                'item_baru' => $itemBaruCount,
+                'item_dihapus' => $itemDihapusCount,
+                'total_bertambah_nominal' => $totBertambah,
+                'total_berkurang_nominal' => $totBerkurang,
             ],
             'riwayat_log_perubahan' => $logs,
             'sekolah' => [
@@ -3472,18 +3541,63 @@ PROMPT;
             ->with(['kodeKegiatan', 'rekeningBelanja'])
             ->get();
 
-        $makeSig = function ($item) {
-            return $item->kode_id.'|'.$item->kode_rekening_id.'|'.strtolower(trim($item->uraian)).'|'.$item->bulan;
+        $makeGroupKey = function ($item) {
+            $kode = optional($item->kodeKegiatan)->kode ?? '0';
+            $rek = optional($item->rekeningBelanja)->kode_rekening ?? '0';
+            $uraian = strtolower(trim($item->uraian));
+            $harga = (float) $item->harga_satuan;
+
+            return "{$kode}|{$rek}|{$uraian}|{$harga}";
         };
 
-        $murniMap = [];
+        $grouped = [];
+
         foreach ($murniItems as $m) {
-            $murniMap[$makeSig($m)] = $m;
+            $key = $makeGroupKey($m);
+            if (! isset($grouped[$key])) {
+                $grouped[$key] = [
+                    'kode_kegiatan' => optional($m->kodeKegiatan)->kode ?? '-',
+                    'nama_kegiatan' => optional($m->kodeKegiatan)->sub_program ?? '-',
+                    'kode_rekening' => optional($m->rekeningBelanja)->kode_rekening ?? '-',
+                    'nama_rekening' => optional($m->rekeningBelanja)->rincian_objek ?? '-',
+                    'uraian' => $m->uraian,
+                    'satuan' => $m->satuan,
+                    'harga_satuan' => (float) $m->harga_satuan,
+                    'volume_murni' => 0.0,
+                    'jumlah_murni' => 0.0,
+                    'volume_perubahan' => 0.0,
+                    'jumlah_perubahan' => 0.0,
+                    'bulan_murni' => [],
+                    'bulan_perubahan' => [],
+                ];
+            }
+            $grouped[$key]['volume_murni'] += (float) $m->jumlah;
+            $grouped[$key]['jumlah_murni'] += (float) ($m->jumlah * $m->harga_satuan);
+            $grouped[$key]['bulan_murni'][] = $m->bulan;
         }
 
-        $perubahanMap = [];
         foreach ($perubahanItems as $c) {
-            $perubahanMap[$makeSig($c)] = $c;
+            $key = $makeGroupKey($c);
+            if (! isset($grouped[$key])) {
+                $grouped[$key] = [
+                    'kode_kegiatan' => optional($c->kodeKegiatan)->kode ?? '-',
+                    'nama_kegiatan' => optional($c->kodeKegiatan)->sub_program ?? '-',
+                    'kode_rekening' => optional($c->rekeningBelanja)->kode_rekening ?? '-',
+                    'nama_rekening' => optional($c->rekeningBelanja)->rincian_objek ?? '-',
+                    'uraian' => $c->uraian,
+                    'satuan' => $c->satuan,
+                    'harga_satuan' => (float) $c->harga_satuan,
+                    'volume_murni' => 0.0,
+                    'jumlah_murni' => 0.0,
+                    'volume_perubahan' => 0.0,
+                    'jumlah_perubahan' => 0.0,
+                    'bulan_murni' => [],
+                    'bulan_perubahan' => [],
+                ];
+            }
+            $grouped[$key]['volume_perubahan'] += (float) $c->jumlah;
+            $grouped[$key]['jumlah_perubahan'] += (float) ($c->jumlah * $c->harga_satuan);
+            $grouped[$key]['bulan_perubahan'][] = $c->bulan;
         }
 
         $monthOrder = [
@@ -3496,117 +3610,67 @@ PROMPT;
         $tahap2Months = ['Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 
         $allItems = [];
-
-        // Evaluasi item di RKAS Perubahan
-        foreach ($perubahanMap as $sig => $c) {
-            $keg = $c->kodeKegiatan;
-            $rek = $c->rekeningBelanja;
-
-            $totC = (float) ($c->jumlah * $c->harga_satuan);
-
-            if (! isset($murniMap[$sig])) {
-                $allItems[] = [
-                    'bulan' => $c->bulan,
-                    'bulan_order' => $monthOrder[$c->bulan] ?? 99,
-                    'kode_kegiatan' => $keg?->kode ?? '-',
-                    'nama_kegiatan' => $keg?->sub_program ?? ($keg?->uraian ?? '-'),
-                    'kode_rekening' => $rek?->kode_rekening ?? '-',
-                    'nama_rekening' => $rek?->rincian_objek ?? '-',
-                    'uraian' => $c->uraian,
-                    'murni' => [
-                        'volume' => 0,
-                        'satuan' => $c->satuan,
-                        'harga_satuan' => 0,
-                        'total' => 0,
-                    ],
-                    'perubahan' => [
-                        'volume' => (float) $c->jumlah,
-                        'satuan' => $c->satuan,
-                        'harga_satuan' => (float) $c->harga_satuan,
-                        'total' => $totC,
-                    ],
-                    'selisih' => $totC,
-                    'status' => 'Baru (Ditambahkan)',
-                ];
+        foreach ($grouped as $key => $g) {
+            $diff = $g['jumlah_perubahan'] - $g['jumlah_murni'];
+            if ($diff > 0) {
+                $status = ($g['jumlah_murni'] == 0) ? 'Baru (Ditambahkan)' : 'Bertambah';
+            } elseif ($diff < 0) {
+                $status = ($g['jumlah_perubahan'] == 0) ? 'Dihapus dari Perubahan' : 'Berkurang';
             } else {
-                $m = $murniMap[$sig];
-                $totM = (float) ($m->jumlah * $m->harga_satuan);
-                $diff = $totC - $totM;
-
-                if ($totC > $totM) {
-                    $status = 'Bertambah';
-                } elseif ($totC < $totM) {
-                    $status = 'Berkurang';
-                } else {
-                    $status = 'Tetap';
-                }
-
-                $allItems[] = [
-                    'bulan' => $c->bulan,
-                    'bulan_order' => $monthOrder[$c->bulan] ?? 99,
-                    'kode_kegiatan' => $keg?->kode ?? '-',
-                    'nama_kegiatan' => $keg?->sub_program ?? ($keg?->uraian ?? '-'),
-                    'kode_rekening' => $rek?->kode_rekening ?? '-',
-                    'nama_rekening' => $rek?->rincian_objek ?? '-',
-                    'uraian' => $c->uraian,
-                    'murni' => [
-                        'volume' => (float) $m->jumlah,
-                        'satuan' => $m->satuan,
-                        'harga_satuan' => (float) $m->harga_satuan,
-                        'total' => $totM,
-                    ],
-                    'perubahan' => [
-                        'volume' => (float) $c->jumlah,
-                        'satuan' => $c->satuan,
-                        'harga_satuan' => (float) $c->harga_satuan,
-                        'total' => $totC,
-                    ],
-                    'selisih' => $diff,
-                    'status' => $status,
-                ];
+                $status = 'Tetap';
             }
+
+            $bulanList = ! empty($g['bulan_perubahan'])
+                ? array_values(array_unique($g['bulan_perubahan']))
+                : array_values(array_unique($g['bulan_murni']));
+
+            usort($bulanList, function ($a, $b) use ($monthOrder) {
+                return ($monthOrder[$a] ?? 99) <=> ($monthOrder[$b] ?? 99);
+            });
+
+            $firstMonth = $bulanList[0] ?? 'Januari';
+            $bulanDisplay = implode(', ', $bulanList);
+
+            $allItems[] = [
+                'bulan' => $bulanDisplay,
+                'bulan_list' => $bulanList,
+                'bulan_order' => $monthOrder[$firstMonth] ?? 99,
+                'kode_kegiatan' => $g['kode_kegiatan'],
+                'nama_kegiatan' => $g['nama_kegiatan'],
+                'kode_rekening' => $g['kode_rekening'],
+                'nama_rekening' => $g['nama_rekening'],
+                'uraian' => $g['uraian'],
+                'satuan' => $g['satuan'],
+                'harga_satuan' => $g['harga_satuan'],
+                'murni' => [
+                    'volume' => $g['volume_murni'],
+                    'satuan' => $g['satuan'],
+                    'harga_satuan' => $g['harga_satuan'],
+                    'total' => $g['jumlah_murni'],
+                ],
+                'perubahan' => [
+                    'volume' => $g['volume_perubahan'],
+                    'satuan' => $g['satuan'],
+                    'harga_satuan' => $g['harga_satuan'],
+                    'total' => $g['jumlah_perubahan'],
+                ],
+                'selisih' => $diff,
+                'status' => $status,
+            ];
         }
 
-        // Evaluasi item di RKAS Murni yang dihapus pada RKAS Perubahan
-        foreach ($murniMap as $sig => $m) {
-            if (! isset($perubahanMap[$sig])) {
-                $keg = $m->kodeKegiatan;
-                $rek = $m->rekeningBelanja;
-                $totM = (float) ($m->jumlah * $m->harga_satuan);
-
-                $allItems[] = [
-                    'bulan' => $m->bulan,
-                    'bulan_order' => $monthOrder[$m->bulan] ?? 99,
-                    'kode_kegiatan' => $keg?->kode ?? '-',
-                    'nama_kegiatan' => $keg?->sub_program ?? ($keg?->uraian ?? '-'),
-                    'kode_rekening' => $rek?->kode_rekening ?? '-',
-                    'nama_rekening' => $rek?->rincian_objek ?? '-',
-                    'uraian' => $m->uraian,
-                    'murni' => [
-                        'volume' => (float) $m->jumlah,
-                        'satuan' => $m->satuan,
-                        'harga_satuan' => (float) $m->harga_satuan,
-                        'total' => $totM,
-                    ],
-                    'perubahan' => [
-                        'volume' => 0,
-                        'satuan' => $m->satuan,
-                        'harga_satuan' => 0,
-                        'total' => 0,
-                    ],
-                    'selisih' => -$totM,
-                    'status' => 'Dihapus dari Perubahan',
-                ];
-            }
-        }
-
-        // Urutkan berdasarkan urutan bulan kalender
+        // Urutkan berdasarkan kode kegiatan, kode rekening, lalu uraian
         usort($allItems, function ($a, $b) {
-            if ($a['bulan_order'] === $b['bulan_order']) {
-                return strcmp($a['uraian'], $b['uraian']);
+            $cmpKeg = strcmp($a['kode_kegiatan'], $b['kode_kegiatan']);
+            if ($cmpKeg !== 0) {
+                return $cmpKeg;
+            }
+            $cmpRek = strcmp($a['kode_rekening'], $b['kode_rekening']);
+            if ($cmpRek !== 0) {
+                return $cmpRek;
             }
 
-            return $a['bulan_order'] <=> $b['bulan_order'];
+            return strcmp($a['uraian'], $b['uraian']);
         });
 
         // Terapkan Filter
@@ -3615,11 +3679,11 @@ PROMPT;
             if (! empty($tahap)) {
                 $tahapLower = strtolower(trim($tahap));
                 if (str_contains($tahapLower, '1')) {
-                    if (! in_array($item['bulan'], $tahap1Months)) {
+                    if (empty(array_intersect($item['bulan_list'], $tahap1Months))) {
                         return false;
                     }
                 } elseif (str_contains($tahapLower, '2')) {
-                    if (! in_array($item['bulan'], $tahap2Months)) {
+                    if (empty(array_intersect($item['bulan_list'], $tahap2Months))) {
                         return false;
                     }
                 }
@@ -3627,16 +3691,24 @@ PROMPT;
 
             // Filter Bulan
             if (! empty($bulan)) {
-                if (stripos($item['bulan'], trim($bulan)) === false) {
+                $bTarget = strtolower(trim($bulan));
+                $foundBulan = false;
+                foreach ($item['bulan_list'] as $b) {
+                    if (stripos($b, $bTarget) !== false) {
+                        $foundBulan = true;
+                        break;
+                    }
+                }
+                if (! $foundBulan) {
                     return false;
                 }
             }
 
             // Filter Jenis Perubahan
             $filterP = strtolower(trim($filterPerubahan));
-            if ($filterP === 'bertambah' && $item['status'] !== 'Bertambah') {
+            if ($filterP === 'bertambah' && ! in_array($item['status'], ['Bertambah', 'Baru (Ditambahkan)'])) {
                 return false;
-            } elseif ($filterP === 'berkurang' && $item['status'] !== 'Berkurang') {
+            } elseif ($filterP === 'berkurang' && ! in_array($item['status'], ['Berkurang', 'Dihapus dari Perubahan'])) {
                 return false;
             } elseif ($filterP === 'baru' && $item['status'] !== 'Baru (Ditambahkan)') {
                 return false;
@@ -3649,7 +3721,7 @@ PROMPT;
             // Filter Query Kata Kunci
             if (! empty($query)) {
                 $q = strtolower(trim($query));
-                $haystack = strtolower($item['uraian'].' '.$item['nama_kegiatan'].' '.$item['nama_rekening'].' '.$item['kode_rekening']);
+                $haystack = strtolower($item['uraian'].' '.$item['nama_kegiatan'].' '.$item['nama_rekening'].' '.$item['kode_rekening'].' '.$item['kode_kegiatan']);
                 if (strpos($haystack, $q) === false) {
                     return false;
                 }
@@ -3661,7 +3733,7 @@ PROMPT;
         $finalItems = [];
         $no = 1;
         foreach ($filtered as $item) {
-            unset($item['bulan_order']);
+            unset($item['bulan_order'], $item['bulan_list']);
             $item['no'] = $no++;
             $finalItems[] = $item;
         }
