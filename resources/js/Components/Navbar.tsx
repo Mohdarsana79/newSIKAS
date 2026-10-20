@@ -3,14 +3,24 @@ import DarkModeSwitcher from '@/Components/DarkModeSwitcher';
 import FullscreenSwitcher from '@/Components/FullscreenSwitcher';
 import NotificationDropdown from '@/Components/NotificationDropdown';
 import { usePage } from '@inertiajs/react';
+import { Sparkles } from 'lucide-react';
+import type { CopilotWindowState } from '@/Layouts/AuthenticatedLayout';
 
 interface NavbarProps {
     header?: React.ReactNode;
     sidebarOpen: boolean;
     setSidebarOpen: (open: boolean) => void;
+    copilotState?: CopilotWindowState;
+    setCopilotState?: (state: CopilotWindowState) => void;
 }
 
-export default function Navbar({ header, sidebarOpen, setSidebarOpen }: NavbarProps) {
+export default function Navbar({ 
+    header, 
+    sidebarOpen, 
+    setSidebarOpen,
+    copilotState = 'closed',
+    setCopilotState
+}: NavbarProps) {
     const user = usePage().props.auth.user;
 
     return (
@@ -37,6 +47,36 @@ export default function Navbar({ header, sidebarOpen, setSidebarOpen }: NavbarPr
 
                 {/* Right Side Actions */}
                 <div className="flex items-center gap-3 2xsm:gap-7">
+                    {/* SIKAS AI Copilot Trigger */}
+                    <button
+                        type="button"
+                        onClick={() => {
+                            if (setCopilotState) {
+                                if (copilotState === 'closed' || copilotState === 'minimized') {
+                                    setCopilotState('normal');
+                                } else {
+                                    setCopilotState('closed');
+                                }
+                            }
+                        }}
+                        className={`relative flex h-9 w-9 items-center justify-center rounded-full transition-all duration-300 focus:outline-none ${
+                            copilotState !== 'closed'
+                                ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-500/40 ring-2 ring-purple-400/50 scale-105'
+                                : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-gray-600 shadow-inner'
+                        }`}
+                        title={copilotState !== 'closed' ? 'Tutup SIKAS AI Copilot' : 'Buka SIKAS AI Copilot'}
+                    >
+                        <Sparkles className={`w-4.5 h-4.5 ${copilotState !== 'closed' ? 'text-purple-100' : 'text-purple-600 dark:text-purple-400'}`} />
+                        {copilotState !== 'closed' ? (
+                            <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                            </span>
+                        ) : (
+                            <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-purple-500"></span>
+                        )}
+                    </button>
+
                     {/* Notifications */}
                     <NotificationDropdown />
 

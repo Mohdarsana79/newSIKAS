@@ -20,8 +20,10 @@ import {
     ChevronRight,
     Minimize2,
     Maximize2,
+    Minus,
     BarChart3
 } from 'lucide-react';
+import type { CopilotWindowState } from '@/Layouts/AuthenticatedLayout';
 
 interface StagingDraft {
     type: 'bku_transaction_draft';
@@ -189,7 +191,15 @@ function sanitizeAndFormatHtml(content: string): string {
     return processed;
 }
 
-export default function CopilotDrawer() {
+interface CopilotDrawerProps {
+    copilotState?: CopilotWindowState;
+    setCopilotState?: (state: CopilotWindowState) => void;
+}
+
+export default function CopilotDrawer({
+    copilotState,
+    setCopilotState,
+}: CopilotDrawerProps = {}) {
     const { auth, variant: pageVariant, tahun: pageTahun } = usePage<any>().props;
     const vroute = useVariantRoute();
 
@@ -197,8 +207,14 @@ export default function CopilotDrawer() {
     const variant = pageVariant || 'reguler';
     const currentYear = pageTahun || new Date().getFullYear();
 
-    const [isOpen, setIsOpen] = useState(false);
-    const [isMinimized, setIsMinimized] = useState(false);
+    // Internal fallback state if not passed from AuthenticatedLayout
+    const [internalState, setInternalState] = useState<CopilotWindowState>('closed');
+    const state = copilotState ?? internalState;
+    const setState = setCopilotState ?? setInternalState;
+
+    const isOpen = state !== 'closed';
+    const isMinimized = state === 'minimized';
+    const isMaximized = state === 'maximized';
     const [messages, setMessages] = useState<Message[]>([]);
     const [inputMessage, setInputMessage] = useState('');
     const [isSending, setIsSending] = useState(false);
@@ -447,59 +463,51 @@ export default function CopilotDrawer() {
                 .dark .ai-html-content .overflow-y-auto::-webkit-scrollbar-thumb {
                     background: #475569;
                 }
+                .copilot-maximized .ai-html-content .overflow-y-auto {
+                    max-height: 55vh;
+                }
             `}</style>
-
-            {/* Floating Action Button (FAB) di Pojok Kanan Bawah */}
-            {!isOpen && (
-                <div className="fixed bottom-6 right-6 z-40 animate-bounce-subtle">
-                    <button
-                        onClick={() => setIsOpen(true)}
-                        className="group relative flex items-center gap-2.5 px-4 py-3 bg-gradient-to-r from-purple-600 via-indigo-600 to-indigo-700 hover:from-purple-700 hover:to-indigo-800 text-white rounded-full shadow-xl shadow-purple-600/30 hover:shadow-2xl transition-all transform hover:-translate-y-1 active:scale-95"
-                    >
-                        <div className="relative">
-                            <Sparkles className="w-5 h-5 text-purple-200 group-hover:rotate-12 transition-transform duration-300" />
-                            <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-                            </span>
-                        </div>
-                        <span className="text-sm font-bold tracking-wide">
-                            AI Copilot
-                        </span>
-                    </button>
-                </div>
-            )}
 
             {/* Slide-over Drawer Chat Panel */}
             {isOpen && (
-                <div className={`fixed bottom-4 right-4 z-50 flex flex-col bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden transition-all duration-300 ${
-                    isMinimized ? 'w-80 h-14' : 'w-full sm:w-[440px] h-[620px] max-h-[90vh]'
+                <div className={`fixed z-50 flex flex-col bg-white dark:bg-gray-800 shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden transition-all duration-300 ${
+                    isMaximized
+                        ? 'inset-2 md:inset-4 w-auto h-auto rounded-2xl copilot-maximized'
+                        : isMinimized
+                        ? 'bottom-4 right-4 w-80 h-14 rounded-2xl'
+                        : 'bottom-4 right-4 w-full sm:w-[500px] h-[650px] max-h-[90vh] rounded-2xl'
                 }`}>
                     
                     {/* Header Drawer */}
                     <div className="px-4 py-3.5 bg-gradient-to-r from-purple-700 via-indigo-600 to-indigo-800 text-white flex items-center justify-between cursor-pointer select-none">
-                        <div className="flex items-center gap-2.5" onClick={() => setIsMinimized(!isMinimized)}>
-                            <div className="p-1.5 bg-white/10 rounded-lg">
+                        <div 
+                            className="flex items-center gap-2.5 flex-1 overflow-hidden pr-2" 
+                            onClick={() => {
+                                if (isMinimized) setState('normal');
+                            }}
+                        >
+                            <div className="p-1.5 bg-white/10 rounded-lg flex-shrink-0">
                                 <Brain className="w-5 h-5 text-purple-200" />
                             </div>
-                            <div>
+                            <div className="min-w-0">
                                 <div className="flex items-center gap-1.5">
-                                    <h4 className="text-sm font-bold leading-tight">SIKAS AI Copilot</h4>
-                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-white/20 uppercase tracking-widest">
+                                    <h4 className="text-sm font-bold leading-tight truncate">SIKAS AI Copilot</h4>
+                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-white/20 uppercase tracking-widest flex-shrink-0">
                                         V3
                                     </span>
                                 </div>
                                 {!isMinimized && (
-                                    <p className="text-[10px] text-purple-200 leading-none mt-0.5 capitalize">
+                                    <p className="text-[10px] text-purple-200 leading-none mt-0.5 capitalize truncate">
                                         Dana {variant} • TA {currentYear}
                                     </p>
                                 )}
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-1 text-white/80">
+                        <div className="flex items-center gap-1 text-white/80 flex-shrink-0">
                             {!isMinimized && (
                                 <button
+                                    type="button"
                                     onClick={handleClearChat}
                                     title="Mulai Obrolan Baru"
                                     className="p-1.5 hover:text-white hover:bg-white/10 rounded-md transition"
@@ -507,14 +515,31 @@ export default function CopilotDrawer() {
                                     <RotateCcw className="w-4 h-4" />
                                 </button>
                             )}
+                            {/* Minimize Button */}
                             <button
-                                onClick={() => setIsMinimized(!isMinimized)}
+                                type="button"
+                                onClick={() => setState(isMinimized ? 'normal' : 'minimized')}
+                                title={isMinimized ? 'Buka Obrolan' : 'Kecilkan (Minimize)'}
                                 className="p-1.5 hover:text-white hover:bg-white/10 rounded-md transition"
                             >
-                                {isMinimized ? <Maximize2 className="w-4 h-4" /> : <Minimize2 className="w-4 h-4" />}
+                                <Minus className="w-4 h-4" />
                             </button>
+                            {/* Maximize / Restore Button */}
+                            {!isMinimized && (
+                                <button
+                                    type="button"
+                                    onClick={() => setState(isMaximized ? 'normal' : 'maximized')}
+                                    title={isMaximized ? 'Pulihkan Ukuran' : 'Maksimalkan (Layar Penuh)'}
+                                    className="p-1.5 hover:text-white hover:bg-white/10 rounded-md transition"
+                                >
+                                    {isMaximized ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                                </button>
+                            )}
+                            {/* Close Button */}
                             <button
-                                onClick={() => setIsOpen(false)}
+                                type="button"
+                                onClick={() => setState('closed')}
+                                title="Tutup SIKAS AI Copilot"
                                 className="p-1.5 hover:text-white hover:bg-white/10 rounded-md transition"
                             >
                                 <X className="w-4 h-4" />
@@ -579,7 +604,9 @@ export default function CopilotDrawer() {
                                             className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
                                         >
                                             <div
-                                                className={`max-w-[88%] rounded-2xl px-3.5 py-2.5 shadow-sm text-xs leading-relaxed ${
+                                                className={`rounded-2xl px-3.5 py-2.5 shadow-sm text-xs leading-relaxed ${
+                                                    isMaximized ? 'max-w-[96%]' : 'max-w-[88%]'
+                                                } ${
                                                     msg.role === 'user'
                                                         ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-br-none'
                                                         : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 border border-gray-200/80 dark:border-gray-700 rounded-bl-none'

@@ -6,11 +6,14 @@ import ChangelogModal from '@/Components/ChangelogModal';
 import Toast from '@/Components/Toast';
 import CopilotDrawer from '@/Components/Ai/CopilotDrawer';
 
+export type CopilotWindowState = 'closed' | 'normal' | 'minimized' | 'maximized';
+
 export default function Authenticated({
     header,
     children,
 }: PropsWithChildren<{ header?: ReactNode }>) {
     const [sidebarOpen, setSidebarOpen] = useState(true);
+    const [copilotState, setCopilotState] = useState<CopilotWindowState>('closed');
 
     // Close sidebar on mobile on initial load
     useState(() => {
@@ -23,7 +26,10 @@ export default function Authenticated({
         <div className="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 flex">
             <Toast />
             <ChangelogModal />
-            <CopilotDrawer />
+            <CopilotDrawer 
+                copilotState={copilotState}
+                setCopilotState={setCopilotState}
+            />
             {/* Sidebar */}
             <Sidebar
                 isOpen={sidebarOpen}
@@ -37,6 +43,8 @@ export default function Authenticated({
                     header={header}
                     sidebarOpen={sidebarOpen}
                     setSidebarOpen={setSidebarOpen}
+                    copilotState={copilotState}
+                    setCopilotState={setCopilotState}
                 />
 
                 {/* Page Content */}
