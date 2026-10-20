@@ -969,11 +969,19 @@ Karakter & Gaya Bicara Anda:
             Kolom tabel HTML:
             <th>No</th><th>Bulan</th><th>Tahap</th><th>Nama Kegiatan / Barang</th><th>Rekanan / Toko</th><th>Penerima</th><th>No. Kwitansi</th><th style="text-align: right;">Bruto (Rp)</th><th style="text-align: right;">PPN (Rp)</th><th style="text-align: right;">PPh 21 (Rp)</th><th style="text-align: right;">PPh 23 (Rp)</th><th style="text-align: right;">Total Pajak (Rp)</th><th style="text-align: right;">Diterima Neto (Rp)</th>
             Sertakan baris **TOTAL POTONGAN PAJAK** di bagian bawah tabel. Penjumlahan kolom Total Pajak HARUS SAMA PERSIS / KLOP 100% dengan angka Total Potongan Pajak pada Ringkasan Eksekutif (contoh: Rp 83.600).
-        - **Tabel: Rincian Pencairan Belanja (Seluruh Transaksi)**:
-          * Jika jumlah transaksi > 20 baris dan pengguna belum meminta "tampilkan semua" atau meminta rekap per bulan:
+        - **Tabel: Rincian Pencairan Belanja (Seluruh Transaksi / Bulan Tertentu)**:
+          * KETIKA PENGGUNA MEMINTA RINCIAN BULAN TERTENTU (misalnya "Agustus", "September", "Maret", dll.):
+            - AI WAJIB memanggil `get_rincian_pencairan` dengan parameter `bulan: '{nama_bulan}'`.
+            - Sajikan Ringkasan Eksekutif bulan tersebut + Tabel Rincian Belanja bulan tersebut.
+            - PENTING - ATURAN JUMLAH BARIS & ANTI-DUPLIKASI MUTLAK:
+              Jumlah baris pada tabel transaksi WAJIB SAMA PERSIS dengan angka `jumlah_transaksi` dan total bruto pada ringkasan resmi:
+              * Khusus Bulan Agustus: WAJIB TEPAT 5 TRANSAKSI dengan Total Bruto Rp 1.286.000 (DILARANG KERAS menampilkan 6 transaksi atau menduplikasi "Insentif Pembina Ekstrakurikuler Pramuka").
+              * Khusus Bulan September: WAJIB TEPAT 15 TRANSAKSI dengan Total Bruto Rp 4.233.000.
+              * DILARANG KERAS mengambil atau mencampur transaksi dari bulan lain yang memiliki kesamaan nomor kuitansi/uraian (seperti Pramuka atau Pulsa Internet yang muncul tiap bulan).
+          * Jika pengguna meminta cakupan tahunan / tahap penuh tanpa menyebut bulan spesifik (> 20 baris):
             Cukup sajikan Ringkasan Eksekutif + Tabel Rekapitulasi Per Bulan (atau Tabel Transaksi Berpajak jika menanyakan pajak) + pesan penawaran opsi (per bulan / poin penting / tampilkan semua). Jangan merender 157 baris transaksi mentah dulu agar respon tidak terpotong.
-          * Jika pengguna meminta "tampilkan semua" atau transaksi <= 20 baris (misalnya saat meminta bulan tertentu seperti September):
-            Sajikan seluruh transaksi sesuai cakupan yang diminta:
+          * Jika pengguna meminta "tampilkan semua" cakupan tahunan / tahap penuh:
+            Sajikan seluruh transaksi terurut kronologis per bulan (Januari s.d. Desember) dari array `items`:
             <th>No</th><th>Bulan</th><th>Tahap</th><th>Kode Rekening</th><th>Uraian Transaksi</th><th>Rekanan / Penerima</th><th>No. Kwitansi</th><th style="text-align: right;">Bruto (Rp)</th><th style="text-align: right;">Pajak (Rp)</th><th style="text-align: right;">Diterima Neto (Rp)</th>
    - Jika pengguna menanyakan "Payroll", "Daftar Honor", "Honorarium Guru / Pegawai", "Gaji BOSP", "Insentif", atau rincian pencairan honor:
      a. Jika pengguna meminta "payroll perbulan", "rekap payroll", atau pencairan bulanan, perlakukan sama dengan rincian pencairan per bulan: panggil `get_rincian_pencairan(bulan: 'Semua')` dan sajikan Tabel Rekapitulasi Per Bulan dari `rekap_bulanan` (dengan September = Rp 4.233.000).
@@ -4971,14 +4979,27 @@ PROMPT;
             ];
         }
 
+        // Pengurutan kronologis 12 bulan resmi BOSP
+        $monthOrder = array_flip(['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']);
+        $sortedFiltered = $filtered->sort(function ($a, $b) use ($monthOrder) {
+            $orderA = $monthOrder[$a->bulan] ?? 99;
+            $orderB = $monthOrder[$b->bulan] ?? 99;
+            if ($orderA !== $orderB) {
+                return $orderA <=> $orderB;
+            }
+
+            return $a->id <=> $b->id;
+        })->values();
+
         $mappedItems = [];
         $no = 1;
+        $noPerBulan = [];
         $totalBruto = 0.0;
         $totalPpn = 0.0;
         $totalPph21 = 0.0;
         $totalPph23 = 0.0;
 
-        foreach ($filtered as $item) {
+        foreach ($sortedFiltered as $item) {
             $val = (float) $item->jumlah * (float) $item->harga_satuan;
             $ppn = (float) ($item->pot_ppn ?? 0);
             $pph21 = (float) ($item->pot_pph21 ?? 0) + (float) ($item->pot_pph21_narasumber ?? 0);
@@ -4993,8 +5014,12 @@ PROMPT;
             $totalPph21 += $pph21;
             $totalPph23 += $pph23;
 
+            $blnKey = $item->bulan;
+            $noPerBulan[$blnKey] = ($noPerBulan[$blnKey] ?? 0) + 1;
+
             $mappedItems[] = [
                 'no' => $no++,
+                'no_bulan' => $noPerBulan[$blnKey],
                 'kode_rekening' => $item->rekeningBelanja->kode_rekening ?? '-',
                 'kode_kegiatan' => $item->kodeKegiatan->kode ?? '-',
                 'nama_kegiatan' => $item->uraian_gabungan ?: $item->uraian,
@@ -5087,6 +5112,14 @@ PROMPT;
                 'jumlah_transaksi_berpajak' => count($transaksiBerpajak),
             ],
             'rekap_bulanan' => $rekapBulanan,
+            'items_per_bulan' => (function () use ($outputItems) {
+                $grouped = [];
+                foreach ($outputItems as $it) {
+                    $grouped[$it['bulan']][] = $it;
+                }
+
+                return $grouped;
+            })(),
             'transaksi_berpajak' => $transaksiBerpajak,
             'items' => $outputItems,
         ];
