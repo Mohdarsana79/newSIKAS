@@ -459,6 +459,11 @@ class CopilotService
                                 'enum' => ['aktif', 'murni', 'perubahan'],
                                 'description' => 'Pilihan jenis dokumen: "aktif" (default), "murni", atau "perubahan".',
                             ],
+                            'filter_pajak' => [
+                                'type' => 'string',
+                                'enum' => ['semua', 'berpajak', 'tanpa_pajak'],
+                                'description' => 'Pilihan filter transaksi: "semua" (default), "berpajak" (hanya transaksi yang dipotong pajak), atau "tanpa_pajak". Opsional.',
+                            ],
                         ],
                     ],
                 ],
@@ -923,6 +928,36 @@ Karakter & Gaya Bicara Anda:
           *Total Belanja*
         - **Catatan Analisis Santai:**
           Berikan ulasan singkat mengenai kondisi anggaran: pagu seimbang Rp 0, dan jelaskan pergeseran belanja operasi ke belanja modal jika terdapat dokumen perubahan.
+   - Jika pengguna menanyakan "Lembar Kerja 221", "Format 221", "RKA 2.2.1", "Rincian Belanja Berjenjang", atau hierarki belanja RKAS:
+     a. WAJIB memanggil tool `get_lembar_kerja_221` dengan parameter `tahun`, `tipe_dokumen`, dan `kode_rekening` (jika menanyakan akun spesifik).
+     b. Sajikan Format Resmi Lembar Kerja 2.2.1:
+        - Header: `### LEMBAR KERJA 2.2.1 (RKA SKPD) TAHUN {tahun}` dengan badge dokumen: `[DOKUMEN: {tipe_dokumen}]`.
+        - Ringkasan Eksekutif: Total Belanja dan Status Anggaran (Defisit Rp 0 seimbang).
+        - Sajikan tabel HTML dengan baris hierarki akun ditebalkan (bold):
+          <th>Kode Rekening</th><th>Uraian Rekening / Item Belanja</th><th>Volume</th><th>Satuan</th><th style="text-align: right;">Harga Satuan (Rp)</th><th style="text-align: right;">Jumlah (Rp)</th>
+   - Jika pengguna menanyakan "Rincian Pencairan", "RP", "Daftar pencairan per tahap", "Penerima belanja dan nomor rekening", "Potongan pajak rincian pencairan", atau daftar kwitansi pencairan dana:
+     a. WAJIB memanggil tool `get_rincian_pencairan` dengan parameter `tahun`, `tahap` (1 atau 2 jika pengguna meminta per tahap), `bulan` (jika pengguna meminta per bulan), `tipe_dokumen`, dan `filter_pajak`.
+     b. Sajikan Format Resmi Rincian Pencairan:
+        - Header: `### DAFTAR RINCIAN PENCAIRAN (RP) TAHUN {tahun}` dengan badge filter cakupan yang diminta: `[CAKUPAN: {cakupan}]`.
+        - Ringkasan Eksekutif: Total Bruto, Total Potongan Pajak (PPN, PPh 21, PPh 23), Total Diterima Neto, Jumlah Transaksi, dan Jumlah Transaksi Berpajak.
+        - PENTING - ATURAN WAJIB PENYAJIAN TABEL TRANSAKSI BERPAJAK:
+          * Jika pada ringkasan terdapat potongan pajak (`total_pajak` > 0):
+            Anda WAJIB menyajikan **Tabel 1: Rincian Khusus Transaksi yang Dipotong Pajak** (`transaksi_berpajak`).
+            Tabel ini WAJIB mencantumkan SELURUH transaksi yang dipotong pajak tanpa ada yang terlewat (di Tahap 2 ada 5 transaksi).
+            Kolom tabel HTML:
+            <th>No</th><th>Bulan</th><th>Tahap</th><th>Nama Kegiatan / Barang</th><th>Rekanan / Toko</th><th>Penerima</th><th>No. Kwitansi</th><th style="text-align: right;">Bruto (Rp)</th><th style="text-align: right;">PPN (Rp)</th><th style="text-align: right;">PPh 21 (Rp)</th><th style="text-align: right;">PPh 23 (Rp)</th><th style="text-align: right;">Total Pajak (Rp)</th><th style="text-align: right;">Diterima Neto (Rp)</th>
+            Sertakan baris **TOTAL POTONGAN PAJAK** di bagian bawah tabel. Penjumlahan kolom Total Pajak HARUS SAMA PERSIS / KLOP 100% dengan angka Total Potongan Pajak pada Ringkasan Eksekutif (contoh: Rp 83.600).
+        - **Tabel 2: Rincian Pencairan Belanja (Seluruh Transaksi)**:
+          Sajikan seluruh transaksi sesuai cakupan yang diminta (jika diminta satu tahun penuh tampilkan seluruh transaksi tahunan, jika diminta per tahap tampilkan seluruh transaksi tahap tersebut, jika per bulan tampilkan per bulan):
+          <th>No</th><th>Bulan</th><th>Tahap</th><th>Kode Rekening</th><th>Uraian Transaksi</th><th>Rekanan / Penerima</th><th>No. Kwitansi</th><th style="text-align: right;">Bruto (Rp)</th><th style="text-align: right;">Pajak (Rp)</th><th style="text-align: right;">Diterima Neto (Rp)</th>
+   - Jika pengguna menanyakan "Alur Kas", "Pergerakan Kas Bulanan", "Jadwal Kas Keluar Masuk", "Saldo Kas per Bulan", atau sebaran 12 bulan anggaran BOSP:
+     a. WAJIB memanggil tool `get_alur_kas` dengan parameter `tahun`, `tahap` (1 untuk Jan–Jun, 2 untuk Jul–Des, atau kosong untuk 12 bulan), dan `tipe_dokumen`.
+     b. Sajikan Format Resmi Alur Kas BOSP:
+        - Header: `### TABEL ALUR KAS BOSP TAHUN {tahun}` dengan badge: `[SEBARAN 12 BULAN - TAHAP I & II]`.
+        - Ringkasan Penerimaan: Alokasi Tahap 1 (50%) dan Tahap 2 (50%).
+        - Sajikan tabel HTML pergerakan kas 12 bulan:
+          <th>Bulan</th><th>Tahap</th><th style="text-align: right;">Saldo Awal (Rp)</th><th style="text-align: right;">Penerimaan (Rp)</th><th style="text-align: right;">Belanja (Rp)</th><th style="text-align: right;">Saldo Akhir (Rp)</th>
+        - Ulas bahwa arus kas sehat dan saldo akhir penutupan tahun kembali Rp 0 seimbang.
    - Jika pengguna menanyakan ringkasan pagu BOSP, panggil `get_budget_pagu_summary`.
    - Jika menanyakan grafik serapan triwulan, panggil `query_realization_comparison`.
 5. PENCARIAN RENCANA KEGIATAN RKAS:
@@ -1070,7 +1105,8 @@ PROMPT;
                 $variant,
                 isset($args['tahap']) ? (int) $args['tahap'] : null,
                 $args['bulan'] ?? 'Semua',
-                $args['tipe_dokumen'] ?? 'aktif'
+                $args['tipe_dokumen'] ?? 'aktif',
+                $args['filter_pajak'] ?? 'semua'
             ),
             'get_alur_kas' => $this->getAlurKas(
                 $targetTahun,
@@ -4803,7 +4839,8 @@ PROMPT;
         string $variant,
         ?int $tahap = null,
         string $bulan = 'Semua',
-        string $tipeDokumen = 'aktif'
+        string $tipeDokumen = 'aktif',
+        string $filterPajak = 'semua'
     ): array {
         VariantConfig::validateVariant($variant);
 
@@ -4825,6 +4862,7 @@ PROMPT;
             ];
         }
 
+        $paguAnggaran = (float) $penganggaran->pagu_anggaran;
         $hasPerubahan = $rkasPerubahanClass && $rkasPerubahanClass::where($penganggaranFk, $penganggaran->id)->exists();
 
         $mode = strtolower(trim($tipeDokumen));
@@ -4855,6 +4893,19 @@ PROMPT;
                 ->get();
         }
 
+        if ($sourceItems->isEmpty()) {
+            return [
+                'status' => 'not_found',
+                'data_ditemukan' => false,
+                'message' => "Data Rincian Pencairan untuk tahun {$tahun} belum memiliki rincian belanja yang diinput.",
+                'available_years' => $availableYears,
+                'tahun' => $tahun,
+                'sekolah' => $penganggaran->sekolah?->nama_sekolah ?? '-',
+                'sumber_dana' => VariantConfig::title($variant),
+                'pagu_anggaran' => $paguAnggaran,
+            ];
+        }
+
         // Filter tahap & bulan
         $filtered = $sourceItems->filter(function ($item) use ($tahap, $bulan, $sem1) {
             $itemTahap = in_array($item->bulan, $sem1) ? 1 : 2;
@@ -4867,6 +4918,28 @@ PROMPT;
 
             return true;
         });
+
+        if ($filtered->isEmpty()) {
+            $kriteria = [];
+            if ($tahap !== null) {
+                $kriteria[] = "Tahap {$tahap}";
+            }
+            if ($bulan !== 'Semua') {
+                $kriteria[] = "Bulan {$bulan}";
+            }
+            $kriteriaStr = ! empty($kriteria) ? ' dengan kriteria '.implode(', ', $kriteria) : '';
+
+            return [
+                'status' => 'not_found',
+                'data_ditemukan' => false,
+                'message' => "Data Rincian Pencairan untuk tahun {$tahun}{$kriteriaStr} tidak ditemukan.",
+                'available_years' => $availableYears,
+                'tahun' => $tahun,
+                'sekolah' => $penganggaran->sekolah?->nama_sekolah ?? '-',
+                'sumber_dana' => VariantConfig::title($variant),
+                'tipe_dokumen' => $mode,
+            ];
+        }
 
         $mappedItems = [];
         $no = 1;
@@ -4913,17 +4986,17 @@ PROMPT;
 
         $totalPajakAll = $totalPpn + $totalPph21 + $totalPph23;
 
-        if ($sourceItems->isEmpty()) {
-            return [
-                'status' => 'not_found',
-                'data_ditemukan' => false,
-                'message' => "Data Alur Kas untuk tahun {$tahun} belum memiliki rincian perencanaan belanja yang diinput.",
-                'available_years' => $availableYears,
-                'tahun' => $tahun,
-                'sekolah' => $penganggaran->sekolah?->nama_sekolah ?? '-',
-                'sumber_dana' => VariantConfig::title($variant),
-                'pagu_anggaran' => $paguAnggaran,
-            ];
+        // Ambil seluruh transaksi yang memiliki potongan pajak
+        $transaksiBerpajak = array_values(array_filter($mappedItems, fn ($i) => (float) $i['total_pajak'] > 0));
+
+        // Terapkan filter pajak jika diminta
+        $modePajak = strtolower(trim($filterPajak));
+        if ($modePajak === 'berpajak') {
+            $outputItems = $transaksiBerpajak;
+        } elseif ($modePajak === 'tanpa_pajak') {
+            $outputItems = array_values(array_filter($mappedItems, fn ($i) => (float) $i['total_pajak'] == 0));
+        } else {
+            $outputItems = $mappedItems; // Seluruh transaksi sesuai cakupan yang diminta tanpa batas baris
         }
 
         return [
@@ -4936,6 +5009,7 @@ PROMPT;
             'tipe_dokumen' => $mode,
             'filter_tahap' => $tahap,
             'filter_bulan' => $bulan,
+            'filter_pajak' => $filterPajak,
             'ringkasan' => [
                 'total_anggaran_bruto' => $totalBruto,
                 'total_pot_ppn' => $totalPpn,
@@ -4944,8 +5018,10 @@ PROMPT;
                 'total_pajak' => $totalPajakAll,
                 'total_diterima_neto' => $totalBruto - $totalPajakAll,
                 'jumlah_transaksi' => count($mappedItems),
+                'jumlah_transaksi_berpajak' => count($transaksiBerpajak),
             ],
-            'items' => array_slice($mappedItems, 0, 100),
+            'transaksi_berpajak' => $transaksiBerpajak,
+            'items' => $outputItems,
         ];
     }
 
