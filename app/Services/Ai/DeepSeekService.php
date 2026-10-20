@@ -44,16 +44,18 @@ class DeepSeekService
                 ];
             }
 
-            $errorMsg = $response->json('error.message') ?? "HTTP {$response->status()}: " . $response->body();
+            $errorMsg = $response->json('error.message') ?? "HTTP {$response->status()}: ".$response->body();
+
             return [
                 'success' => false,
                 'message' => "Gagal terhubung ke DeepSeek API: {$errorMsg}",
             ];
         } catch (\Throwable $e) {
-            Log::error('DeepSeek connection test error: ' . $e->getMessage());
+            Log::error('DeepSeek connection test error: '.$e->getMessage());
+
             return [
                 'success' => false,
-                'message' => 'Gagal menghubungi server DeepSeek: ' . $e->getMessage(),
+                'message' => 'Gagal menghubungi server DeepSeek: '.$e->getMessage(),
             ];
         }
     }
@@ -91,7 +93,7 @@ class DeepSeekService
             if ($response->successful()) {
                 $data = $response->json();
                 $choice = $data['choices'][0]['message'] ?? [];
-                
+
                 return [
                     'success' => true,
                     'content' => $choice['content'] ?? '',
@@ -120,10 +122,11 @@ class DeepSeekService
                 'status_code' => $statusCode,
             ];
         } catch (\Throwable $e) {
-            Log::error('DeepSeek Reasoner call exception: ' . $e->getMessage());
+            Log::error('DeepSeek Reasoner call exception: '.$e->getMessage());
+
             return [
                 'success' => false,
-                'message' => 'Terjadi kesalahan jaringan saat menghubungi DeepSeek: ' . $e->getMessage(),
+                'message' => 'Terjadi kesalahan jaringan saat menghubungi DeepSeek: '.$e->getMessage(),
             ];
         }
     }
@@ -167,15 +170,17 @@ class DeepSeekService
             }
 
             $errorMessage = $response->json('error.message') ?? $response->body();
+
             return [
                 'success' => false,
                 'message' => "DeepSeek Chat error: {$errorMessage}",
             ];
         } catch (\Throwable $e) {
-            Log::error('DeepSeek Chat call exception: ' . $e->getMessage());
+            Log::error('DeepSeek Chat call exception: '.$e->getMessage());
+
             return [
                 'success' => false,
-                'message' => 'Gagal menghubungi DeepSeek: ' . $e->getMessage(),
+                'message' => 'Gagal menghubungi DeepSeek: '.$e->getMessage(),
             ];
         }
     }
@@ -199,12 +204,12 @@ class DeepSeekService
             'temperature' => $options['temperature'] ?? 0.3,
         ];
 
-        if (!empty($tools)) {
+        if (! empty($tools)) {
             $payload['tools'] = $tools;
             $payload['tool_choice'] = $options['tool_choice'] ?? 'auto';
         }
 
-        $timeout = $options['timeout'] ?? 60;
+        $timeout = $options['timeout'] ?? 120;
 
         try {
             $response = Http::withToken($apiKey)
@@ -226,17 +231,22 @@ class DeepSeekService
             }
 
             $errorMessage = $response->json('error.message') ?? $response->body();
+
             return [
                 'success' => false,
                 'message' => "DeepSeek Tools error: {$errorMessage}",
             ];
         } catch (\Throwable $e) {
-            Log::error('DeepSeek callChatWithTools exception: ' . $e->getMessage());
+            Log::error('DeepSeek callChatWithTools exception: '.$e->getMessage());
+            $isTimeout = str_contains($e->getMessage(), 'cURL error 28') || str_contains(strtolower($e->getMessage()), 'timed out');
+            $friendlyMessage = $isTimeout
+                ? 'Waduh, koneksi ke server DeepSeek sedang padat atau membutuhkan waktu berpikir lebih lama dari biasanya nih, Om. Coba ulangi pertanyaannya sebentar lagi ya, atau Om bisa memilih model deepseek-chat di menu Profil agar responsnya jauh lebih kilat!'
+                : 'Gagal menghubungi DeepSeek API: '.$e->getMessage();
+
             return [
                 'success' => false,
-                'message' => 'Gagal menghubungi DeepSeek API: ' . $e->getMessage(),
+                'message' => $friendlyMessage,
             ];
         }
     }
 }
-

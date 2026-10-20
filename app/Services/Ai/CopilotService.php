@@ -427,7 +427,7 @@ class CopilotService
                             ],
                             'limit' => [
                                 'type' => 'integer',
-                                'description' => 'Maksimal jumlah baris data yang ditampilkan (default: 50). Opsional.',
+                                'description' => 'Maksimal jumlah baris data yang ditampilkan (default: 25). Opsional.',
                             ],
                         ],
                     ],
@@ -4640,7 +4640,7 @@ PROMPT;
         string $variant,
         string $tipeDokumen = 'aktif',
         ?string $kodeRekening = null,
-        int $limit = 50
+        int $limit = 25
     ): array {
         VariantConfig::validateVariant($variant);
 
@@ -4649,9 +4649,17 @@ PROMPT;
         $rkasPerubahanClass = VariantConfig::getModelClass('rkas_perubahan', $variant);
         $penganggaranFk = VariantConfig::penganggaranFk($variant);
 
+        $availableYears = $penganggaranClass::orderBy('tahun_anggaran', 'asc')->pluck('tahun_anggaran')->toArray();
+
         $penganggaran = $penganggaranClass::where('tahun_anggaran', $tahun)->with('sekolah')->first();
         if (! $penganggaran) {
-            return ['error' => "Data penganggaran untuk tahun {$tahun} ({$variant}) tidak ditemukan."];
+            return [
+                'status' => 'not_found',
+                'data_ditemukan' => false,
+                'message' => "Data penganggaran untuk tahun {$tahun} (".VariantConfig::title($variant).') tidak ditemukan di sistem.',
+                'available_years' => $availableYears,
+                'error' => "Data penganggaran untuk tahun {$tahun} ({$variant}) tidak ditemukan.",
+            ];
         }
 
         $paguAnggaran = (float) $penganggaran->pagu_anggaran;
@@ -4739,6 +4747,25 @@ PROMPT;
             ];
         });
 
+        if ($kodeRekening && $itemRows->isEmpty()) {
+            return [
+                'status' => 'not_found',
+                'data_ditemukan' => false,
+                'message' => "Data rincian belanja untuk kode rekening {$kodeRekening} pada Lembar Kerja 221 tahun {$tahun} tidak ditemukan.",
+                'filter_kode_rekening' => $kodeRekening,
+                'available_years' => $availableYears,
+                'tahun' => $tahun,
+                'sekolah' => $penganggaran->sekolah?->nama_sekolah ?? '-',
+                'sumber_dana' => VariantConfig::title($variant),
+                'tipe_dokumen' => $mode,
+                'hierarki_summary' => collect($hierarchyNames)->map(fn ($name, $code) => [
+                    'kode_rekening' => $code,
+                    'uraian' => $name,
+                    'jumlah' => $headerTotals[$code] ?? 0.0,
+                ])->values()->all(),
+            ];
+        }
+
         $merged = $headerRows->merge($itemRows)->sortBy('sort_key')->values();
         $totalItemsCount = $itemRows->count();
         $slicedRows = $merged->take($limit)->values()->all();
@@ -4746,6 +4773,9 @@ PROMPT;
         $totalBelanja = $headerTotals['5'] ?? 0.0;
 
         return [
+            'status' => 'success',
+            'data_ditemukan' => true,
+            'available_years' => $availableYears,
             'tahun' => $tahun,
             'sekolah' => $penganggaran->sekolah?->nama_sekolah ?? '-',
             'sumber_dana' => VariantConfig::title($variant),
@@ -4782,9 +4812,17 @@ PROMPT;
         $rkasPerubahanClass = VariantConfig::getModelClass('rkas_perubahan', $variant);
         $penganggaranFk = VariantConfig::penganggaranFk($variant);
 
+        $availableYears = $penganggaranClass::orderBy('tahun_anggaran', 'asc')->pluck('tahun_anggaran')->toArray();
+
         $penganggaran = $penganggaranClass::where('tahun_anggaran', $tahun)->with('sekolah')->first();
         if (! $penganggaran) {
-            return ['error' => "Data penganggaran untuk tahun {$tahun} ({$variant}) tidak ditemukan."];
+            return [
+                'status' => 'not_found',
+                'data_ditemukan' => false,
+                'message' => "Data penganggaran untuk tahun {$tahun} (".VariantConfig::title($variant).') tidak ditemukan di sistem.',
+                'available_years' => $availableYears,
+                'error' => "Data penganggaran untuk tahun {$tahun} ({$variant}) tidak ditemukan.",
+            ];
         }
 
         $hasPerubahan = $rkasPerubahanClass && $rkasPerubahanClass::where($penganggaranFk, $penganggaran->id)->exists();
@@ -4875,7 +4913,23 @@ PROMPT;
 
         $totalPajakAll = $totalPpn + $totalPph21 + $totalPph23;
 
+        if ($sourceItems->isEmpty()) {
+            return [
+                'status' => 'not_found',
+                'data_ditemukan' => false,
+                'message' => "Data Alur Kas untuk tahun {$tahun} belum memiliki rincian perencanaan belanja yang diinput.",
+                'available_years' => $availableYears,
+                'tahun' => $tahun,
+                'sekolah' => $penganggaran->sekolah?->nama_sekolah ?? '-',
+                'sumber_dana' => VariantConfig::title($variant),
+                'pagu_anggaran' => $paguAnggaran,
+            ];
+        }
+
         return [
+            'status' => 'success',
+            'data_ditemukan' => true,
+            'available_years' => $availableYears,
             'tahun' => $tahun,
             'sekolah' => $penganggaran->sekolah?->nama_sekolah ?? '-',
             'sumber_dana' => VariantConfig::title($variant),
@@ -4911,9 +4965,17 @@ PROMPT;
         $rkasPerubahanClass = VariantConfig::getModelClass('rkas_perubahan', $variant);
         $penganggaranFk = VariantConfig::penganggaranFk($variant);
 
+        $availableYears = $penganggaranClass::orderBy('tahun_anggaran', 'asc')->pluck('tahun_anggaran')->toArray();
+
         $penganggaran = $penganggaranClass::where('tahun_anggaran', $tahun)->with('sekolah')->first();
         if (! $penganggaran) {
-            return ['error' => "Data penganggaran untuk tahun {$tahun} ({$variant}) tidak ditemukan."];
+            return [
+                'status' => 'not_found',
+                'data_ditemukan' => false,
+                'message' => "Data penganggaran untuk tahun {$tahun} (".VariantConfig::title($variant).') tidak ditemukan di sistem.',
+                'available_years' => $availableYears,
+                'error' => "Data penganggaran untuk tahun {$tahun} ({$variant}) tidak ditemukan.",
+            ];
         }
 
         $paguAnggaran = (float) $penganggaran->pagu_anggaran;
@@ -4945,6 +5007,19 @@ PROMPT;
             $sourceItems = $rkasClass::where($penganggaranFk, $penganggaran->id)
                 ->with(['rekeningBelanja', 'kodeKegiatan'])
                 ->get();
+        }
+
+        if ($sourceItems->isEmpty()) {
+            return [
+                'status' => 'not_found',
+                'data_ditemukan' => false,
+                'message' => "Data Alur Kas untuk tahun {$tahun} belum memiliki rincian perencanaan belanja yang diinput.",
+                'available_years' => $availableYears,
+                'tahun' => $tahun,
+                'sekolah' => $penganggaran->sekolah?->nama_sekolah ?? '-',
+                'sumber_dana' => VariantConfig::title($variant),
+                'pagu_anggaran' => $paguAnggaran,
+            ];
         }
 
         // Hitung total belanja per bulan
@@ -5022,6 +5097,9 @@ PROMPT;
         $totalBelanjaTahun = $totalBelanjaT1 + $totalBelanjaT2;
 
         return [
+            'status' => 'success',
+            'data_ditemukan' => true,
+            'available_years' => $availableYears,
             'tahun' => $tahun,
             'sekolah' => $penganggaran->sekolah?->nama_sekolah ?? '-',
             'sumber_dana' => VariantConfig::title($variant),
