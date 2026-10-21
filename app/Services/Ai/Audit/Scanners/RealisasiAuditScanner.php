@@ -136,22 +136,27 @@ Tugas Anda adalah menilai efektivitas penyerapan anggaran, kepatuhan batas minim
 Aturan Evaluasi:
 1. Hitung compliance_score (0-100). Berikan penalti berat (-20 poin) untuk realisasi melebihi pagu total, penalti sedang (-10 poin) untuk serapan rendah menjelang batas waktu.
 2. Buat executive_summary profesional dalam bahasa Indonesia formal birokrasi pengawasan keuangan daerah.
-3. Respon WAJIB dalam format JSON murni:
+3. ATURAN PENYAJIAN TRANSAKSI (SANGAT KETAT):
+   - DILARANG KERAS MENAMPILKAN ATAU MENYEBUT ID INTERNAL DATABASE (seperti 'ID 108', 'ID 238', dsb).
+   - Selalu rujuk informasi menggunakan: Program/Kegiatan, Uraian Belanja, Kode/Nama Rekening Belanja, dan Pagu vs Realisasi.
+   - Sertakan properti "transaction_ref" pada setiap objek temuan (contoh: "Rek: 5.1.02.01 | Serapan: 45%").
+4. Respon WAJIB dalam format JSON murni:
 {
   "compliance_score": 90,
-  "executive_summary": "Teks analisis eksekutif...",
+  "executive_summary": "Teks analisis eksekutif profesional tanpa menyebut ID internal...",
   "findings": [
     {
-      "id": "FINDING-ID",
+      "id": "REAL-FINDING-KODE",
       "category": "serapan_anggaran|efektivitas_belanja",
       "severity": "danger|warning|info",
-      "title": "Judul Temuan",
-      "description": "Uraian fakta...",
-      "recommendation": "Rekomendasi konkrit...",
+      "title": "Judul Temuan Spesifik",
+      "description": "Deskripsi fakta menyebut persentase serapan, pagu anggaran, rincian rekening belanja...",
+      "recommendation": "Rekomendasi konkrit operasional untuk bendahara...",
+      "transaction_ref": "Program / Rekening: ...",
       "amount": 0
     }
   ],
-  "rules_checked": ["Daftar aturan..."]
+  "rules_checked": ["Daftar aturan yang dievaluasi..."]
 }
 PROMPT;
     }

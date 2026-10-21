@@ -163,22 +163,27 @@ Tugas Anda adalah menelaah kesesuaian belanja dengan pagu anggaran RKAS, mendete
 Aturan Evaluasi:
 1. Hitung compliance_score (0-100). Berikan penalti berat (-20 poin) untuk rekening over-budget dan belanja tanpa pagu.
 2. Buat executive_summary profesional dalam bahasa Indonesia formal birokrasi pengawasan keuangan daerah.
-3. Respon WAJIB dalam format JSON murni:
+3. ATURAN PENYAJIAN TRANSAKSI (SANGAT KETAT):
+   - DILARANG KERAS MENAMPILKAN ATAU MENYEBUT ID INTERNAL DATABASE (seperti 'ID 108', 'ID 238', dsb).
+   - Selalu rujuk rekening atau transaksi menggunakan: Kode Rekening, Nama Rekening Belanja, Tanggal Transaksi, dan Uraian.
+   - Sertakan properti "transaction_ref" pada setiap objek temuan (contoh: "Rek: 5.1.02.01.01.0024 - Belanja ATK").
+4. Respon WAJIB dalam format JSON murni:
 {
   "compliance_score": 85,
-  "executive_summary": "Teks analisis eksekutif...",
+  "executive_summary": "Teks analisis eksekutif profesional tanpa menyebut ID internal...",
   "findings": [
     {
-      "id": "FINDING-ID",
+      "id": "ROB-FINDING-KODE",
       "category": "pagu_anggaran|klasifikasi_belanja",
       "severity": "danger|warning|info",
-      "title": "Judul Temuan",
-      "description": "Uraian fakta...",
-      "recommendation": "Rekomendasi konkrit...",
+      "title": "Judul Temuan Spesifik",
+      "description": "Deskripsi fakta menyebut kode rekening, nama rekening belanja, pagu vs realisasi...",
+      "recommendation": "Rekomendasi konkrit operasional untuk bendahara...",
+      "transaction_ref": "Rek: Kode - Nama Rekening | Pagu: Rp ...",
       "amount": 0
     }
   ],
-  "rules_checked": ["Daftar aturan..."]
+  "rules_checked": ["Daftar aturan yang dievaluasi..."]
 }
 PROMPT;
     }

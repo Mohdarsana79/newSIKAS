@@ -109,21 +109,57 @@ abstract class BaseTabAuditScanner implements TabAuditScannerInterface
     }
 
     /**
-     * Memformat representasi transaksi ringkas agar token AI efisien.
+     * Memformat representasi transaksi ringkas yang informatif tanpa mengekspos ID database internal.
      */
-    protected function compactTransactions($transactions, int $limit = 40): array
+    protected function compactTransactions($transactions, int $limit = 50): array
     {
         return $transactions->take($limit)->map(function ($t) {
+            $tgl = ! empty($t->tanggal_transaksi) ? Carbon::parse($t->tanggal_transaksi)->format('Y-m-d') : null;
+
+            if (! empty($t->is_bunga_record)) {
+                $bunga = (float) ($t->bunga_bank ?? 0);
+                $pajak = (float) ($t->pajak_bunga_bank ?? 0);
+
+                return [
+                    'tanggal' => $tgl,
+                    'nomor_bukti' => ($t->nomor_nota ?? ($t->no_bukti ?? null)) ?: 'TUTUP-KAS-BANK',
+                    'jenis' => 'bunga_bank_giro',
+                    'uraian' => 'Pendapatan Bunga Bank / Jasa Giro (Rp '.number_format($bunga, 0, ',', '.').') dan Pemotongan Pajak Bunga PPh 4(2) (Rp '.number_format($pajak, 0, ',', '.').')',
+                    'nominal' => $bunga,
+                    'kode_rekening' => '4.3.1.01.01',
+                    'nama_rekening' => 'Pendapatan Jasa Giro Kas Daerah/Bank',
+                    'kode_kegiatan' => '00.00.00',
+                    'nama_kegiatan' => 'Administrasi Rekening Bank Persepsi',
+                    'rekanan' => 'Bank Operasional Sekolah',
+                    'pajak' => $pajak,
+                    'ntpn' => ($t->ntpn ?? null) ?: 'PPh 4(2) Bank',
+                ];
+            }
+
+            $nomorNota = ($t->nomor_nota ?? ($t->no_bukti ?? null)) ?: (! empty($t->id_transaksi) ? 'TRX-'.$t->id_transaksi : '-');
+            $rekeningBelanja = isset($t->rekeningBelanja) ? $t->rekeningBelanja : null;
+            $kodeKegiatan = isset($t->kodeKegiatan) ? $t->kodeKegiatan : null;
+
+            $kodeRek = $rekeningBelanja?->kode_rekening ?? ($t->kode_rekening ?? '-');
+            $namaRek = $rekeningBelanja?->nama_rekening ?? ($t->nama_rekening ?? '-');
+            $kodeKeg = $kodeKegiatan?->kode_kegiatan ?? ($t->kode_kegiatan ?? '-');
+            $namaKeg = $kodeKegiatan?->nama_kegiatan ?? ($t->nama_kegiatan ?? '-');
+            $rekanan = ($t->nama_toko ?? ($t->nama_penerima_pembayaran ?? null)) ?: '-';
+            $pajakTotal = (float) ($t->total_pajak ?? 0) + (float) ($t->total_pajak_daerah ?? 0);
+
             return [
-                'id' => $t->id,
-                'tgl' => $t->tanggal_transaksi ? Carbon::parse($t->tanggal_transaksi)->format('Y-m-d') : null,
-                'jenis' => $t->jenis_transaksi,
-                'uraian' => $t->uraian,
-                'nominal' => (float) ($t->dibelanjakan ?? $t->nominal_transaksi ?? 0),
-                'rek' => $t->rekeningBelanja?->kode_rekening,
-                'toko' => $t->nama_toko ?: $t->nama_penerima_pembayaran,
-                'pajak' => (float) $t->total_pajak + (float) $t->total_pajak_daerah,
-                'ntpn' => $t->ntpn,
+                'tanggal' => $tgl,
+                'nomor_bukti' => $nomorNota,
+                'jenis' => $t->jenis_transaksi ?? 'transaksi',
+                'uraian' => ($t->uraian ?? null) ?: 'Transaksi Pembukuan',
+                'nominal' => (float) ($t->dibelanjakan ?? ($t->nominal_transaksi ?? ($t->pengeluaran ?? 0))),
+                'kode_rekening' => $kodeRek,
+                'nama_rekening' => $namaRek,
+                'kode_kegiatan' => $kodeKeg,
+                'nama_kegiatan' => $namaKeg,
+                'rekanan' => $rekanan,
+                'pajak' => $pajakTotal,
+                'ntpn' => ($t->ntpn ?? null) ?: '-',
             ];
         })->all();
     }

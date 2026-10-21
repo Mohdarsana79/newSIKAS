@@ -28,6 +28,7 @@ interface Finding {
     title: string;
     description: string;
     recommendation: string;
+    transaction_ref?: string;
     transaction_ids?: number[];
     amount?: number;
 }
@@ -551,17 +552,34 @@ export default function BkuAuditModal({
                                                                         Rp {finding.amount.toLocaleString('id-ID')}
                                                                     </span>
                                                                 )}
+                                                                {finding.transaction_ref && (
+                                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 text-[11px] font-semibold border border-indigo-200/70 dark:border-indigo-800/60 max-w-md truncate" title={finding.transaction_ref}>
+                                                                        <FileText className="w-3 h-3 text-indigo-500 shrink-0" />
+                                                                        <span className="truncate">{finding.transaction_ref}</span>
+                                                                    </span>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     </div>
-                                                    {isExpanded ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
+                                                    {isExpanded ? <ChevronUp className="w-5 h-5 text-gray-400 shrink-0" /> : <ChevronDown className="w-5 h-5 text-gray-400 shrink-0" />}
                                                 </div>
 
                                                 {isExpanded && (
                                                     <div className="px-4 pb-4 pt-2 border-t border-gray-100 dark:border-gray-700/60 bg-gray-50/50 dark:bg-gray-850/50 text-xs space-y-2">
+                                                        {finding.transaction_ref && (
+                                                            <div className="p-2.5 bg-indigo-50/80 dark:bg-indigo-950/40 rounded-lg border border-indigo-200/80 dark:border-indigo-900/60">
+                                                                <span className="font-bold text-indigo-900 dark:text-indigo-300 flex items-center gap-1.5 mb-0.5">
+                                                                    <FileText className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                                                                    Rujukan Transaksi / Rekening / Kegiatan:
+                                                                </span>
+                                                                <p className="text-indigo-950 dark:text-indigo-200 font-medium">
+                                                                    {finding.transaction_ref}
+                                                                </p>
+                                                            </div>
+                                                        )}
                                                         <div>
                                                             <span className="font-bold text-gray-700 dark:text-gray-300">Uraian Fakta Kasus:</span>
-                                                            <p className="text-gray-600 dark:text-gray-400 mt-0.5 text-justify">
+                                                            <p className="text-gray-600 dark:text-gray-400 mt-0.5 text-justify leading-relaxed">
                                                                 {finding.description}
                                                             </p>
                                                         </div>
@@ -570,7 +588,7 @@ export default function BkuAuditModal({
                                                                 <CheckCircle2 className="w-3.5 h-3.5" />
                                                                 Saran Rekomendasi Tindak Lanjut:
                                                             </span>
-                                                            <p className="text-gray-700 dark:text-gray-300">
+                                                            <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
                                                                 {finding.recommendation}
                                                             </p>
                                                         </div>

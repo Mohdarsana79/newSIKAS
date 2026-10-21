@@ -250,6 +250,11 @@
                     </td>
                     <td>
                         <strong>{{ $f['title'] ?? '-' }}</strong><br/>
+                        @if(!empty($f['transaction_ref']))
+                            <div style="margin-top: 3px; margin-bottom: 3px; font-size: 7pt; color: #3730a3; background-color: #eef2ff; padding: 2px 4px; border-radius: 2px; border: 1px solid #c7d2fe;">
+                                <strong>Rujukan Transaksi/Rekening:</strong> {{ $f['transaction_ref'] }}
+                            </div>
+                        @endif
                         <span style="color: #4b5563;">{{ $f['description'] ?? '-' }}</span>
                         @if(!empty($f['amount']) && $f['amount'] > 0)
                             <br/><strong style="font-size: 7pt; color: #1e293b;">Nominal Terkait: Rp {{ number_format($f['amount'], 0, ',', '.') }}</strong>

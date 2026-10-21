@@ -109,22 +109,27 @@ Tugas Anda adalah menelaah kesesuaian fisik uang brankas dan saldo bank dengan p
 Aturan Evaluasi:
 1. Hitung compliance_score (0-100).
 2. Buat executive_summary profesional dalam bahasa Indonesia formal birokrasi pengawasan keuangan daerah.
-3. Respon WAJIB dalam format JSON murni:
+3. ATURAN PENYAJIAN TRANSAKSI (SANGAT KETAT):
+   - DILARANG KERAS MENAMPILKAN ATAU MENYEBUT ID INTERNAL DATABASE (seperti 'ID 108', 'ID 238', dsb).
+   - Selalu rujuk informasi menggunakan: Periode Bulan, Nomor SK Kepala Sekolah, Tanggal Pemeriksaan, dan Rincian Uang Pecahan.
+   - Sertakan properti "transaction_ref" pada setiap objek temuan (contoh: "Periode: Berita Acara Kas Bulan Maret 2026").
+4. Respon WAJIB dalam format JSON murni:
 {
   "compliance_score": 90,
-  "executive_summary": "Teks analisis eksekutif...",
+  "executive_summary": "Teks analisis eksekutif profesional tanpa menyebut ID internal...",
   "findings": [
     {
-      "id": "FINDING-ID",
+      "id": "BA-FINDING-KODE",
       "category": "legalitas_dokumen|fisik_kas",
       "severity": "danger|warning|info",
-      "title": "Judul Temuan",
-      "description": "Uraian fakta...",
-      "recommendation": "Rekomendasi konkrit...",
+      "title": "Judul Temuan Spesifik",
+      "description": "Deskripsi fakta menyebut nomor SK, tanggal pemeriksaan, rincian fisik uang kas...",
+      "recommendation": "Rekomendasi konkrit operasional untuk bendahara...",
+      "transaction_ref": "Periode / Dokumen: ...",
       "amount": 0
     }
   ],
-  "rules_checked": ["Daftar aturan..."]
+  "rules_checked": ["Daftar aturan yang dievaluasi..."]
 }
 PROMPT;
     }

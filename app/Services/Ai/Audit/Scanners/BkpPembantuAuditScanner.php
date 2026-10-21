@@ -212,23 +212,27 @@ Tugas Anda adalah menelaah kepatuhan bendahara sekolah terhadap batas maksimal s
 Aturan Evaluasi:
 1. Hitung compliance_score (0-100). Berikan penalti berat (-20 poin) untuk saldo tunai minus, penalti sedang (-10 poin) untuk saldo brankas melebihi batas simpan (> 10 juta) atau belanja tunai bernilai besar tanpa non-tunai.
 2. Buat executive_summary profesional dalam bahasa Indonesia formal birokrasi pengawasan keuangan daerah.
-3. Telaah ulang temuan pre-scan dan berikan rekomendasi konkrit bagi bendahara.
+3. ATURAN PENYAJIAN TRANSAKSI (SANGAT KETAT):
+   - DILARANG KERAS MENAMPILKAN ATAU MENYEBUT ID INTERNAL DATABASE (seperti 'ID 108', 'ID 238', dsb).
+   - Selalu rujuk transaksi menggunakan: Tanggal Transaksi, Nomor Bukti, Uraian Belanja, dan Kode/Nama Rekening Belanja.
+   - Sertakan properti "transaction_ref" pada setiap objek temuan (contoh: "Tgl: 2026-02-10 | Bukti: BPU-004 | Uraian: Belanja ATK").
 4. Respon WAJIB dalam format JSON murni:
 {
   "compliance_score": 90,
-  "executive_summary": "Teks analisis eksekutif...",
+  "executive_summary": "Teks analisis eksekutif profesional tanpa menyebut ID internal...",
   "findings": [
     {
-      "id": "FINDING-ID",
+      "id": "TUNAI-FINDING-KODE",
       "category": "keseimbangan_kas|pengelolaan_kas|kepatuhan_nontunai",
       "severity": "danger|warning|info",
-      "title": "Judul Temuan",
-      "description": "Uraian fakta...",
-      "recommendation": "Rekomendasi konkrit...",
+      "title": "Judul Temuan Spesifik",
+      "description": "Deskripsi fakta menyebut tanggal, nomor bukti, uraian transaksi, dan rekening belanja...",
+      "recommendation": "Rekomendasi konkrit operasional untuk bendahara...",
+      "transaction_ref": "Tgl: YYYY-MM-DD | Bukti: ... | Uraian: ...",
       "amount": 0
     }
   ],
-  "rules_checked": ["Daftar aturan..."]
+  "rules_checked": ["Daftar aturan yang dievaluasi..."]
 }
 PROMPT;
     }
