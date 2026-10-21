@@ -729,6 +729,10 @@ class CopilotService
                                 'enum' => ['semua', 'belum_lengkap', 'lengkap'],
                                 'description' => 'Filter status kepatuhan: "semua" (default), "belum_lengkap" (hanya belanja yang berkasnya kurang), atau "lengkap".',
                             ],
+                            'query' => [
+                                'type' => 'string',
+                                'description' => 'Kata kunci pencarian spesifik untuk memfilter transaksi yang diaudit (contoh: "honor guru", "ATK", "buku"). Gunakan "honor guru" saat mengevaluasi atau memeriksa tanda terima honor guru agar hanya transaksi Belanja Jasa Tenaga Pendidikan yang dievaluasi.',
+                            ],
                             'tahun' => [
                                 'type' => 'integer',
                                 'description' => 'Tahun anggaran pembukuan (contoh: 2026, 2025). Opsional, default adalah tahun aktif saat ini.',
@@ -1229,9 +1233,22 @@ Karakter & Gaya Bicara Anda:
         - Panduan Solusi Santai:
           * Berikan instruksi langkah praktis bagi bendahara (contoh: "Buka menu BKU bulan X lalu klik Tarik Data dari ARKAS", "Pastikan aplikasi ARKAS desktop ditutup agar file database tidak terkunci", dll.).
 10. AUDIT DOKUMEN SPJ & LEMBAR RESMI (KWITANSI, TANDA TERIMA, BAST, DAN SURAT PESANAN):
-   - Jika pengguna menanyakan kelengkapan berkas dokumen SPJ, audit SPJ, status kuitansi, tanda terima, BAST, atau surat pesanan (contoh: "Cek kelengkapan dokumen SPJ bulan September", "Apakah ada belanja modal yang belum ada BAST-nya?", "Dokumen SPJ apa saja yang belum lengkap?"):
-     a. WAJIB memanggil tool `get_spj_documents_status` dengan parameter `bulan`, `tahap`, `status_filter`, dan `tahun`.
-     b. Format Penyajian Audit Kelengkapan SPJ:
+   - Jika pengguna menanyakan kelengkapan berkas dokumen SPJ, audit SPJ, status kuitansi, tanda terima, BAST, atau surat pesanan (contoh: "Cek kelengkapan dokumen SPJ bulan September", "Apakah ada belanja modal yang belum ada BAST-nya?", "Dokumen SPJ apa saja yang belum lengkap?", "Cek tanda terima honor guru"):
+     a. WAJIB memanggil tool `get_spj_documents_status` dengan parameter `bulan`, `tahap`, `status_filter`, `query`, dan `tahun`. Khusus untuk evaluasi/audit berkas honor guru, WAJIB menyertakan `query: 'honor guru'`.
+     b. ATURAN INTEGRITAS DATA & ANTI-HALUSINASI HONOR GURU (WAJIB DITAATI):
+        - FAKTA KEUANGAN RIIL SEKOLAH TAHUN 2026:
+          * Belanja Jasa Tenaga Pendidikan / Honorarium Guru (kode rekening 5.1.02.02.01.0013 / kegiatan 07.12.01) HANYA ADA 1 ORANG GURU PENERIMA SAH, yaitu SELPIANTI.
+          * Honor Guru hanya pernah dicairkan 2 kali di tahun 2026 (semuanya pada Tahap II):
+            1) Bulan September 2026 (No. Bukti: 063/BOSP/THP-II/2026): Selpianti, nominal Rp 1.449.000 (207 JP @ Rp 7.000).
+            2) Bulan Oktober 2026 (No. Bukti: 069/BOSP/THP-II/2026): Selpianti, nominal Rp 483.000 (69 JP @ Rp 7.000).
+            Pada Tahap I (Januari s.d. Juni 2026) SAMA SEKALI TIDAK ADA pencairan honor guru.
+          * Transaksi pada bulan Maret 2026 (bukti 010 s.d. 017) untuk Dwi Ivana, Selpianti, Umul Magfirah, Muslimah Sam, Nurmalasari, Nurainun, Husni, Imran sebesar masing-masing Rp 100.000 adalah INSENTIF PANITIA KEGIATAN LDK, BUKAN HONOR GURU!
+        - DILARANG KERAS:
+          * DILARANG mengarang/halusinasi nominal 1.449.000 untuk nama-nama guru lain (seperti Husni, Imran, Nurmalasari, Umul Magfirah)!
+          * DILARANG mengarang nomor bukti atau tanggal palsu (seperti 02/03/2026, 039 s.d. 043)!
+          * DILARANG mencampurkan transaksi kepanitiaan kegiatan ke dalam kategori honor guru!
+        - Tabel matriks kelengkapan SPJ dan tanda terima HARUS 100% menggunakan data yang dikembalikan oleh tool `get_spj_documents_status` dan `get_spj_document_detail` tanpa manipulasi!
+     c. Format Penyajian Audit Kelengkapan SPJ:
         - Header: `### 📑 AUDIT KELENGKAPAN DOKUMEN SPJ — {BULAN/PERIODE} {TAHUN}`
         - Badge Status: `[STATUS KEPATUHAN: {persentase_kepatuhan}% LENGKAP ({transaksi_lengkap} dari {total_transaksi} transaksi)]`
         - Tabel Matriks Kelengkapan Dokumen HTML Terstruktur Rapi:
@@ -1243,6 +1260,7 @@ Karakter & Gaya Bicara Anda:
         - Rekomendasi Solutif Khas Bendahara:
           * Sebutkan secara spesifik transaksi mana saja yang berkasnya masih kurang (contoh: "Untuk transaksi Cat Lapangan Toko Jaya nomor 058 belum ada Surat Pesanan nih, Om").
           * Berikan saran ramah untuk melengkapinya melalui menu dokumen terkait di SIKAS sebelum pelaporan SPJ.
+
    - Jika pengguna meminta melihat isi / lembar rincian resmi salah satu dokumen SPJ (contoh: "Tampilkan rincian BAST pengadaan laptop", "Rincian Surat Pesanan Toko Jaya", "Tanda terima honor guru bulan September", "Kwitansi belanja ATK"):
      a. WAJIB memanggil tool `get_spj_document_detail` dengan parameter `tipe_dokumen` ('bast', 'surat_pesanan', 'kwitansi', atau 'tanda_terima'), `query`, `bulan` (jika disebutkan), dan `tahun`. Khusus untuk honor guru, gunakan `query: 'honor guru'`.
      b. Format Penyajian Lembar Resmi Dokumen SPJ Berdasarkan Jenis Dokumen:
@@ -1474,7 +1492,8 @@ PROMPT;
                 $variant,
                 $args['bulan'] ?? null,
                 isset($args['tahap']) ? (int) $args['tahap'] : null,
-                $args['status_filter'] ?? 'semua'
+                $args['status_filter'] ?? 'semua',
+                $args['query'] ?? null
             ),
             'get_spj_document_detail' => $this->getSpjDocumentDetail(
                 $args['tipe_dokumen'] ?? 'kwitansi',
@@ -6383,12 +6402,13 @@ PROMPT;
         string $variant = 'reguler',
         ?string $bulan = null,
         ?int $tahap = null,
-        string $statusFilter = 'semua'
+        string $statusFilter = 'semua',
+        ?string $query = null
     ): array {
         VariantConfig::validateVariant($variant);
         $bkuClass = VariantConfig::getModelClass('buku_kas_umum', $variant);
 
-        $query = $bkuClass::query()
+        $bkuQuery = $bkuClass::query()
             ->whereYear('tanggal_transaksi', $tahun)
             ->where('total_transaksi_kotor', '>', 0)
             ->where(function ($q) {
@@ -6397,9 +6417,9 @@ PROMPT;
 
         // Filter Tahap (1 = Jan-Jun, 2 = Jul-Des)
         if ($tahap === 1) {
-            $query->whereMonth('tanggal_transaksi', '<=', 6);
+            $bkuQuery->whereMonth('tanggal_transaksi', '<=', 6);
         } elseif ($tahap === 2) {
-            $query->whereMonth('tanggal_transaksi', '>=', 7);
+            $bkuQuery->whereMonth('tanggal_transaksi', '>=', 7);
         }
 
         // Filter Bulan
@@ -6413,11 +6433,37 @@ PROMPT;
             ];
             $monthNum = $months[$bulanLower] ?? (is_numeric($bulan) ? (int) $bulan : null);
             if ($monthNum) {
-                $query->whereMonth('tanggal_transaksi', $monthNum);
+                $bkuQuery->whereMonth('tanggal_transaksi', $monthNum);
             }
         }
 
-        $bkuList = $query->with([
+        // Filter Query Spesifik (contoh: honor guru)
+        if (! empty($query)) {
+            $isGuruQuery = (bool) preg_match('/(guru|tenaga pendidikan|tenaga pendidik|pendidik)/i', $query);
+            if ($isGuruQuery) {
+                $bkuQuery->where(function ($sub) {
+                    $sub->whereHas('rekeningBelanja', function ($rq) {
+                        $rq->where('kode_rekening', 'ILIKE', '%5.1.02.02.01.0013%');
+                    })
+                        ->orWhereHas('kodeKegiatan', function ($kq) {
+                            $kq->where('kode', 'ILIKE', '%07.12.01%');
+                        })
+                        ->orWhere('uraian', 'ILIKE', '%honorarium guru%')
+                        ->orWhere('uraian_opsional', 'ILIKE', '%honor guru%');
+                });
+            } else {
+                $bkuQuery->where(function ($bq) use ($query) {
+                    $bq->where('id_transaksi', 'ILIKE', "%{$query}%")
+                        ->orWhere('nomor_nota', 'ILIKE', "%{$query}%")
+                        ->orWhere('uraian', 'ILIKE', "%{$query}%")
+                        ->orWhere('uraian_opsional', 'ILIKE', "%{$query}%")
+                        ->orWhere('nama_toko', 'ILIKE', "%{$query}%")
+                        ->orWhere('nama_penerima_pembayaran', 'ILIKE', "%{$query}%");
+                });
+            }
+        }
+
+        $bkuList = $bkuQuery->with([
             'rekeningBelanja',
             'kodeKegiatan',
             'uraianDetails',
