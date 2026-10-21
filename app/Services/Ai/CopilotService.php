@@ -780,6 +780,37 @@ class CopilotService
                     ],
                 ],
             ],
+            [
+                'type' => 'function',
+                'function' => [
+                    'name' => 'get_official_laporan_data',
+                    'description' => 'Mengambil data resmi laporan pertanggungjawaban keuangan BOSP sekolah (SPTJ, SPMTH, SP2B, dan LPH) baik yang sudah tersimpan di arsip database (dengan nomor surat dan tanggal resmi) maupun kalkulasi dinamis (live) dari BKU jika dokumen belum disimpan. Panggil tool ini saat pengguna bertanya tentang SPTJ (Surat Pernyataan Tanggung Jawab Belanja), SPMTH (Surat Pernyataan Mutlak Tanggung Jawab Hibah), SP2B (Surat Permintaan Pengesahan Belanja tahapan atau bulanan), Laporan Penggunaan Hibah (LPH), atau meminta ringkasan status kelengkapan ke-4 laporan dinas tersebut.',
+                    'parameters' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'jenis_laporan' => [
+                                'type' => 'string',
+                                'enum' => ['sptj', 'spmth', 'sp2b', 'lph', 'semua'],
+                                'description' => 'Jenis laporan yang diminta: "sptj" (Surat Pernyataan Tanggung Jawab Belanja), "spmth" (Surat Pernyataan Mutlak Tanggung Jawab Hibah), "sp2b" (Surat Permintaan Pengesahan Belanja), "lph" (Laporan Penggunaan Hibah), atau "semua" (ringkasan status ke-4 laporan sekaligus).',
+                            ],
+                            'tahap' => [
+                                'type' => 'integer',
+                                'enum' => [1, 2],
+                                'description' => 'Tahapan/Semester laporan (1 untuk Semester I / Jan–Jun, 2 untuk Semester II / Jul–Des). Opsional.',
+                            ],
+                            'bulan' => [
+                                'type' => 'string',
+                                'description' => 'Nama bulan transaksi atau angka 1–12 (khusus untuk SP2B bulanan). Opsional.',
+                            ],
+                            'tahun' => [
+                                'type' => 'integer',
+                                'description' => 'Tahun anggaran laporan (contoh: 2026, 2025). Opsional, default adalah tahun aktif saat ini.',
+                            ],
+                        ],
+                        'required' => ['jenis_laporan'],
+                    ],
+                ],
+            ],
         ];
     }
 
@@ -1341,7 +1372,95 @@ Karakter & Gaya Bicara Anda:
         - Ketentuan Pesanan (Waktu pengiriman, kondisi barang, ketentuan pembayaran, sumber dana).
         - Nilai Finansial & Tanda Tangan Pemesan & Penyedia.
 
-11. Jangan pernah mengarang kode rekening atau ID kegiatan secara sembarangan, selalu gunakan hasil dari tool.
+11. DOKUMEN LAPORAN PERTANGGUNGJAWABAN RESMI DINAS (SPTJ, SPMTH, SP2B, DAN LPH):
+    - Jika pengguna menanyakan, meminta melihat, atau memeriksa status laporan dinas resmi BOSP (contoh: "Tampilkan SPTJ Tahap 1", "Lihat SPMTH Tahap 1", "Cek SP2B bulan September", "LPH Semester 1", "Cek status laporan pertanggungjawaban BOSP 2026"):
+      a. WAJIB memanggil tool `get_official_laporan_data` dengan parameter:
+         * `jenis_laporan`: 'sptj', 'spmth', 'sp2b', 'lph', atau 'semua'
+         * `tahap`: 1 atau 2 (jika disebutkan atau relevan)
+         * `bulan`: nama bulan atau angka (khusus untuk SP2B bulanan)
+         * `tahun`: tahun anggaran aktif
+      b. PANDUAN PENYAJIAN BERDASARKAN STATUS DOKUMEN:
+         - JIKA STATUS 'tersimpan':
+           * Tampilkan badge status: `[STATUS: DOKUMEN RESMI TERSIMPAN DI SISTEM]`
+           * Tampilkan Nomor Surat Resmi dan Tanggal Cetak Dokumen yang tercatat di database.
+         - JIKA STATUS 'kalkulasi_live':
+           * Tampilkan badge status: `[STATUS: SIMULASI KALKULASI REAL-TIME DARI BKU (BELUM DISIMPAN DI MENU LAPORAN)]`
+           * Berikan catatan ramah bahwa dokumen resmi fisik untuk periode tersebut belum di-generate/disimpan di menu Laporan SIKAS, namun angka-angkanya sudah berhasil dihitung secara presisi.
+      c. FORMAT PENYAJIAN TABEL HTML RESMI TIAP LAPORAN:
+
+         [1. SPTJ — SURAT PERNYATAAN TANGGUNG JAWAB BELANJA]
+         - Header: `### 📄 SURAT PERNYATAAN TANGGUNG JAWAB BELANJA (SPTJ) — {SEMESTER_TEXT} {TAHUN}`
+         - Nomor Surat & Tanggal Dokumen Resmi.
+         - Pernyataan pertanggungjawaban mutlak atas bukti pengeluaran yang sah dan lengkap.
+         - Tabel Ringkasan Penerimaan Dana Termin:
+           <th>Termin Penerimaan</th><th style="text-align: right;">Jumlah Dana (Rp)</th>
+         - Tabel Rincian Realisasi Belanja:
+           <th>No</th><th>Jenis Belanja</th><th style="text-align: right;">Realisasi Belanja (Rp)</th>
+           1. Belanja Pegawai (Honorarium Kegiatan 07.12)
+           2. Belanja Barang dan Jasa (Akun 5.1.02)
+           *Jumlah Belanja Operasi (1 + 2)*
+           3. Belanja Modal (Akun 5.2)
+           *TOTAL PENGELUARAN BELANJA*
+         - Tabel Posisi Kas Akhir Periode:
+           1. Sisa Kas Tunai
+           2. Sisa Kas di Rekening Bank
+           *Total Sisa Kas*
+         - Terbilang Pengeluaran Rupiah Resmi.
+         - Lembar Pengesahan Tanda Tangan: Kepala Sekolah (Nama & NIP).
+
+         [2. SPMTH — SURAT PERNYATAAN MUTLAK TANGGUNG JAWAB HIBAH]
+         - Header: `### 📜 SURAT PERNYATAAN MUTLAK TANGGUNG JAWAB HIBAH (SPMTH) — {SEMESTER_TEXT} {TAHUN}`
+         - Nomor Surat & Tanggal Dokumen Resmi.
+         - Klausul Pertanggungjawaban Mutlak atas penerimaan dan penggunaan dana hibah BOSP sesuai NPHD.
+         - Tabel Komparasi Pagu, Realisasi, dan Sisa Dana:
+           <th>Uraian Keuangan</th><th style="text-align: right;">Jumlah (Rp)</th>
+           1. Pagu Anggaran BOSP
+           2. Realisasi Belanja Semester Sebelumnya (Realisasi Lalu)
+           3. Realisasi Belanja Semester Berjalan (Realisasi Ini)
+           *Total Akumulasi Realisasi Belanja*
+           *Sisa Dana Hibah Belum Terserap*
+         - Lembar Pengesahan Tanda Tangan: Kepala Sekolah (Nama & NIP).
+
+         [3. SP2B — SURAT PERMINTAAN PENGESAHAN BELANJA]
+         - Header: `### 🏛️ SURAT PERMINTAAN PENGESAHAN PENDAPATAN & BELANJA (SP2B) — {PERIODE_TEXT} {TAHUN}`
+         - Nomor SP2B & Tanggal Dokumen Resmi.
+         - Kepada: Kepala Dinas Pendidikan / Pejabat Pengelola Keuangan Daerah (BUD).
+         - Tabel Ringkasan SP2B:
+           <th>Uraian Arus Dana</th><th style="text-align: right;">Jumlah (Rp)</th>
+           1. Saldo Awal (termasuk saldo awal luncuran tahun sebelumnya)
+           2. Pendapatan (Penerimaan Dana Masuk)
+           3. Belanja (Pengeluaran Kas)
+           *Saldo Akhir Kas*
+         - Tabel Rincian Belanja SP2B Berjenjang:
+           <th>Kode / Jenis Belanja</th><th style="text-align: right;">Jumlah (Rp)</th>
+           * Belanja Pegawai (07.12)
+           * Belanja Barang dan Jasa (5.1.02)
+           * Belanja Modal (5.2)
+             - Belanja Modal Peralatan dan Mesin (5.2.02)
+             - Belanja Modal Aset Tetap Lainnya / Buku (5.2.05)
+             - Belanja Modal Tanah & Bangunan
+         - Lembar Pengesahan: Kepala Sekolah (Nama & NIP).
+
+         [4. LPH — LAPORAN PENGGUNAAN HIBAH]
+         - Header: `### 📊 LAPORAN PENGGUNAAN DANA HIBAH (LPH) BOSP — {SEMESTER_TEXT} {TAHUN}`
+         - Tabel Komparasi Anggaran vs Realisasi:
+           <th>Jenis Belanja / Pos Hibah</th><th style="text-align: right;">Anggaran (Rp)</th><th style="text-align: right;">Realisasi (Rp)</th><th style="text-align: right;">Selisih / Sisa (Rp)</th>
+           1. Penerimaan Dana Hibah
+           2. Belanja Operasi
+           3. Belanja Modal Peralatan dan Mesin (5.2.02)
+           4. Belanja Modal Aset Tetap Lainnya (Buku Perpustakaan)
+           *Total Belanja*
+           *Sisa Dana Hibah*
+         - Tabel Rincian Realisasi per Rekening Belanja.
+         - Lembar Pengesahan: Kepala Sekolah & Bendahara BOSP.
+
+         [5. RINGKASAN STATUS KELENGKAPAN KE-4 LAPORAN ('semua')]
+         - Header: `### 📑 DASHBOARD STATUS LAPORAN PERTANGGUNGJAWABAN BOSP {TAHUN}`
+         - Sajikan tabel HTML matriks status ke-4 dokumen untuk Tahap 1 dan Tahap 2:
+           <th>Jenis Laporan</th><th>Tahap / Periode</th><th>Nomor Surat</th><th>Tanggal Dokumen</th><th>Status Sistem</th>
+         - Rekomendasi ramah bagi bendahara untuk mencetak atau melengkapi laporan yang belum dibuat.
+
+12. Jangan pernah mengarang kode rekening atau ID kegiatan secara sembarangan, selalu gunakan hasil dari tool.
 PROMPT;
     }
 
@@ -1544,6 +1663,13 @@ PROMPT;
                 $variant,
                 $args['bulan'] ?? null,
                 isset($args['tahap']) ? (int) $args['tahap'] : null
+            ),
+            'get_official_laporan_data' => $this->getOfficialLaporanData(
+                $args['jenis_laporan'] ?? 'semua',
+                isset($args['tahap']) ? (int) $args['tahap'] : null,
+                $args['bulan'] ?? null,
+                $targetTahun,
+                $variant
             ),
             default => ['error' => "Unknown tool: {$name}"],
         };
@@ -7147,6 +7273,861 @@ PROMPT;
                 'nip_bendahara' => $identitasSekolah['nip_bendahara'],
                 'penerima' => $bku->nama_penerima_pembayaran ?: ($bku->nama_toko ?: 'Penyedia'),
             ],
+        ];
+    }
+
+    /**
+     * Mengambil data resmi laporan pertanggungjawaban keuangan BOSP (SPTJ, SPMTH, SP2B, LPH, atau Dashboard Semua)
+     */
+    public function getOfficialLaporanData(
+        string $jenisLaporan,
+        ?int $tahap = null,
+        ?string $bulan = null,
+        int $tahun = 2026,
+        string $variant = 'reguler'
+    ): array {
+        $jenisLaporan = strtolower(trim($jenisLaporan));
+
+        return match ($jenisLaporan) {
+            'sptj' => $this->getSptjReportData($tahun, $variant, $tahap ?? 1),
+            'spmth' => $this->getSpmthReportData($tahun, $variant, $tahap ?? 1),
+            'sp2b' => $this->getSp2bReportData($tahun, $variant, $tahap, $bulan),
+            'lph' => $this->getLphReportData($tahun, $variant, $tahap ?? 1),
+            'semua' => $this->getSummaryAllLaporan($tahun, $variant),
+            default => [
+                'status' => 'error',
+                'pesan' => "Jenis laporan '{$jenisLaporan}' tidak dikenali. Pilihan yang tersedia: 'sptj', 'spmth', 'sp2b', 'lph', atau 'semua'.",
+            ],
+        };
+    }
+
+    /**
+     * Mengambil data laporan SPTJ (Surat Pernyataan Tanggung Jawab Belanja)
+     */
+    public function getSptjReportData(int $tahun, string $variant, ?int $tahap = 1): array
+    {
+        $tahap = ($tahap === 2) ? 2 : 1;
+        $penganggaranClass = VariantConfig::getModelClass('penganggaran', $variant);
+        $sptjClass = VariantConfig::getModelClass('sptj', $variant);
+        $penerimaanClass = VariantConfig::getModelClass('penerimaan_dana', $variant);
+        $bkuClass = VariantConfig::getModelClass('bku', $variant);
+        $penganggaranFk = VariantConfig::penganggaranFk($variant);
+
+        $penganggaran = $penganggaranClass::where('tahun_anggaran', $tahun)->first();
+        if (! $penganggaran) {
+            return [
+                'status' => 'not_found',
+                'pesan' => "Data penganggaran untuk tahun {$tahun} tidak ditemukan.",
+            ];
+        }
+
+        $sekolah = SekolahProfile::first();
+        $saved = $sptjClass::where($penganggaranFk, $penganggaran->id)->where('tahap', $tahap)->first();
+
+        $tandaTangan = [
+            'kepala_sekolah' => $penganggaran->kepala_sekolah ?? 'Kepala Sekolah',
+            'nip_kepala_sekolah' => $penganggaran->nip_kepala_sekolah ?? '-',
+            'bendahara' => $penganggaran->bendahara ?? 'Bendahara BOSP',
+            'nip_bendahara' => $penganggaran->nip_bendahara ?? '-',
+            'nama_sekolah' => $sekolah?->nama_sekolah ?? 'Satuan Pendidikan',
+        ];
+
+        if ($saved) {
+            $totalBelanja = (float) ($saved->jenis_belanja_pegawai + $saved->jenis_belanja_barang_jasa + $saved->jenis_belanja_modal);
+
+            return [
+                'status' => 'tersimpan',
+                'jenis_laporan' => 'SPTJ',
+                'judul' => 'SURAT PERNYATAAN TANGGUNG JAWAB BELANJA (SPTJ)',
+                'nomor_surat' => $saved->nomor_sptj,
+                'tanggal_dokumen' => $saved->tanggal_sptj ? Carbon::parse($saved->tanggal_sptj)->translatedFormat('d F Y') : '-',
+                'tahap' => (int) $saved->tahap,
+                'periode_teks' => $saved->tahap == 1 ? 'Tahap I (Januari – Juni)' : 'Tahap II (Juli – Desember)',
+                'tahun_anggaran' => $tahun,
+                'penerimaan' => [
+                    'tahap_1' => (float) $saved->tahap_satu,
+                    'tahap_2' => (float) $saved->tahap_dua,
+                    'total' => (float) ($saved->tahap_satu + $saved->tahap_dua),
+                ],
+                'realisasi_belanja' => [
+                    'belanja_pegawai' => (float) $saved->jenis_belanja_pegawai,
+                    'belanja_barang_jasa' => (float) $saved->jenis_belanja_barang_jasa,
+                    'belanja_operasi' => (float) ($saved->jenis_belanja_pegawai + $saved->jenis_belanja_barang_jasa),
+                    'belanja_modal' => (float) $saved->jenis_belanja_modal,
+                    'total_belanja' => $totalBelanja,
+                    'terbilang_total_belanja' => $this->terbilangRupiah($totalBelanja),
+                ],
+                'posisi_kas' => [
+                    'sisa_kas_tunai' => (float) $saved->sisa_kas_tunai,
+                    'sisa_dana_di_bank' => (float) $saved->sisa_dana_di_bank,
+                    'total_sisa_kas' => (float) ($saved->sisa_kas_tunai + $saved->sisa_dana_di_bank),
+                ],
+                'tanda_tangan' => $tandaTangan,
+                'keterangan' => 'Dokumen resmi SPTJ tersimpan di database.',
+            ];
+        }
+
+        // Live calculation fallback
+        $startDate = $tahap === 1 ? "{$tahun}-01-01" : "{$tahun}-07-01";
+        $endDate = $tahap === 1 ? "{$tahun}-06-30" : "{$tahun}-12-31";
+        $endMonth = $tahap === 1 ? 6 : 12;
+
+        if (str_contains($variant, 'silpa')) {
+            $tahapSatu = (float) $penerimaanClass::where($penganggaranFk, $penganggaran->id)->sum('jumlah_dana');
+            $tahapDua = 0.0;
+        } else {
+            $tahapSatu = (float) $penerimaanClass::where($penganggaranFk, $penganggaran->id)
+                ->where(function ($q) {
+                    $q->where('sumber_dana', 'like', '%Tahap 1%')->orWhere('sumber_dana', 'like', '%Tahap I%');
+                })->sum('jumlah_dana');
+            $tahapDua = (float) $penerimaanClass::where($penganggaranFk, $penganggaran->id)
+                ->where(function ($q) {
+                    $q->where('sumber_dana', 'like', '%Tahap 2%')->orWhere('sumber_dana', 'like', '%Tahap II%');
+                })->sum('jumlah_dana');
+        }
+
+        $bkuEntries = $bkuClass::where($penganggaranFk, $penganggaran->id)
+            ->whereDate('tanggal_transaksi', '>=', $startDate)
+            ->whereDate('tanggal_transaksi', '<=', $endDate)
+            ->whereNotNull('rekening_belanja_id')
+            ->with(['rekeningBelanja', 'kodeKegiatan'])
+            ->get();
+
+        $p_pegawai = 0.0;
+        $p_barang = 0.0;
+        $p_modal = 0.0;
+        $pegawaiPrefixes = ['07.12.01.', '07.12.02.', '07.12.03.', '07.12.04.', '07.12'];
+
+        foreach ($bkuEntries as $bku) {
+            $amount = (float) ($bku->pengeluaran ?? $bku->total_transaksi_kotor);
+            $kodeRekening = $bku->rekeningBelanja->kode_rekening ?? '';
+            $kodeKegiatan = $bku->kodeKegiatan->kode ?? '';
+
+            $isPegawai = false;
+            foreach ($pegawaiPrefixes as $prefix) {
+                if (str_starts_with($kodeKegiatan, $prefix)) {
+                    $isPegawai = true;
+                    break;
+                }
+            }
+
+            if ($isPegawai) {
+                $p_pegawai += $amount;
+            } elseif (str_starts_with($kodeRekening, '5.2')) {
+                $p_modal += $amount;
+            } else {
+                $p_barang += $amount;
+            }
+        }
+
+        $sisaTunai = (float) $this->bukuKasService->hitungSaldoTunaiSebelumBulan($penganggaran->id, $endMonth + 1);
+        $sisaBank = (float) $this->bukuKasService->hitungSaldoBankSebelumBulan($penganggaran->id, $endMonth + 1);
+        $totalBelanja = $p_pegawai + $p_barang + $p_modal;
+
+        return [
+            'status' => 'kalkulasi_live',
+            'jenis_laporan' => 'SPTJ',
+            'judul' => 'SURAT PERNYATAAN TANGGUNG JAWAB BELANJA (SPTJ) - SIMULASI LIVE',
+            'nomor_surat' => "SPTJ/THP-{$tahap}/{$tahun} (Draft)",
+            'tanggal_dokumen' => Carbon::now()->translatedFormat('d F Y'),
+            'tahap' => $tahap,
+            'periode_teks' => $tahap === 1 ? 'Tahap I (Januari – Juni)' : 'Tahap II (Juli – Desember)',
+            'tahun_anggaran' => $tahun,
+            'penerimaan' => [
+                'tahap_1' => $tahapSatu,
+                'tahap_2' => $tahapDua,
+                'total' => $tahapSatu + $tahapDua,
+            ],
+            'realisasi_belanja' => [
+                'belanja_pegawai' => $p_pegawai,
+                'belanja_barang_jasa' => $p_barang,
+                'belanja_operasi' => $p_pegawai + $p_barang,
+                'belanja_modal' => $p_modal,
+                'total_belanja' => $totalBelanja,
+                'terbilang_total_belanja' => $this->terbilangRupiah($totalBelanja),
+            ],
+            'posisi_kas' => [
+                'sisa_kas_tunai' => $sisaTunai,
+                'sisa_dana_di_bank' => $sisaBank,
+                'total_sisa_kas' => $sisaTunai + $sisaBank,
+            ],
+            'tanda_tangan' => $tandaTangan,
+            'keterangan' => "SPTJ Tahap {$tahap} tahun {$tahun} belum disimpan di menu Laporan SIKAS. Angka di atas merupakan hasil simulasi kalkulasi real-time dari BKU dan Penerimaan Dana.",
+        ];
+    }
+
+    /**
+     * Mengambil data laporan SPMTH (Surat Pernyataan Mutlak Tanggung Jawab Hibah)
+     */
+    public function getSpmthReportData(int $tahun, string $variant, ?int $tahap = 1): array
+    {
+        $tahap = ($tahap === 2) ? 2 : 1;
+        $penganggaranClass = VariantConfig::getModelClass('penganggaran', $variant);
+        $spmthClass = VariantConfig::getModelClass('spmth', $variant);
+        $bkuClass = VariantConfig::getModelClass('bku', $variant);
+        $penganggaranFk = VariantConfig::penganggaranFk($variant);
+
+        $penganggaran = $penganggaranClass::where('tahun_anggaran', $tahun)->first();
+        if (! $penganggaran) {
+            return [
+                'status' => 'not_found',
+                'pesan' => "Data penganggaran untuk tahun {$tahun} tidak ditemukan.",
+            ];
+        }
+
+        $sekolah = SekolahProfile::first();
+        $saved = $spmthClass::where($penganggaranFk, $penganggaran->id)->where('tahap', $tahap)->first();
+
+        $tandaTangan = [
+            'kepala_sekolah' => $penganggaran->kepala_sekolah ?? 'Kepala Sekolah',
+            'nip_kepala_sekolah' => $penganggaran->nip_kepala_sekolah ?? '-',
+            'nama_sekolah' => $sekolah?->nama_sekolah ?? 'Satuan Pendidikan',
+        ];
+
+        if ($saved) {
+            $totalRealisasi = (float) ($saved->realisasi_lalu + $saved->realisasi_ini);
+
+            return [
+                'status' => 'tersimpan',
+                'jenis_laporan' => 'SPMTH',
+                'judul' => 'SURAT PERNYATAAN TANGGUNG JAWAB MUTLAK HIBAH (SPMTH)',
+                'nomor_surat' => $saved->nomor_surat,
+                'tanggal_dokumen' => $saved->tanggal_spmth ? Carbon::parse($saved->tanggal_spmth)->translatedFormat('d F Y') : '-',
+                'tahap' => (int) $saved->tahap,
+                'periode_teks' => $saved->tahap == 1 ? 'Tahap I (Januari – Juni)' : 'Tahap II (Juli – Desember)',
+                'tahun_anggaran' => $tahun,
+                'pagu_anggaran' => (float) $penganggaran->pagu_anggaran,
+                'realisasi_lalu' => (float) $saved->realisasi_lalu,
+                'realisasi_ini' => (float) $saved->realisasi_ini,
+                'total_realisasi' => $totalRealisasi,
+                'sisa_dana' => (float) $saved->sisa,
+                'terbilang_realisasi_ini' => $this->terbilangRupiah($saved->realisasi_ini),
+                'terbilang_sisa' => $this->terbilangRupiah($saved->sisa),
+                'tanda_tangan' => $tandaTangan,
+                'keterangan' => 'Dokumen resmi SPMTH tersimpan di database.',
+            ];
+        }
+
+        // Live calculation fallback
+        $pagu = (float) $penganggaran->pagu_anggaran;
+        $realisasiLalu = 0.0;
+        if ($tahap === 2) {
+            $realisasiLalu = (float) $bkuClass::where($penganggaranFk, $penganggaran->id)
+                ->where('is_bunga_record', false)
+                ->whereYear('tanggal_transaksi', $tahun)
+                ->whereIn(DB::raw('EXTRACT(MONTH FROM tanggal_transaksi)'), [1, 2, 3, 4, 5, 6])
+                ->sum('total_transaksi_kotor');
+        }
+
+        $monthsIni = $tahap === 1 ? [1, 2, 3, 4, 5, 6] : [7, 8, 9, 10, 11, 12];
+        $realisasiIni = (float) $bkuClass::where($penganggaranFk, $penganggaran->id)
+            ->where('is_bunga_record', false)
+            ->whereYear('tanggal_transaksi', $tahun)
+            ->whereIn(DB::raw('EXTRACT(MONTH FROM tanggal_transaksi)'), $monthsIni)
+            ->sum('total_transaksi_kotor');
+
+        $sisa = $pagu - ($realisasiLalu + $realisasiIni);
+        $totalRealisasi = $realisasiLalu + $realisasiIni;
+
+        return [
+            'status' => 'kalkulasi_live',
+            'jenis_laporan' => 'SPMTH',
+            'judul' => 'SURAT PERNYATAAN TANGGUNG JAWAB MUTLAK HIBAH (SPMTH) - SIMULASI LIVE',
+            'nomor_surat' => "SPMTH/THP-{$tahap}/{$tahun} (Draft)",
+            'tanggal_dokumen' => Carbon::now()->translatedFormat('d F Y'),
+            'tahap' => $tahap,
+            'periode_teks' => $tahap === 1 ? 'Tahap I (Januari – Juni)' : 'Tahap II (Juli – Desember)',
+            'tahun_anggaran' => $tahun,
+            'pagu_anggaran' => $pagu,
+            'realisasi_lalu' => $realisasiLalu,
+            'realisasi_ini' => $realisasiIni,
+            'total_realisasi' => $totalRealisasi,
+            'sisa_dana' => $sisa,
+            'terbilang_realisasi_ini' => $this->terbilangRupiah($realisasiIni),
+            'terbilang_sisa' => $this->terbilangRupiah($sisa),
+            'tanda_tangan' => $tandaTangan,
+            'keterangan' => "SPMTH Tahap {$tahap} tahun {$tahun} belum disimpan di menu Laporan SIKAS. Angka di atas merupakan hasil simulasi kalkulasi real-time dari BKU.",
+        ];
+    }
+
+    /**
+     * Mengambil data laporan SP2B (Surat Permintaan Pengesahan Belanja)
+     */
+    public function getSp2bReportData(int $tahun, string $variant, ?int $tahap = null, ?string $bulan = null): array
+    {
+        $penganggaranClass = VariantConfig::getModelClass('penganggaran', $variant);
+        $sp2bClass = VariantConfig::getModelClass('sp2b', $variant);
+        $penerimaanClass = VariantConfig::getModelClass('penerimaan_dana', $variant);
+        $bkuClass = VariantConfig::getModelClass('bku', $variant);
+        $penganggaranFk = VariantConfig::penganggaranFk($variant);
+
+        $penganggaran = $penganggaranClass::where('tahun_anggaran', $tahun)->first();
+        if (! $penganggaran) {
+            return [
+                'status' => 'not_found',
+                'pesan' => "Data penganggaran untuk tahun {$tahun} tidak ditemukan.",
+            ];
+        }
+
+        $sekolah = SekolahProfile::first();
+        $tandaTangan = [
+            'kepala_sekolah' => $penganggaran->kepala_sekolah ?? 'Kepala Sekolah',
+            'nip_kepala_sekolah' => $penganggaran->nip_kepala_sekolah ?? '-',
+            'bendahara' => $penganggaran->bendahara ?? 'Bendahara BOSP',
+            'nip_bendahara' => $penganggaran->nip_bendahara ?? '-',
+            'nama_sekolah' => $sekolah?->nama_sekolah ?? 'Satuan Pendidikan',
+        ];
+
+        $monthsMap = [
+            'januari' => 1, 'februari' => 2, 'maret' => 3, 'april' => 4,
+            'mei' => 5, 'juni' => 6, 'juli' => 7, 'agustus' => 8,
+            'september' => 9, 'oktober' => 10, 'november' => 11, 'desember' => 12,
+        ];
+        $monthNames = [
+            1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
+            5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
+            9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember',
+        ];
+
+        $isMonthly = ! empty($bulan) && strtolower(trim($bulan)) !== 'semua';
+        $monthNum = null;
+        if ($isMonthly) {
+            $bulanClean = strtolower(trim($bulan));
+            $monthNum = $monthsMap[$bulanClean] ?? (is_numeric($bulan) ? (int) $bulan : 1);
+        }
+
+        if ($isMonthly) {
+            $saved = $sp2bClass::where($penganggaranFk, $penganggaran->id)
+                ->where('jenis_periode', 'bulan')
+                ->where('bulan', $monthNum)
+                ->first();
+            $periodeTeks = 'Bulan '.($monthNames[$monthNum] ?? "Bulan {$monthNum}")." {$tahun}";
+        } else {
+            $tahap = ($tahap === 2) ? 2 : 1;
+            $saved = $sp2bClass::where($penganggaranFk, $penganggaran->id)
+                ->where('jenis_periode', 'tahap')
+                ->where('tahap', $tahap)
+                ->first();
+            $periodeTeks = $tahap === 1 ? "Tahap I (Januari – Juni {$tahun})" : "Tahap II (Juli – Desember {$tahun})";
+        }
+
+        if ($saved) {
+            return [
+                'status' => 'tersimpan',
+                'jenis_laporan' => 'SP2B',
+                'judul' => 'SURAT PERMINTAAN PENGESAHAN BELANJA (SP2B)',
+                'nomor_surat' => $saved->nomor_sp2b,
+                'tanggal_dokumen' => $saved->tanggal_sp2b ? Carbon::parse($saved->tanggal_sp2b)->translatedFormat('d F Y') : '-',
+                'jenis_periode' => $saved->jenis_periode,
+                'tahap' => $saved->tahap ? (int) $saved->tahap : null,
+                'bulan' => $saved->bulan ? (int) $saved->bulan : null,
+                'periode_teks' => $periodeTeks,
+                'tahun_anggaran' => $tahun,
+                'ringkasan_kas' => [
+                    'saldo_awal' => (float) $saved->saldo_awal,
+                    'pendapatan' => (float) $saved->pendapatan,
+                    'belanja' => (float) $saved->belanja,
+                    'saldo_akhir' => (float) $saved->saldo_akhir,
+                ],
+                'rincian_belanja' => [
+                    'belanja_pegawai' => (float) $saved->belanja_pegawai,
+                    'belanja_barang_jasa' => (float) $saved->belanja_barang_jasa,
+                    'belanja_modal' => (float) $saved->belanja_modal,
+                    'belanja_modal_peralatan_mesin' => (float) $saved->belanja_modal_peralatan_mesin,
+                    'belanja_modal_aset_tetap_lainnya' => (float) $saved->belanja_modal_aset_tetap_lainnya,
+                    'belanja_modal_tanah_bangunan' => (float) $saved->belanja_modal_tanah_bangunan,
+                    'total_belanja' => (float) $saved->belanja,
+                    'terbilang_belanja' => $this->terbilangRupiah($saved->belanja),
+                ],
+                'tanda_tangan' => $tandaTangan,
+                'keterangan' => 'Dokumen resmi SP2B tersimpan di database.',
+            ];
+        }
+
+        // Live calculation fallback
+        $saldoAwal = 0.0;
+        $pendapatan = 0.0;
+
+        if ($isMonthly) {
+            $startDate = Carbon::create($tahun, $monthNum, 1)->format('Y-m-d');
+            $endDate = Carbon::create($tahun, $monthNum, 1)->endOfMonth()->format('Y-m-d');
+
+            $sisaTunaiSebelum = (float) $this->bukuKasService->hitungSaldoTunaiSebelumBulan($penganggaran->id, $monthNum);
+            $sisaBankSebelum = (float) $this->bukuKasService->hitungSaldoBankSebelumBulan($penganggaran->id, $monthNum);
+            $saldoAwal = $sisaTunaiSebelum + $sisaBankSebelum;
+
+            if ($monthNum === 1) {
+                $tahap1Option = VariantConfig::sumberDanaTahap1($variant);
+                if ($tahap1Option) {
+                    $penerimaanAwal = $penerimaanClass::where($penganggaranFk, $penganggaran->id)
+                        ->where('sumber_dana', $tahap1Option)
+                        ->first();
+                    if ($penerimaanAwal && $penerimaanAwal->saldo_awal) {
+                        $saldoAwal += (float) $penerimaanAwal->saldo_awal;
+                    }
+                }
+            }
+
+            $pendapatan = (float) $penerimaanClass::where($penganggaranFk, $penganggaran->id)
+                ->whereMonth('tanggal_terima', $monthNum)
+                ->sum('jumlah_dana');
+        } else {
+            $startDate = $tahap === 1 ? "{$tahun}-01-01" : "{$tahun}-07-01";
+            $endDate = $tahap === 1 ? "{$tahun}-06-30" : "{$tahun}-12-31";
+            $startMonth = $tahap === 1 ? 1 : 7;
+
+            $sisaTunaiSebelum = (float) $this->bukuKasService->hitungSaldoTunaiSebelumBulan($penganggaran->id, $startMonth);
+            $sisaBankSebelum = (float) $this->bukuKasService->hitungSaldoBankSebelumBulan($penganggaran->id, $startMonth);
+            $saldoAwal = $sisaTunaiSebelum + $sisaBankSebelum;
+
+            if ($tahap === 1) {
+                $tahap1Option = VariantConfig::sumberDanaTahap1($variant);
+                if ($tahap1Option) {
+                    $penerimaanAwal = $penerimaanClass::where($penganggaranFk, $penganggaran->id)
+                        ->where('sumber_dana', $tahap1Option)
+                        ->first();
+                    if ($penerimaanAwal && $penerimaanAwal->saldo_awal) {
+                        $saldoAwal += (float) $penerimaanAwal->saldo_awal;
+                    }
+                }
+            }
+
+            $pendapatan = (float) $penerimaanClass::where($penganggaranFk, $penganggaran->id)
+                ->where(function ($q) use ($tahap, $variant) {
+                    if (in_array($variant, ['silpa', 'kinerja_silpa'])) {
+                        if ($tahap === 1) {
+                            $q->whereNotNull('sumber_dana');
+                        } else {
+                            $q->whereMonth('tanggal_terima', '>=', 7);
+                        }
+                    } else {
+                        if ($tahap === 1) {
+                            $q->where('sumber_dana', 'like', '%Tahap 1%')->orWhere('sumber_dana', 'like', '%Tahap I%');
+                        } else {
+                            $q->where('sumber_dana', 'like', '%Tahap 2%')->orWhere('sumber_dana', 'like', '%Tahap II%');
+                        }
+                    }
+                })->sum('jumlah_dana');
+        }
+
+        $bkuExpenses = $bkuClass::where($penganggaranFk, $penganggaran->id)
+            ->whereDate('tanggal_transaksi', '>=', $startDate)
+            ->whereDate('tanggal_transaksi', '<=', $endDate)
+            ->whereNotNull('rekening_belanja_id')
+            ->with(['rekeningBelanja', 'kodeKegiatan'])
+            ->get();
+
+        $b_pegawai = 0.0;
+        $b_barang = 0.0;
+        $b_modal = 0.0;
+        $bm_peralatan = 0.0;
+        $bm_aset = 0.0;
+        $bm_tanah = 0.0;
+
+        foreach ($bkuExpenses as $bku) {
+            $amount = (float) ($bku->pengeluaran ?? $bku->total_transaksi_kotor);
+            $kode = $bku->rekeningBelanja->kode_rekening ?? '';
+            $kodeKeg = $bku->kodeKegiatan->kode ?? '';
+
+            if (str_starts_with(trim($kodeKeg), '07.12')) {
+                $b_pegawai += $amount;
+            } elseif (str_starts_with($kode, '5.1.02.')) {
+                $b_barang += $amount;
+            } elseif (str_starts_with($kode, '5.2')) {
+                $b_modal += $amount;
+                if (str_starts_with($kode, '5.2.02')) {
+                    $bm_peralatan += $amount;
+                } elseif (str_starts_with($kode, '5.2.04')) {
+                    $bm_aset += $amount;
+                } elseif (str_starts_with($kode, '5.2.05')) {
+                    $bm_tanah += $amount;
+                }
+            }
+        }
+
+        $totalBelanja = $b_pegawai + $b_barang + $b_modal;
+        $saldoAkhir = $saldoAwal + $pendapatan - $totalBelanja;
+
+        return [
+            'status' => 'kalkulasi_live',
+            'jenis_laporan' => 'SP2B',
+            'judul' => 'SURAT PERMINTAAN PENGESAHAN BELANJA (SP2B) - SIMULASI LIVE',
+            'nomor_surat' => $isMonthly ? "SP2B/BLN-{$monthNum}/{$tahun} (Draft)" : "SP2B/THP-{$tahap}/{$tahun} (Draft)",
+            'tanggal_dokumen' => Carbon::now()->translatedFormat('d F Y'),
+            'jenis_periode' => $isMonthly ? 'bulan' : 'tahap',
+            'tahap' => $isMonthly ? null : $tahap,
+            'bulan' => $isMonthly ? $monthNum : null,
+            'periode_teks' => $periodeTeks,
+            'tahun_anggaran' => $tahun,
+            'ringkasan_kas' => [
+                'saldo_awal' => $saldoAwal,
+                'pendapatan' => $pendapatan,
+                'belanja' => $totalBelanja,
+                'saldo_akhir' => $saldoAkhir,
+            ],
+            'rincian_belanja' => [
+                'belanja_pegawai' => $b_pegawai,
+                'belanja_barang_jasa' => $b_barang,
+                'belanja_modal' => $b_modal,
+                'belanja_modal_peralatan_mesin' => $bm_peralatan,
+                'belanja_modal_aset_tetap_lainnya' => $bm_aset,
+                'belanja_modal_tanah_bangunan' => $bm_tanah,
+                'total_belanja' => $totalBelanja,
+                'terbilang_belanja' => $this->terbilangRupiah($totalBelanja),
+            ],
+            'tanda_tangan' => $tandaTangan,
+            'keterangan' => "SP2B periode {$periodeTeks} belum disimpan di menu Laporan SIKAS. Angka di atas merupakan hasil simulasi kalkulasi real-time dari BKU.",
+        ];
+    }
+
+    /**
+     * Mengambil data laporan LPH (Laporan Penggunaan Dana Hibah BOSP)
+     */
+    public function getLphReportData(int $tahun, string $variant, ?int $semester = 1): array
+    {
+        $semester = ($semester === 2) ? 2 : 1;
+        $penganggaranClass = VariantConfig::getModelClass('penganggaran', $variant);
+        $lphClass = VariantConfig::getModelClass('lph', $variant);
+        $penerimaanClass = VariantConfig::getModelClass('penerimaan_dana', $variant);
+        $bkuClass = VariantConfig::getModelClass('bku', $variant);
+        $rkasClass = VariantConfig::getModelClass('rkas', $variant);
+        $rkasPerubahanClass = VariantConfig::getModelClass('rkas_perubahan', $variant);
+        $penganggaranFk = VariantConfig::penganggaranFk($variant);
+
+        $penganggaran = $penganggaranClass::where('tahun_anggaran', $tahun)->first();
+        if (! $penganggaran) {
+            return [
+                'status' => 'not_found',
+                'pesan' => "Data penganggaran untuk tahun {$tahun} tidak ditemukan.",
+            ];
+        }
+
+        $sekolah = SekolahProfile::first();
+        $saved = $lphClass::where($penganggaranFk, $penganggaran->id)->where('semester', $semester)->first();
+
+        $tandaTangan = [
+            'kepala_sekolah' => $penganggaran->kepala_sekolah ?? 'Kepala Sekolah',
+            'nip_kepala_sekolah' => $penganggaran->nip_kepala_sekolah ?? '-',
+            'bendahara' => $penganggaran->bendahara ?? 'Bendahara BOSP',
+            'nip_bendahara' => $penganggaran->nip_bendahara ?? '-',
+            'nama_sekolah' => $sekolah?->nama_sekolah ?? 'Satuan Pendidikan',
+        ];
+
+        $startDate = $semester === 1 ? "{$tahun}-01-01" : "{$tahun}-07-01";
+        $endDate = $semester === 1 ? "{$tahun}-06-30" : "{$tahun}-12-31";
+
+        $bkuEntries = $bkuClass::where($penganggaranFk, $penganggaran->id)
+            ->whereDate('tanggal_transaksi', '>=', $startDate)
+            ->whereDate('tanggal_transaksi', '<=', $endDate)
+            ->whereNotNull('rekening_belanja_id')
+            ->with('rekeningBelanja')
+            ->get();
+
+        $rekapPerRekening = $bkuEntries->groupBy('rekening_belanja_id')
+            ->map(function ($items) {
+                $first = $items->first();
+
+                return [
+                    'kode_rekening' => $first->rekeningBelanja->kode_rekening ?? '',
+                    'nama_rekening' => $first->rekeningBelanja->nama_rekening ?? '',
+                    'total_realisasi' => (float) $items->sum('total_transaksi_kotor'),
+                ];
+            })->values()->toArray();
+
+        if ($saved) {
+            $totalAnggaranBelanja = (float) ($saved->belanja_operasi_anggaran + $saved->belanja_modal_peralatan_anggaran + $saved->belanja_modal_aset_anggaran);
+            $totalRealisasiBelanja = (float) ($saved->belanja_operasi_realisasi + $saved->belanja_modal_peralatan_realisasi + $saved->belanja_modal_aset_realisasi);
+            $sisaDana = (float) ($saved->penerimaan_anggaran - $totalRealisasiBelanja);
+
+            return [
+                'status' => 'tersimpan',
+                'jenis_laporan' => 'LPH',
+                'judul' => 'LAPORAN PENGGUNAAN DANA HIBAH (LPH) BOSP',
+                'nomor_surat' => $saved->nomor_lph ?: "LPH/SEM-{$semester}/{$tahun}",
+                'tanggal_dokumen' => $saved->tanggal_lph ? Carbon::parse($saved->tanggal_lph)->translatedFormat('d F Y') : '-',
+                'semester' => (int) $saved->semester,
+                'periode_teks' => $saved->semester == 1 ? 'Semester I (Januari – Juni)' : 'Semester II (Juli – Desember)',
+                'tahun_anggaran' => $tahun,
+                'komparasi' => [
+                    'penerimaan' => [
+                        'anggaran' => (float) $saved->penerimaan_anggaran,
+                        'realisasi' => (float) $saved->penerimaan_realisasi,
+                        'selisih' => (float) ($saved->penerimaan_anggaran - $saved->penerimaan_realisasi),
+                    ],
+                    'belanja_operasi' => [
+                        'anggaran' => (float) $saved->belanja_operasi_anggaran,
+                        'realisasi' => (float) $saved->belanja_operasi_realisasi,
+                        'selisih' => (float) ($saved->belanja_operasi_anggaran - $saved->belanja_operasi_realisasi),
+                    ],
+                    'belanja_modal_peralatan' => [
+                        'anggaran' => (float) $saved->belanja_modal_peralatan_anggaran,
+                        'realisasi' => (float) $saved->belanja_modal_peralatan_realisasi,
+                        'selisih' => (float) ($saved->belanja_modal_peralatan_anggaran - $saved->belanja_modal_peralatan_realisasi),
+                    ],
+                    'belanja_modal_aset_lainnya' => [
+                        'anggaran' => (float) $saved->belanja_modal_aset_anggaran,
+                        'realisasi' => (float) $saved->belanja_modal_aset_realisasi,
+                        'selisih' => (float) ($saved->belanja_modal_aset_anggaran - $saved->belanja_modal_aset_realisasi),
+                    ],
+                    'total_belanja' => [
+                        'anggaran' => $totalAnggaranBelanja,
+                        'realisasi' => $totalRealisasiBelanja,
+                        'selisih' => $totalAnggaranBelanja - $totalRealisasiBelanja,
+                    ],
+                    'sisa_dana' => $sisaDana,
+                ],
+                'rekap_per_rekening' => $rekapPerRekening,
+                'tanda_tangan' => $tandaTangan,
+                'keterangan' => 'Dokumen resmi LPH tersimpan di database.',
+            ];
+        }
+
+        // Live calculation fallback
+        $penerimaanQuery = $penerimaanClass::where($penganggaranFk, $penganggaran->id);
+        if ($semester === 1) {
+            if (! in_array($variant, ['silpa', 'kinerja_silpa'])) {
+                $penerimaanQuery->where(function ($q) {
+                    $q->where('sumber_dana', 'like', '%Tahap 1%')->orWhere('sumber_dana', 'like', '%Tahap I%');
+                });
+            } else {
+                $penerimaanQuery->whereMonth('tanggal_terima', '<=', 6);
+            }
+        } else {
+            if (! in_array($variant, ['silpa', 'kinerja_silpa'])) {
+                $penerimaanQuery->where(function ($q) {
+                    $q->where('sumber_dana', 'like', '%Tahap 2%')->orWhere('sumber_dana', 'like', '%Tahap II%');
+                });
+            } else {
+                $penerimaanQuery->whereMonth('tanggal_terima', '>', 6);
+            }
+        }
+        $totalPenerimaanDana = (float) $penerimaanQuery->sum('jumlah_dana');
+
+        if ($semester === 2) {
+            $penerimaanSem1Query = $penerimaanClass::where($penganggaranFk, $penganggaran->id);
+            if (! in_array($variant, ['silpa', 'kinerja_silpa'])) {
+                $penerimaanSem1Query->where(function ($q) {
+                    $q->where('sumber_dana', 'like', '%Tahap 1%')->orWhere('sumber_dana', 'like', '%Tahap I%');
+                });
+            } else {
+                $penerimaanSem1Query->whereMonth('tanggal_terima', '<', 7);
+            }
+            $totalPenerimaanSem1 = (float) $penerimaanSem1Query->sum('jumlah_dana');
+
+            $totalBelanjaSem1 = (float) $bkuClass::where($penganggaranFk, $penganggaran->id)
+                ->whereDate('tanggal_transaksi', '>=', "{$tahun}-01-01")
+                ->whereDate('tanggal_transaksi', '<=', "{$tahun}-06-30")
+                ->whereNotNull('rekening_belanja_id')
+                ->sum('total_transaksi_kotor');
+
+            $sisaDanaSem1 = $totalPenerimaanSem1 - $totalBelanjaSem1;
+            if ($sisaDanaSem1 > 0) {
+                $totalPenerimaanDana += $sisaDanaSem1;
+            }
+        }
+
+        // Pengeluaran Anggaran dari RKAS
+        $hasPerubahan = $rkasPerubahanClass && $rkasPerubahanClass::where($penganggaranFk, $penganggaran->id)->exists();
+        $months = $semester === 1
+            ? ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni']
+            : ['Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
+        $targetRkasClass = $hasPerubahan ? $rkasPerubahanClass : $rkasClass;
+        $rkasItems = $targetRkasClass::where($penganggaranFk, $penganggaran->id)
+            ->whereIn('bulan', $months)
+            ->with('rekeningBelanja')
+            ->get();
+
+        $belanjaOperasiAnggaran = (float) $rkasItems->filter(fn ($i) => str_starts_with($i->rekeningBelanja->kode_rekening ?? '', '5.1'))
+            ->sum(fn ($i) => (float) $i->jumlah * (float) $i->harga_satuan);
+
+        $belanjaModalPeralatanAnggaran = (float) $rkasItems->filter(fn ($i) => str_starts_with($i->rekeningBelanja->kode_rekening ?? '', '5.2.02'))
+            ->sum(fn ($i) => (float) $i->jumlah * (float) $i->harga_satuan);
+
+        $belanjaModalAsetAnggaran = (float) $rkasItems->filter(fn ($i) => str_starts_with($i->rekeningBelanja->kode_rekening ?? '', '5.2') && ! str_starts_with($i->rekeningBelanja->kode_rekening ?? '', '5.2.02'))
+            ->sum(fn ($i) => (float) $i->jumlah * (float) $i->harga_satuan);
+
+        // Pengeluaran Realisasi BKU
+        $belanjaOperasiRealisasi = (float) $bkuEntries->filter(fn ($b) => str_starts_with($b->rekeningBelanja->kode_rekening ?? '', '5.1'))
+            ->sum('total_transaksi_kotor');
+
+        $belanjaModalPeralatanRealisasi = (float) $bkuEntries->filter(fn ($b) => str_starts_with($b->rekeningBelanja->kode_rekening ?? '', '5.2.02'))
+            ->sum('total_transaksi_kotor');
+
+        $belanjaModalAsetRealisasi = (float) $bkuEntries->filter(fn ($b) => str_starts_with($b->rekeningBelanja->kode_rekening ?? '', '5.2') && ! str_starts_with($b->rekeningBelanja->kode_rekening ?? '', '5.2.02'))
+            ->sum('total_transaksi_kotor');
+
+        $penerimaanAnggaran = $totalPenerimaanDana;
+        $penerimaanRealisasi = $belanjaOperasiRealisasi + $belanjaModalPeralatanRealisasi + $belanjaModalAsetRealisasi;
+        $totalAnggaranBelanja = $belanjaOperasiAnggaran + $belanjaModalPeralatanAnggaran + $belanjaModalAsetAnggaran;
+        $totalRealisasiBelanja = $belanjaOperasiRealisasi + $belanjaModalPeralatanRealisasi + $belanjaModalAsetRealisasi;
+        $sisaDana = $penerimaanAnggaran - $totalRealisasiBelanja;
+
+        return [
+            'status' => 'kalkulasi_live',
+            'jenis_laporan' => 'LPH',
+            'judul' => 'LAPORAN PENGGUNAAN DANA HIBAH (LPH) BOSP - SIMULASI LIVE',
+            'nomor_surat' => "LPH/SEM-{$semester}/{$tahun} (Draft)",
+            'tanggal_dokumen' => Carbon::now()->translatedFormat('d F Y'),
+            'semester' => $semester,
+            'periode_teks' => $semester === 1 ? 'Semester I (Januari – Juni)' : 'Semester II (Juli – Desember)',
+            'tahun_anggaran' => $tahun,
+            'komparasi' => [
+                'penerimaan' => [
+                    'anggaran' => $penerimaanAnggaran,
+                    'realisasi' => $penerimaanRealisasi,
+                    'selisih' => $penerimaanAnggaran - $penerimaanRealisasi,
+                ],
+                'belanja_operasi' => [
+                    'anggaran' => $belanjaOperasiAnggaran,
+                    'realisasi' => $belanjaOperasiRealisasi,
+                    'selisih' => $belanjaOperasiAnggaran - $belanjaOperasiRealisasi,
+                ],
+                'belanja_modal_peralatan' => [
+                    'anggaran' => $belanjaModalPeralatanAnggaran,
+                    'realisasi' => $belanjaModalPeralatanRealisasi,
+                    'selisih' => $belanjaModalPeralatanAnggaran - $belanjaModalPeralatanRealisasi,
+                ],
+                'belanja_modal_aset_lainnya' => [
+                    'anggaran' => $belanjaModalAsetAnggaran,
+                    'realisasi' => $belanjaModalAsetRealisasi,
+                    'selisih' => $belanjaModalAsetAnggaran - $belanjaModalAsetRealisasi,
+                ],
+                'total_belanja' => [
+                    'anggaran' => $totalAnggaranBelanja,
+                    'realisasi' => $totalRealisasiBelanja,
+                    'selisih' => $totalAnggaranBelanja - $totalRealisasiBelanja,
+                ],
+                'sisa_dana' => $sisaDana,
+            ],
+            'rekap_per_rekening' => $rekapPerRekening,
+            'tanda_tangan' => $tandaTangan,
+            'keterangan' => "LPH Semester {$semester} tahun {$tahun} belum disimpan di menu Laporan SIKAS. Angka di atas merupakan hasil simulasi kalkulasi komparasi real-time dari RKAS dan BKU.",
+        ];
+    }
+
+    /**
+     * Mengambil matriks ringkasan status ke-4 laporan resmi (SPTJ, SPMTH, SP2B, LPH)
+     */
+    public function getSummaryAllLaporan(int $tahun, string $variant): array
+    {
+        $penganggaranClass = VariantConfig::getModelClass('penganggaran', $variant);
+        $sptjClass = VariantConfig::getModelClass('sptj', $variant);
+        $spmthClass = VariantConfig::getModelClass('spmth', $variant);
+        $sp2bClass = VariantConfig::getModelClass('sp2b', $variant);
+        $lphClass = VariantConfig::getModelClass('lph', $variant);
+        $penganggaranFk = VariantConfig::penganggaranFk($variant);
+
+        $penganggaran = $penganggaranClass::where('tahun_anggaran', $tahun)->first();
+        if (! $penganggaran) {
+            return [
+                'status' => 'not_found',
+                'pesan' => "Data penganggaran untuk tahun {$tahun} tidak ditemukan.",
+            ];
+        }
+
+        $sekolah = SekolahProfile::first();
+
+        // 1. SPTJ
+        $sptj1 = $sptjClass::where($penganggaranFk, $penganggaran->id)->where('tahap', 1)->first();
+        $sptj2 = $sptjClass::where($penganggaranFk, $penganggaran->id)->where('tahap', 2)->first();
+
+        // 2. SPMTH
+        $spmth1 = $spmthClass::where($penganggaranFk, $penganggaran->id)->where('tahap', 1)->first();
+        $spmth2 = $spmthClass::where($penganggaranFk, $penganggaran->id)->where('tahap', 2)->first();
+
+        // 3. SP2B Tahapan
+        $sp2bTahap1 = $sp2bClass::where($penganggaranFk, $penganggaran->id)->where('jenis_periode', 'tahap')->where('tahap', 1)->first();
+        $sp2bTahap2 = $sp2bClass::where($penganggaranFk, $penganggaran->id)->where('jenis_periode', 'tahap')->where('tahap', 2)->first();
+
+        // SP2B Bulanan
+        $sp2bBulananList = $sp2bClass::where($penganggaranFk, $penganggaran->id)->where('jenis_periode', 'bulan')->orderBy('bulan')->get();
+
+        // 4. LPH
+        $lph1 = $lphClass::where($penganggaranFk, $penganggaran->id)->where('semester', 1)->first();
+        $lph2 = $lphClass::where($penganggaranFk, $penganggaran->id)->where('semester', 2)->first();
+
+        $matrix = [
+            [
+                'laporan' => 'SPTJ (Surat Pernyataan Tanggung Jawab Belanja)',
+                'tahap_1' => [
+                    'status' => $sptj1 ? 'tersimpan' : 'belum_disimpan',
+                    'nomor_surat' => $sptj1?->nomor_sptj ?? '-',
+                    'tanggal' => $sptj1?->tanggal_sptj ? Carbon::parse($sptj1->tanggal_sptj)->translatedFormat('d F Y') : '-',
+                    'total_belanja' => $sptj1 ? (float) ($sptj1->jenis_belanja_pegawai + $sptj1->jenis_belanja_barang_jasa + $sptj1->jenis_belanja_modal) : null,
+                ],
+                'tahap_2' => [
+                    'status' => $sptj2 ? 'tersimpan' : 'belum_disimpan',
+                    'nomor_surat' => $sptj2?->nomor_sptj ?? '-',
+                    'tanggal' => $sptj2?->tanggal_sptj ? Carbon::parse($sptj2->tanggal_sptj)->translatedFormat('d F Y') : '-',
+                    'total_belanja' => $sptj2 ? (float) ($sptj2->jenis_belanja_pegawai + $sptj2->jenis_belanja_barang_jasa + $sptj2->jenis_belanja_modal) : null,
+                ],
+            ],
+            [
+                'laporan' => 'SPMTH (Surat Pernyataan Mutlak Tanggung Jawab Hibah)',
+                'tahap_1' => [
+                    'status' => $spmth1 ? 'tersimpan' : 'belum_disimpan',
+                    'nomor_surat' => $spmth1?->nomor_surat ?? '-',
+                    'tanggal' => $spmth1?->tanggal_spmth ? Carbon::parse($spmth1->tanggal_spmth)->translatedFormat('d F Y') : '-',
+                    'total_belanja' => $spmth1 ? (float) ($spmth1->realisasi_lalu + $spmth1->realisasi_ini) : null,
+                ],
+                'tahap_2' => [
+                    'status' => $spmth2 ? 'tersimpan' : 'belum_disimpan',
+                    'nomor_surat' => $spmth2?->nomor_surat ?? '-',
+                    'tanggal' => $spmth2?->tanggal_spmth ? Carbon::parse($spmth2->tanggal_spmth)->translatedFormat('d F Y') : '-',
+                    'total_belanja' => $spmth2 ? (float) ($spmth2->realisasi_lalu + $spmth2->realisasi_ini) : null,
+                ],
+            ],
+            [
+                'laporan' => 'SP2B (Surat Permintaan Pengesahan Belanja - Tahapan)',
+                'tahap_1' => [
+                    'status' => $sp2bTahap1 ? 'tersimpan' : 'belum_disimpan',
+                    'nomor_surat' => $sp2bTahap1?->nomor_sp2b ?? '-',
+                    'tanggal' => $sp2bTahap1?->tanggal_sp2b ? Carbon::parse($sp2bTahap1->tanggal_sp2b)->translatedFormat('d F Y') : '-',
+                    'total_belanja' => $sp2bTahap1 ? (float) $sp2bTahap1->belanja : null,
+                ],
+                'tahap_2' => [
+                    'status' => $sp2bTahap2 ? 'tersimpan' : 'belum_disimpan',
+                    'nomor_surat' => $sp2bTahap2?->nomor_sp2b ?? '-',
+                    'tanggal' => $sp2bTahap2?->tanggal_sp2b ? Carbon::parse($sp2bTahap2->tanggal_sp2b)->translatedFormat('d F Y') : '-',
+                    'total_belanja' => $sp2bTahap2 ? (float) $sp2bTahap2->belanja : null,
+                ],
+            ],
+            [
+                'laporan' => 'LPH (Laporan Penggunaan Dana Hibah BOSP)',
+                'tahap_1' => [
+                    'status' => $lph1 ? 'tersimpan' : 'belum_disimpan',
+                    'nomor_surat' => $lph1?->nomor_lph ?: '-',
+                    'tanggal' => $lph1?->tanggal_lph ? Carbon::parse($lph1->tanggal_lph)->translatedFormat('d F Y') : '-',
+                    'total_belanja' => $lph1 ? (float) ($lph1->belanja_operasi_realisasi + $lph1->belanja_modal_peralatan_realisasi + $lph1->belanja_modal_aset_realisasi) : null,
+                ],
+                'tahap_2' => [
+                    'status' => $lph2 ? 'tersimpan' : 'belum_disimpan',
+                    'nomor_surat' => $lph2?->nomor_lph ?: '-',
+                    'tanggal' => $lph2?->tanggal_lph ? Carbon::parse($lph2->tanggal_lph)->translatedFormat('d F Y') : '-',
+                    'total_belanja' => $lph2 ? (float) ($lph2->belanja_operasi_realisasi + $lph2->belanja_modal_peralatan_realisasi + $lph2->belanja_modal_aset_realisasi) : null,
+                ],
+            ],
+        ];
+
+        return [
+            'status' => 'success',
+            'jenis_laporan' => 'SEMUA',
+            'judul' => "RINGKASAN STATUS KELENGKAPAN LAPORAN RESMI BOSP TAHUN {$tahun}",
+            'tahun_anggaran' => $tahun,
+            'sekolah' => [
+                'nama_sekolah' => $sekolah?->nama_sekolah ?? 'SMP MUHAMMADIYAH SONI',
+                'kepala_sekolah' => $penganggaran->kepala_sekolah ?? 'Kepala Sekolah',
+                'bendahara' => $penganggaran->bendahara ?? 'Bendahara BOSP',
+            ],
+            'matriks_laporan' => $matrix,
+            'sp2b_bulanan_tersimpan' => $sp2bBulananList->map(fn ($item) => [
+                'bulan' => (int) $item->bulan,
+                'nomor_sp2b' => $item->nomor_sp2b,
+                'tanggal' => $item->tanggal_sp2b ? Carbon::parse($item->tanggal_sp2b)->translatedFormat('d F Y') : '-',
+                'belanja' => (float) $item->belanja,
+            ])->toArray(),
+            'catatan' => 'Jika ada laporan yang belum berstatus tersimpan, Om Bendahara dapat membuat dan mencetaknya langsung melalui menu masing-masing laporan pada aplikasi SIKAS.',
         ];
     }
 
