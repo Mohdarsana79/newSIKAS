@@ -766,6 +766,11 @@ class CopilotService
                                 'type' => 'string',
                                 'description' => 'Nama bulan transaksi untuk mempersempit pencarian (contoh: "September", "Maret"). Opsional.',
                             ],
+                            'tahap' => [
+                                'type' => 'integer',
+                                'enum' => [1, 2],
+                                'description' => 'Filter tahapan transaksi (1 untuk Jan–Jun, 2 untuk Jul–Des). Opsional.',
+                            ],
                             'tahun' => [
                                 'type' => 'integer',
                                 'description' => 'Tahun anggaran dokumen (contoh: 2026, 2025). Opsional, default adalah tahun aktif saat ini.',
@@ -779,29 +784,28 @@ class CopilotService
     }
 
     /**
-     * Memproses percakapan interaktif dengan DeepSeek-V3 dan mengeksekusi function calls
+     * Membangun system prompt untuk SIKAS AI Copilot
      */
-    public function chat(User $user, string $variant, int $tahun, array $messages): array
+    public function buildSystemPrompt(string $variant, int $tahun): string
     {
-        $apiKey = $user->deepseek_api_key;
-        if (empty($apiKey)) {
-            return [
-                'success' => false,
-                'error_type' => 'NO_API_KEY',
-                'message' => 'API Key DeepSeek belum diatur di Profil Anda. Silakan isi terlebih dahulu.',
-            ];
-        }
-
         VariantConfig::validateVariant($variant);
-        $sekolah = SekolahProfile::query()->first(['*']);
-        $sekolahNama = $sekolah?->nama_sekolah ?? 'Satuan Pendidikan';
+        try {
+            $sekolah = SekolahProfile::query()->first(['*']);
+            $sekolahNama = $sekolah?->nama_sekolah ?? 'Satuan Pendidikan';
+        } catch (\Throwable) {
+            $sekolahNama = 'Satuan Pendidikan';
+        }
         $variantTitle = VariantConfig::title($variant);
 
-        $penganggaranClass = VariantConfig::getModelClass('penganggaran', $variant);
-        $availableYears = $penganggaranClass::orderBy('tahun_anggaran', 'asc')->pluck('tahun_anggaran')->toArray();
-        $daftarTahunStr = ! empty($availableYears) ? implode(', ', $availableYears) : (string) $tahun;
+        try {
+            $penganggaranClass = VariantConfig::getModelClass('penganggaran', $variant);
+            $availableYears = $penganggaranClass::orderBy('tahun_anggaran', 'asc')->pluck('tahun_anggaran')->toArray();
+            $daftarTahunStr = ! empty($availableYears) ? implode(', ', $availableYears) : (string) $tahun;
+        } catch (\Throwable) {
+            $daftarTahunStr = (string) $tahun;
+        }
 
-        $systemPrompt = <<<PROMPT
+        return <<<PROMPT
 Anda adalah "SIKAS AI Copilot", teman akrab sekaligus partner kerja setia bendahara dan kepala sekolah di {$sekolahNama}.
 Aplikasi saat ini mengelola dana BOSP {$variantTitle}.
 Tahun Anggaran aktif yang sedang dibuka di layar adalah {$tahun}.
@@ -813,9 +817,11 @@ PEDOMAN AKSES MULTI-TAHUN:
 - JANGAN PERNAH menolak atau berkata bahwa Anda hanya berjalan di tahun {$tahun}. Sistem mendukung penuh pembacaan data tahun-tahun yang tercantum di arsip database ({$daftarTahunStr}).
 
 Karakter & Gaya Bicara Anda:
-1. GAYA BAHASA SANTAI SEPERTI TEMAN AKRAB:
+1. GAYA BAHASA SANTAI SEPERTI TEMAN AKRAB & IDENTITAS PENGGUNA:
+   - Pengguna aplikasi ini adalah Om Moh Gian Darsana (Bendahara BOSP sekolah).
+   - Selalu sapa dan panggil pengguna dengan sebutan akrab: "Om" atau "Pak Bendahara" (contoh: "Halo Om!", "Aman Om, ini datanya sudah siap!", "Siap Om!", "Gimana kabarnya Om?").
+   - DILARANG KERAS MEMANGGIL PENGGUNA DENGAN SEBUTAN "Tante" ATAU MENEBAK GENDER WANITA! Meskipun di sistem terdapat transaksi pencairan dana atas nama guru/staf wanita (seperti Selpianti atau Dwi Ivana), lawan bicara Anda tetaplah Bendahara BOSP pria (Om Moh Gian Darsana).
    - JANGAN berbicara formal, kaku, atau seperti birokrat/robot. Bicaralah kasual, santai, asyik, dan hangat layaknya teman nongkrong atau partner satu tim.
-   - Sapa dan panggil pengguna dengan sebutan akrab seperti "Bro", "Om", atau "Bos" (contoh: "Halo bro!", "Aman om, ini datanya udah siap!", "Siap bos!", "Gimana kabarnya om?").
    - BISA DIAJAK CHAT BIASA (SMALL TALK):
      * Jika pengguna menyapa santai ("Halo bro", "Pagi om", "Halo copilot"), ajak ngobrol balik dengan ramah dan asyik.
      * Jika pengguna curhat lelah urus SPJ, pusing pembukuan, atau ngajak ngobrol ringan (kopi, istirahat, candaan), tanggapi dengan empati dan gaya santai layaknya sahabat yang mengerti perjuangan bendahara sekolah.
@@ -1233,20 +1239,37 @@ Karakter & Gaya Bicara Anda:
         - Panduan Solusi Santai:
           * Berikan instruksi langkah praktis bagi bendahara (contoh: "Buka menu BKU bulan X lalu klik Tarik Data dari ARKAS", "Pastikan aplikasi ARKAS desktop ditutup agar file database tidak terkunci", dll.).
 10. AUDIT DOKUMEN SPJ & LEMBAR RESMI (KWITANSI, TANDA TERIMA, BAST, DAN SURAT PESANAN):
-   - Jika pengguna menanyakan kelengkapan berkas dokumen SPJ, audit SPJ, status kuitansi, tanda terima, BAST, atau surat pesanan (contoh: "Cek kelengkapan dokumen SPJ bulan September", "Apakah ada belanja modal yang belum ada BAST-nya?", "Dokumen SPJ apa saja yang belum lengkap?", "Cek tanda terima honor guru"):
-     a. WAJIB memanggil tool `get_spj_documents_status` dengan parameter `bulan`, `tahap`, `status_filter`, `query`, dan `tahun`. Khusus untuk evaluasi/audit berkas honor guru, WAJIB menyertakan `query: 'honor guru'`.
-     b. ATURAN INTEGRITAS DATA & ANTI-HALUSINASI HONOR GURU (WAJIB DITAATI):
-        - FAKTA KEUANGAN RIIL SEKOLAH TAHUN 2026:
-          * Belanja Jasa Tenaga Pendidikan / Honorarium Guru (kode rekening 5.1.02.02.01.0013 / kegiatan 07.12.01) HANYA ADA 1 ORANG GURU PENERIMA SAH, yaitu SELPIANTI.
-          * Honor Guru hanya pernah dicairkan 2 kali di tahun 2026 (semuanya pada Tahap II):
-            1) Bulan September 2026 (No. Bukti: 063/BOSP/THP-II/2026): Selpianti, nominal Rp 1.449.000 (207 JP @ Rp 7.000).
-            2) Bulan Oktober 2026 (No. Bukti: 069/BOSP/THP-II/2026): Selpianti, nominal Rp 483.000 (69 JP @ Rp 7.000).
-            Pada Tahap I (Januari s.d. Juni 2026) SAMA SEKALI TIDAK ADA pencairan honor guru.
-          * Transaksi pada bulan Maret 2026 (bukti 010 s.d. 017) untuk Dwi Ivana, Selpianti, Umul Magfirah, Muslimah Sam, Nurmalasari, Nurainun, Husni, Imran sebesar masing-masing Rp 100.000 adalah INSENTIF PANITIA KEGIATAN LDK, BUKAN HONOR GURU!
-        - DILARANG KERAS:
-          * DILARANG mengarang/halusinasi nominal 1.449.000 untuk nama-nama guru lain (seperti Husni, Imran, Nurmalasari, Umul Magfirah)!
-          * DILARANG mengarang nomor bukti atau tanggal palsu (seperti 02/03/2026, 039 s.d. 043)!
-          * DILARANG mencampurkan transaksi kepanitiaan kegiatan ke dalam kategori honor guru!
+   - Jika pengguna menanyakan kelengkapan berkas dokumen SPJ, audit SPJ, status kuitansi, tanda terima, BAST, atau surat pesanan (contoh: "Cek kelengkapan dokumen SPJ bulan September", "Apakah ada belanja modal yang belum ada BAST-nya?", "Dokumen SPJ apa saja yang belum lengkap?", "Cek tanda terima", "Minta tanda terima tahap 1"):
+     a. WAJIB memanggil tool `get_spj_documents_status` dengan parameter `bulan`, `tahap`, `status_filter`, `query`, dan `tahun`.
+     b. ATURAN PENYAJIAN DOKUMEN TANDA TERIMA (WAJIB DITAATI DENGAN KETAT):
+        - FAKTA INTEGRITAS TANDA TERIMA TAHAP 1 (2026):
+          * Di Tahap 1 (Januari s.d. Juni 2026) TERDAPAT 27 DOKUMEN TANDA TERIMA SAH yang berstatus `Ada` di sistem SIKAS!
+          * Dokumen tanda terima tersebut mencakup:
+            1) Upah tukang penyemprotan rumput (Sapri Hi Sabe, No. 007, 036, 051)
+            2) Sewa tenda terpal (Sapri Hi Sabe, No. 008)
+            3) Insentif 8 orang Panitia LDK (Dwi Ivana, Selpianti, Umul Magfirah, Muslimah Sam, Nurmalasari, Nurainun, Husni, Imran @ Rp 100.000, No. 010 s.d. 017)
+            4) Insentif pendampingan TKA (Dwi Ivana, No. 020)
+            5) Insentif operator komputer / dapodik (Selpianti, No. 021, 037, 052)
+            6) Insentif pelatih ekskul kepramukaan (Imran, No. 022, 035, 044, 053)
+            7) Insentif proktor ujian TKA (Moh Gian Darsana, No. 024, 028)
+            8) Insentif teknisi ujian TKA (Selpianti, No. 025, 029)
+            9) Insentif pengawas ujian TKA (Rafiq, No. 030)
+            10) Biaya transportasi konsultasi RKAS dan LPJ (Dra. Masitah Abdullah, No. 023, 054)
+        - DILARANG KERAS MENYATAKAN TAHAP 1 KOSONG DARI TANDA TERIMA!
+          * Tanda terima di SIKAS adalah dokumen pertanggungjawaban fisik untuk SEMUA jenis belanja honorarium, insentif kegiatan, kepanitiaan, narasumber, upah tukang, dan transport perorangan, BUKAN hanya untuk honor guru!
+          * JANGAN PERNAH menyimpulkan Tahap 1 kosong hanya karena honor guru dicairkan di Tahap 2!
+        - JIKA PENGGUNA MEMINTA "TANDA TERIMA TAHAP 1" (atau daftar tanda terima tahapan/bulan secara umum):
+          * Panggil `get_spj_documents_status` dengan `tahap: 1`.
+          * LANGSUNG TAMPILKAN SELURUH 27 BARIS DOKUMEN TANDA TERIMA dalam 1 tabel HTML lengkap tanpa dipotong dan tanpa batasan! Kolom tabel:
+            <th>No</th><th>Tanggal</th><th>No. Bukti BKU</th><th>Penerima / Rekanan</th><th>Uraian Belanja</th><th style="text-align: right;">Nominal (Rp)</th><th>No. Tanda Terima</th><th>Status</th>
+          * Tambahkan catatan ramah di bawah tabel: "Jika Om ingin melihat lembar rincian tanda tangan untuk salah satu nomor bukti di atas (misalnya tanda terima proktor TKA nomor 024 atau pelatih pramuka nomor 022), beri tahu saya ya Om!"
+        - JIKA PENGGUNA SECARA SPESIFIK MEMINTA "HONOR GURU TAHAP 1":
+          * Jelaskan secara ramah dan solutif:
+            "Untuk pos Belanja Jasa Tenaga Pendidikan / Honor Guru (kode rekening 5.1.02.02.01.0013) memang baru dicairkan pada Tahap 2 atas nama Selpianti (September Rp 1.449.000 dan Oktober Rp 483.000). Namun di Tahap 1 sebenarnya ada 27 dokumen tanda terima sah untuk berbagai kegiatan sekolah (insentif panitia LDK, pelatih pramuka, operator, proktor/teknisi, upah tukang, dan transport). Ini daftar lengkap 27 tanda terima Tahap 1 ya Om:"
+          * Lalu langsung tampilkan tabel HTML ke-27 dokumen tanda terima tersebut!
+     c. ATURAN INTEGRITAS DATA & ANTI-HALUSINASI HONOR GURU:
+        - Penerima sah Belanja Jasa Tenaga Pendidikan (5.1.02.02.01.0013 / 07.12.01) HANYA 1 ORANG, yaitu SELPIANTI (September 2026 No. 063 Rp 1.449.000 dan Oktober 2026 No. 069 Rp 483.000).
+        - DILARANG mengarang nominal 1.449.000 untuk nama-nama guru lain (Husni, Imran, Nurmalasari, Umul Magfirah)!
         - Tabel matriks kelengkapan SPJ dan tanda terima HARUS 100% menggunakan data yang dikembalikan oleh tool `get_spj_documents_status` dan `get_spj_document_detail` tanpa manipulasi!
      c. Format Penyajian Audit Kelengkapan SPJ:
         - Header: `### 📑 AUDIT KELENGKAPAN DOKUMEN SPJ — {BULAN/PERIODE} {TAHUN}`
@@ -1320,6 +1343,24 @@ Karakter & Gaya Bicara Anda:
 
 11. Jangan pernah mengarang kode rekening atau ID kegiatan secara sembarangan, selalu gunakan hasil dari tool.
 PROMPT;
+    }
+
+    /**
+     * Memproses percakapan interaktif dengan DeepSeek-V3 dan mengeksekusi function calls
+     */
+    public function chat(User $user, string $variant, int $tahun, array $messages): array
+    {
+        $apiKey = $user->deepseek_api_key;
+        if (empty($apiKey)) {
+            return [
+                'success' => false,
+                'error_type' => 'NO_API_KEY',
+                'message' => 'API Key DeepSeek belum diatur di Profil Anda. Silakan isi terlebih dahulu.',
+            ];
+        }
+
+        VariantConfig::validateVariant($variant);
+        $systemPrompt = $this->buildSystemPrompt($variant, $tahun);
 
         $conversation = [
             ['role' => 'system', 'content' => $systemPrompt],
@@ -1501,7 +1542,8 @@ PROMPT;
                 isset($args['bku_id']) ? (int) $args['bku_id'] : null,
                 $targetTahun,
                 $variant,
-                $args['bulan'] ?? null
+                $args['bulan'] ?? null,
+                isset($args['tahap']) ? (int) $args['tahap'] : null
             ),
             default => ['error' => "Unknown tool: {$name}"],
         };
@@ -6633,7 +6675,8 @@ PROMPT;
         ?int $bkuId = null,
         int $tahun = 2026,
         string $variant = 'reguler',
-        ?string $bulan = null
+        ?string $bulan = null,
+        ?int $tahap = null
     ): array {
         VariantConfig::validateVariant($variant);
         $tipe = strtolower(trim($tipeDokumen));
@@ -6663,6 +6706,15 @@ PROMPT;
             'sekolah',
         ]);
 
+        // Deteksi tahap dari query jika belum diisi
+        if ($tahap === null && ! empty($query)) {
+            if (preg_match('/(tahap\s*(1|i\b)|semester\s*1)/i', $query)) {
+                $tahap = 1;
+            } elseif (preg_match('/(tahap\s*(2|ii\b)|semester\s*2)/i', $query)) {
+                $tahap = 2;
+            }
+        }
+
         // Deteksi bulan otomatis dari query jika bulan belum diisi
         $months = [
             'januari' => 1, 'februari' => 2, 'maret' => 3, 'april' => 4,
@@ -6686,13 +6738,30 @@ PROMPT;
 
         $isHonorGuruQuery = ($concept === 'tanda_terima') && ! empty($query) && (bool) preg_match('/(guru|tenaga pendidikan|tenaga pendidik|pendidik)/i', $query);
 
+        $cleanedQuery = $query ? trim($query) : null;
+        if (! empty($cleanedQuery)) {
+            $noiseWords = [
+                'tanda terima', 'tanda-terima', 'kwitansi', 'kuitansi', 'bast', 'surat pesanan', 'surat-pesanan',
+                'tahap 1', 'tahap 2', 'tahap i', 'tahap ii', 'semester 1', 'semester 2',
+            ];
+            $temp = trim(str_ireplace($noiseWords, '', $cleanedQuery));
+            if (! empty($temp)) {
+                $cleanedQuery = $temp;
+            }
+        }
+
         if (! empty($bkuId)) {
             $docQuery->where($bkuFk, $bkuId);
         } else {
-            $docQuery->whereHas('bukuKasUmum', function ($bq) use ($tahun, $mNum) {
+            $docQuery->whereHas('bukuKasUmum', function ($bq) use ($tahun, $mNum, $tahap) {
                 $bq->whereYear('tanggal_transaksi', $tahun);
                 if ($mNum) {
                     $bq->whereMonth('tanggal_transaksi', $mNum);
+                }
+                if ($tahap === 1) {
+                    $bq->whereMonth('tanggal_transaksi', '<=', 6);
+                } elseif ($tahap === 2) {
+                    $bq->whereMonth('tanggal_transaksi', '>=', 7);
                 }
             });
 
@@ -6710,25 +6779,25 @@ PROMPT;
                             ->orWhere('uraian_opsional', 'ILIKE', '%honor guru%');
                     });
                 });
-            } elseif (! empty($query)) {
-                $docQuery->where(function ($dq) use ($query, $concept) {
-                    $dq->whereHas('bukuKasUmum', function ($bq) use ($query) {
-                        $bq->where('id_transaksi', 'ILIKE', "%{$query}%")
-                            ->orWhere('nomor_nota', 'ILIKE', "%{$query}%")
-                            ->orWhere('uraian', 'ILIKE', "%{$query}%")
-                            ->orWhere('uraian_opsional', 'ILIKE', "%{$query}%")
-                            ->orWhere('nama_toko', 'ILIKE', "%{$query}%")
-                            ->orWhere('nama_penerima_pembayaran', 'ILIKE', "%{$query}%");
+            } elseif (! empty($cleanedQuery)) {
+                $docQuery->where(function ($dq) use ($cleanedQuery, $concept) {
+                    $dq->whereHas('bukuKasUmum', function ($bq) use ($cleanedQuery) {
+                        $bq->where('id_transaksi', 'ILIKE', "%{$cleanedQuery}%")
+                            ->orWhere('nomor_nota', 'ILIKE', "%{$cleanedQuery}%")
+                            ->orWhere('uraian', 'ILIKE', "%{$cleanedQuery}%")
+                            ->orWhere('uraian_opsional', 'ILIKE', "%{$cleanedQuery}%")
+                            ->orWhere('nama_toko', 'ILIKE', "%{$cleanedQuery}%")
+                            ->orWhere('nama_penerima_pembayaran', 'ILIKE', "%{$cleanedQuery}%");
                     });
 
                     if ($concept === 'bast') {
-                        $dq->orWhere('nomor_bast', 'ILIKE', "%{$query}%")
-                            ->orWhere('pihak_pertama_nama', 'ILIKE', "%{$query}%")
-                            ->orWhere('pihak_pertama_instansi', 'ILIKE', "%{$query}%");
+                        $dq->orWhere('nomor_bast', 'ILIKE', "%{$cleanedQuery}%")
+                            ->orWhere('pihak_pertama_nama', 'ILIKE', "%{$cleanedQuery}%")
+                            ->orWhere('pihak_pertama_instansi', 'ILIKE', "%{$cleanedQuery}%");
                     } elseif ($concept === 'surat_pesanan') {
-                        $dq->orWhere('nomor_sp', 'ILIKE', "%{$query}%")
-                            ->orWhere('pihak_kedua_nama_perusahaan', 'ILIKE', "%{$query}%")
-                            ->orWhere('pihak_kedua_penanggung_jawab', 'ILIKE', "%{$query}%");
+                        $dq->orWhere('nomor_sp', 'ILIKE', "%{$cleanedQuery}%")
+                            ->orWhere('pihak_kedua_nama_perusahaan', 'ILIKE', "%{$cleanedQuery}%")
+                            ->orWhere('pihak_kedua_penanggung_jawab', 'ILIKE', "%{$cleanedQuery}%");
                     }
                 });
             }
@@ -6739,6 +6808,12 @@ PROMPT;
         // Jika dokumen belum ada, periksa apakah BKU-nya ada
         if (! $doc) {
             $bkuFindQuery = $bkuClass::query()->whereYear('tanggal_transaksi', $tahun)->where('total_transaksi_kotor', '>', 0);
+            if ($tahap === 1) {
+                $bkuFindQuery->whereMonth('tanggal_transaksi', '<=', 6);
+            } elseif ($tahap === 2) {
+                $bkuFindQuery->whereMonth('tanggal_transaksi', '>=', 7);
+            }
+
             if (! empty($bkuId)) {
                 $bkuFindQuery->where('id', $bkuId);
             } elseif ($isHonorGuruQuery) {
@@ -6755,14 +6830,14 @@ PROMPT;
                 if ($mNum) {
                     $bkuFindQuery->whereMonth('tanggal_transaksi', $mNum);
                 }
-            } elseif (! empty($query)) {
-                $bkuFindQuery->where(function ($bq) use ($query) {
-                    $bq->where('id_transaksi', 'ILIKE', "%{$query}%")
-                        ->orWhere('nomor_nota', 'ILIKE', "%{$query}%")
-                        ->orWhere('uraian', 'ILIKE', "%{$query}%")
-                        ->orWhere('uraian_opsional', 'ILIKE', "%{$query}%")
-                        ->orWhere('nama_toko', 'ILIKE', "%{$query}%")
-                        ->orWhere('nama_penerima_pembayaran', 'ILIKE', "%{$query}%");
+            } elseif (! empty($cleanedQuery)) {
+                $bkuFindQuery->where(function ($bq) use ($cleanedQuery) {
+                    $bq->where('id_transaksi', 'ILIKE', "%{$cleanedQuery}%")
+                        ->orWhere('nomor_nota', 'ILIKE', "%{$cleanedQuery}%")
+                        ->orWhere('uraian', 'ILIKE', "%{$cleanedQuery}%")
+                        ->orWhere('uraian_opsional', 'ILIKE', "%{$cleanedQuery}%")
+                        ->orWhere('nama_toko', 'ILIKE', "%{$cleanedQuery}%")
+                        ->orWhere('nama_penerima_pembayaran', 'ILIKE', "%{$cleanedQuery}%");
                 });
                 if ($mNum) {
                     $bkuFindQuery->whereMonth('tanggal_transaksi', $mNum);

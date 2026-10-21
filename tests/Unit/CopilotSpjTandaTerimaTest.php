@@ -64,4 +64,33 @@ class CopilotSpjTandaTerimaTest extends TestCase
         $this->assertEquals(1449000, $bku->total_transaksi_kotor);
         $this->assertEquals('Pembayaran Honor Guru Selpianti', $this->service->formatUraianPembayaranReal($bku));
     }
+
+    public function test_system_prompt_enforces_om_persona_and_forbids_tante(): void
+    {
+        $prompt = $this->service->buildSystemPrompt('reguler', 2026);
+
+        $this->assertStringContainsString('Om Moh Gian Darsana', $prompt);
+        $this->assertStringContainsString('DILARANG KERAS MEMANGGIL PENGGUNA DENGAN SEBUTAN "Tante"', $prompt);
+        $this->assertStringContainsString('DILARANG KERAS MENYATAKAN TAHAP 1 KOSONG DARI TANDA TERIMA!', $prompt);
+        $this->assertStringContainsString('27 DOKUMEN TANDA TERIMA SAH', $prompt);
+        $this->assertStringContainsString('LANGSUNG TAMPILKAN SELURUH 27 BARIS DOKUMEN TANDA TERIMA', $prompt);
+    }
+
+    public function test_get_available_tools_includes_tahap_parameter_in_get_spj_document_detail(): void
+    {
+        $tools = $this->service->getAvailableTools();
+
+        $detailTool = null;
+        foreach ($tools as $t) {
+            if (($t['function']['name'] ?? '') === 'get_spj_document_detail') {
+                $detailTool = $t;
+                break;
+            }
+        }
+
+        $this->assertNotNull($detailTool, 'Tool get_spj_document_detail harus terdaftar');
+        $params = $detailTool['function']['parameters']['properties'] ?? [];
+        $this->assertArrayHasKey('tahap', $params, 'Parameter tahap harus ada pada get_spj_document_detail');
+        $this->assertEquals([1, 2], $params['tahap']['enum']);
+    }
 }
