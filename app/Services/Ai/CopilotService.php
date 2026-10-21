@@ -752,7 +752,7 @@ class CopilotService
                             ],
                             'query' => [
                                 'type' => 'string',
-                                'description' => 'Kata kunci pencarian dokumen (nomor bukti BKU, nomor surat/dokumen, nama rekanan/toko, atau uraian belanja).',
+                                'description' => 'Kata kunci pencarian dokumen (nomor bukti BKU, nomor surat/dokumen, nama rekanan/toko, atau uraian belanja). Jika mencari tanda terima honor guru, gunakan kata kunci "honor guru" agar tepat membidik rekening Belanja Jasa Tenaga Pendidikan.',
                             ],
                             'bku_id' => [
                                 'type' => 'integer',
@@ -1244,28 +1244,62 @@ Karakter & Gaya Bicara Anda:
           * Sebutkan secara spesifik transaksi mana saja yang berkasnya masih kurang (contoh: "Untuk transaksi Cat Lapangan Toko Jaya nomor 058 belum ada Surat Pesanan nih, Om").
           * Berikan saran ramah untuk melengkapinya melalui menu dokumen terkait di SIKAS sebelum pelaporan SPJ.
    - Jika pengguna meminta melihat isi / lembar rincian resmi salah satu dokumen SPJ (contoh: "Tampilkan rincian BAST pengadaan laptop", "Rincian Surat Pesanan Toko Jaya", "Tanda terima honor guru bulan September", "Kwitansi belanja ATK"):
-     a. WAJIB memanggil tool `get_spj_document_detail` dengan parameter `tipe_dokumen` ('bast', 'surat_pesanan', 'kwitansi', atau 'tanda_terima'), `query`, dan `tahun`.
-     b. Format Penyajian Lembar Resmi Dokumen SPJ:
-        - Judul Dokumen Resmi:
-          * `### 📦 BERITA ACARA SERAH TERIMA (BAST)`
-          * `### 📋 SURAT PESANAN (SP)`
-          * `### 📜 KWITANSI PEMBAYARAN BOSP`
-          * `### 📝 TANDA TERIMA HONORARIUM / JASA`
-        - Nomor Dokumen Resmi & Tanggal Dokumen.
-        - Informasi Transaksi & Pembayaran:
-          * Cantumkan baris "Untuk Pembayaran" / "Uraian Belanja" dengan MENGGUNAKAN URAIAN RIIL BARANG/JASA dari field `untuk_pembayaran` atau `keperluan` hasil tool (contoh: "Pembayaran Belanja Kuas Biasa, Cat tembok Nippon Paint, Kuas Roll" atau "Pembayaran Honor Guru Husni, S.Pd.I").
-          * DILARANG KERAS memunculkan awalan pembukuan jurnal kas BKU seperti "Lunas Bayar..." pada lembar kuitansi / dokumen resmi SPJ!
-          * Tampilkan "Rekening Belanja" dan "Kegiatan" lengkap dengan kode dan nama uraian resminya sesuai hasil tool.
-        - Identitas Para Pihak:
-          * Pihak Pertama (Penyedia / Toko Rekanan / Penerima)
-          * Pihak Kedua (Sekolah: Kepala Sekolah & Bendahara)
+     a. WAJIB memanggil tool `get_spj_document_detail` dengan parameter `tipe_dokumen` ('bast', 'surat_pesanan', 'kwitansi', atau 'tanda_terima'), `query`, `bulan` (jika disebutkan), dan `tahun`. Khusus untuk honor guru, gunakan `query: 'honor guru'`.
+     b. Format Penyajian Lembar Resmi Dokumen SPJ Berdasarkan Jenis Dokumen:
+
+        [JENIS 1: TANDA TERIMA HONORARIUM / JASA]
+        - Header Dokumen: `### 📝 TANDA TERIMA PEMBAYARAN HONORARIUM / JASA`
+        - Nomor Dokumen / Bukti BKU & Tanggal Transaksi Resmi.
+        - Informasi Pembayaran:
+          * Untuk Keperluan: gunakan uraian riil pembayaran dari field `keperluan` (contoh: "Pembayaran Honor Guru Selpianti"). DILARANG KERAS memunculkan awalan jurnal kas "Lunas Bayar...".
+          * Rekening Belanja: kode dan nama rekening dari field `rekening`.
+          * Kode Kegiatan: kode dan nama kegiatan dari field `kegiatan`.
+          * Sumber Dana: "BOSP Reguler" (atau sesuai varian aktif).
+        - Tabel Rincian Penerima Honor (WAJIB persis sesuai format lembar cetak PDF resmi SIKAS):
+          <th>No</th><th>Nama Penerima</th><th>Volume</th><th>Satuan</th><th style="text-align: right;">Harga Satuan (Rp)</th><th style="text-align: right;">Jumlah Bruto (Rp)</th><th style="text-align: right;">Potongan Pajak (Rp)</th><th style="text-align: right;">Jumlah Diterima (Rp)</th><th>Tanda Tangan</th>
+          Data baris tabel WAJIB diambil persis dari array `daftar_penerima` hasil pemanggilan tool `get_spj_document_detail`.
+        - Ringkasan Finansial:
+          * Total Bruto (Rp), Potongan Pajak (Rp), Jumlah Diterima Neto (Rp), serta **Terbilang Rupiah Resmi**.
+        - Lembar Pengesahan Tanda Tangan:
+          * Mengetahui: Kepala Sekolah (nama & NIP).
+          * Yang Menyerahkan: Bendahara BOSP (nama & NIP).
+          * Penerima: Nama Penerima Sah (nama jelas).
+        - ATURAN KRUSIAL & KETAT TANDA TERIMA HONOR GURU:
+          * Tanda terima di SIKAS adalah dokumen pertanggungjawaban individual per-transaksi BKU.
+          * DILARANG KERAS menggabungkan transaksi honorarium yang berbeda atau memasukkan nama penerima dari akun lain (seperti pelatih pramuka, upah tukang penyemprot rumput, operator komputer/dapodik, teknisi, atau panitia kegiatan) ke dalam lembar tanda terima honor guru!
+          * Penerima honor guru di sekolah ini sah dan tunggal (hanya 1 orang guru per transaksi, yaitu Selpianti). DILARANG membuat tabel gabungan multi-orang atau multi-bulan yang menyebabkan nominal membengkak!
+          * Jika field `transaksi_lain_terkait` pada hasil tool berisi transaksi pencairan honor di bulan lain (misal: September dan Oktober), tampilkan tanda terima bulan yang diminta/terbaru, lalu tambahkan catatan ramah di bawah lembar tanda terima:
+            `💡 Catatan: Selain tanda terima ini, terdapat juga pencairan honor guru pada bulan [Bulan] sebesar Rp [Nominal] (No. Bukti: [Nomor]). Silakan beri tahu saya jika Om ingin melihat lembar tanda terima bulan tersebut.`
+
+        [JENIS 2: KWITANSI PEMBAYARAN BOSP]
+        - Header Dokumen: `### 📜 KWITANSI PEMBAYARAN BOSP`
+        - Nomor Bukti BKU & Tanggal Transaksi.
+        - Lembar Kwitansi:
+          * Sudah Terima Dari: Bendahara BOSP {nama_sekolah}
+          * Terbilang: {terbilang_bruto}
+          * Untuk Pembayaran: uraian riil barang/jasa dari field `untuk_pembayaran` (DILARANG pakai awalan "Lunas Bayar...").
+          * Rekening & Kegiatan: sesuai hasil tool.
+          * Penerima / Rekanan: nama toko rekanan atau penerima pembayaran.
         - Tabel Rincian Barang / Jasa:
-          <th>No</th><th>Uraian Spesifikasi / Nama Barang</th><th>Volume</th><th>Satuan</th><th style="text-align: right;">Harga Satuan (Rp)</th><th style="text-align: right;">Subtotal (Rp)</th><th>Kondisi Fisik</th>
-        - Tabel Ringkasan Nilai Finansial:
-          * Total Bruto (Rp), Potongan Pajak (PPN, PPh 21, PPh 23, Pajak Daerah), Total Diterima Neto (Rp), serta **Terbilang Rupiah Resmi**.
-        - Khusus Surat Pesanan: Sertakan klausul waktu pengiriman, kondisi barang, dan ketentuan pembayaran.
-        - Kolom Pengesahan Tanda Tangan:
-          Cantumkan nama jelas Kepala Sekolah, Bendahara, dan Rekanan/Penerima.
+          <th>No</th><th>Uraian Spesifikasi / Nama Barang</th><th>Volume</th><th>Satuan</th><th style="text-align: right;">Harga Satuan (Rp)</th><th style="text-align: right;">Subtotal (Rp)</th>
+        - Ringkasan Nilai Finansial & Pengesahan Tanda Tangan (Penerima, Setuju Dibayar: Kepala Sekolah, Lunas Dibayar: Bendahara).
+
+        [JENIS 3: BERITA ACARA SERAH TERIMA (BAST)]
+        - Header Dokumen: `### 📦 BERITA ACARA SERAH TERIMA (BAST)`
+        - Nomor BAST & Tanggal Dokumen.
+        - Pihak Pertama (Penyedia/Toko) & Pihak Kedua (Sekolah).
+        - Klausul serah terima barang/jasa dalam keadaan baik.
+        - Tabel Rincian Barang beserta Kondisi Fisik (Baik).
+        - Nilai Finansial & Tanda Tangan Para Pihak.
+
+        [JENIS 4: SURAT PESANAN (SP)]
+        - Header Dokumen: `### 📋 SURAT PESANAN (SP)`
+        - Nomor SP & Tanggal Dokumen.
+        - Pihak Kesatu (Pemesan) & Pihak Kedua (Penyedia Rekanan).
+        - Tabel Rincian Pesanan Barang/Jasa.
+        - Ketentuan Pesanan (Waktu pengiriman, kondisi barang, ketentuan pembayaran, sumber dana).
+        - Nilai Finansial & Tanda Tangan Pemesan & Penyedia.
+
 11. Jangan pernah mengarang kode rekening atau ID kegiatan secara sembarangan, selalu gunakan hasil dari tool.
 PROMPT;
 
@@ -6583,27 +6617,54 @@ PROMPT;
             'sekolah',
         ]);
 
+        // Deteksi bulan otomatis dari query jika bulan belum diisi
+        $months = [
+            'januari' => 1, 'februari' => 2, 'maret' => 3, 'april' => 4,
+            'mei' => 5, 'juni' => 6, 'juli' => 7, 'agustus' => 8,
+            'september' => 9, 'oktober' => 10, 'november' => 11, 'desember' => 12,
+        ];
+        if (empty($bulan) && ! empty($query)) {
+            foreach ($months as $mName => $mIdx) {
+                if (stripos($query, $mName) !== false) {
+                    $bulan = $mName;
+                    break;
+                }
+            }
+        }
+
+        $mNum = null;
+        if (! empty($bulan) && strtolower(trim($bulan)) !== 'semua') {
+            $bulanLower = strtolower(trim($bulan));
+            $mNum = $months[$bulanLower] ?? (is_numeric($bulan) ? (int) $bulan : null);
+        }
+
+        $isHonorGuruQuery = ($concept === 'tanda_terima') && ! empty($query) && (bool) preg_match('/(guru|tenaga pendidikan|tenaga pendidik|pendidik)/i', $query);
+
         if (! empty($bkuId)) {
             $docQuery->where($bkuFk, $bkuId);
         } else {
-            $docQuery->whereHas('bukuKasUmum', function ($bq) use ($tahun, $bulan) {
+            $docQuery->whereHas('bukuKasUmum', function ($bq) use ($tahun, $mNum) {
                 $bq->whereYear('tanggal_transaksi', $tahun);
-
-                if (! empty($bulan) && strtolower(trim($bulan)) !== 'semua') {
-                    $bulanLower = strtolower(trim($bulan));
-                    $months = [
-                        'januari' => 1, 'februari' => 2, 'maret' => 3, 'april' => 4,
-                        'mei' => 5, 'juni' => 6, 'juli' => 7, 'agustus' => 8,
-                        'september' => 9, 'oktober' => 10, 'november' => 11, 'desember' => 12,
-                    ];
-                    $mNum = $months[$bulanLower] ?? (is_numeric($bulan) ? (int) $bulan : null);
-                    if ($mNum) {
-                        $bq->whereMonth('tanggal_transaksi', $mNum);
-                    }
+                if ($mNum) {
+                    $bq->whereMonth('tanggal_transaksi', $mNum);
                 }
             });
 
-            if (! empty($query)) {
+            if ($isHonorGuruQuery) {
+                // Kunci ketat hanya pada rekening Belanja Jasa Tenaga Pendidikan / Honorarium Guru
+                $docQuery->whereHas('bukuKasUmum', function ($bq) {
+                    $bq->where(function ($sub) {
+                        $sub->whereHas('rekeningBelanja', function ($rq) {
+                            $rq->where('kode_rekening', 'ILIKE', '%5.1.02.02.01.0013%');
+                        })
+                            ->orWhereHas('kodeKegiatan', function ($kq) {
+                                $kq->where('kode', 'ILIKE', '%07.12.01%');
+                            })
+                            ->orWhere('uraian', 'ILIKE', '%honorarium guru%')
+                            ->orWhere('uraian_opsional', 'ILIKE', '%honor guru%');
+                    });
+                });
+            } elseif (! empty($query)) {
                 $docQuery->where(function ($dq) use ($query, $concept) {
                     $dq->whereHas('bukuKasUmum', function ($bq) use ($query) {
                         $bq->where('id_transaksi', 'ILIKE', "%{$query}%")
@@ -6634,14 +6695,32 @@ PROMPT;
             $bkuFindQuery = $bkuClass::query()->whereYear('tanggal_transaksi', $tahun)->where('total_transaksi_kotor', '>', 0);
             if (! empty($bkuId)) {
                 $bkuFindQuery->where('id', $bkuId);
+            } elseif ($isHonorGuruQuery) {
+                $bkuFindQuery->where(function ($sub) {
+                    $sub->whereHas('rekeningBelanja', function ($rq) {
+                        $rq->where('kode_rekening', 'ILIKE', '%5.1.02.02.01.0013%');
+                    })
+                        ->orWhereHas('kodeKegiatan', function ($kq) {
+                            $kq->where('kode', 'ILIKE', '%07.12.01%');
+                        })
+                        ->orWhere('uraian', 'ILIKE', '%honorarium guru%')
+                        ->orWhere('uraian_opsional', 'ILIKE', '%honor guru%');
+                });
+                if ($mNum) {
+                    $bkuFindQuery->whereMonth('tanggal_transaksi', $mNum);
+                }
             } elseif (! empty($query)) {
                 $bkuFindQuery->where(function ($bq) use ($query) {
                     $bq->where('id_transaksi', 'ILIKE', "%{$query}%")
                         ->orWhere('nomor_nota', 'ILIKE', "%{$query}%")
                         ->orWhere('uraian', 'ILIKE', "%{$query}%")
                         ->orWhere('uraian_opsional', 'ILIKE', "%{$query}%")
-                        ->orWhere('nama_toko', 'ILIKE', "%{$query}%");
+                        ->orWhere('nama_toko', 'ILIKE', "%{$query}%")
+                        ->orWhere('nama_penerima_pembayaran', 'ILIKE', "%{$query}%");
                 });
+                if ($mNum) {
+                    $bkuFindQuery->whereMonth('tanggal_transaksi', $mNum);
+                }
             }
 
             $bkuMatch = $bkuFindQuery->first();
@@ -6813,6 +6892,76 @@ PROMPT;
         }
 
         if ($concept === 'tanda_terima') {
+            $penerimaUtama = ! empty($bku->nama_penerima_pembayaran) ? $bku->nama_penerima_pembayaran : ($items[0]['uraian'] ?? 'Penerima Honor');
+
+            // Susun daftar penerima tanda terima resmi sesuai format kolom cetak PDF SIKAS
+            $daftarPenerima = [];
+            $idx = 1;
+            if ($bku && $bku->uraianDetails && $bku->uraianDetails->isNotEmpty()) {
+                foreach ($bku->uraianDetails as $det) {
+                    $detBruto = (float) $det->jumlah;
+                    $detPajak = $bruto > 0 ? round(($detBruto / $bruto) * $pajak, 2) : 0.0;
+                    $detNeto = max(0, $detBruto - $detPajak);
+
+                    $daftarPenerima[] = [
+                        'no' => $idx++,
+                        'nama_penerima' => $penerimaUtama,
+                        'uraian' => $det->uraian,
+                        'volume' => (float) $det->volume,
+                        'satuan' => $det->satuan,
+                        'harga_satuan' => (float) $det->harga_satuan,
+                        'jumlah_bruto' => $detBruto,
+                        'potongan_pajak' => $detPajak,
+                        'jumlah_diterima' => $detNeto,
+                        'tanda_tangan' => '........................',
+                    ];
+                }
+            } else {
+                $daftarPenerima[] = [
+                    'no' => 1,
+                    'nama_penerima' => $penerimaUtama,
+                    'uraian' => $bku->uraian_opsional ?: $bku->uraian,
+                    'volume' => 1.0,
+                    'satuan' => 'Orang / Kegiatan',
+                    'harga_satuan' => $bruto,
+                    'jumlah_bruto' => $bruto,
+                    'potongan_pajak' => $pajak,
+                    'jumlah_diterima' => $neto,
+                    'tanda_tangan' => '........................',
+                ];
+            }
+
+            // Cari transaksi pencairan honor terkait lainnya pada tahun yang sama agar AI bisa menginformasikan alternatif bulan lain
+            $isBelanjaGuru = str_contains($bku->rekeningBelanja?->kode_rekening ?? '', '5.1.02.02.01.0013') || str_contains($bku->kodeKegiatan?->kode ?? '', '07.12.01');
+            $transaksiLainTerkait = [];
+
+            if ($isBelanjaGuru) {
+                $otherBkus = $bkuClass::query()
+                    ->whereYear('tanggal_transaksi', $tahun)
+                    ->where('id', '!=', $bku->id)
+                    ->where(function ($sub) {
+                        $sub->whereHas('rekeningBelanja', function ($rq) {
+                            $rq->where('kode_rekening', 'ILIKE', '%5.1.02.02.01.0013%');
+                        })
+                            ->orWhereHas('kodeKegiatan', function ($kq) {
+                                $kq->where('kode', 'ILIKE', '%07.12.01%');
+                            });
+                    })
+                    ->orderBy('tanggal_transaksi', 'asc')
+                    ->get();
+
+                foreach ($otherBkus as $ob) {
+                    $transaksiLainTerkait[] = [
+                        'bku_id' => $ob->id,
+                        'nomor_bukti' => $ob->id_transaksi ?: ($ob->nomor_nota ?: 'Belanja Kas'),
+                        'tanggal' => $ob->tanggal_transaksi ? Carbon::parse($ob->tanggal_transaksi)->translatedFormat('d F Y') : '-',
+                        'bulan' => $ob->tanggal_transaksi ? Carbon::parse($ob->tanggal_transaksi)->translatedFormat('F') : '-',
+                        'penerima' => $ob->nama_penerima_pembayaran ?: '-',
+                        'nominal' => (float) $ob->total_transaksi_kotor,
+                    ];
+                }
+            }
+
             return [
                 'status' => 'success',
                 'tipe_dokumen' => 'TANDA_TERIMA',
@@ -6823,11 +6972,13 @@ PROMPT;
                 'keperluan' => $this->formatUraianPembayaranReal($bku),
                 'rekening' => ($bku->rekeningBelanja?->kode_rekening ?? '').' - '.($bku->rekeningBelanja?->rincian_objek ?? ''),
                 'kegiatan' => ($bku->kodeKegiatan?->kode ?? '').' - '.($bku->kodeKegiatan?->uraian ?? ''),
-                'daftar_penerima' => $items,
+                'daftar_penerima' => $daftarPenerima,
+                'transaksi_lain_terkait' => $transaksiLainTerkait,
                 'keuangan' => [
                     'total_bruto' => $bruto,
                     'total_pajak' => $pajak,
                     'total_neto' => $neto,
+                    'terbilang_bruto' => $terbilangBruto,
                     'terbilang_neto' => $terbilangNeto,
                 ],
                 'tanda_tangan' => [
@@ -6835,7 +6986,7 @@ PROMPT;
                     'nip_bendahara' => $identitasSekolah['nip_bendahara'],
                     'mengetahui' => $identitasSekolah['kepala_sekolah'],
                     'nip_kepala_sekolah' => $identitasSekolah['nip_kepala_sekolah'],
-                    'penerima' => ! empty($bku->nama_penerima_pembayaran) ? $bku->nama_penerima_pembayaran : ($items[0]['uraian'] ?? 'Penerima Honor'),
+                    'penerima' => $penerimaUtama,
                 ],
             ];
         }
