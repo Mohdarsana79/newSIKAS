@@ -40,11 +40,17 @@ class BkpRobAuditScanner extends BaseTabAuditScanner
 
         $findings = [];
 
-        // 1. Ambil Pagu RKAS per Rekening
-        $rkasBudgets = $rkasClass::where($fk, $penganggaran->id)
-            ->select('rekening_belanja_id', DB::raw('SUM(total) as pagu_rekening'))
-            ->groupBy('rekening_belanja_id')
-            ->pluck('pagu_rekening', 'rekening_belanja_id')
+        // 1. Ambil Pagu RKAS per Rekening (gunakan rkas_perubahan jika ada pada tahap 2)
+        $rkasPerubahanClass = VariantConfig::getModelClass('rkas_perubahan', $variant);
+        $hasPerubahan = $rkasPerubahanClass && class_exists($rkasPerubahanClass) && $rkasPerubahanClass::where($fk, $penganggaran->id)->exists();
+        $targetRkasClass = ($hasPerubahan && ($periodeKey === 'tahap_2' || $periodeKey === 'tahunan' || $endMonth > 6))
+            ? $rkasPerubahanClass
+            : $rkasClass;
+
+        $rkasBudgets = $targetRkasClass::where($fk, $penganggaran->id)
+            ->select('kode_rekening_id', DB::raw('SUM(harga_satuan * jumlah) as pagu_rekening'))
+            ->groupBy('kode_rekening_id')
+            ->pluck('pagu_rekening', 'kode_rekening_id')
             ->all();
 
         // 2. Ambil Realisasi Belanja BKU dalam Periode per Rekening

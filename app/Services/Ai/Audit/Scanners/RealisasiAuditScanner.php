@@ -42,9 +42,15 @@ class RealisasiAuditScanner extends BaseTabAuditScanner
         $findings = [];
 
         // 1. Pagu Anggaran
-        $paguAnggaran = (float) ($penganggaran->total_anggaran ?? $penganggaran->pendapatan ?? 0.0);
+        $paguAnggaran = (float) ($penganggaran->total_anggaran ?? ($penganggaran->pendapatan ?? 0.0));
         if ($paguAnggaran <= 0.0) {
-            $paguAnggaran = (float) $rkasClass::where($fk, $penganggaran->id)->sum('total');
+            $rkasPerubahanClass = VariantConfig::getModelClass('rkas_perubahan', $variant);
+            $hasPerubahan = $rkasPerubahanClass && class_exists($rkasPerubahanClass) && $rkasPerubahanClass::where($fk, $penganggaran->id)->exists();
+            $targetRkasClass = ($hasPerubahan && ($periodeKey === 'tahap_2' || $periodeKey === 'tahunan' || $endMonth > 6))
+                ? $rkasPerubahanClass
+                : $rkasClass;
+
+            $paguAnggaran = (float) $targetRkasClass::where($fk, $penganggaran->id)->sum(DB::raw('harga_satuan * jumlah'));
         }
 
         // 2. Realisasi Belanja
