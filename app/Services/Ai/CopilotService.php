@@ -4,6 +4,7 @@ namespace App\Services\Ai;
 
 use App\Config\VariantConfig;
 use App\Models\KodeKegiatan;
+use App\Models\Penganggaran;
 use App\Models\RefBarang;
 use App\Models\RekeningBelanja;
 use App\Models\SekolahProfile;
@@ -706,6 +707,70 @@ class CopilotService
                     ],
                 ],
             ],
+            [
+                'type' => 'function',
+                'function' => [
+                    'name' => 'get_spj_documents_status',
+                    'description' => 'Mengambil daftar transaksi belanja BKU pada suatu periode (bulan tertentu, tahap 1/2, atau 1 tahun penuh) dan melakukan audit verifikasi kelengkapan berkas dokumen pendukung SPJ resmi (Kwitansi, Tanda Terima, Surat Pesanan, dan BAST). Menyajikan matriks kepatuhan per transaksi (lengkap vs belum lengkap), daftar dokumen yang belum dibuat, serta persentase kepatuhan SPJ. Panggil tool ini saat pengguna bertanya tentang kelengkapan SPJ, audit dokumen belanja, status berkas kuitansi/BAST/Surat Pesanan/Tanda Terima, atau mengecek transaksi belanja mana yang belum lengkap dokumennya.',
+                    'parameters' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'bulan' => [
+                                'type' => 'string',
+                                'description' => 'Nama bulan transaksi (contoh: "Januari" s.d. "Desember", atau "Semua"). Default "Semua".',
+                            ],
+                            'tahap' => [
+                                'type' => 'integer',
+                                'enum' => [1, 2],
+                                'description' => 'Filter tahapan pencairan (1 untuk Jan–Jun, 2 untuk Jul–Des). Opsional.',
+                            ],
+                            'status_filter' => [
+                                'type' => 'string',
+                                'enum' => ['semua', 'belum_lengkap', 'lengkap'],
+                                'description' => 'Filter status kepatuhan: "semua" (default), "belum_lengkap" (hanya belanja yang berkasnya kurang), atau "lengkap".',
+                            ],
+                            'tahun' => [
+                                'type' => 'integer',
+                                'description' => 'Tahun anggaran pembukuan (contoh: 2026, 2025). Opsional, default adalah tahun aktif saat ini.',
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+            [
+                'type' => 'function',
+                'function' => [
+                    'name' => 'get_spj_document_detail',
+                    'description' => 'Mengambil data lembar rincian resmi salah satu berkas dokumen pertanggungjawaban SPJ (Kwitansi, Tanda Terima, Berita Acara Serah Terima / BAST, atau Surat Pesanan / SP) untuk suatu transaksi belanja BKU. Menyajikan nomor dokumen resmi, tanggal, identitas pihak kesatu & kedua (rekanan & sekolah), klausul pemesanan/serah terima, rincian barang/jasa (volume, satuan, harga, total, kondisi baik), nilai bruto, potongan pajak (PPN, PPh 21, PPh 22, PPh 23, PB1), nilai neto, terbilang Rupiah resmi, serta lembar tanda tangan. Panggil tool ini saat pengguna meminta rincian isi BAST, Surat Pesanan, Kwitansi, atau Tanda Terima untuk transaksi belanja tertentu.',
+                    'parameters' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'tipe_dokumen' => [
+                                'type' => 'string',
+                                'enum' => ['bast', 'surat_pesanan', 'kwitansi', 'tanda_terima'],
+                                'description' => 'Jenis dokumen yang diminta: "bast" (Berita Acara Serah Terima), "surat_pesanan" (Surat Pesanan), "kwitansi" (Kwitansi Pembayaran), atau "tanda_terima" (Tanda Terima Honor/Jasa).',
+                            ],
+                            'query' => [
+                                'type' => 'string',
+                                'description' => 'Kata kunci pencarian dokumen (nomor bukti BKU, nomor surat/dokumen, nama rekanan/toko, atau uraian belanja).',
+                            ],
+                            'bku_id' => [
+                                'type' => 'integer',
+                                'description' => 'ID transaksi BKU spesifik jika diketahui. Opsional.',
+                            ],
+                            'bulan' => [
+                                'type' => 'string',
+                                'description' => 'Nama bulan transaksi untuk mempersempit pencarian (contoh: "September", "Maret"). Opsional.',
+                            ],
+                            'tahun' => [
+                                'type' => 'integer',
+                                'description' => 'Tahun anggaran dokumen (contoh: 2026, 2025). Opsional, default adalah tahun aktif saat ini.',
+                            ],
+                        ],
+                        'required' => ['tipe_dokumen'],
+                    ],
+                ],
+            ],
         ];
     }
 
@@ -1163,7 +1228,41 @@ Karakter & Gaya Bicara Anda:
           * Jelaskan nomor bukti, uraian, dan selisih nominalnya.
         - Panduan Solusi Santai:
           * Berikan instruksi langkah praktis bagi bendahara (contoh: "Buka menu BKU bulan X lalu klik Tarik Data dari ARKAS", "Pastikan aplikasi ARKAS desktop ditutup agar file database tidak terkunci", dll.).
-10. Jangan pernah mengarang kode rekening atau ID kegiatan secara sembarangan, selalu gunakan hasil dari tool.
+10. AUDIT DOKUMEN SPJ & LEMBAR RESMI (KWITANSI, TANDA TERIMA, BAST, DAN SURAT PESANAN):
+   - Jika pengguna menanyakan kelengkapan berkas dokumen SPJ, audit SPJ, status kuitansi, tanda terima, BAST, atau surat pesanan (contoh: "Cek kelengkapan dokumen SPJ bulan September", "Apakah ada belanja modal yang belum ada BAST-nya?", "Dokumen SPJ apa saja yang belum lengkap?"):
+     a. WAJIB memanggil tool `get_spj_documents_status` dengan parameter `bulan`, `tahap`, `status_filter`, dan `tahun`.
+     b. Format Penyajian Audit Kelengkapan SPJ:
+        - Header: `### 📑 AUDIT KELENGKAPAN DOKUMEN SPJ — {BULAN/PERIODE} {TAHUN}`
+        - Badge Status: `[STATUS KEPATUHAN: {persentase_kepatuhan}% LENGKAP ({transaksi_lengkap} dari {total_transaksi} transaksi)]`
+        - Tabel Matriks Kelengkapan Dokumen HTML Terstruktur Rapi:
+          <th>No</th><th>Tanggal</th><th>No. Bukti BKU</th><th>Uraian Belanja</th><th style="text-align: right;">Nominal (Rp)</th><th>Kwitansi</th><th>Tanda Terima</th><th>Surat Pesanan</th><th>BAST</th><th>Status SPJ</th>
+        - Gunakan indikator visual:
+          * `✅ Ada` jika dokumen sudah dibuat di database.
+          * `❌ Belum Ada` jika dokumen wajib namun belum dibuat.
+          * `—` jika dokumen tidak diwajibkan untuk jenis belanja tersebut (misal: belanja honor/jasa tidak butuh BAST/SP, operasional listrik/pulsa hanya butuh kwitansi).
+        - Rekomendasi Solutif Khas Bendahara:
+          * Sebutkan secara spesifik transaksi mana saja yang berkasnya masih kurang (contoh: "Untuk transaksi Cat Lapangan Toko Jaya nomor 058 belum ada Surat Pesanan nih, Om").
+          * Berikan saran ramah untuk melengkapinya melalui menu dokumen terkait di SIKAS sebelum pelaporan SPJ.
+   - Jika pengguna meminta melihat isi / lembar rincian resmi salah satu dokumen SPJ (contoh: "Tampilkan rincian BAST pengadaan laptop", "Rincian Surat Pesanan Toko Jaya", "Tanda terima honor guru bulan September", "Kwitansi belanja ATK"):
+     a. WAJIB memanggil tool `get_spj_document_detail` dengan parameter `tipe_dokumen` ('bast', 'surat_pesanan', 'kwitansi', atau 'tanda_terima'), `query`, dan `tahun`.
+     b. Format Penyajian Lembar Resmi Dokumen SPJ:
+        - Judul Dokumen Resmi:
+          * `### 📦 BERITA ACARA SERAH TERIMA (BAST)`
+          * `### 📋 SURAT PESANAN (SP)`
+          * `### 📜 KWITANSI PEMBAYARAN BOSP`
+          * `### 📝 TANDA TERIMA HONORARIUM / JASA`
+        - Nomor Dokumen Resmi & Tanggal Dokumen.
+        - Identitas Para Pihak:
+          * Pihak Pertama (Penyedia / Toko Rekanan / Penerima)
+          * Pihak Kedua (Sekolah: Kepala Sekolah & Bendahara)
+        - Tabel Rincian Barang / Jasa:
+          <th>No</th><th>Uraian Spesifikasi / Nama Barang</th><th>Volume</th><th>Satuan</th><th style="text-align: right;">Harga Satuan (Rp)</th><th style="text-align: right;">Subtotal (Rp)</th><th>Kondisi Fisik</th>
+        - Tabel Ringkasan Nilai Finansial:
+          * Total Bruto (Rp), Potongan Pajak (PPN, PPh 21, PPh 23, Pajak Daerah), Total Diterima Neto (Rp), serta **Terbilang Rupiah Resmi**.
+        - Khusus Surat Pesanan: Sertakan klausul waktu pengiriman, kondisi barang, dan ketentuan pembayaran.
+        - Kolom Pengesahan Tanda Tangan:
+          Cantumkan nama jelas Kepala Sekolah, Bendahara, dan Rekanan/Penerima.
+11. Jangan pernah mengarang kode rekening atau ID kegiatan secara sembarangan, selalu gunakan hasil dari tool.
 PROMPT;
 
         $conversation = [
@@ -1330,6 +1429,21 @@ PROMPT;
                 $variant,
                 $targetTahun,
                 $args['scope'] ?? 'comprehensive',
+                $args['bulan'] ?? null
+            ),
+            'get_spj_documents_status' => $this->getSpjDocumentsStatus(
+                $targetTahun,
+                $variant,
+                $args['bulan'] ?? null,
+                isset($args['tahap']) ? (int) $args['tahap'] : null,
+                $args['status_filter'] ?? 'semua'
+            ),
+            'get_spj_document_detail' => $this->getSpjDocumentDetail(
+                $args['tipe_dokumen'] ?? 'kwitansi',
+                $args['query'] ?? null,
+                isset($args['bku_id']) ? (int) $args['bku_id'] : null,
+                $targetTahun,
+                $variant,
                 $args['bulan'] ?? null
             ),
             default => ['error' => "Unknown tool: {$name}"],
@@ -6221,6 +6335,598 @@ PROMPT;
         $result = json_decode($process->getOutput(), true);
 
         return is_array($result) ? $result : ['error' => 'Format output ARKAS tidak valid.'];
+    }
+
+    /**
+     * Audit dan verifikasi matriks kelengkapan dokumen SPJ (Kwitansi, Tanda Terima, BAST, Surat Pesanan)
+     */
+    public function getSpjDocumentsStatus(
+        int $tahun,
+        string $variant = 'reguler',
+        ?string $bulan = null,
+        ?int $tahap = null,
+        string $statusFilter = 'semua'
+    ): array {
+        VariantConfig::validateVariant($variant);
+        $bkuClass = VariantConfig::getModelClass('buku_kas_umum', $variant);
+
+        $query = $bkuClass::query()
+            ->whereYear('tanggal_transaksi', $tahun)
+            ->where('total_transaksi_kotor', '>', 0)
+            ->where(function ($q) {
+                $q->whereNull('is_bunga_record')->orWhere('is_bunga_record', false);
+            });
+
+        // Filter Tahap (1 = Jan-Jun, 2 = Jul-Des)
+        if ($tahap === 1) {
+            $query->whereMonth('tanggal_transaksi', '<=', 6);
+        } elseif ($tahap === 2) {
+            $query->whereMonth('tanggal_transaksi', '>=', 7);
+        }
+
+        // Filter Bulan
+        $monthNum = null;
+        if (! empty($bulan) && strtolower(trim($bulan)) !== 'semua') {
+            $bulanLower = strtolower(trim($bulan));
+            $months = [
+                'januari' => 1, 'februari' => 2, 'maret' => 3, 'april' => 4,
+                'mei' => 5, 'juni' => 6, 'juli' => 7, 'agustus' => 8,
+                'september' => 9, 'oktober' => 10, 'november' => 11, 'desember' => 12,
+            ];
+            $monthNum = $months[$bulanLower] ?? (is_numeric($bulan) ? (int) $bulan : null);
+            if ($monthNum) {
+                $query->whereMonth('tanggal_transaksi', $monthNum);
+            }
+        }
+
+        $bkuList = $query->with([
+            'rekeningBelanja',
+            'kodeKegiatan',
+            'uraianDetails',
+            'kwitansi',
+            'tandaTerima',
+            'bast',
+            'suratPesanan',
+        ])
+            ->orderBy('tanggal_transaksi', 'asc')
+            ->orderBy('id', 'asc')
+            ->get();
+
+        $totalEvaluasi = 0;
+        $totalLengkap = 0;
+        $items = [];
+
+        foreach ($bkuList as $bku) {
+            $totalEvaluasi++;
+
+            $kodeRekening = $bku->rekeningBelanja?->kode_rekening ?? '';
+            $namaRekening = $bku->rekeningBelanja?->nama_rekening ?? '';
+            $uraian = $bku->uraian ?? '';
+            $uraianOpsional = $bku->uraian_opsional ?? '';
+            $combinedText = strtolower($uraian.' '.$uraianOpsional.' '.$namaRekening);
+
+            // Klasifikasi Belanja
+            $isUtilityOperasional = (bool) preg_match('/(internet|pulsa|telepon|listrik|air|langganan|kawat|faksimili)/i', $combinedText);
+
+            // 1. Honorarium, Jasa Tenaga, Upah, dan Transportasi
+            $isHonorJasaTransport = ! $isUtilityOperasional && (
+                str_starts_with($kodeRekening, '5.1.01.')
+                || str_starts_with($kodeRekening, '5.1.02.02.')
+                || str_starts_with($kodeRekening, '5.1.02.04.')
+                || (bool) preg_match('/(honor|upah|insentif|transport|perjalanan dinas|jasa tenaga|narasumber)/i', $combinedText)
+            );
+
+            // 2. Belanja Modal (Aset Tetap)
+            $isModal = str_starts_with($kodeRekening, '5.2.') || str_contains($combinedText, 'modal');
+
+            // 3. Pengadaan Barang Fisik & Pemeliharaan Sarana/Gedung
+            $isBendaPos = str_contains($kodeRekening, '0027') || str_contains($combinedText, 'benda pos') || str_contains($combinedText, 'materai');
+            $isBarangFisik = ! $isHonorJasaTransport && ! $isBendaPos && (
+                str_starts_with($kodeRekening, '5.1.02.01.')
+                || str_starts_with($kodeRekening, '5.1.02.03.')
+                || (bool) preg_match('/(alat|bahan|cat|kuas|semen|racun|atk|buku|perabot|kursi|meja|laptop|komputer|printer)/i', $combinedText)
+            );
+
+            // Logika Kepatuhan Regulasi
+            if ($isHonorJasaTransport) {
+                $kategori = 'HONOR_JASA';
+                $wajibKwitansi = true;
+                $wajibTandaTerima = true;
+                $wajibSp = false;
+                $wajibBast = false;
+            } elseif ($isModal || $isBarangFisik) {
+                $kategori = $isModal ? 'MODAL' : 'BARANG_FISIK';
+                $wajibKwitansi = true;
+                $wajibTandaTerima = false;
+                $wajibSp = true;
+                $wajibBast = true;
+            } else {
+                $kategori = 'OPERASIONAL';
+                $wajibKwitansi = true;
+                $wajibTandaTerima = false;
+                $wajibSp = false;
+                $wajibBast = false;
+            }
+
+            // Cek Keberadaan Berkas di Database
+            $hasKwitansi = $bku->kwitansi !== null;
+            $hasTandaTerima = $bku->tandaTerima !== null;
+            $hasBast = $bku->bast !== null;
+            $hasSp = $bku->suratPesanan !== null;
+
+            // Kumpulkan Dokumen yang Kurang
+            $dokumenKurang = [];
+            if ($wajibKwitansi && ! $hasKwitansi) {
+                $dokumenKurang[] = 'Kwitansi';
+            }
+            if ($wajibTandaTerima && ! $hasTandaTerima) {
+                $dokumenKurang[] = 'Tanda Terima';
+            }
+            if ($wajibSp && ! $hasSp) {
+                $dokumenKurang[] = 'Surat Pesanan';
+            }
+            if ($wajibBast && ! $hasBast) {
+                $dokumenKurang[] = 'BAST';
+            }
+
+            $isLengkap = empty($dokumenKurang);
+            if ($isLengkap) {
+                $totalLengkap++;
+            }
+
+            // Terapkan Filter Status
+            if ($statusFilter === 'belum_lengkap' && $isLengkap) {
+                continue;
+            }
+            if ($statusFilter === 'lengkap' && ! $isLengkap) {
+                continue;
+            }
+
+            $noBukti = ! empty($bku->id_transaksi) ? $bku->id_transaksi : (! empty($bku->nomor_nota) ? $bku->nomor_nota : 'Belanja Kas');
+
+            $items[] = [
+                'bku_id' => $bku->id,
+                'tanggal' => $bku->tanggal_transaksi ? Carbon::parse($bku->tanggal_transaksi)->format('Y-m-d') : '',
+                'nomor_bukti' => $noBukti,
+                'uraian' => $bku->uraian_opsional ?: $bku->uraian,
+                'nama_rekanan' => $bku->nama_toko ?: ($bku->nama_penerima_pembayaran ?: '-'),
+                'kode_rekening' => $kodeRekening,
+                'nama_rekening' => $namaRekening,
+                'nominal' => (float) $bku->total_transaksi_kotor,
+                'kategori_belanja' => $kategori,
+                'kelengkapan' => [
+                    'kwitansi' => [
+                        'ada' => $hasKwitansi,
+                        'wajib' => $wajibKwitansi,
+                        'nomor' => $hasKwitansi ? $noBukti : null,
+                    ],
+                    'tanda_terima' => [
+                        'ada' => $hasTandaTerima,
+                        'wajib' => $wajibTandaTerima,
+                        'nomor' => $hasTandaTerima ? $noBukti : null,
+                    ],
+                    'surat_pesanan' => [
+                        'ada' => $hasSp,
+                        'wajib' => $wajibSp,
+                        'nomor' => $bku->suratPesanan?->nomor_sp,
+                    ],
+                    'bast' => [
+                        'ada' => $hasBast,
+                        'wajib' => $wajibBast,
+                        'nomor' => $bku->bast?->nomor_bast,
+                    ],
+                ],
+                'status_spj' => $isLengkap ? 'LENGKAP' : 'BELUM_LENGKAP',
+                'dokumen_kurang' => $dokumenKurang,
+            ];
+        }
+
+        $transaksiBelumLengkap = $totalEvaluasi - $totalLengkap;
+        $persentaseKepatuhan = $totalEvaluasi > 0 ? round(($totalLengkap / $totalEvaluasi) * 100, 1) : 100.0;
+
+        return [
+            'status' => 'success',
+            'tahun' => $tahun,
+            'bulan' => $bulan ?: 'Semua',
+            'tahap' => $tahap,
+            'status_filter' => $statusFilter,
+            'ringkasan_kepatuhan' => [
+                'total_transaksi' => $totalEvaluasi,
+                'transaksi_lengkap' => $totalLengkap,
+                'transaksi_belum_lengkap' => $transaksiBelumLengkap,
+                'persentase_kepatuhan' => $persentaseKepatuhan,
+            ],
+            'items' => $items,
+        ];
+    }
+
+    /**
+     * Mengambil lembar rincian resmi salah satu dokumen SPJ (BAST, Surat Pesanan, Kwitansi, atau Tanda Terima)
+     */
+    public function getSpjDocumentDetail(
+        string $tipeDokumen,
+        ?string $query = null,
+        ?int $bkuId = null,
+        int $tahun = 2026,
+        string $variant = 'reguler',
+        ?string $bulan = null
+    ): array {
+        VariantConfig::validateVariant($variant);
+        $tipe = strtolower(trim($tipeDokumen));
+
+        if (str_contains($tipe, 'bast') || str_contains($tipe, 'berita')) {
+            $concept = 'bast';
+        } elseif (str_contains($tipe, 'pesan') || str_contains($tipe, 'sp')) {
+            $concept = 'surat_pesanan';
+        } elseif (str_contains($tipe, 'terima') || str_contains($tipe, 'tanda')) {
+            $concept = 'tanda_terima';
+        } else {
+            $concept = 'kwitansi';
+        }
+
+        $modelClass = VariantConfig::getModelClass($concept, $variant);
+        $bkuClass = VariantConfig::getModelClass('buku_kas_umum', $variant);
+        $penganggaranClass = VariantConfig::getModelClass('penganggaran', $variant);
+        $sekolah = SekolahProfile::first();
+        $penganggaran = $penganggaranClass::where('tahun_anggaran', $tahun)->first();
+        $bkuFk = VariantConfig::bkuFk($variant);
+
+        $docQuery = $modelClass::query()->with([
+            'bukuKasUmum.uraianDetails',
+            'bukuKasUmum.rekeningBelanja',
+            'bukuKasUmum.kodeKegiatan',
+            'penganggaran',
+            'sekolah',
+        ]);
+
+        if (! empty($bkuId)) {
+            $docQuery->where($bkuFk, $bkuId);
+        } else {
+            $docQuery->whereHas('bukuKasUmum', function ($bq) use ($tahun, $bulan) {
+                $bq->whereYear('tanggal_transaksi', $tahun);
+
+                if (! empty($bulan) && strtolower(trim($bulan)) !== 'semua') {
+                    $bulanLower = strtolower(trim($bulan));
+                    $months = [
+                        'januari' => 1, 'februari' => 2, 'maret' => 3, 'april' => 4,
+                        'mei' => 5, 'juni' => 6, 'juli' => 7, 'agustus' => 8,
+                        'september' => 9, 'oktober' => 10, 'november' => 11, 'desember' => 12,
+                    ];
+                    $mNum = $months[$bulanLower] ?? (is_numeric($bulan) ? (int) $bulan : null);
+                    if ($mNum) {
+                        $bq->whereMonth('tanggal_transaksi', $mNum);
+                    }
+                }
+            });
+
+            if (! empty($query)) {
+                $docQuery->where(function ($dq) use ($query, $concept) {
+                    $dq->whereHas('bukuKasUmum', function ($bq) use ($query) {
+                        $bq->where('id_transaksi', 'ILIKE', "%{$query}%")
+                            ->orWhere('nomor_nota', 'ILIKE', "%{$query}%")
+                            ->orWhere('uraian', 'ILIKE', "%{$query}%")
+                            ->orWhere('uraian_opsional', 'ILIKE', "%{$query}%")
+                            ->orWhere('nama_toko', 'ILIKE', "%{$query}%")
+                            ->orWhere('nama_penerima_pembayaran', 'ILIKE', "%{$query}%");
+                    });
+
+                    if ($concept === 'bast') {
+                        $dq->orWhere('nomor_bast', 'ILIKE', "%{$query}%")
+                            ->orWhere('pihak_pertama_nama', 'ILIKE', "%{$query}%")
+                            ->orWhere('pihak_pertama_instansi', 'ILIKE', "%{$query}%");
+                    } elseif ($concept === 'surat_pesanan') {
+                        $dq->orWhere('nomor_sp', 'ILIKE', "%{$query}%")
+                            ->orWhere('pihak_kedua_nama_perusahaan', 'ILIKE', "%{$query}%")
+                            ->orWhere('pihak_kedua_penanggung_jawab', 'ILIKE', "%{$query}%");
+                    }
+                });
+            }
+        }
+
+        $doc = $docQuery->latest('id')->first();
+
+        // Jika dokumen belum ada, periksa apakah BKU-nya ada
+        if (! $doc) {
+            $bkuFindQuery = $bkuClass::query()->whereYear('tanggal_transaksi', $tahun)->where('total_transaksi_kotor', '>', 0);
+            if (! empty($bkuId)) {
+                $bkuFindQuery->where('id', $bkuId);
+            } elseif (! empty($query)) {
+                $bkuFindQuery->where(function ($bq) use ($query) {
+                    $bq->where('id_transaksi', 'ILIKE', "%{$query}%")
+                        ->orWhere('nomor_nota', 'ILIKE', "%{$query}%")
+                        ->orWhere('uraian', 'ILIKE', "%{$query}%")
+                        ->orWhere('uraian_opsional', 'ILIKE', "%{$query}%")
+                        ->orWhere('nama_toko', 'ILIKE', "%{$query}%");
+                });
+            }
+
+            $bkuMatch = $bkuFindQuery->first();
+            if ($bkuMatch) {
+                return [
+                    'status' => 'belum_dibuat',
+                    'tipe_dokumen' => strtoupper($concept),
+                    'pesan' => 'Dokumen '.strtoupper($concept)." untuk transaksi '{$bkuMatch->uraian}' belum dibuat di sistem SIKAS.",
+                    'nomor_bukti_bku' => $bkuMatch->id_transaksi ?: ($bkuMatch->nomor_nota ?: 'Belanja Kas'),
+                    'tanggal_transaksi' => $bkuMatch->tanggal_transaksi ? Carbon::parse($bkuMatch->tanggal_transaksi)->format('Y-m-d') : '',
+                    'uraian_belanja' => $bkuMatch->uraian_opsional ?: $bkuMatch->uraian,
+                    'nama_rekanan' => $bkuMatch->nama_toko ?: ($bkuMatch->nama_penerima_pembayaran ?: '-'),
+                    'nominal_bruto' => (float) $bkuMatch->total_transaksi_kotor,
+                ];
+            }
+
+            return [
+                'status' => 'not_found',
+                'tipe_dokumen' => strtoupper($concept),
+                'pesan' => 'Tidak ditemukan berkas dokumen '.strtoupper($concept)." dengan kata kunci '{$query}' pada tahun {$tahun}.",
+            ];
+        }
+
+        $bku = $doc->bukuKasUmum;
+        $noBukti = ! empty($bku->id_transaksi) ? $bku->id_transaksi : (! empty($bku->nomor_nota) ? $bku->nomor_nota : 'Belanja Kas');
+        $tglTransaksi = $bku->tanggal_transaksi ? Carbon::parse($bku->tanggal_transaksi)->translatedFormat('d F Y') : '-';
+
+        // Susun Item Rincian Barang / Jasa
+        $items = [];
+        $idx = 1;
+        if ($bku && $bku->uraianDetails && $bku->uraianDetails->isNotEmpty()) {
+            foreach ($bku->uraianDetails as $det) {
+                $items[] = [
+                    'no' => $idx++,
+                    'uraian' => $det->uraian,
+                    'volume' => (float) $det->volume,
+                    'satuan' => $det->satuan,
+                    'harga_satuan' => (float) $det->harga_satuan,
+                    'jumlah' => (float) $det->jumlah,
+                    'kondisi' => $det->kondisi ?: 'Baik',
+                ];
+            }
+        } else {
+            $items[] = [
+                'no' => 1,
+                'uraian' => $bku->uraian_opsional ?: $bku->uraian,
+                'volume' => 1.0,
+                'satuan' => 'Paket',
+                'harga_satuan' => (float) ($bku->total_transaksi_kotor ?? $bku->anggaran ?? 0),
+                'jumlah' => (float) ($bku->total_transaksi_kotor ?? $bku->anggaran ?? 0),
+                'kondisi' => 'Baik',
+            ];
+        }
+
+        // Keuangan
+        $bruto = (float) ($bku->total_transaksi_kotor ?? $bku->anggaran ?? 0);
+        $pajak = (float) (($bku->total_pajak ?? 0) + ($bku->total_pajak_daerah ?? 0));
+        $neto = max(0, $bruto - $pajak);
+        $terbilangBruto = $this->terbilangRupiah($bruto);
+        $terbilangNeto = $this->terbilangRupiah($neto);
+
+        $identitasSekolah = [
+            'nama_sekolah' => $sekolah?->nama_sekolah ?? 'SMP MUHAMMADIYAH SONI',
+            'npsn' => $sekolah?->npsn ?? '-',
+            'alamat' => $sekolah?->alamat ?? '-',
+            'kepala_sekolah' => $penganggaran?->kepala_sekolah ?? 'Kepala Sekolah',
+            'nip_kepala_sekolah' => $penganggaran?->nip_kepala_sekolah ?? '-',
+            'bendahara' => $penganggaran?->bendahara ?? 'Bendahara BOSP',
+            'nip_bendahara' => $penganggaran?->nip_bendahara ?? '-',
+        ];
+
+        // Format Khusus per Tipe Dokumen
+        if ($concept === 'bast') {
+            $nomorBast = ! empty($doc->nomor_bast) && ! str_contains($doc->nomor_bast, '..........') ? $doc->nomor_bast : ($noBukti.'/BAST/'.$tahun);
+            $tglBast = $doc->tanggal_bast ? Carbon::parse($doc->tanggal_bast)->translatedFormat('d F Y') : $tglTransaksi;
+
+            return [
+                'status' => 'success',
+                'tipe_dokumen' => 'BAST',
+                'judul' => 'BERITA ACARA SERAH TERIMA BARANG / JASA (BAST)',
+                'nomor_dokumen' => $nomorBast,
+                'tanggal_dokumen' => $tglBast,
+                'nomor_bukti_bku' => $noBukti,
+                'rekening' => ($bku->rekeningBelanja?->kode_rekening ?? '').' - '.($bku->rekeningBelanja?->nama_rekening ?? ''),
+                'kegiatan' => ($bku->kodeKegiatan?->kode ?? '').' - '.($bku->kodeKegiatan?->nama ?? ''),
+                'pihak_pertama' => [
+                    'peran' => 'PIHAK PERTAMA (Yang Menyerahkan / Penyedia)',
+                    'nama' => ! empty($doc->pihak_pertama_nama) ? $doc->pihak_pertama_nama : (! empty($bku->nama_penerima_pembayaran) ? $bku->nama_penerima_pembayaran : ($bku->nama_toko ?: 'Penyedia')),
+                    'jabatan' => ! empty($doc->pihak_pertama_jabatan) ? $doc->pihak_pertama_jabatan : 'Pimpinan / Penanggung Jawab',
+                    'instansi' => ! empty($doc->pihak_pertama_instansi) ? $doc->pihak_pertama_instansi : ($bku->nama_toko ?: 'Penyedia Barang/Jasa'),
+                    'alamat' => ! empty($doc->pihak_pertama_alamat) ? $doc->pihak_pertama_alamat : ($bku->alamat_toko ?: '-'),
+                ],
+                'pihak_kedua' => [
+                    'peran' => 'PIHAK KEDUA (Yang Menerima / Satuan Pendidikan)',
+                    'nama' => ! empty($doc->pihak_kedua_nama) ? $doc->pihak_kedua_nama : $identitasSekolah['kepala_sekolah'],
+                    'nip' => $identitasSekolah['nip_kepala_sekolah'],
+                    'jabatan' => ! empty($doc->pihak_kedua_jabatan) ? $doc->pihak_kedua_jabatan : 'Kepala Sekolah',
+                    'instansi' => ! empty($doc->pihak_kedua_instansi) ? $doc->pihak_kedua_instansi : $identitasSekolah['nama_sekolah'],
+                    'alamat' => ! empty($doc->pihak_kedua_alamat) ? $doc->pihak_kedua_alamat : $identitasSekolah['alamat'],
+                ],
+                'klausul' => 'PIHAK PERTAMA telah menyerahkan barang/hasil pekerjaan kepada PIHAK KEDUA, dan PIHAK KEDUA menyatakan telah menerima barang tersebut dalam keadaan baik, lengkap, dan sesuai dengan spesifikasi teknis yang disepakati.',
+                'items' => $items,
+                'keuangan' => [
+                    'total_bruto' => $bruto,
+                    'total_pajak' => $pajak,
+                    'total_neto' => $neto,
+                    'terbilang_bruto' => $terbilangBruto,
+                    'terbilang_neto' => $terbilangNeto,
+                ],
+                'tanda_tangan' => [
+                    'yang_menyerahkan' => ! empty($doc->pihak_pertama_nama) ? $doc->pihak_pertama_nama : ($bku->nama_toko ?: 'Penyedia'),
+                    'yang_menerima' => $identitasSekolah['kepala_sekolah'],
+                    'nip_yang_menerima' => $identitasSekolah['nip_kepala_sekolah'],
+                ],
+            ];
+        }
+
+        if ($concept === 'surat_pesanan') {
+            $nomorSp = ! empty($doc->nomor_sp) && ! str_contains($doc->nomor_sp, '...........') ? $doc->nomor_sp : ($noBukti.'/SP/'.$tahun);
+            $tglSp = $doc->tanggal_sp ? Carbon::parse($doc->tanggal_sp)->translatedFormat('d F Y') : $tglTransaksi;
+
+            return [
+                'status' => 'success',
+                'tipe_dokumen' => 'SURAT_PESANAN',
+                'judul' => 'SURAT PESANAN (SP)',
+                'nomor_dokumen' => $nomorSp,
+                'tanggal_dokumen' => $tglSp,
+                'nomor_bukti_bku' => $noBukti,
+                'rekening' => ($bku->rekeningBelanja?->kode_rekening ?? '').' - '.($bku->rekeningBelanja?->nama_rekening ?? ''),
+                'pihak_kesatu' => [
+                    'peran' => 'PIHAK KESATU (Pemesan / Satuan Pendidikan)',
+                    'nama' => ! empty($doc->pihak_kesatu_nama) ? $doc->pihak_kesatu_nama : $identitasSekolah['kepala_sekolah'],
+                    'nip' => ! empty($doc->pihak_kesatu_nip) ? $doc->pihak_kesatu_nip : $identitasSekolah['nip_kepala_sekolah'],
+                    'jabatan' => ! empty($doc->pihak_kesatu_jabatan) ? $doc->pihak_kesatu_jabatan : 'Kepala Sekolah / PPK',
+                    'instansi' => ! empty($doc->pihak_kesatu_instansi) ? $doc->pihak_kesatu_instansi : $identitasSekolah['nama_sekolah'],
+                    'alamat' => ! empty($doc->pihak_kesatu_alamat) ? $doc->pihak_kesatu_alamat : $identitasSekolah['alamat'],
+                ],
+                'pihak_kedua' => [
+                    'peran' => 'PIHAK KEDUA (Penyedia / Toko Rekanan)',
+                    'nama_perusahaan' => ! empty($doc->pihak_kedua_nama_perusahaan) ? $doc->pihak_kedua_nama_perusahaan : ($bku->nama_toko ?: 'Penyedia'),
+                    'penanggung_jawab' => ! empty($doc->pihak_kedua_penanggung_jawab) ? $doc->pihak_kedua_penanggung_jawab : ($bku->nama_penerima_pembayaran ?: '-'),
+                    'alamat' => ! empty($doc->pihak_kedua_alamat) ? $doc->pihak_kedua_alamat : ($bku->alamat_toko ?: '-'),
+                    'npwp' => ! empty($doc->pihak_kedua_npwp) ? $doc->pihak_kedua_npwp : ($bku->npwp ?: '-'),
+                    'platform' => ! empty($doc->pihak_kedua_platform) ? $doc->pihak_kedua_platform : 'SIPLah / Offline',
+                ],
+                'items' => $items,
+                'ketentuan' => [
+                    'waktu_pengiriman' => $doc->waktu_pengiriman ?: 'Barang harus dikirimkan selambat-lambatnya setelah Surat Pesanan disetujui.',
+                    'kondisi_barang' => $doc->kondisi_barang ?: 'Barang yang dikirim harus dalam keadaan baru, tidak cacat, dan sesuai spesifikasi.',
+                    'ketentuan_pembayaran' => $doc->ketentuan_pembayaran ?: 'Pembayaran ditransfer setelah seluruh barang diterima dengan baik yang dibuktikan dengan BAST.',
+                    'sumber_dana' => $doc->sumber_dana ?: "Bantuan Operasional Satuan Pendidikan (BOSP) Tahun Anggaran {$tahun}",
+                ],
+                'keuangan' => [
+                    'total_bruto' => $bruto,
+                    'total_pajak' => $pajak,
+                    'total_neto' => $neto,
+                    'terbilang_bruto' => $terbilangBruto,
+                    'terbilang_neto' => $terbilangNeto,
+                ],
+                'tanda_tangan' => [
+                    'pemesan' => $identitasSekolah['kepala_sekolah'],
+                    'nip_pemesan' => $identitasSekolah['nip_kepala_sekolah'],
+                    'penyedia' => ! empty($doc->pihak_kedua_nama_perusahaan) ? $doc->pihak_kedua_nama_perusahaan : ($bku->nama_toko ?: 'Penyedia'),
+                ],
+            ];
+        }
+
+        if ($concept === 'tanda_terima') {
+            return [
+                'status' => 'success',
+                'tipe_dokumen' => 'TANDA_TERIMA',
+                'judul' => 'TANDA TERIMA PEMBAYARAN HONORARIUM / JASA',
+                'nomor_dokumen' => $noBukti,
+                'tanggal_dokumen' => $tglTransaksi,
+                'sekolah' => $identitasSekolah['nama_sekolah'],
+                'keperluan' => $bku->uraian_opsional ?: $bku->uraian,
+                'rekening' => ($bku->rekeningBelanja?->kode_rekening ?? '').' - '.($bku->rekeningBelanja?->nama_rekening ?? ''),
+                'kegiatan' => ($bku->kodeKegiatan?->kode ?? '').' - '.($bku->kodeKegiatan?->nama ?? ''),
+                'daftar_penerima' => $items,
+                'keuangan' => [
+                    'total_bruto' => $bruto,
+                    'total_pajak' => $pajak,
+                    'total_neto' => $neto,
+                    'terbilang_neto' => $terbilangNeto,
+                ],
+                'tanda_tangan' => [
+                    'yang_menyerahkan' => $identitasSekolah['bendahara'],
+                    'nip_bendahara' => $identitasSekolah['nip_bendahara'],
+                    'mengetahui' => $identitasSekolah['kepala_sekolah'],
+                    'nip_kepala_sekolah' => $identitasSekolah['nip_kepala_sekolah'],
+                    'penerima' => ! empty($bku->nama_penerima_pembayaran) ? $bku->nama_penerima_pembayaran : ($items[0]['uraian'] ?? 'Penerima Honor'),
+                ],
+            ];
+        }
+
+        // Default: Kwitansi
+        return [
+            'status' => 'success',
+            'tipe_dokumen' => 'KWITANSI',
+            'judul' => 'KWITANSI PEMBAYARAN BOSP',
+            'nomor_bukti' => $noBukti,
+            'tanggal_transaksi' => $tglTransaksi,
+            'tahun_anggaran' => $tahun,
+            'sudah_terima_dari' => 'Bendahara BOSP '.$identitasSekolah['nama_sekolah'],
+            'terbilang' => $terbilangBruto,
+            'untuk_pembayaran' => $bku->uraian_opsional ?: $bku->uraian,
+            'rekening' => ($bku->rekeningBelanja?->kode_rekening ?? '').' - '.($bku->rekeningBelanja?->nama_rekening ?? ''),
+            'kegiatan' => ($bku->kodeKegiatan?->kode ?? '').' - '.($bku->kodeKegiatan?->nama ?? ''),
+            'penerima' => $bku->nama_toko ?: ($bku->nama_penerima_pembayaran ?: 'Penyedia / Rekanan'),
+            'rincian_barang' => $items,
+            'keuangan' => [
+                'nominal_bruto' => $bruto,
+                'potongan_pajak' => $pajak,
+                'nominal_neto' => $neto,
+                'terbilang_bruto' => $terbilangBruto,
+                'terbilang_neto' => $terbilangNeto,
+                'pajak_detail' => [
+                    'jenis' => $bku->pajak,
+                    'persen' => (float) $bku->persen_pajak,
+                    'nominal' => (float) $bku->total_pajak,
+                    'ntpn' => $bku->ntpn,
+                ],
+            ],
+            'tanda_tangan' => [
+                'kepala_sekolah' => $identitasSekolah['kepala_sekolah'],
+                'nip_kepala_sekolah' => $identitasSekolah['nip_kepala_sekolah'],
+                'bendahara' => $identitasSekolah['bendahara'],
+                'nip_bendahara' => $identitasSekolah['nip_bendahara'],
+                'penerima' => $bku->nama_penerima_pembayaran ?: ($bku->nama_toko ?: 'Penyedia'),
+            ],
+        ];
+    }
+
+    /**
+     * Konversi angka nominal uang ke kalimat terbilang Rupiah resmi
+     */
+    public function terbilangRupiah(float|int $amount): string
+    {
+        $amount = (int) round($amount);
+        if ($amount <= 0) {
+            return 'Nol Rupiah';
+        }
+
+        return ucwords($this->convertNumberToWords($amount)).' Rupiah';
+    }
+
+    protected function convertNumberToWords(int $number): string
+    {
+        $units = ['', 'ribu', 'juta', 'miliar', 'triliun'];
+        $words = [];
+
+        if ($number === 0) {
+            return 'nol';
+        }
+
+        $unitIndex = 0;
+        while ($number > 0) {
+            $chunk = $number % 1000;
+            if ($chunk != 0) {
+                $chunkWords = $this->convertChunkToWords($chunk);
+                if ($unitIndex > 0) {
+                    $chunkWords .= ' '.$units[$unitIndex];
+                }
+                array_unshift($words, $chunkWords);
+            }
+            $number = (int) floor($number / 1000);
+            $unitIndex++;
+        }
+
+        $result = implode(' ', $words);
+        $result = str_replace('satu ratus', 'seratus', $result);
+        $result = str_replace('satu ribu', 'seribu', $result);
+
+        return trim($result);
+    }
+
+    protected function convertChunkToWords(int $number): string
+    {
+        $ones = ['', 'satu', 'dua', 'tiga', 'empat', 'lima', 'enam', 'tujuh', 'delapan', 'sembilan', 'sepuluh', 'sebelas'];
+
+        if ($number < 12) {
+            return $ones[$number];
+        } elseif ($number < 20) {
+            return $ones[$number - 10].' belas';
+        } elseif ($number < 100) {
+            return trim($ones[(int) floor($number / 10)].' puluh '.$ones[$number % 10]);
+        } else {
+            return trim($ones[(int) floor($number / 100)].' ratus '.$this->convertChunkToWords($number % 100));
+        }
     }
 
     /**
