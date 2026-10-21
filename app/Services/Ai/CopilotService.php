@@ -1252,6 +1252,10 @@ Karakter & Gaya Bicara Anda:
           * `### 📜 KWITANSI PEMBAYARAN BOSP`
           * `### 📝 TANDA TERIMA HONORARIUM / JASA`
         - Nomor Dokumen Resmi & Tanggal Dokumen.
+        - Informasi Transaksi & Pembayaran:
+          * Cantumkan baris "Untuk Pembayaran" / "Uraian Belanja" dengan MENGGUNAKAN URAIAN RIIL BARANG/JASA dari field `untuk_pembayaran` atau `keperluan` hasil tool (contoh: "Pembayaran Belanja Kuas Biasa, Cat tembok Nippon Paint, Kuas Roll" atau "Pembayaran Honor Guru Husni, S.Pd.I").
+          * DILARANG KERAS memunculkan awalan pembukuan jurnal kas BKU seperti "Lunas Bayar..." pada lembar kuitansi / dokumen resmi SPJ!
+          * Tampilkan "Rekening Belanja" dan "Kegiatan" lengkap dengan kode dan nama uraian resminya sesuai hasil tool.
         - Identitas Para Pihak:
           * Pihak Pertama (Penyedia / Toko Rekanan / Penerima)
           * Pihak Kedua (Sekolah: Kepala Sekolah & Bendahara)
@@ -6400,7 +6404,7 @@ PROMPT;
             $totalEvaluasi++;
 
             $kodeRekening = $bku->rekeningBelanja?->kode_rekening ?? '';
-            $namaRekening = $bku->rekeningBelanja?->nama_rekening ?? '';
+            $namaRekening = $bku->rekeningBelanja?->rincian_objek ?? ($bku->rekeningBelanja?->nama_rekening ?? '');
             $uraian = $bku->uraian ?? '';
             $uraianOpsional = $bku->uraian_opsional ?? '';
             $combinedText = strtolower($uraian.' '.$uraianOpsional.' '.$namaRekening);
@@ -6488,7 +6492,7 @@ PROMPT;
                 'bku_id' => $bku->id,
                 'tanggal' => $bku->tanggal_transaksi ? Carbon::parse($bku->tanggal_transaksi)->format('Y-m-d') : '',
                 'nomor_bukti' => $noBukti,
-                'uraian' => $bku->uraian_opsional ?: $bku->uraian,
+                'uraian' => $this->formatUraianPembayaranReal($bku),
                 'nama_rekanan' => $bku->nama_toko ?: ($bku->nama_penerima_pembayaran ?: '-'),
                 'kode_rekening' => $kodeRekening,
                 'nama_rekening' => $namaRekening,
@@ -6721,8 +6725,9 @@ PROMPT;
                 'nomor_dokumen' => $nomorBast,
                 'tanggal_dokumen' => $tglBast,
                 'nomor_bukti_bku' => $noBukti,
-                'rekening' => ($bku->rekeningBelanja?->kode_rekening ?? '').' - '.($bku->rekeningBelanja?->nama_rekening ?? ''),
-                'kegiatan' => ($bku->kodeKegiatan?->kode ?? '').' - '.($bku->kodeKegiatan?->nama ?? ''),
+                'uraian_pekerjaan' => $this->formatUraianPembayaranReal($bku),
+                'rekening' => ($bku->rekeningBelanja?->kode_rekening ?? '').' - '.($bku->rekeningBelanja?->rincian_objek ?? ''),
+                'kegiatan' => ($bku->kodeKegiatan?->kode ?? '').' - '.($bku->kodeKegiatan?->uraian ?? ''),
                 'pihak_pertama' => [
                     'peran' => 'PIHAK PERTAMA (Yang Menyerahkan / Penyedia)',
                     'nama' => ! empty($doc->pihak_pertama_nama) ? $doc->pihak_pertama_nama : (! empty($bku->nama_penerima_pembayaran) ? $bku->nama_penerima_pembayaran : ($bku->nama_toko ?: 'Penyedia')),
@@ -6766,7 +6771,9 @@ PROMPT;
                 'nomor_dokumen' => $nomorSp,
                 'tanggal_dokumen' => $tglSp,
                 'nomor_bukti_bku' => $noBukti,
-                'rekening' => ($bku->rekeningBelanja?->kode_rekening ?? '').' - '.($bku->rekeningBelanja?->nama_rekening ?? ''),
+                'untuk_keperluan' => $this->formatUraianPembayaranReal($bku),
+                'rekening' => ($bku->rekeningBelanja?->kode_rekening ?? '').' - '.($bku->rekeningBelanja?->rincian_objek ?? ''),
+                'kegiatan' => ($bku->kodeKegiatan?->kode ?? '').' - '.($bku->kodeKegiatan?->uraian ?? ''),
                 'pihak_kesatu' => [
                     'peran' => 'PIHAK KESATU (Pemesan / Satuan Pendidikan)',
                     'nama' => ! empty($doc->pihak_kesatu_nama) ? $doc->pihak_kesatu_nama : $identitasSekolah['kepala_sekolah'],
@@ -6813,9 +6820,9 @@ PROMPT;
                 'nomor_dokumen' => $noBukti,
                 'tanggal_dokumen' => $tglTransaksi,
                 'sekolah' => $identitasSekolah['nama_sekolah'],
-                'keperluan' => $bku->uraian_opsional ?: $bku->uraian,
-                'rekening' => ($bku->rekeningBelanja?->kode_rekening ?? '').' - '.($bku->rekeningBelanja?->nama_rekening ?? ''),
-                'kegiatan' => ($bku->kodeKegiatan?->kode ?? '').' - '.($bku->kodeKegiatan?->nama ?? ''),
+                'keperluan' => $this->formatUraianPembayaranReal($bku),
+                'rekening' => ($bku->rekeningBelanja?->kode_rekening ?? '').' - '.($bku->rekeningBelanja?->rincian_objek ?? ''),
+                'kegiatan' => ($bku->kodeKegiatan?->kode ?? '').' - '.($bku->kodeKegiatan?->uraian ?? ''),
                 'daftar_penerima' => $items,
                 'keuangan' => [
                     'total_bruto' => $bruto,
@@ -6843,9 +6850,9 @@ PROMPT;
             'tahun_anggaran' => $tahun,
             'sudah_terima_dari' => 'Bendahara BOSP '.$identitasSekolah['nama_sekolah'],
             'terbilang' => $terbilangBruto,
-            'untuk_pembayaran' => $bku->uraian_opsional ?: $bku->uraian,
-            'rekening' => ($bku->rekeningBelanja?->kode_rekening ?? '').' - '.($bku->rekeningBelanja?->nama_rekening ?? ''),
-            'kegiatan' => ($bku->kodeKegiatan?->kode ?? '').' - '.($bku->kodeKegiatan?->nama ?? ''),
+            'untuk_pembayaran' => $this->formatUraianPembayaranReal($bku),
+            'rekening' => ($bku->rekeningBelanja?->kode_rekening ?? '').' - '.($bku->rekeningBelanja?->rincian_objek ?? ''),
+            'kegiatan' => ($bku->kodeKegiatan?->kode ?? '').' - '.($bku->kodeKegiatan?->uraian ?? ''),
             'penerima' => $bku->nama_toko ?: ($bku->nama_penerima_pembayaran ?: 'Penyedia / Rekanan'),
             'rincian_barang' => $items,
             'keuangan' => [
@@ -6869,6 +6876,52 @@ PROMPT;
                 'penerima' => $bku->nama_penerima_pembayaran ?: ($bku->nama_toko ?: 'Penyedia'),
             ],
         ];
+    }
+
+    /**
+     * Menghasilkan kalimat uraian pembayaran resmi dokumen SPJ sesuai kwitansi fisik riil
+     */
+    public function formatUraianPembayaranReal($bku): string
+    {
+        if (! $bku) {
+            return '-';
+        }
+
+        $uraianBku = strtolower($bku->uraian ?? '');
+
+        // 1. Deteksi transaksi honor / upah / jasa tenaga kerja perorangan
+        $isHonor = str_contains($uraianBku, 'honor') ||
+                   str_contains($uraianBku, 'jasa tenaga') ||
+                   str_contains($uraianBku, 'upah');
+
+        if ($isHonor && ! empty($bku->uraian_opsional)) {
+            $cleaned = preg_replace('/^lunas\s+bayar\s+/i', '', trim($bku->uraian_opsional));
+
+            return 'Pembayaran '.ltrim($cleaned);
+        }
+
+        // 2. Ambil dari rincian item belanja (bku_uraian_details)
+        $details = $bku->uraianDetails ?? collect();
+        if ($details->count() > 0) {
+            $itemNames = $details->pluck('uraian')->filter()->map(fn ($item) => trim($item))->unique()->values();
+            if ($itemNames->isNotEmpty()) {
+                return 'Pembayaran Belanja '.$itemNames->implode(', ');
+            }
+        }
+
+        // 3. Fallback: Bersihkan uraian_opsional atau uraian BKU
+        $raw = ! empty($bku->uraian_opsional) ? $bku->uraian_opsional : ($bku->uraian ?? '');
+        $cleaned = preg_replace('/^lunas\s+bayar\s+/i', '', trim($raw));
+
+        if (empty($cleaned)) {
+            return 'Pembayaran Belanja Kas';
+        }
+
+        if (! str_starts_with(strtolower($cleaned), 'pembayaran')) {
+            return 'Pembayaran '.$cleaned;
+        }
+
+        return $cleaned;
     }
 
     /**
