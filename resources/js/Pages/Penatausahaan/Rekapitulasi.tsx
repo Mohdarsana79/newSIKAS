@@ -43,6 +43,20 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
     const [showAiAuditModal, setShowAiAuditModal] = useState(false);
     const [auditStatusData, setAuditStatusData] = useState<any>(null);
     const [hasDeepSeekKey, setHasDeepSeekKey] = useState(false);
+    const [auditTarget, setAuditTarget] = useState<{
+        tabType: string;
+        tabTitle: string;
+        periodeType: 'bulanan' | 'tahapan' | 'tahunan';
+        periodeKey: string;
+        bulan?: string;
+    }>({
+        tabType: 'bkp_bank',
+        tabTitle: 'BKP Bank (Buku Pembantu Bank)',
+        periodeType: 'bulanan',
+        periodeKey: bulan,
+        bulan: bulan,
+    });
+    const [tabAuditScores, setTabAuditScores] = useState<Record<string, { compliance_score: number; status: string }>>({});
 
     const [bkpBaData, setBkpBaData] = useState<any>(null);
     const [bulanBa, setBulanBa] = useState(bulan);
@@ -94,7 +108,6 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
             fetchBkpRobData();
         } else if (activeTab === 'reg' && tahun && bulanReg) {
             fetchBkpRegData();
-            fetchAuditStatus();
         } else if (activeTab === 'ba' && tahun && bulanBa) {
             fetchBkpBaData();
         } else if (activeTab === 'realisasi' && tahun) {
@@ -108,6 +121,28 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
             fetchBhmData();
         }
     }, [activeTab, tahun, bulanBank, bulanPembantu, bulanUmum, bulanPajak, bulanRob, bulanReg, bulanBa, periodeRealisasi, jenisLaporanRealisasi, faseRekRealisasi, periodeBhp, jenisLaporanBhp, periodeBhm, jenisLaporanBhm]);
+
+    // Fetch AI Audit status when active tab or period scope changes
+    useEffect(() => {
+        fetchAuditStatusForCurrentTab();
+    }, [
+        activeTab,
+        tahun,
+        bulanBank,
+        bulanPembantu,
+        bulanUmum,
+        bulanPajak,
+        bulanRob,
+        bulanReg,
+        bulanBa,
+        periodeRealisasi,
+        jenisLaporanRealisasi,
+        faseRekRealisasi,
+        periodeBhp,
+        jenisLaporanBhp,
+        periodeBhm,
+        jenisLaporanBhm
+    ]);
 
     const fetchRealisasiData = async () => {
         setIsLoading(true);
@@ -205,16 +240,202 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
         }
     };
 
-    const fetchAuditStatus = async () => {
+    const getAuditParamsForTab = (tab: string) => {
+        switch (tab) {
+            case 'bkp_bank':
+                return {
+                    tabType: 'bkp_bank',
+                    tabTitle: 'BKP Bank (Buku Pembantu Bank)',
+                    periodeType: 'bulanan' as const,
+                    periodeKey: (bulanBank || bulan || 'januari').toLowerCase(),
+                    bulan: bulanBank || bulan,
+                };
+            case 'bkp_pembantu':
+                return {
+                    tabType: 'bkp_pembantu',
+                    tabTitle: 'BKP Pembantu Kas (Tunai)',
+                    periodeType: 'bulanan' as const,
+                    periodeKey: (bulanPembantu || bulan || 'januari').toLowerCase(),
+                    bulan: bulanPembantu || bulan,
+                };
+            case 'bkp_umum':
+                return {
+                    tabType: 'bkp_umum',
+                    tabTitle: 'Buku Kas Umum (BKU)',
+                    periodeType: 'bulanan' as const,
+                    periodeKey: (bulanUmum || bulan || 'januari').toLowerCase(),
+                    bulan: bulanUmum || bulan,
+                };
+            case 'bkp_pajak':
+                return {
+                    tabType: 'bkp_pajak',
+                    tabTitle: 'Buku Pembantu Pajak',
+                    periodeType: 'bulanan' as const,
+                    periodeKey: (bulanPajak || bulan || 'januari').toLowerCase(),
+                    bulan: bulanPajak || bulan,
+                };
+            case 'rob':
+                return {
+                    tabType: 'rob',
+                    tabTitle: 'Rincian Objek Belanja (ROB)',
+                    periodeType: 'bulanan' as const,
+                    periodeKey: (bulanRob || bulan || 'januari').toLowerCase(),
+                    bulan: bulanRob || bulan,
+                };
+            case 'reg':
+                return {
+                    tabType: 'reg',
+                    tabTitle: 'Register Penutupan Kas',
+                    periodeType: 'bulanan' as const,
+                    periodeKey: (bulanReg || bulan || 'januari').toLowerCase(),
+                    bulan: bulanReg || bulan,
+                };
+            case 'ba':
+                return {
+                    tabType: 'ba',
+                    tabTitle: 'Berita Acara Pemeriksaan Kas',
+                    periodeType: 'bulanan' as const,
+                    periodeKey: (bulanBa || bulan || 'januari').toLowerCase(),
+                    bulan: bulanBa || bulan,
+                };
+            case 'realisasi': {
+                const pType: 'bulanan' | 'tahapan' | 'tahunan' = jenisLaporanRealisasi === 'bulanan' ? 'bulanan' : (jenisLaporanRealisasi === 'tahap' ? 'tahapan' : 'tahunan');
+                let pKey = 'tahunan';
+                if (pType === 'bulanan') {
+                    pKey = (periodeRealisasi || bulan || 'januari').toLowerCase();
+                } else if (pType === 'tahapan') {
+                    pKey = (periodeRealisasi?.toLowerCase() === 'tahap 2') ? 'tahap_2' : 'tahap_1';
+                }
+                return {
+                    tabType: 'realisasi',
+                    tabTitle: 'Laporan Realisasi Penggunaan Dana BOSP',
+                    periodeType: pType,
+                    periodeKey: pKey,
+                    bulan: pType === 'bulanan' ? (periodeRealisasi || bulan) : 'januari',
+                };
+            }
+            case 'rek_realisasi': {
+                const pType: 'bulanan' | 'tahapan' | 'tahunan' = faseRekRealisasi === 'Tahunan' ? 'tahunan' : 'tahapan';
+                const pKey = faseRekRealisasi === 'Tahap 2' ? 'tahap_2' : (faseRekRealisasi === 'Tahunan' ? 'tahunan' : 'tahap_1');
+                return {
+                    tabType: 'rek_realisasi',
+                    tabTitle: 'Rekapitulasi Realisasi (LK-2)',
+                    periodeType: pType,
+                    periodeKey: pKey,
+                    bulan: 'januari',
+                };
+            }
+            case 'bhp': {
+                const pType: 'bulanan' | 'tahapan' | 'tahunan' = jenisLaporanBhp === 'bulanan' ? 'bulanan' : (jenisLaporanBhp === 'tahap' ? 'tahapan' : 'tahunan');
+                let pKey = 'tahunan';
+                if (pType === 'bulanan') {
+                    pKey = (periodeBhp || bulan || 'januari').toLowerCase();
+                } else if (pType === 'tahapan') {
+                    pKey = (periodeBhp?.toLowerCase() === 'tahap 2') ? 'tahap_2' : 'tahap_1';
+                }
+                return {
+                    tabType: 'bhp',
+                    tabTitle: 'Buku Pembantu Barang Habis Pakai (BHP)',
+                    periodeType: pType,
+                    periodeKey: pKey,
+                    bulan: pType === 'bulanan' ? (periodeBhp || bulan) : 'januari',
+                };
+            }
+            case 'bhm': {
+                const pType: 'bulanan' | 'tahapan' | 'tahunan' = jenisLaporanBhm === 'bulanan' ? 'bulanan' : (jenisLaporanBhm === 'tahap' ? 'tahapan' : 'tahunan');
+                let pKey = 'tahunan';
+                if (pType === 'bulanan') {
+                    pKey = (periodeBhm || bulan || 'januari').toLowerCase();
+                } else if (pType === 'tahapan') {
+                    pKey = (periodeBhm?.toLowerCase() === 'tahap 2') ? 'tahap_2' : 'tahap_1';
+                }
+                return {
+                    tabType: 'bhm',
+                    tabTitle: 'Buku Inventaris Barang Modal / Aset (BHM)',
+                    periodeType: pType,
+                    periodeKey: pKey,
+                    bulan: pType === 'bulanan' ? (periodeBhm || bulan) : 'januari',
+                };
+            }
+            default:
+                return {
+                    tabType: tab,
+                    tabTitle: 'Pra-Audit Forensik AI',
+                    periodeType: 'bulanan' as const,
+                    periodeKey: (bulan || 'januari').toLowerCase(),
+                    bulan: bulan || 'januari',
+                };
+        }
+    };
+
+    const fetchAuditStatusForCurrentTab = async (targetTab?: string) => {
+        const tab = targetTab || activeTab;
+        const params = getAuditParamsForTab(tab);
         try {
-            const response = await axios.get(vroute('api.bku-audit.status', { tahun, bulan: bulanReg }));
+            const response = await axios.get(vroute('api.bku-audit.status'), {
+                params: {
+                    tahun,
+                    tab_type: params.tabType,
+                    periode_type: params.periodeType,
+                    periode_key: params.periodeKey,
+                    bulan: params.bulan,
+                }
+            });
             if (response.data.success) {
-                setAuditStatusData(response.data.audit);
                 setHasDeepSeekKey(response.data.has_api_key);
+                if (response.data.audit) {
+                    const audit = response.data.audit;
+                    setTabAuditScores(prev => ({
+                        ...prev,
+                        [`${params.tabType}_${params.periodeKey}`]: {
+                            compliance_score: audit.compliance_score,
+                            status: audit.findings?.length === 0 ? 'clean' : (audit.compliance_score >= 85 ? 'good' : 'warning')
+                        }
+                    }));
+                    if (tab === activeTab) {
+                        setAuditStatusData(audit);
+                    }
+                } else {
+                    if (tab === activeTab) {
+                        setAuditStatusData(null);
+                    }
+                }
             }
         } catch (error) {
             console.error("Error fetching AI audit status:", error);
         }
+    };
+
+    const handleOpenAuditModal = (tab: string) => {
+        const params = getAuditParamsForTab(tab);
+        setAuditTarget(params);
+        setShowAiAuditModal(true);
+    };
+
+    const renderAuditButton = (tab: string) => {
+        const params = getAuditParamsForTab(tab);
+        const scoreData = tabAuditScores[`${params.tabType}_${params.periodeKey}`];
+
+        return (
+            <button
+                type="button"
+                onClick={() => handleOpenAuditModal(tab)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-purple-600 via-indigo-600 to-indigo-700 hover:from-purple-700 hover:to-indigo-800 text-white rounded-md font-bold text-xs uppercase tracking-wider shadow-sm transition transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+                title={`Jalankan Pra-Audit AI Forensik untuk ${params.tabTitle}`}
+            >
+                <Sparkles className="w-4 h-4 text-purple-200" />
+                <span>Pra-Audit AI (DeepSeek-R1)</span>
+                {scoreData && (
+                    <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-black ${
+                        scoreData.compliance_score >= 85
+                            ? 'bg-emerald-400 text-emerald-950'
+                            : (scoreData.compliance_score >= 60 ? 'bg-amber-300 text-amber-950' : 'bg-rose-400 text-rose-950')
+                    }`}>
+                        {scoreData.compliance_score}/100
+                    </span>
+                )}
+            </button>
+        );
     };
 
     const fetchBkpRobData = async () => {
@@ -526,7 +747,8 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                             ))}
                                         </select>
                                     </div>
-                                    <div className="mt-4 md:mt-0 flex gap-2">
+                                    <div className="mt-4 md:mt-0 flex flex-wrap gap-2">
+                                        {renderAuditButton('bkp_bank')}
                                         <button
                                             onClick={() => setShowTrkSaldoAwalModal(true)}
                                             className="inline-flex items-center px-4 py-2 bg-yellow-600 dark:bg-yellow-500 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-yellow-500 dark:hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 transition ease-in-out duration-150"
@@ -882,10 +1104,11 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                             ))}
                                         </select>
                                     </div>
-                                    <div className="mt-4 md:mt-0">
+                                    <div className="mt-4 md:mt-0 flex flex-wrap gap-2">
+                                        {renderAuditButton('bkp_umum')}
                                         <button
                                             onClick={handleExportExcelBkpUmum}
-                                            className="inline-flex items-center px-4 py-2 bg-green-800 dark:bg-green-200 border border-transparent rounded-md font-semibold text-xs text-white dark:text-green-800 uppercase tracking-widest hover:bg-green-700 dark:hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition ease-in-out duration-150 mr-2"
+                                            className="inline-flex items-center px-4 py-2 bg-green-800 dark:bg-green-200 border border-transparent rounded-md font-semibold text-xs text-white dark:text-green-800 uppercase tracking-widest hover:bg-green-700 dark:hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition ease-in-out duration-150"
                                         >
                                             <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -1175,10 +1398,11 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                             ))}
                                         </select>
                                     </div>
-                                    <div className="mt-4 md:mt-0">
+                                    <div className="mt-4 md:mt-0 flex flex-wrap gap-2">
+                                        {renderAuditButton('bkp_pajak')}
                                         <button
                                             onClick={handleExportExcelBkpPajak}
-                                            className="inline-flex items-center px-4 py-2 bg-green-800 dark:bg-green-200 border border-transparent rounded-md font-semibold text-xs text-white dark:text-green-800 uppercase tracking-widest hover:bg-green-700 dark:hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition ease-in-out duration-150 mr-2"
+                                            className="inline-flex items-center px-4 py-2 bg-green-800 dark:bg-green-200 border border-transparent rounded-md font-semibold text-xs text-white dark:text-green-800 uppercase tracking-widest hover:bg-green-700 dark:hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition ease-in-out duration-150"
                                         >
                                             <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -1405,10 +1629,11 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                             ))}
                                         </select>
                                     </div>
-                                    <div className="flex items-center gap-3">
+                                    <div className="flex flex-wrap items-center gap-3">
                                         <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 uppercase hidden md:block">
                                             BUKU PEMBANTU RINCIAN OBJEK BELANJA - {bulanRob.toUpperCase()} {tahun}
                                         </h3>
+                                        {renderAuditButton('rob')}
                                         <button
                                             onClick={() => setShowPrintBkpRobModal(true)}
                                             className="inline-flex items-center px-4 py-2 bg-gray-800 dark:bg-gray-200 border border-transparent rounded-md font-semibold text-xs text-white dark:text-gray-800 uppercase tracking-widest hover:bg-gray-700 dark:hover:bg-white focus:bg-gray-700 dark:focus:bg-white active:bg-gray-900 dark:active:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150"
@@ -1568,23 +1793,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                         </select>
                                     </div>
                                     <div className="flex flex-wrap items-center gap-2">
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowAiAuditModal(true)}
-                                            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-purple-600 via-indigo-600 to-indigo-700 hover:from-purple-700 hover:to-indigo-800 text-white rounded-md font-bold text-xs uppercase tracking-wider shadow-sm transition transform hover:-translate-y-0.5"
-                                        >
-                                            <Sparkles className="w-4 h-4 text-purple-200" />
-                                            Pra-Audit AI (DeepSeek-R1)
-                                            {auditStatusData && (
-                                                <span className={`ml-1.5 px-2 py-0.5 rounded-full text-[10px] font-black ${
-                                                    auditStatusData.compliance_score >= 85
-                                                        ? 'bg-emerald-400 text-emerald-950'
-                                                        : (auditStatusData.compliance_score >= 60 ? 'bg-amber-300 text-amber-950' : 'bg-rose-400 text-rose-950')
-                                                }`}>
-                                                    {auditStatusData.compliance_score}/100
-                                                </span>
-                                            )}
-                                        </button>
+                                        {renderAuditButton('reg')}
                                         <button
                                             onClick={() => setShowPrintBkpRegModal(true)}
                                             className="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 focus:bg-indigo-700 active:bg-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150"
@@ -1600,18 +1809,6 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                     title="Cetak Register BKP"
                                     includePeriodFilters={true}
                                     initialPeriod={bulanReg}
-                                />
-
-                                <BkuAuditModal
-                                    isOpen={showAiAuditModal}
-                                    onClose={() => setShowAiAuditModal(false)}
-                                    tahun={tahun}
-                                    bulan={bulanReg}
-                                    hasApiKey={hasDeepSeekKey}
-                                    initialAuditData={auditStatusData}
-                                    onAuditCompleted={(newAudit) => {
-                                        setAuditStatusData(newAudit);
-                                    }}
                                 />
 
                                 {/* Report Header */}
@@ -1772,7 +1969,8 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                             ))}
                                         </select>
                                     </div>
-                                    <div className="flex gap-2">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        {renderAuditButton('ba')}
                                         <button
                                             onClick={() => setShowPrintBkpBaModal(true)}
                                             className="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 focus:bg-indigo-700 active:bg-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150"
@@ -1948,7 +2146,8 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                         )}
                                     </div>
 
-                                    <div className="flex gap-2">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        {renderAuditButton('realisasi')}
                                         <button
                                             onClick={() => setShowPrintRealisasiModal(true)}
                                             className="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 focus:bg-indigo-700 active:bg-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150"
@@ -2125,6 +2324,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                                 <option value="Tahunan">Tahunan</option>
                                             </select>
                                         </div>
+                                        {renderAuditButton('rek_realisasi')}
                                         <button
                                             onClick={handlePrintRekRealisasi}
                                             className="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 focus:bg-indigo-700 active:bg-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150"
@@ -2265,10 +2465,11 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                             ))}
                                         </select>
                                     </div>
-                                    <div className="mt-4 md:mt-0">
+                                    <div className="mt-4 md:mt-0 flex flex-wrap gap-2">
+                                        {renderAuditButton('bkp_pembantu')}
                                         <button
                                             onClick={handleExportExcelBkpTunai}
-                                            className="inline-flex items-center px-4 py-2 bg-green-800 dark:bg-green-200 border border-transparent rounded-md font-semibold text-xs text-white dark:text-green-800 uppercase tracking-widest hover:bg-green-700 dark:hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition ease-in-out duration-150 mr-2"
+                                            className="inline-flex items-center px-4 py-2 bg-green-800 dark:bg-green-200 border border-transparent rounded-md font-semibold text-xs text-white dark:text-green-800 uppercase tracking-widest hover:bg-green-700 dark:hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition ease-in-out duration-150"
                                         >
                                             <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -2575,7 +2776,8 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                             </div>
                                         )}
                                     </div>
-                                    <div className="flex gap-2">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        {renderAuditButton('bhp')}
                                         <PrimaryButton 
                                             onClick={() => setShowPrintBhpModal(true)}
                                             className="bg-indigo-600 hover:bg-indigo-700"
@@ -2719,7 +2921,8 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                             </div>
                                         )}
                                     </div>
-                                    <div className="flex gap-2">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        {renderAuditButton('bhm')}
                                         <PrimaryButton 
                                             onClick={() => setShowPrintBhmModal(true)}
                                             className="bg-indigo-600 hover:bg-indigo-700"
@@ -2814,7 +3017,32 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                         )}
                     </div>
                 </div>
-            </div >
-        </AuthenticatedLayout >
+            </div>
+
+            {/* Multi-Tab Pra-Audit Forensik AI Modal */}
+            <BkuAuditModal
+                isOpen={showAiAuditModal}
+                onClose={() => setShowAiAuditModal(false)}
+                tahun={tahun}
+                bulan={auditTarget.bulan || bulan}
+                tabType={auditTarget.tabType}
+                tabTitle={auditTarget.tabTitle}
+                initialPeriodeType={auditTarget.periodeType}
+                initialPeriodeKey={auditTarget.periodeKey}
+                hasApiKey={hasDeepSeekKey}
+                initialAuditData={auditStatusData}
+                onAuditCompleted={(newAudit, tabType) => {
+                    setAuditStatusData(newAudit);
+                    const pKey = newAudit.periode_key || auditTarget.periodeKey;
+                    setTabAuditScores(prev => ({
+                        ...prev,
+                        [`${tabType}_${pKey}`]: {
+                            compliance_score: newAudit.compliance_score,
+                            status: newAudit.findings?.length === 0 ? 'clean' : (newAudit.compliance_score >= 85 ? 'good' : 'warning')
+                        }
+                    }));
+                }}
+            />
+        </AuthenticatedLayout>
     );
 }

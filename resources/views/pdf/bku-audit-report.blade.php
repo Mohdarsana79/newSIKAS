@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
-    <title>Lembar Pra-Audit AI BKU - {{ $audit->bulan }} {{ $audit->tahun }}</title>
+    <title>Lembar Pra-Audit Forensik AI - {{ $tabTitle ?? 'BKU' }} - {{ $periodeLabel ?? $audit->periode_key }} {{ $audit->tahun }}</title>
     <style>
         @page {
             size: A4 portrait;
@@ -18,10 +18,10 @@
             text-align: center;
             border-bottom: 2px solid #111827;
             padding-bottom: 8px;
-            margin-bottom: 16px;
+            margin-bottom: 14px;
         }
         .school-name {
-            font-size: 14pt;
+            font-size: 13pt;
             font-weight: bold;
             text-transform: uppercase;
             letter-spacing: 0.5px;
@@ -33,17 +33,20 @@
         }
         .doc-title {
             text-align: center;
-            font-size: 12pt;
+            font-size: 11.5pt;
             font-weight: bold;
-            margin-top: 10px;
+            margin-top: 6px;
             text-transform: uppercase;
             text-decoration: underline;
         }
         .doc-subtitle {
             text-align: center;
-            font-size: 8.5pt;
-            color: #4b5563;
-            margin-bottom: 14px;
+            font-size: 9pt;
+            font-weight: bold;
+            color: #4338ca;
+            margin-top: 2px;
+            margin-bottom: 12px;
+            text-transform: uppercase;
         }
         .meta-table {
             width: 100%;
@@ -52,7 +55,7 @@
         }
         .meta-table td {
             padding: 3px 6px;
-            font-size: 9pt;
+            font-size: 8.5pt;
         }
         .meta-label {
             width: 18%;
@@ -68,7 +71,7 @@
             border: 1.5px solid #cbd5e1;
             border-radius: 6px;
             padding: 10px 14px;
-            margin-bottom: 14px;
+            margin-bottom: 12px;
         }
         .score-flex {
             width: 100%;
@@ -84,7 +87,7 @@
         .score-red { color: #b91c1c; }
 
         .summary-text {
-            font-size: 9pt;
+            font-size: 8.5pt;
             text-align: justify;
             color: #334155;
             padding-left: 12px;
@@ -92,9 +95,9 @@
         }
 
         .section-title {
-            font-size: 10pt;
+            font-size: 9.5pt;
             font-weight: bold;
-            margin-top: 14px;
+            margin-top: 12px;
             margin-bottom: 6px;
             text-transform: uppercase;
             color: #0f172a;
@@ -110,14 +113,14 @@
         .table-data th {
             background-color: #f1f5f9;
             color: #1e293b;
-            font-size: 8.5pt;
+            font-size: 8pt;
             font-weight: bold;
-            padding: 6px 5px;
+            padding: 5px 4px;
             border: 1px solid #cbd5e1;
             text-align: center;
         }
         .table-data td {
-            font-size: 8.5pt;
+            font-size: 8pt;
             padding: 5px;
             border: 1px solid #cbd5e1;
             vertical-align: top;
@@ -125,8 +128,8 @@
 
         .badge {
             display: inline-block;
-            padding: 2px 5px;
-            font-size: 7.5pt;
+            padding: 2px 4px;
+            font-size: 7pt;
             font-weight: bold;
             border-radius: 3px;
             text-transform: uppercase;
@@ -136,17 +139,24 @@
         .badge-warning { background-color: #fef3c7; color: #92400e; }
         .badge-info { background-color: #e0f2fe; color: #075985; }
 
+        .checklist-item {
+            font-size: 8pt;
+            color: #334155;
+            margin-bottom: 2px;
+        }
+
         .signature-section {
-            margin-top: 25px;
+            margin-top: 20px;
             width: 100%;
             page-break-inside: avoid;
         }
         .signature-table {
             width: 100%;
             text-align: center;
+            font-size: 8.5pt;
         }
         .signature-space {
-            height: 60px;
+            height: 55px;
         }
     </style>
 </head>
@@ -162,22 +172,28 @@
     </div>
 
     <!-- Judul Dokumen -->
-    <div class="doc-title">LEMBAR KERJA PRA-AUDIT KEPATUHAN BUKU KAS UMUM</div>
-    <div class="doc-subtitle">Pemeriksaan Kepatuhan Berbasis Penalaran AI (DeepSeek-R1) Sebelum Penutupan Kas</div>
+    <div class="doc-title">LEMBAR HASIL PENELAAHAN PRA-AUDIT FORENSIK KEUANGAN BOSP</div>
+    <div class="doc-subtitle">{{ $tabTitle ?? 'BUKU KAS PEMBANTU' }}</div>
 
     <!-- Metadata Periode -->
     <table class="meta-table">
         <tr>
-            <td class="meta-label">Tahun Anggaran</td>
-            <td class="meta-val">: {{ $audit->tahun }}</td>
+            <td class="meta-label">Objek Buku</td>
+            <td class="meta-val">: {{ $tabTitle ?? 'Buku Kas Umum' }}</td>
             <td class="meta-label">Sumber Dana</td>
             <td class="meta-val">: {{ $variantTitle }}</td>
         </tr>
         <tr>
-            <td class="meta-label">Bulan Pembukuan</td>
-            <td class="meta-val">: {{ $audit->bulan }} {{ $audit->tahun }}</td>
-            <td class="meta-label">Waktu Audit</td>
+            <td class="meta-label">Periode Audit</td>
+            <td class="meta-val">: {{ $periodeLabel ?? $audit->periode_key }} {{ $audit->tahun }}</td>
+            <td class="meta-label">Waktu Pemindaian</td>
             <td class="meta-val">: {{ $audit->created_at->format('d/m/Y H:i') }} WIB</td>
+        </tr>
+        <tr>
+            <td class="meta-label">Engine Audit</td>
+            <td class="meta-val">: {{ $audit->metadata['model_used'] ?? 'DeepSeek-R1 (Forensic Reasoner)' }}</td>
+            <td class="meta-label">Status Caching</td>
+            <td class="meta-val">: Hasil Analisis Terverifikasi Sistem</td>
         </tr>
     </table>
 
@@ -185,7 +201,7 @@
     @php
         $score = $audit->compliance_score ?? 100;
         $scoreClass = $score >= 85 ? 'score-green' : ($score >= 60 ? 'score-yellow' : 'score-red');
-        $statusText = $score >= 85 ? 'Kepatuhan Sangat Baik' : ($score >= 60 ? 'Perlu Perhatian / Catatan' : 'Risiko Temuan Tinggi');
+        $statusText = $score >= 85 ? 'Kepatuhan Sangat Baik' : ($score >= 60 ? 'Perlu Perhatian / Catatan' : 'Risiko Temuan BPK Tinggi');
     @endphp
 
     <div class="score-card">
@@ -193,12 +209,12 @@
             <tr>
                 <td style="width: 110px; text-align: center; border-right: 1px solid #cbd5e1;">
                     <div class="score-num {{ $scoreClass }}">{{ $score }}</div>
-                    <div style="font-size: 7.5pt; font-weight: bold; text-transform: uppercase;" class="{{ $scoreClass }}">
+                    <div style="font-size: 7pt; font-weight: bold; text-transform: uppercase;" class="{{ $scoreClass }}">
                         {{ $statusText }}
                     </div>
                 </td>
                 <td class="summary-text">
-                    <strong>Ringkasan Eksekutif Auditor AI:</strong><br/>
+                    <strong>Opini & Ringkasan Eksekutif Auditor:</strong><br/>
                     {!! nl2br(e($audit->executive_summary)) !!}
                 </td>
             </tr>
@@ -206,15 +222,15 @@
     </div>
 
     <!-- Tabel Daftar Temuan Audit -->
-    <div class="section-title">Rincian Temuan & Rekomendasi Tindak Lanjut</div>
+    <div class="section-title">Matriks Temuan & Rekomendasi Tindak Lanjut</div>
     <table class="table-data">
         <thead>
             <tr>
                 <th style="width: 4%;">No</th>
                 <th style="width: 10%;">Tingkat</th>
-                <th style="width: 14%;">Kategori</th>
-                <th style="width: 38%;">Uraian Temuan</th>
-                <th style="width: 34%;">Rekomendasi Perbaikan</th>
+                <th style="width: 15%;">Kategori</th>
+                <th style="width: 37%;">Fakta Temuan & Potensi Pelanggaran</th>
+                <th style="width: 34%;">Saran Rekomendasi Solusi</th>
             </tr>
         </thead>
         <tbody>
@@ -229,44 +245,63 @@
                     <td style="text-align: center;">
                         <span class="badge {{ $badgeClass }}">{{ $sevLabel }}</span>
                     </td>
-                    <td style="text-align: center; font-size: 8pt; text-transform: capitalize;">
+                    <td style="text-align: center; font-size: 7.5pt; text-transform: capitalize;">
                         {{ str_replace('_', ' ', $f['category'] ?? '-') }}
                     </td>
                     <td>
                         <strong>{{ $f['title'] ?? '-' }}</strong><br/>
                         <span style="color: #4b5563;">{{ $f['description'] ?? '-' }}</span>
                         @if(!empty($f['amount']) && $f['amount'] > 0)
-                            <br/><strong style="font-size: 7.5pt; color: #1e293b;">Nominal: Rp {{ number_format($f['amount'], 0, ',', '.') }}</strong>
+                            <br/><strong style="font-size: 7pt; color: #1e293b;">Nominal Terkait: Rp {{ number_format($f['amount'], 0, ',', '.') }}</strong>
                         @endif
                     </td>
                     <td style="color: #1e293b;">
-                        {{ $f['recommendation'] ?? 'Lakukan konfirmasi bukti SPJ.' }}
+                        {{ $f['recommendation'] ?? 'Lakukan konfirmasi bukti SPJ sebelum penutupan kas.' }}
                     </td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="5" style="text-align: center; color: #15803d; padding: 12px;">
-                        <strong>✓ Tidak ditemukan indikasi pelanggaran atau anomali fatal pada pembukuan bulan ini.</strong>
+                    <td colspan="5" style="text-align: center; color: #15803d; padding: 10px;">
+                        <strong>✓ Tidak ditemukan indikasi ketidakpatuhan atau anomali pada objek buku dan periode ini.</strong>
                     </td>
                 </tr>
             @endforelse
         </tbody>
     </table>
 
+    <!-- Daftar Kepatuhan Aturan yang Diuji -->
+    @if(!empty($audit->rules_checked))
+        <div class="section-title">Daftar Kepatuhan Regulasi & Standar yang Diuji</div>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 12px;">
+            @foreach(array_chunk($audit->rules_checked, 2) as $row)
+                <tr>
+                    @foreach($row as $rule)
+                        <td style="width: 50%; font-size: 7.5pt; color: #374151; padding: 2px 4px;">
+                            ✓ {{ $rule }}
+                        </td>
+                    @endforeach
+                    @if(count($row) === 1)
+                        <td style="width: 50%;"></td>
+                    @endif
+                </tr>
+            @endforeach
+        </table>
+    @endif
+
     <!-- Tanda Tangan -->
     <div class="signature-section">
         <table class="signature-table">
             <tr>
                 <td style="width: 50%;">
-                    Mengetahui,<br/>
-                    Kepala Sekolah<br/>
+                    Mengetahui / Mengesahkan,<br/>
+                    Kepala Sekolah (Kuasa Pengguna Anggaran)<br/>
                     <div class="signature-space"></div>
                     <strong><u>{{ $penganggaran->kepala_sekolah ?? $sekolah->nama_kepala_sekolah ?? '....................................' }}</u></strong><br/>
                     NIP. {{ $penganggaran->nip_kepala_sekolah ?? $sekolah->nip_kepala_sekolah ?? '........................' }}
                 </td>
                 <td style="width: 50%;">
                     {{ $sekolah->kecamatan ?? 'Kecamatan' }}, {{ now()->locale('id')->translatedFormat('d F Y') }}<br/>
-                    Bendahara Pengeluaran BOSP<br/>
+                    Bendahara Pengeluaran Pembantu BOSP<br/>
                     <div class="signature-space"></div>
                     <strong><u>{{ $penganggaran->bendahara ?? $sekolah->nama_bendahara ?? '....................................' }}</u></strong><br/>
                     NIP. {{ $penganggaran->nip_bendahara ?? $sekolah->nip_bendahara ?? '........................' }}
