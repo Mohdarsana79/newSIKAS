@@ -78,8 +78,43 @@ class BkuMultiTabAuditTest extends TestCase
             $prompt = $scanner->getSystemPrompt('reguler', 2026, 'tahunan', 'tahap1');
             $hasIdRule = str_contains($prompt, 'ID INTERNAL DATABASE') || str_contains($prompt, 'ID internal angka database');
             $this->assertTrue($hasIdRule, "Scanner {$tab} should instruct AI not to output database IDs.");
-            $this->assertStringContainsString('transaction_ref', $prompt, "Scanner {$tab} should include transaction_ref guideline.");
+            $this->assertTrue(
+                str_contains($prompt, 'Auditor Konsultan / Narrator') || str_contains($prompt, 'executive_summary'),
+                "Scanner {$tab} should configure AI as Narrator/Consultant."
+            );
         }
+    }
+
+    public function test_deterministic_compliance_score_calculation()
+    {
+        $scanner = app(BkpBankAuditScanner::class);
+
+        // Kasus 1: Tanpa temuan -> Skor 100
+        $this->assertEquals(100, $scanner->calculateComplianceScore([]));
+
+        // Kasus 2: 1 Temuan Bahaya (Danger) -> Penalti -20 -> Skor 80
+        $dangerFindings = [['severity' => 'danger', 'title' => 'Saldo Minus']];
+        $this->assertEquals(80, $scanner->calculateComplianceScore($dangerFindings));
+
+        // Kasus 3: 1 Temuan Peringatan (Warning) -> Penalti -10 -> Skor 90
+        $warningFindings = [['severity' => 'warning', 'title' => 'Batas Brankas']];
+        $this->assertEquals(90, $scanner->calculateComplianceScore($warningFindings));
+
+        // Kasus 4: 1 Temuan Info -> Penalti -2 -> Skor 98
+        $infoFindings = [['severity' => 'info', 'title' => 'Sisa Pagu']];
+        $this->assertEquals(98, $scanner->calculateComplianceScore($infoFindings));
+
+        // Kasus 5: Kombinasi 1 Danger + 1 Warning + 1 Info -> Penalti -32 -> Skor 68
+        $combo = [
+            ['severity' => 'danger'],
+            ['severity' => 'warning'],
+            ['severity' => 'info'],
+        ];
+        $this->assertEquals(68, $scanner->calculateComplianceScore($combo));
+
+        // Kasus 6: Pelanggaran Ekstrem (6 Danger) -> Clamped di 0 (bukan negatif)
+        $extreme = array_fill(0, 6, ['severity' => 'danger']);
+        $this->assertEquals(0, $scanner->calculateComplianceScore($extreme));
     }
 
     public function test_compact_transactions_omits_database_id_and_handles_bunga_record()

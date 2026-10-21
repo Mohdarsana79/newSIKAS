@@ -154,53 +154,97 @@ class BkuAuditOrchestrator
 
         // 2. Pemindaian Deterministik Internal
         $preScan = $scanner->scanDeterministic($user, $variant, $tahun, $periodeType, $periodeKey, $penganggaran);
+        $systemFindings = $preScan['pre_findings'] ?? [];
+        $deterministicScore = $preScan['compliance_score'] ?? $scanner->calculateComplianceScore($systemFindings);
+        $rulesChecked = $preScan['rules_checked'] ?? [];
+        $periodeLabel = $preScan['summary']['periode_label'] ?? $periodeKey;
 
-        // 3. Periksa Kunci API DeepSeek Pengguna
+        // Siapkan Ringkasan Default Deterministik Sistem
+        $dangerCount = count(array_filter($systemFindings, fn ($f) => strtolower($f['severity'] ?? '') === 'danger'));
+        $warningCount = count(array_filter($systemFindings, fn ($f) => strtolower($f['severity'] ?? '') === 'warning'));
+        $infoCount = count(array_filter($systemFindings, fn ($f) => strtolower($f['severity'] ?? '') === 'info'));
+
+        if (count($systemFindings) === 0) {
+            $defaultSummary = "Berdasarkan hasil penelaahan audit forensik pada {$tabTitle} ({$periodeLabel}), pembukuan dinyatakan TERTIB dan MEMATUHI seluruh standar penatausahaan BOSP yang diuji. Tidak ditemukan indikasi ketidakpatuhan, selisih kas, atau anomali transaksi pembukuan. Skor kepatuhan sempurna ditetapkan sebesar 100 dari 100.";
+        } else {
+            $rincianTemuan = [];
+            if ($dangerCount > 0) {
+                $rincianTemuan[] = "{$dangerCount} temuan berisiko tinggi (bahaya)";
+            }
+            if ($warningCount > 0) {
+                $rincianTemuan[] = "{$warningCount} catatan peringatan administratif";
+            }
+            if ($infoCount > 0) {
+                $rincianTemuan[] = "{$infoCount} catatan saran penguatan";
+            }
+            $strRincian = implode(', ', $rincianTemuan);
+            $defaultSummary = "Berdasarkan hasil penelaahan audit forensik pada {$tabTitle} ({$periodeLabel}), ditemukan {$strRincian} yang memerlukan tindak lanjut perbaikan sebelum pemeriksaan BPK RI / Inspektorat Daerah. Skor kepatuhan ditetapkan secara deterministik sebesar {$deterministicScore} dari 100.";
+        }
+
+        // 3. Periksa Kunci API DeepSeek Pengguna & Panggil AI Narrator
         $apiKey = $user->deepseek_api_key;
         $sekolah = SekolahProfile::first();
         $model = $user->deepseek_model_reasoner ?: 'deepseek-reasoner';
 
-        $auditData = null;
+        $finalScore = $deterministicScore; // SELALU TERKUNCI DARI SISTEM (ANTI-FLUKTUASI)
+        $finalSummary = $defaultSummary;
+        $finalFindings = $systemFindings;
         $reasoningTrace = null;
 
         if (empty($apiKey)) {
-            // Smart Fallback jika user belum memasang API key
-            $score = 100;
-            foreach ($preScan['pre_findings'] as $f) {
-                $severity = $f['severity'] ?? 'warning';
-                $score -= ($severity === 'danger' ? 15 : ($severity === 'warning' ? 7 : 2));
-            }
-            $score = max(20, min(100, $score));
-
-            $auditData = [
-                'compliance_score' => $score,
-                'executive_summary' => "Pemindaian audit forensik deterministik pada {$tabTitle} ({$preScan['summary']['periode_label']}) selesai dilakukan. Terdeteksi ".count($preScan['pre_findings']).' catatan kepatuhan yang memerlukan tindak lanjut bendahara.',
-                'findings' => $preScan['pre_findings'],
-                'rules_checked' => $preScan['rules_checked'],
-            ];
             $reasoningTrace = 'Hasil audit dihitung menggunakan mesin deterministik sistem internal (Kunci API DeepSeek belum dikonfigurasi).';
         } else {
-            // Panggil DeepSeek Reasoner
-            $reasoningResult = $this->callDeepSeekReasoning($apiKey, $model, $scanner, $preScan, $penganggaran, $variant, $tahun, $tabTitle);
-            if ($reasoningResult['success']) {
-                $auditData = $reasoningResult['data'];
-                $reasoningTrace = $reasoningResult['reasoning_trace'] ?? null;
-            } else {
-                // Fallback jika API error / timeout
-                $score = 100;
-                foreach ($preScan['pre_findings'] as $f) {
-                    $severity = $f['severity'] ?? 'warning';
-                    $score -= ($severity === 'danger' ? 15 : ($severity === 'warning' ? 7 : 2));
-                }
-                $score = max(20, min(100, $score));
+            // Panggil DeepSeek Reasoner sebagai Auditor Narrator / Konsultan
+            $reasoningResult = $this->callDeepSeekReasoning(
+                $apiKey,
+                $model,
+                $scanner,
+                $preScan,
+                $penganggaran,
+                $variant,
+                $tahun,
+                $tabTitle,
+                $deterministicScore
+            );
 
-                $auditData = [
-                    'compliance_score' => $score,
-                    'executive_summary' => "Pemindaian audit forensik pada {$tabTitle} selesai via fallback sistem. Ditemukan ".count($preScan['pre_findings']).' catatan kepatuhan.',
-                    'findings' => $preScan['pre_findings'],
-                    'rules_checked' => $preScan['rules_checked'],
-                ];
-                $reasoningTrace = 'Fallback deterministik sistem digunakan karena respon AI tidak tersedia: '.($reasoningResult['message'] ?? '');
+            if ($reasoningResult['success']) {
+                $aiData = $reasoningResult['data'];
+                $reasoningTrace = $reasoningResult['reasoning_trace'] ?? null;
+
+                // 1. Gunakan Executive Summary dari AI jika tersedia
+                if (! empty($aiData['executive_summary']) && is_string($aiData['executive_summary'])) {
+                    $finalSummary = trim($aiData['executive_summary']);
+                }
+
+                // 2. Merge Guard: Perkaya deskripsi & rekomendasi pada temuan sistem yang cocok (1-to-1 match)
+                $aiFindings = $aiData['findings'] ?? ($aiData['enriched_findings'] ?? []);
+                $aiFindingMap = [];
+                if (is_array($aiFindings)) {
+                    foreach ($aiFindings as $af) {
+                        if (! empty($af['id'])) {
+                            $aiFindingMap[$af['id']] = $af;
+                        }
+                    }
+                }
+
+                $mergedFindings = [];
+                foreach ($systemFindings as $sf) {
+                    $match = $aiFindingMap[$sf['id']] ?? null;
+                    $mergedFindings[] = [
+                        'id' => $sf['id'],
+                        'category' => $sf['category'] ?? 'kepatuhan',
+                        'severity' => $sf['severity'] ?? 'warning',
+                        'title' => $sf['title'] ?? 'Temuan Audit',
+                        'description' => ! empty($match['description']) ? trim($match['description']) : ($sf['description'] ?? '-'),
+                        'recommendation' => ! empty($match['recommendation']) ? trim($match['recommendation']) : ($sf['recommendation'] ?? '-'),
+                        'transaction_ref' => $sf['transaction_ref'] ?? null,
+                        'amount' => $sf['amount'] ?? 0,
+                    ];
+                }
+                $finalFindings = $mergedFindings;
+            } else {
+                // Fallback jika API AI timeout / error
+                $reasoningTrace = 'Fallback narasi deterministik digunakan karena respon AI tidak tersedia: '.($reasoningResult['message'] ?? '');
             }
         }
 
@@ -218,18 +262,18 @@ class BkuAuditOrchestrator
             'bulan' => ($periodeType === 'bulanan') ? ucfirst($periodeKey) : null,
             'bulan_angka' => $bulanAngka,
             'penganggaran_id' => $penganggaran->id,
-            'compliance_score' => $auditData['compliance_score'] ?? 100,
-            'executive_summary' => $auditData['executive_summary'] ?? "Audit {$tabTitle} selesai.",
-            'findings' => $auditData['findings'] ?? [],
-            'rules_checked' => $auditData['rules_checked'] ?? [],
+            'compliance_score' => $finalScore,
+            'executive_summary' => $finalSummary,
+            'findings' => $finalFindings,
+            'rules_checked' => $rulesChecked,
             'last_bku_updated_at' => $latestBkuUpdate ?: now(),
             'metadata' => [
                 'tab_type' => $tabType,
                 'tab_title' => $tabTitle,
-                'periode_label' => $preScan['summary']['periode_label'] ?? $periodeKey,
+                'periode_label' => $periodeLabel,
                 'total_transaksi' => count($preScan['transactions'] ?? []),
                 'summary_financial' => $preScan['summary'] ?? [],
-                'model_used' => ! empty($apiKey) ? $model : 'deterministic-fallback',
+                'model_used' => ! empty($apiKey) ? $model : 'deterministic-engine',
                 'reasoning_trace' => $reasoningTrace,
             ],
         ]);
@@ -254,7 +298,8 @@ class BkuAuditOrchestrator
         $penganggaran,
         string $variant,
         int $tahun,
-        string $tabTitle
+        string $tabTitle,
+        int $deterministicScore = 100
     ): array {
         $systemPrompt = $scanner->getSystemPrompt($variant, $tahun, $preScan['metadata']['periode_type'], $preScan['metadata']['periode_key']);
 
@@ -267,7 +312,8 @@ class BkuAuditOrchestrator
                 'rentang_periode' => $preScan['summary']['periode_label'] ?? 'Periode Berjalan',
             ],
             'ringkasan_keuangan' => $preScan['summary'],
-            'temuan_awal_deterministik' => $preScan['pre_findings'],
+            'skor_kepatuhan_sistem' => $deterministicScore,
+            'temuan_resmi_sistem' => $preScan['pre_findings'],
             'sampel_data_pembukuan' => $preScan['transactions'],
         ];
 
@@ -297,7 +343,7 @@ class BkuAuditOrchestrator
 
         $parsedJson = json_decode($rawContent, true);
 
-        if (! is_array($parsedJson) || ! isset($parsedJson['compliance_score'])) {
+        if (! is_array($parsedJson) || (! isset($parsedJson['executive_summary']) && ! isset($parsedJson['findings']) && ! isset($parsedJson['enriched_findings']))) {
             Log::error("Failed to parse DeepSeek JSON for {$tabTitle}: ".$rawContent);
 
             return [

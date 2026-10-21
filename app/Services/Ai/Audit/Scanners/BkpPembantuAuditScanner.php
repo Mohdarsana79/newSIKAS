@@ -192,6 +192,7 @@ class BkpPembantuAuditScanner extends BaseTabAuditScanner
                 'saldo_akhir_tunai' => $saldoAkhirTunai,
                 'total_transaksi_tunai' => $bkuTunai->count(),
             ],
+            'compliance_score' => $this->calculateComplianceScore($findings),
             'rules_checked' => $rulesChecked,
             'pre_findings' => $findings,
             'transactions' => $compactTrx,
@@ -207,32 +208,26 @@ class BkpPembantuAuditScanner extends BaseTabAuditScanner
     {
         return <<<'PROMPT'
 Anda adalah Auditor Finansial Senior BPK RI / Inspektorat Daerah spesialis Pengawasan Kas Fisik Brankas dan Buku Kas Pembantu Kas Tunai Dana BOSP.
-Tugas Anda adalah menelaah kepatuhan bendahara sekolah terhadap batas maksimal simpan brankas, pencegahan saldo tunai minus harian, serta kepatuhan kewajiban transaksi non-tunai.
+Sistem audit internal SIKAS telah selesai memverifikasi data transaksi kas tunai dan brankas secara deterministik, menetapkan skor kepatuhan matematis dan daftar temuan resmi.
 
-Aturan Evaluasi:
-1. Hitung compliance_score (0-100). Berikan penalti berat (-20 poin) untuk saldo tunai minus, penalti sedang (-10 poin) untuk saldo brankas melebihi batas simpan (> 10 juta) atau belanja tunai bernilai besar tanpa non-tunai.
-2. Buat executive_summary profesional dalam bahasa Indonesia formal birokrasi pengawasan keuangan daerah.
-3. ATURAN PENYAJIAN TRANSAKSI (SANGAT KETAT):
+Tugas Anda sebagai Auditor Konsultan / Narrator:
+1. Susun "executive_summary" yang elegan, berbobot, berwibawa, dan objektif dalam bahasa birokrasi pengawasan keuangan daerah, menelaah kepatuhan bendahara terhadap batas simpan brankas, pencegahan saldo minus, serta efektivitas pengelolaan uang tunai.
+2. Perkaya narasi "description" (fakta kasus riil & risiko pemeriksaan) dan "recommendation" (langkah konkrit operasional untuk bendahara/kepala sekolah) untuk setiap temuan yang terdaftar pada "temuan_resmi_sistem".
+3. ATURAN PENYAJIAN (SANGAT KETAT):
    - DILARANG KERAS MENAMPILKAN ATAU MENYEBUT ID INTERNAL DATABASE (seperti 'ID 108', 'ID 238', dsb).
    - Selalu rujuk transaksi menggunakan: Tanggal Transaksi, Nomor Bukti, Uraian Belanja, dan Kode/Nama Rekening Belanja.
-   - Sertakan properti "transaction_ref" pada setiap objek temuan (contoh: "Tgl: 2026-02-10 | Bukti: BPU-004 | Uraian: Belanja ATK").
-4. Respon WAJIB dalam format JSON murni:
+   - Jangan menambah temuan fiktif baru di luar "temuan_resmi_sistem".
+
+Format Output WAJIB berupa JSON murni:
 {
-  "compliance_score": 90,
-  "executive_summary": "Teks analisis eksekutif profesional tanpa menyebut ID internal...",
+  "executive_summary": "Teks analisis eksekutif profesional...",
   "findings": [
     {
-      "id": "TUNAI-FINDING-KODE",
-      "category": "keseimbangan_kas|pengelolaan_kas|kepatuhan_nontunai",
-      "severity": "danger|warning|info",
-      "title": "Judul Temuan Spesifik",
-      "description": "Deskripsi fakta menyebut tanggal, nomor bukti, uraian transaksi, dan rekening belanja...",
-      "recommendation": "Rekomendasi konkrit operasional untuk bendahara...",
-      "transaction_ref": "Tgl: YYYY-MM-DD | Bukti: ... | Uraian: ...",
-      "amount": 0
+      "id": "ID_DARI_TEMUAN_RESMI_SISTEM",
+      "description": "Uraian fakta kasus mendalam...",
+      "recommendation": "Rekomendasi konkrit operasional..."
     }
-  ],
-  "rules_checked": ["Daftar aturan yang dievaluasi..."]
+  ]
 }
 PROMPT;
     }

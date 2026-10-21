@@ -259,6 +259,7 @@ class BkpBankAuditScanner extends BaseTabAuditScanner
                 'saldo_akhir_bank' => $saldoAkhirBank,
                 'total_mutasi_transaksi' => count($bankMutations),
             ],
+            'compliance_score' => $this->calculateComplianceScore($findings),
             'rules_checked' => $rulesChecked,
             'pre_findings' => $findings,
             'transactions' => array_slice($bankMutations, 0, 50),
@@ -274,33 +275,29 @@ class BkpBankAuditScanner extends BaseTabAuditScanner
     {
         return <<<'PROMPT'
 Anda adalah Auditor Finansial Senior BPK RI / Inspektorat Daerah spesialis Rekonsiliasi Rekening Kas Bank Satuan Pendidikan (Buku Kas Pembantu Bank BOSP).
-Tugas Anda adalah menelaah kesesuaian Buku Kas Pembantu Bank dengan mutasi rekening koran, penerimaan transfer dana APBN, penarikan kas tunai, serta kewajiban pencatatan jasa giro dan pajak bunga bank.
+Sistem audit internal SIKAS telah selesai memverifikasi data transaksi pembukuan bank secara deterministik, menetapkan skor kepatuhan matematis dan daftar temuan resmi.
 
-PETUNJUK AUDIT KHUSUS BKP BANK:
-1. Aliran Kas Penarikan Tunai: Apabila dana diterima (misal Rp 14.500.000) lalu ditarik tunai untuk operasional sekolah sehingga saldo kas bank menjadi nihil (Rp 0), ini adalah praktik yang lazim dalam tata kelola BOSP asalkan penarikan kas tersebut dicatat pada BKP Pembantu Kas Tunai dan saldo bank tidak pernah mengalami defisit/minus harian. JANGAN memberi penalti jika saldo akhir bank Rp 0 akibat penarikan tunai yang sah.
-2. Jasa Giro & Pajak Bunga Bank: Jika terdapat transaksi jasa giro dan pajak bunga PPh 4(2) yang tercatat pada penutupan kas bulanan, akui hal tersebut sebagai bukti kepatuhan pencatatan rekening koran bank yang baik.
-3. ATURAN PENYAJIAN TRANSAKSI (SANGAT KETAT):
-   - DILARANG KERAS MENAMPILKAN ATAU MENYEBUT ID INTERNAL DATABASE (seperti 'ID 108', 'ID 238', dsb). Pengguna TIDAK MEMAHAMI ID database tersebut.
-   - Jika merujuk pada transaksi tertentu, WAJIB sebutkan: Tanggal Transaksi, Nomor Bukti, Uraian Transaksi, dan Kode/Nama Rekening Belanja.
-   - Sertakan properti "transaction_ref" pada setiap objek temuan (contoh: "Tgl: 2026-03-31 | Jasa Giro Bank").
+Tugas Anda sebagai Auditor Konsultan / Narrator:
+1. Susun "executive_summary" yang elegan, berbobot, berwibawa, dan objektif dalam bahasa birokrasi pengawasan keuangan daerah, mengulas fakta rekonsiliasi kas bank serta temuan yang terdeteksi.
+2. Perkaya narasi "description" (fakta kasus riil & risiko pemeriksaan) dan "recommendation" (langkah konkrit operasional untuk bendahara/kepala sekolah) untuk setiap item yang terdaftar pada "temuan_resmi_sistem".
+3. PETUNJUK KHUSUS BKP BANK:
+   - Aliran Kas Penarikan Tunai: Apabila dana diterima lalu ditarik tunai untuk operasional sekolah sehingga saldo kas bank menjadi nihil (Rp 0), ini adalah praktik yang sah dalam tata kelola BOSP selama penarikan kas dicatat di BKP Pembantu Tunai dan saldo bank tidak defisit harian.
+   - Jasa Giro & Pajak Bunga Bank: Jika terdapat transaksi bunga bank dan pajak bunga PPh 4(2) tercatat, akui sebagai bukti kepatuhan yang baik.
+4. ATURAN PENYAJIAN (SANGAT KETAT):
+   - DILARANG KERAS MENAMPILKAN ATAU MENYEBUT ID INTERNAL DATABASE (seperti 'ID 108', 'ID 238', dsb).
+   - Selalu rujuk transaksi menggunakan: Tanggal Transaksi, Nomor Bukti, Uraian Transaksi, dan Rekening Belanja.
+   - Jangan menambah temuan fiktif baru di luar "temuan_resmi_sistem".
 
 Format Output WAJIB berupa JSON murni:
 {
-  "compliance_score": 90,
-  "executive_summary": "Teks analisis eksekutif profesional tanpa menyebut ID internal...",
+  "executive_summary": "Teks analisis eksekutif profesional...",
   "findings": [
     {
-      "id": "BANK-FINDING-KODE",
-      "category": "keseimbangan_bank|bunga_bank|efektivitas_dana",
-      "severity": "danger|warning|info",
-      "title": "Judul Temuan Spesifik",
-      "description": "Deskripsi fakta menyebut tanggal, nomor bukti, uraian transaksi, dan rekening belanja...",
-      "recommendation": "Rekomendasi konkrit operasional untuk bendahara...",
-      "transaction_ref": "Tgl: YYYY-MM-DD | Bukti: ... | Uraian: ...",
-      "amount": 0
+      "id": "ID_DARI_TEMUAN_RESMI_SISTEM",
+      "description": "Uraian fakta kasus mendalam...",
+      "recommendation": "Rekomendasi konkrit operasional..."
     }
-  ],
-  "rules_checked": ["Daftar aturan yang dievaluasi..."]
+  ]
 }
 PROMPT;
     }

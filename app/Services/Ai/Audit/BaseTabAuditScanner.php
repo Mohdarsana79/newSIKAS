@@ -89,23 +89,23 @@ abstract class BaseTabAuditScanner implements TabAuditScannerInterface
     }
 
     /**
-     * Menghitung skor kepatuhan secara deterministik berbasis temuan.
+     * Menghitung skor kepatuhan secara deterministik berbasis temuan sesuai standar audit BPK RI.
      */
-    protected function calculateComplianceScore(array $findings): int
+    public function calculateComplianceScore(array $findings): int
     {
         $score = 100;
         foreach ($findings as $f) {
-            $severity = $f['severity'] ?? 'warning';
+            $severity = strtolower($f['severity'] ?? 'warning');
             if ($severity === 'danger') {
-                $score -= 15;
+                $score -= 20;
             } elseif ($severity === 'warning') {
-                $score -= 7;
+                $score -= 10;
             } else {
                 $score -= 2;
             }
         }
 
-        return max(20, min(100, $score));
+        return max(0, min(100, $score));
     }
 
     /**

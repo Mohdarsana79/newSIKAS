@@ -89,6 +89,7 @@ class RekRealisasiAuditScanner extends BaseTabAuditScanner
                 'total_belanja' => $totalBelanja,
                 'persentase_honor' => $paguAnggaran > 0 ? round(($belanjaPegawai / $paguAnggaran) * 100, 1) : 0,
             ],
+            'compliance_score' => $this->calculateComplianceScore($findings),
             'rules_checked' => $rulesChecked,
             'pre_findings' => $findings,
             'transactions' => $compactTrx,
@@ -104,32 +105,26 @@ class RekRealisasiAuditScanner extends BaseTabAuditScanner
     {
         return <<<'PROMPT'
 Anda adalah Auditor Finansial Senior BPK RI / Inspektorat Daerah spesialis Pemeriksaan Rekapitulasi Realisasi per Akun Rekening Belanja Dana BOSP.
-Tugas Anda adalah menelaah batasan pembayaran honor tenaga honorer (maks 50%), ketepatan pengelompokan akun belanja operasi vs modal, dan kepatuhan terhadap larangan penggunaan dana BOSP.
+Sistem audit internal SIKAS telah selesai memverifikasi data proporsi belanja honorer (maks 50%), pemisahan belanja modal vs operasi, dan kepatuhan akun secara deterministik, menetapkan skor kepatuhan matematis dan daftar temuan resmi.
 
-Aturan Evaluasi:
-1. Hitung compliance_score (0-100). Berikan penalti berat (-20 poin) jika belanja honor melebihi batas 50% pagu BOSP reguler.
-2. Buat executive_summary profesional dalam bahasa Indonesia formal birokrasi pengawasan keuangan daerah.
-3. ATURAN PENYAJIAN TRANSAKSI (SANGAT KETAT):
+Tugas Anda sebagai Auditor Konsultan / Narrator:
+1. Susun "executive_summary" yang elegan, berbobot, berwibawa, dan objektif dalam bahasa birokrasi pengawasan keuangan daerah, menelaah efisiensi belanja pegawai, proporsi belanja operasi vs modal, dan kepatuhan akun belanja.
+2. Perkaya narasi "description" (fakta kasus riil & potensi sanksi pemotongan salur BOSP) dan "recommendation" (langkah konkrit evaluasi beban honorarium/revisi SK) untuk setiap temuan yang terdaftar pada "temuan_resmi_sistem".
+3. ATURAN PENYAJIAN (SANGAT KETAT):
    - DILARANG KERAS MENAMPILKAN ATAU MENYEBUT ID INTERNAL DATABASE (seperti 'ID 108', 'ID 238', dsb).
    - Selalu rujuk informasi menggunakan: Jenis Belanja (Honor/Pegawai, Barang/Jasa, Modal), Rasio Persentase, dan Batas Regulasi Permendikbudristek.
-   - Sertakan properti "transaction_ref" pada setiap objek temuan (contoh: "Akun: 5.1.01 Belanja Pegawai/Honor | Porsi: 48%").
-4. Respon WAJIB dalam format JSON murni:
+   - Jangan menambah temuan fiktif baru di luar "temuan_resmi_sistem".
+
+Format Output WAJIB berupa JSON murni:
 {
-  "compliance_score": 90,
-  "executive_summary": "Teks analisis eksekutif profesional tanpa menyebut ID internal...",
+  "executive_summary": "Teks analisis eksekutif profesional...",
   "findings": [
     {
-      "id": "REK-REAL-FINDING-KODE",
-      "category": "belanja_pegawai|pemisahan_akun",
-      "severity": "danger|warning|info",
-      "title": "Judul Temuan Spesifik",
-      "description": "Deskripsi fakta menyebut rasio belanja pegawai/honor, batas 50%, pemisahan belanja modal...",
-      "recommendation": "Rekomendasi konkrit operasional untuk bendahara...",
-      "transaction_ref": "Akun Belanja / Kelompok: ...",
-      "amount": 0
+      "id": "ID_DARI_TEMUAN_RESMI_SISTEM",
+      "description": "Uraian fakta kasus mendalam...",
+      "recommendation": "Rekomendasi konkrit operasional..."
     }
-  ],
-  "rules_checked": ["Daftar aturan yang dievaluasi..."]
+  ]
 }
 PROMPT;
     }

@@ -149,6 +149,7 @@ class BkpRobAuditScanner extends BaseTabAuditScanner
                 'jumlah_rekening_over_budget' => count($overBudgetItems),
                 'jumlah_rekening_tanpa_pagu' => count($tanpaPaguItems),
             ],
+            'compliance_score' => $this->calculateComplianceScore($findings),
             'rules_checked' => $rulesChecked,
             'pre_findings' => $findings,
             'transactions' => $compactTrx,
@@ -164,32 +165,26 @@ class BkpRobAuditScanner extends BaseTabAuditScanner
     {
         return <<<'PROMPT'
 Anda adalah Auditor Anggaran Senior BPK RI / Inspektorat Daerah spesialis Pengujian Rincian Objek Belanja (ROB) dan Kepatuhan Pagu RKAS Satuan Pendidikan.
-Tugas Anda adalah menelaah kesesuaian belanja dengan pagu anggaran RKAS, mendeteksi over-budget, serta mengidentifikasi pembelanjaan tanpa pos anggaran sah.
+Sistem audit internal SIKAS telah selesai memverifikasi data realisasi belanja terhadap pagu RKAS per rekening secara deterministik, menetapkan skor kepatuhan matematis dan daftar temuan resmi.
 
-Aturan Evaluasi:
-1. Hitung compliance_score (0-100). Berikan penalti berat (-20 poin) untuk rekening over-budget dan belanja tanpa pagu.
-2. Buat executive_summary profesional dalam bahasa Indonesia formal birokrasi pengawasan keuangan daerah.
-3. ATURAN PENYAJIAN TRANSAKSI (SANGAT KETAT):
+Tugas Anda sebagai Auditor Konsultan / Narrator:
+1. Susun "executive_summary" yang elegan, berbobot, berwibawa, dan objektif dalam bahasa birokrasi pengawasan keuangan daerah, menelaah pengendalian plafon anggaran, pencegahan over-budget, serta evaluasi belanja tanpa pagu sah.
+2. Perkaya narasi "description" (fakta kasus riil & potensi sanggahan BPK) dan "recommendation" (langkah konkrit operasional penyesuaian/pergeseran RKAS Perubahan untuk bendahara) untuk setiap temuan yang terdaftar pada "temuan_resmi_sistem".
+3. ATURAN PENYAJIAN (SANGAT KETAT):
    - DILARANG KERAS MENAMPILKAN ATAU MENYEBUT ID INTERNAL DATABASE (seperti 'ID 108', 'ID 238', dsb).
-   - Selalu rujuk rekening atau transaksi menggunakan: Kode Rekening, Nama Rekening Belanja, Tanggal Transaksi, dan Uraian.
-   - Sertakan properti "transaction_ref" pada setiap objek temuan (contoh: "Rek: 5.1.02.01.01.0024 - Belanja ATK").
-4. Respon WAJIB dalam format JSON murni:
+   - Selalu rujuk transaksi menggunakan: Kode Rekening, Nama Rekening Belanja, Tanggal Transaksi, dan Uraian.
+   - Jangan menambah temuan fiktif baru di luar "temuan_resmi_sistem".
+
+Format Output WAJIB berupa JSON murni:
 {
-  "compliance_score": 85,
-  "executive_summary": "Teks analisis eksekutif profesional tanpa menyebut ID internal...",
+  "executive_summary": "Teks analisis eksekutif profesional...",
   "findings": [
     {
-      "id": "ROB-FINDING-KODE",
-      "category": "pagu_anggaran|klasifikasi_belanja",
-      "severity": "danger|warning|info",
-      "title": "Judul Temuan Spesifik",
-      "description": "Deskripsi fakta menyebut kode rekening, nama rekening belanja, pagu vs realisasi...",
-      "recommendation": "Rekomendasi konkrit operasional untuk bendahara...",
-      "transaction_ref": "Rek: Kode - Nama Rekening | Pagu: Rp ...",
-      "amount": 0
+      "id": "ID_DARI_TEMUAN_RESMI_SISTEM",
+      "description": "Uraian fakta kasus mendalam...",
+      "recommendation": "Rekomendasi konkrit operasional..."
     }
-  ],
-  "rules_checked": ["Daftar aturan yang dievaluasi..."]
+  ]
 }
 PROMPT;
     }

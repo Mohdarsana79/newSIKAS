@@ -121,6 +121,7 @@ class BhmAuditScanner extends BaseTabAuditScanner
                 'modal_tanpa_bast_count' => count($belanjaModalTanpaBast),
                 'modal_nilai_kecil_count' => count($belanjaModalNilaiKecil),
             ],
+            'compliance_score' => $this->calculateComplianceScore($findings),
             'rules_checked' => $rulesChecked,
             'pre_findings' => $findings,
             'transactions' => $compactTrx,
@@ -136,32 +137,26 @@ class BhmAuditScanner extends BaseTabAuditScanner
     {
         return <<<'PROMPT'
 Anda adalah Auditor Aset & Barang Milik Daerah (BMD) BPK RI / Inspektorat Daerah spesialis Pemeriksaan Buku Pembantu Harta Modal (BHM / Aset Tetap Sekolah).
-Tugas Anda adalah meneliti kepatuhan dokumen Berita Acara Serah Terima (BAST), kewajaran nilai kapitalisasi aset, serta kesesuaian input kartu inventaris (KIB).
+Sistem audit internal SIKAS telah selesai memverifikasi data belanja modal aset tetap, kelengkapan BAST, dan nilai kapitalisasi secara deterministik, menetapkan skor kepatuhan matematis dan daftar temuan resmi.
 
-Aturan Evaluasi:
-1. Hitung compliance_score (0-100). Berikan penalti berat (-25 poin) untuk belanja modal tanpa BAST.
-2. Buat executive_summary profesional dalam bahasa Indonesia formal birokrasi pengawasan keuangan daerah.
-3. ATURAN PENYAJIAN TRANSAKSI (SANGAT KETAT):
+Tugas Anda sebagai Auditor Konsultan / Narrator:
+1. Susun "executive_summary" yang elegan, berbobot, berwibawa, dan objektif dalam bahasa birokrasi pengawasan keuangan daerah, menelaah kepatuhan Berita Acara Serah Terima (BAST), kewajaran nilai perolehan kapitalisasi, serta ketertiban pencatatan Kartu Inventaris Barang (KIB).
+2. Perkaya narasi "description" (fakta kasus riil & potensi temuan mutlak BPK atas aset daerah) dan "recommendation" (langkah konkrit penerbitan dokumen BAST / reklasifikasi akun) untuk setiap temuan yang terdaftar pada "temuan_resmi_sistem".
+3. ATURAN PENYAJIAN (SANGAT KETAT):
    - DILARANG KERAS MENAMPILKAN ATAU MENYEBUT ID INTERNAL DATABASE (seperti 'ID 108', 'ID 238', dsb).
    - Selalu rujuk transaksi menggunakan: Tanggal Transaksi, Nomor Bukti, Nama Aset/Barang Modal, dan Kode Rekening 5.2.
-   - Sertakan properti "transaction_ref" pada setiap objek temuan (contoh: "Tgl: 2026-03-25 | Aset: AC Split 2 PK").
-4. Respon WAJIB dalam format JSON murni:
+   - Jangan menambah temuan fiktif baru di luar "temuan_resmi_sistem".
+
+Format Output WAJIB berupa JSON murni:
 {
-  "compliance_score": 90,
-  "executive_summary": "Teks analisis eksekutif profesional tanpa menyebut ID internal...",
+  "executive_summary": "Teks analisis eksekutif profesional...",
   "findings": [
     {
-      "id": "BHM-FINDING-KODE",
-      "category": "dokumen_bast|nilai_kapitalisasi",
-      "severity": "danger|warning|info",
-      "title": "Judul Temuan Spesifik",
-      "description": "Deskripsi fakta menyebut tanggal, nomor bukti, nama barang modal, nomor BAST...",
-      "recommendation": "Rekomendasi konkrit operasional untuk bendahara...",
-      "transaction_ref": "Tgl: YYYY-MM-DD | Bukti: ... | Aset: ...",
-      "amount": 0
+      "id": "ID_DARI_TEMUAN_RESMI_SISTEM",
+      "description": "Uraian fakta kasus mendalam...",
+      "recommendation": "Rekomendasi konkrit operasional..."
     }
-  ],
-  "rules_checked": ["Daftar aturan yang dievaluasi..."]
+  ]
 }
 PROMPT;
     }

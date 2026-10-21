@@ -89,6 +89,7 @@ class BkpBaAuditScanner extends BaseTabAuditScanner
                 'total_kas_fisik_diperiksa' => $totalKasFisik,
                 'status_pejabat_lengkap' => empty($pejabatKurang),
             ],
+            'compliance_score' => $this->calculateComplianceScore($findings),
             'rules_checked' => $rulesChecked,
             'pre_findings' => $findings,
             'transactions' => $compactTrx,
@@ -104,32 +105,26 @@ class BkpBaAuditScanner extends BaseTabAuditScanner
     {
         return <<<'PROMPT'
 Anda adalah Auditor Pemeriksaan Kas BPK RI / Inspektorat Daerah spesialis Dokumen Berita Acara Pemeriksaan Kas Satuan Pendidikan.
-Tugas Anda adalah menelaah kesesuaian fisik uang brankas dan saldo bank dengan pembukuan, serta memastikan legalitas penandatanganan dokumen berita acara kas.
+Sistem audit internal SIKAS telah selesai memverifikasi data fisik uang kas, saldo bank, dan legalitas pejabat penandatangan secara deterministik, menetapkan skor kepatuhan matematis dan daftar temuan resmi.
 
-Aturan Evaluasi:
-1. Hitung compliance_score (0-100).
-2. Buat executive_summary profesional dalam bahasa Indonesia formal birokrasi pengawasan keuangan daerah.
-3. ATURAN PENYAJIAN TRANSAKSI (SANGAT KETAT):
+Tugas Anda sebagai Auditor Konsultan / Narrator:
+1. Susun "executive_summary" yang elegan, berbobot, berwibawa, dan objektif dalam bahasa birokrasi pengawasan keuangan daerah, menelaah keabsahan Berita Acara Pemeriksaan Kas, kesesuaian fisik uang brankas, dan kelengkapan identitas/NIP KPA dan Bendahara.
+2. Perkaya narasi "description" (fakta kasus riil & potensi kelemahan pengendalian intern) dan "recommendation" (langkah konkrit pengisian data profil/pemeriksaan fisik) untuk setiap temuan yang terdaftar pada "temuan_resmi_sistem".
+3. ATURAN PENYAJIAN (SANGAT KETAT):
    - DILARANG KERAS MENAMPILKAN ATAU MENYEBUT ID INTERNAL DATABASE (seperti 'ID 108', 'ID 238', dsb).
-   - Selalu rujuk informasi menggunakan: Periode Bulan, Nomor SK Kepala Sekolah, Tanggal Pemeriksaan, dan Rincian Uang Pecahan.
-   - Sertakan properti "transaction_ref" pada setiap objek temuan (contoh: "Periode: Berita Acara Kas Bulan Maret 2026").
-4. Respon WAJIB dalam format JSON murni:
+   - Selalu rujuk informasi menggunakan: Periode Bulan, Nama Dokumen, Tanggal Pemeriksaan, dan Nama/NIP Pejabat.
+   - Jangan menambah temuan fiktif baru di luar "temuan_resmi_sistem".
+
+Format Output WAJIB berupa JSON murni:
 {
-  "compliance_score": 90,
-  "executive_summary": "Teks analisis eksekutif profesional tanpa menyebut ID internal...",
+  "executive_summary": "Teks analisis eksekutif profesional...",
   "findings": [
     {
-      "id": "BA-FINDING-KODE",
-      "category": "legalitas_dokumen|fisik_kas",
-      "severity": "danger|warning|info",
-      "title": "Judul Temuan Spesifik",
-      "description": "Deskripsi fakta menyebut nomor SK, tanggal pemeriksaan, rincian fisik uang kas...",
-      "recommendation": "Rekomendasi konkrit operasional untuk bendahara...",
-      "transaction_ref": "Periode / Dokumen: ...",
-      "amount": 0
+      "id": "ID_DARI_TEMUAN_RESMI_SISTEM",
+      "description": "Uraian fakta kasus mendalam...",
+      "recommendation": "Rekomendasi konkrit operasional..."
     }
-  ],
-  "rules_checked": ["Daftar aturan yang dievaluasi..."]
+  ]
 }
 PROMPT;
     }
