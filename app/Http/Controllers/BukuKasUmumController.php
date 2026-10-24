@@ -13,6 +13,7 @@ use App\Models\Rkas;
 use App\Models\RkasPerubahan;
 use App\Models\SekolahProfile;
 use App\Models\Sts;
+use App\Services\Ai\DeepSeekService;
 use App\Services\BukuKasService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
@@ -3609,5 +3610,100 @@ class BukuKasUmumController extends Controller
             'imported_setor' => $importedSetor,
             'imported_belanja' => $importedBelanja,
         ];
+    }
+
+    /**
+     * Membuat uraian belanja BKU baku standar BOSP secara cerdas menggunakan DeepSeek-V3
+     */
+    public function generateAiUraian(Request $request, DeepSeekService $deepSeekService)
+    {
+        $user = auth()->user();
+        if (! $user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Sesi login tidak valid.',
+            ], 401);
+        }
+
+        if (empty($user->deepseek_api_key)) {
+            return response()->json([
+                'success' => false,
+                'error_type' => 'NO_API_KEY',
+                'message' => 'Kunci API DeepSeek belum dikonfigurasi pada profil Anda. Silakan isi API Key di menu Profil Pengguna untuk mengaktifkan fitur Asisten AI.',
+            ], 403);
+        }
+
+        $namaRekanan = trim($request->input('nama_rekanan') ?? '');
+        $kegiatan = trim($request->input('kegiatan') ?? '');
+        $rekening = trim($request->input('rekening') ?? '');
+        $items = $request->input('items', []);
+        $jenisTransaksi = strtolower(trim($request->input('jenis_transaksi') ?? 'tunai'));
+        $nomorNota = trim($request->input('nomor_nota') ?? '');
+        $variantIndex = (int) $request->input('variant_index', 0);
+
+        // Buat ringkasan item barang/jasa
+        $itemDescriptions = [];
+        if (is_array($items)) {
+            foreach ($items as $item) {
+                $u = trim($item['uraian'] ?? $item['uraian_text'] ?? '');
+                $vol = ! empty($item['volume']) ? $item['volume'] : null;
+                $sat = trim($item['satuan'] ?? '');
+                if ($u !== '') {
+                    $itemDescriptions[] = ($vol && $sat) ? "{$vol} {$sat} {$u}" : $u;
+                }
+            }
+        }
+        $itemsText = ! empty($itemDescriptions) ? implode(', ', $itemDescriptions) : '-';
+
+        $systemPrompt = <<<'PROMPT'
+Anda adalah Auditor Keuangan Sekolah dan Bendahara Pengeluaran Dana BOSP Senior yang ahli dalam tata kelola penatausahaan Buku Kas Umum (BKU) sesuai standar Permendikdasmen Nomor 8 Tahun 2026.
+Tugas Anda adalah merumuskan TEPAT 1 (SATU) KALIMAT uraian belanja BKU yang formal, lugas, baku, dan siap digunakan dalam pembukuan kas.
+
+Pedoman Penulisan Uraian:
+1. Format baku: [Frase tindakan formal] + [rincian barang/jasa atau spesifikasi belanja] + [untuk keperluan kegiatan] + [pada/kepada nama rekanan/toko].
+   - Jika belanja barang/jasa: Awali dengan "Pembayaran belanja..." atau "Lunas bayar belanja...".
+   - Jika honorarium/upah/jasa narasumber: Awali dengan "Pembayaran honorarium..." atau "Lunas bayar honor...".
+   - Jika perjalanan dinas/transport: Awali dengan "Pembayaran biaya transportasi/perjalanan dinas...".
+2. Bersihkan kode angka jika tidak diperlukan, sebutkan nama kegiatan dan nama rekening belanja secara elok dan mengalir.
+3. ATURAN PENYAJIAN KETAT:
+   - HANYA keluarkan SATU KALIMAT uraian tersebut tanpa tanda kutip pembungkus, tanpa kata pembuka/penutup, dan tanpa format markdown.
+   - Jangan menambahkan hal fiktif di luar data yang diberikan.
+PROMPT;
+
+        $userPrompt = "Rumuskan kalimat uraian belanja BKU untuk transaksi berikut:\n"
+            .'- Rekanan/Penyedia/Penerima: '.($namaRekanan ?: '-')."\n"
+            .'- Jenis Kegiatan: '.($kegiatan ?: '-')."\n"
+            .'- Rekening Belanja: '.($rekening ?: '-')."\n"
+            ."- Rincian Item Belanja: {$itemsText}\n"
+            .'- Metode Pembayaran: '.($jenisTransaksi === 'tunai' ? 'Kas Tunai' : 'Non-Tunai / Transfer Bank')."\n"
+            .($nomorNota ? "- Nomor Bukti/Nota: {$nomorNota}\n" : '')
+            .($variantIndex > 0 ? "- Catatan: Berikan variasi redaksi kalimat alternatif ke-{$variantIndex} yang tetap baku dan formal.\n" : '');
+
+        $messages = [
+            ['role' => 'system', 'content' => $systemPrompt],
+            ['role' => 'user', 'content' => $userPrompt],
+        ];
+
+        $response = $deepSeekService->callChat($user->deepseek_api_key, $messages, [
+            'temperature' => 0.3,
+            'max_tokens' => 200,
+        ]);
+
+        if (! $response['success']) {
+            return response()->json([
+                'success' => false,
+                'message' => $response['message'] ?? 'Gagal menghasilkan uraian dari DeepSeek AI.',
+            ], 422);
+        }
+
+        $cleanUraian = trim($response['content'] ?? '');
+        // Bersihkan tanda petik pembungkus jika ada
+        $cleanUraian = trim($cleanUraian, "\"'`");
+
+        return response()->json([
+            'success' => true,
+            'uraian' => $cleanUraian,
+            'variant_index' => $variantIndex,
+        ]);
     }
 }

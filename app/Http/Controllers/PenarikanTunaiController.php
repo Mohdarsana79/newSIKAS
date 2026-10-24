@@ -3,10 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Config\VariantConfig;
-
 use App\Models\PenarikanTunai;
+use App\Models\PenerimaanDana;
 use App\Models\SetorTunai;
-use App\Models\Penganggaran;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -21,14 +20,13 @@ class PenarikanTunaiController extends Controller
         }
 
         $request->validate([
-            VariantConfig::penganggaranFk($this->variant) => 'required|exists:' . (new $this->Penganggaran)->getTable() . ',id',
+            VariantConfig::penganggaranFk($this->variant) => 'required|exists:'.(new $this->Penganggaran)->getTable().',id',
             'tanggal_penarikan' => 'required|date',
-            'jumlah_penarikan' => 'required|numeric|min:1'
+            'jumlah_penarikan' => 'required|numeric|min:1',
         ]);
 
         try {
             // Check funds availability
-
 
             // Cek apakah dana tersedia cukup
             $totalDanaTersedia = $this->hitungTotalDanaTersedia($request->{VariantConfig::penganggaranFk($this->variant)});
@@ -45,8 +43,9 @@ class PenarikanTunaiController extends Controller
 
             return redirect()->back()->with('success', 'Penarikan tunai berhasil disimpan');
         } catch (\Exception $e) {
-            Log::error('Error storing penarikan tunai: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Gagal menyimpan penarikan tunai: ' . $e->getMessage());
+            Log::error('Error storing penarikan tunai: '.$e->getMessage());
+
+            return redirect()->back()->with('error', 'Gagal menyimpan penarikan tunai: '.$e->getMessage());
         }
     }
 
@@ -58,14 +57,15 @@ class PenarikanTunaiController extends Controller
 
             return redirect()->back()->with('success', 'Penarikan berhasil dihapus');
         } catch (\Exception $e) {
-            Log::error('Error deleting penarikan tunai: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Gagal menghapus penarikan: ' . $e->getMessage());
+            Log::error('Error deleting penarikan tunai: '.$e->getMessage());
+
+            return redirect()->back()->with('error', 'Gagal menghapus penarikan: '.$e->getMessage());
         }
     }
 
     private function hitungTotalDanaTersedia($penganggaran_id)
     {
-        $penerimaanDanas = \App\Models\PenerimaanDana::where(VariantConfig::penganggaranFk($this->variant), $penganggaran_id)->get();
+        $penerimaanDanas = PenerimaanDana::where(VariantConfig::penganggaranFk($this->variant), $penganggaran_id)->get();
 
         $totalDana = 0;
         foreach ($penerimaanDanas as $penerimaan) {

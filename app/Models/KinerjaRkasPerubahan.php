@@ -33,7 +33,7 @@ class KinerjaRkasPerubahan extends Model
         'status_penerima',
         'golongan',
         'uraian_gabungan',
-        'nomor_kwitansi'
+        'nomor_kwitansi',
     ];
 
     protected $casts = [
@@ -53,7 +53,7 @@ class KinerjaRkasPerubahan extends Model
         return $this->belongsTo(KodeKegiatan::class, 'kode_id')->withDefault([
             'program' => '-',
             'sub_program' => '-',
-            'uraian' => '-'
+            'uraian' => '-',
         ]);
     }
 
@@ -61,7 +61,7 @@ class KinerjaRkasPerubahan extends Model
     {
         return $this->belongsTo(RekeningBelanja::class, 'kode_rekening_id')->withDefault([
             'kode_rekening' => '-',
-            'rincian_objek' => '-'
+            'rincian_objek' => '-',
         ]);
     }
 
@@ -69,7 +69,7 @@ class KinerjaRkasPerubahan extends Model
     {
         return [
             'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-            'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+            'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
         ];
     }
 

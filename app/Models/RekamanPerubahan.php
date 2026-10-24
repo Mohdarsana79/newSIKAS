@@ -14,7 +14,7 @@ class RekamanPerubahan extends Model
         'action',
         'description',
         'old_data',
-        'new_data'
+        'new_data',
     ];
 
     protected $casts = [

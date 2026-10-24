@@ -16,25 +16,23 @@ class SilpaBukuKasUmumUraianDetail extends Model
         return $this->belongsTo(SilpaBukuKasUmum::class, 'silpa_buku_kas_umum_id');
     }
 
-
     public function kodeKegiatan()
     {
         return $this->belongsTo(KodeKegiatan::class);
     }
-
 
     public function rekeningBelanja()
     {
         return $this->belongsTo(RekeningBelanja::class);
     }
 
-
     public function silpaRkas()
     {
         return $this->belongsTo(SilpaRkas::class, 'silpa_rkas_id');
     }
 
-
-    public function bukuKasUmum() { return $this->silpaBukuKasUmum(); }
+    public function bukuKasUmum()
+    {
+        return $this->silpaBukuKasUmum();
+    }
 }
-

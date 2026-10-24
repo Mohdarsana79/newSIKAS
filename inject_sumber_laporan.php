@@ -13,9 +13,11 @@ $files = [
 ];
 
 foreach ($files as $file) {
-    if (!file_exists($file)) continue;
+    if (! file_exists($file)) {
+        continue;
+    }
     $content = file_get_contents($file);
-    
+
     // Check if $this->variant is used in the controller, otherwise it doesn't make sense
     if (str_contains($content, '$this->variant')) {
         $content = preg_replace('/(\$data\s*=\s*\[)(?!.*\s*\'sumberDana\'\s*=>)/', "$1\n                'sumberDana' => \App\Config\VariantConfig::title(\$this->variant),", $content);

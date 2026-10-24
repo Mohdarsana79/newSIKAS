@@ -10,7 +10,7 @@ class PenarikanTunai extends Model
     use HasFactory;
 
     protected $guarded = ['id'];
-    
+
     protected $casts = [
         'tanggal_penarikan' => 'date',
         'jumlah_penarikan' => 'decimal:2',

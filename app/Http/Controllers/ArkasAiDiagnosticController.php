@@ -32,13 +32,13 @@ class ArkasAiDiagnosticController extends Controller
                 'data' => $result,
             ]);
         } catch (\Throwable $e) {
-            Log::error('❌ [ARKAS AI DIAGNOSE SYSTEM] Error: ' . $e->getMessage(), [
+            Log::error('❌ [ARKAS AI DIAGNOSE SYSTEM] Error: '.$e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
             ]);
 
             return response()->json([
                 'status' => 'error',
-                'message' => 'Terjadi kesalahan saat menjalankan diagnosa sistem: ' . $e->getMessage(),
+                'message' => 'Terjadi kesalahan saat menjalankan diagnosa sistem: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -67,13 +67,13 @@ class ArkasAiDiagnosticController extends Controller
                 'data' => $result,
             ]);
         } catch (\Throwable $e) {
-            Log::error('❌ [ARKAS AI DIAGNOSE CONTEXT] Error: ' . $e->getMessage(), [
+            Log::error('❌ [ARKAS AI DIAGNOSE CONTEXT] Error: '.$e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
             ]);
 
             return response()->json([
                 'status' => 'error',
-                'message' => 'Terjadi kesalahan saat menjalankan diagnosa kontekstual: ' . $e->getMessage(),
+                'message' => 'Terjadi kesalahan saat menjalankan diagnosa kontekstual: '.$e->getMessage(),
             ], 500);
         }
     }

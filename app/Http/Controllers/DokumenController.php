@@ -2,14 +2,18 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Config\VariantConfig;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
 
 class DokumenController extends Controller
 {
     protected string $variant;
+
     protected string $Penganggaran;
+
     protected string $BukuKasUmum;
+
     protected string $Dokumen;
 
     public function __construct()
@@ -23,11 +27,13 @@ class DokumenController extends Controller
             return $next($request);
         });
     }
+
     public function index()
     {
         $penganggarans = ($this->Penganggaran)::select('id', 'tahun_anggaran')->get();
+
         return $this->renderVariant('Penatausahaan/Dokumen/Index', [
-            'penganggarans' => $penganggarans
+            'penganggarans' => $penganggarans,
         ]);
     }
 
@@ -52,11 +58,11 @@ class DokumenController extends Controller
 
         if ($request->search) {
             $search = strtolower($request->search);
-            $query->where(function($q) use ($search) {
-                $q->whereHas('dokumen', function($subQ) use ($search) {
-                    $subQ->whereRaw('LOWER(nama_dokumen) LIKE ?', ['%' . $search . '%']);
-                })->orWhereRaw('LOWER(uraian) LIKE ?', ['%' . $search . '%'])
-                  ->orWhereRaw('LOWER(uraian_opsional) LIKE ?', ['%' . $search . '%']);
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('dokumen', function ($subQ) use ($search) {
+                    $subQ->whereRaw('LOWER(nama_dokumen) LIKE ?', ['%'.$search.'%']);
+                })->orWhereRaw('LOWER(uraian) LIKE ?', ['%'.$search.'%'])
+                    ->orWhereRaw('LOWER(uraian_opsional) LIKE ?', ['%'.$search.'%']);
             });
         }
 
@@ -68,8 +74,8 @@ class DokumenController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            VariantConfig::penganggaranFk($this->variant) => 'required|exists:' . (new $this->Penganggaran)->getTable() . ',id',
-            VariantConfig::bkuFk($this->variant) => 'required|exists:' . (new $this->BukuKasUmum)->getTable() . ',id',
+            VariantConfig::penganggaranFk($this->variant) => 'required|exists:'.(new $this->Penganggaran)->getTable().',id',
+            VariantConfig::bkuFk($this->variant) => 'required|exists:'.(new $this->BukuKasUmum)->getTable().',id',
             'nama_dokumen' => 'required|string|max:255',
             'link_drive' => 'required|url',
         ]);
@@ -93,9 +99,10 @@ class DokumenController extends Controller
         if (app()->bound('variant')) {
             $var = app('variant');
         }
-        return \Inertia\Inertia::render(VariantConfig::pagePrefix($var) . $component, array_merge($props, [
+
+        return Inertia::render(VariantConfig::pagePrefix($var).$component, array_merge($props, [
             'variant' => $var,
-            'routePrefix' => VariantConfig::routePrefix($var)
+            'routePrefix' => VariantConfig::routePrefix($var),
         ]));
     }
 }

@@ -8,6 +8,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -34,18 +35,18 @@ class AuthenticatedSessionController extends Controller
         $user = Auth::user();
 
         if ($user->is_security_code_enabled) {
-            if (!$request->filled('security_code')) {
+            if (! $request->filled('security_code')) {
                 Auth::logout();
                 // Send a generic error key that the frontend can detect to show the modal
-                throw \Illuminate\Validation\ValidationException::withMessages([
-                    'two_factor_required' => true
+                throw ValidationException::withMessages([
+                    'two_factor_required' => true,
                 ]);
             }
 
             if ($request->input('security_code') !== $user->security_code) {
                 Auth::logout();
-                throw \Illuminate\Validation\ValidationException::withMessages([
-                    'security_code' => 'Kode keamanan yang Anda masukkan salah.'
+                throw ValidationException::withMessages([
+                    'security_code' => 'Kode keamanan yang Anda masukkan salah.',
                 ]);
             }
         }

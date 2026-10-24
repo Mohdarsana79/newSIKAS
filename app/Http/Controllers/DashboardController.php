@@ -17,10 +17,10 @@ class DashboardController extends Controller
         try {
             // Ambil tahun aktif (bisa dari session atau default tahun terbaru)
             $tahunAktif = request()->get('tahun') ?? date('Y');
-            
+
             // Ambil varian
             $variant = request()->get('variant', VariantConfig::REGULER);
-            if (!VariantConfig::isValid($variant)) {
+            if (! VariantConfig::isValid($variant)) {
                 $variant = VariantConfig::REGULER;
             }
 
@@ -31,13 +31,13 @@ class DashboardController extends Controller
             $penganggaran = $penganggaranClass::where('tahun_anggaran', $tahunAktif)->first();
 
             // Jika tidak ada data penganggaran, ambil yang paling baru
-            if (!$penganggaran) {
+            if (! $penganggaran) {
                 $penganggaran = $penganggaranClass::orderBy('tahun_anggaran', 'desc')->first();
                 if ($penganggaran) {
                     $tahunAktif = $penganggaran->tahun_anggaran;
                 } else {
                     // Jika benar-benar kosong
-                     return Inertia::render('Dashboard', [
+                    return Inertia::render('Dashboard', [
                         'statistik' => $this->getDefaultStatistics(),
                         'grafikRealisasiTahunan' => ['categories' => [], 'realisasi_data' => [], 'pagu_total' => 0],
                         'chartRealisasiProgram' => [],
@@ -46,7 +46,7 @@ class DashboardController extends Controller
                         'penganggaran' => null,
                         'tahunAktif' => $tahunAktif,
                         'availableYears' => [],
-                        'activeVariant' => $variant
+                        'activeVariant' => $variant,
                     ]);
                 }
             }
@@ -81,12 +81,13 @@ class DashboardController extends Controller
                 'penganggaran' => $penganggaran,
                 'tahunAktif' => $tahunAktif,
                 'availableYears' => $availableYears,
-                'activeVariant' => $variant
+                'activeVariant' => $variant,
             ]);
         } catch (\Exception $e) {
-            Log::error('Error loading dashboard: ' . $e->getMessage());
+            Log::error('Error loading dashboard: '.$e->getMessage());
+
             return redirect()->route('dashboard')
-                ->with('error', 'Gagal memuat dashboard: ' . $e->getMessage());
+                ->with('error', 'Gagal memuat dashboard: '.$e->getMessage());
         }
     }
 
@@ -105,15 +106,18 @@ class DashboardController extends Controller
     {
         if ($amount >= 1000000000000) {
             $val = $amount / 1000000000000;
-            return (floor($val) == $val ? number_format($val, 0) : number_format($val, 1, ',', '.')) . ' T';
+
+            return (floor($val) == $val ? number_format($val, 0) : number_format($val, 1, ',', '.')).' T';
         } elseif ($amount >= 1000000000) {
             $val = $amount / 1000000000;
-            return (floor($val) == $val ? number_format($val, 0) : number_format($val, 1, ',', '.')) . ' M';
+
+            return (floor($val) == $val ? number_format($val, 0) : number_format($val, 1, ',', '.')).' M';
         } elseif ($amount >= 1000000) {
             $val = $amount / 1000000;
-            return (floor($val) == $val ? number_format($val, 0) : number_format($val, 1, ',', '.')) . ' JT';
+
+            return (floor($val) == $val ? number_format($val, 0) : number_format($val, 1, ',', '.')).' JT';
         }
-        
+
         return number_format($amount, 0, ',', '.');
     }
 
@@ -156,6 +160,7 @@ class DashboardController extends Controller
                     if ($tahap1 && $penerimaan->sumber_dana === $tahap1 && $penerimaan->saldo_awal) {
                         $total += $penerimaan->saldo_awal;
                     }
+
                     return $total;
                 });
 
@@ -187,7 +192,8 @@ class DashboardController extends Controller
                 'efisiensi_anggaran' => $efisiensiAnggaran,
             ];
         } catch (\Exception $e) {
-            Log::error('Error calculating dashboard statistics: ' . $e->getMessage());
+            Log::error('Error calculating dashboard statistics: '.$e->getMessage());
+
             return $this->getDefaultStatistics();
         }
     }
@@ -203,11 +209,11 @@ class DashboardController extends Controller
 
             $penganggaran = $penganggaranClass::where('tahun_anggaran', $tahunAktif)->first();
 
-            if (!$penganggaran) {
+            if (! $penganggaran) {
                 return [
                     'categories' => [],
                     'realisasi_data' => [],
-                    'pagu_total' => 0
+                    'pagu_total' => 0,
                 ];
             }
 
@@ -234,7 +240,8 @@ class DashboardController extends Controller
                 'pagu_total' => $penganggaran->pagu_anggaran,
             ];
         } catch (\Exception $e) {
-            Log::error('Error getting monthly realization chart data: ' . $e->getMessage());
+            Log::error('Error getting monthly realization chart data: '.$e->getMessage());
+
             return [
                 'categories' => [],
                 'realisasi_data' => [],
@@ -259,6 +266,7 @@ class DashboardController extends Controller
                 ->get()
                 ->groupBy(function ($transaksi) {
                     $kode = $transaksi->kodeKegiatan->kode ?? '';
+
                     return substr($kode, 0, 2);
                 })
                 ->map(function ($transactions) {
@@ -274,7 +282,7 @@ class DashboardController extends Controller
                 '05' => 'Pengembangan Sarana dan Prasarana Sekolah',
                 '06' => 'Pengembangan Standar Pengelolaan',
                 '07' => 'Pengembangan Standar Pembiayaan',
-                '08' => 'Pengembangan dan Implementasi Sistem Penilaian'
+                '08' => 'Pengembangan dan Implementasi Sistem Penilaian',
             ];
 
             $pemanfaatanData = [];
@@ -296,13 +304,14 @@ class DashboardController extends Controller
                     'realisasi' => $realisasi,
                     'realisasi_display' => $realisasiDisplay,
                     'total_realisasi' => $totalRealisasiSemuaProgram,
-                    'program_asli' => $snp
+                    'program_asli' => $snp,
                 ];
             }
 
             return $pemanfaatanData;
         } catch (\Exception $e) {
-            Log::error('Error getting SNP utilization data: ' . $e->getMessage());
+            Log::error('Error getting SNP utilization data: '.$e->getMessage());
+
             return [];
         }
     }
@@ -352,7 +361,7 @@ class DashboardController extends Controller
                         'pagu_anggaran' => $pagu,
                         'pagu_display' => $this->formatRupiahDisplay($pagu),
                         VariantConfig::penganggaranFk($variant) => $penganggaran->id,
-                        'data_tersedia' => true
+                        'data_tersedia' => true,
                     ];
                 } else {
                     // Jika tidak ada data penganggaran untuk tahun tersebut
@@ -365,14 +374,15 @@ class DashboardController extends Controller
                         'pagu_anggaran' => 0,
                         'pagu_display' => '0',
                         VariantConfig::penganggaranFk($variant) => null,
-                        'data_tersedia' => false
+                        'data_tersedia' => false,
                     ];
                 }
             }
 
             return $dataPerbandingan;
         } catch (\Exception $e) {
-            Log::error('Error getting 5-year comparison data: ' . $e->getMessage());
+            Log::error('Error getting 5-year comparison data: '.$e->getMessage());
+
             return [];
         }
     }
@@ -401,14 +411,14 @@ class DashboardController extends Controller
                         $namaProgram = $kegiatan->sub_program ?: $kegiatan->program;
                         // Potong teks jika terlalu panjang
                         if (strlen($namaProgram) > 30) {
-                            $namaProgram = substr($namaProgram, 0, 30) . '...';
+                            $namaProgram = substr($namaProgram, 0, 30).'...';
                         }
                     }
 
                     return [
                         'nama_program' => $namaProgram,
                         'total' => $total,
-                        'warna' => $this->generateColor($kegiatanId)
+                        'warna' => $this->generateColor($kegiatanId),
                     ];
                 })
                 ->sortByDesc('total')
@@ -433,13 +443,14 @@ class DashboardController extends Controller
                 $result->push([
                     'nama_program' => 'Lainnya',
                     'total' => $totalLainnya,
-                    'warna' => '#6c757d'
+                    'warna' => '#6c757d',
                 ]);
             }
 
             return $result;
         } catch (\Exception $e) {
-            Log::error('Error getting program realization chart data: ' . $e->getMessage());
+            Log::error('Error getting program realization chart data: '.$e->getMessage());
+
             return collect();
         }
     }
@@ -465,10 +476,11 @@ class DashboardController extends Controller
             '#6f42c1',
             '#d63384',
             '#dc3545',
-            '#fd7e14'
+            '#fd7e14',
         ];
 
         $index = hexdec(substr($hash, 0, 8)) % count($colors);
+
         return $colors[$index];
     }
 
@@ -480,8 +492,8 @@ class DashboardController extends Controller
         try {
             $tahun = $request->get('tahun', date('Y'));
             $variant = $request->get('variant', VariantConfig::REGULER);
-            
-            if (!VariantConfig::isValid($variant)) {
+
+            if (! VariantConfig::isValid($variant)) {
                 $variant = VariantConfig::REGULER;
             }
 
@@ -489,7 +501,7 @@ class DashboardController extends Controller
             $penganggaran = $penganggaranClass::where('tahun_anggaran', $tahun)->first();
 
             // Jika tidak ada data penganggaran untuk tahun yang diminta, ambil yang paling baru
-            if (!$penganggaran) {
+            if (! $penganggaran) {
                 $penganggaran = $penganggaranClass::orderBy('tahun_anggaran', 'desc')->first();
                 if ($penganggaran) {
                     $tahun = $penganggaran->tahun_anggaran;
@@ -501,8 +513,8 @@ class DashboardController extends Controller
                 ->orderBy('tahun_anggaran', 'desc')
                 ->pluck('tahun_anggaran');
 
-            if (!$penganggaran) {
-                 return response()->json([
+            if (! $penganggaran) {
+                return response()->json([
                     'success' => true,
                     'statistik' => $this->getDefaultStatistics(),
                     'grafik_realisasi_tahunan' => ['categories' => [], 'realisasi_data' => [], 'pagu_total' => 0],
@@ -512,7 +524,7 @@ class DashboardController extends Controller
                     'tahun' => $tahun,
                     'variant' => $variant,
                     'available_years' => $availableYears,
-                    'message' => 'Data penganggaran tidak ditemukan untuk tahun ' . $tahun . ' pada varian ini.'
+                    'message' => 'Data penganggaran tidak ditemukan untuk tahun '.$tahun.' pada varian ini.',
                 ]);
             }
 
@@ -532,15 +544,16 @@ class DashboardController extends Controller
                 'perbandingan_lima_tahun' => $perbandinganLimaTahun,
                 'tahun' => $tahun,
                 'variant' => $variant,
-                'available_years' => $availableYears
+                'available_years' => $availableYears,
             ];
 
             return response()->json($formattedData);
         } catch (\Exception $e) {
-            Log::error('Error getting new dashboard data: ' . $e->getMessage());
-             return response()->json([
+            Log::error('Error getting new dashboard data: '.$e->getMessage());
+
+            return response()->json([
                 'success' => false,
-                'message' => 'Gagal memuat data dashboard: ' . $e->getMessage()
+                'message' => 'Gagal memuat data dashboard: '.$e->getMessage(),
             ], 500);
         }
     }

@@ -4,22 +4,19 @@ namespace App\Imports;
 
 use App\Models\KodeKegiatan;
 use Illuminate\Support\Str;
+use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
+use Maatwebsite\Excel\Concerns\SkipsFailures;
+use Maatwebsite\Excel\Concerns\SkipsOnFailure;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithStartRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
-use Maatwebsite\Excel\Concerns\SkipsOnFailure;
-use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
 
-class KodeKegiatanImport implements
-    ToModel,
-    WithStartRow,
-    WithValidation,
-    SkipsOnFailure,
-    SkipsEmptyRows
+class KodeKegiatanImport implements SkipsEmptyRows, SkipsOnFailure, ToModel, WithStartRow, WithValidation
 {
-    use \Maatwebsite\Excel\Concerns\SkipsFailures;
+    use SkipsFailures;
 
     private $rowCount = 0;
+
     private $duplicates = [];
 
     public function startRow(): int
@@ -46,6 +43,7 @@ class KodeKegiatanImport implements
                 'sub_program' => $subProgram,
                 'uraian' => $uraian,
             ];
+
             return null;
         }
 

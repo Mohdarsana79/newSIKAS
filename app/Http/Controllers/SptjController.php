@@ -2,21 +2,26 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Sptj;
-use App\Models\Penganggaran;
-use Illuminate\Http\Request;
 use App\Config\VariantConfig;
+use App\Models\Penganggaran;
+use App\Models\SekolahProfile;
+use App\Services\BukuKasService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
-
+use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Inertia\Inertia;
 
 class SptjController extends Controller
 {
     protected string $variant;
+
     protected string $Penganggaran;
+
     protected string $PenerimaanDana;
+
     protected string $BukuKasUmum;
+
     protected string $Sptj;
 
     public function __construct()
@@ -31,6 +36,7 @@ class SptjController extends Controller
             return $next($request);
         });
     }
+
     public function index(Request $request)
     {
         $query = ($this->Sptj)::with(['penganggaran']);
@@ -41,19 +47,20 @@ class SptjController extends Controller
         }
 
         $perPage = $request->input('per_page', 10);
+
         return response()->json($query->latest()->paginate($perPage));
     }
 
     public function store(Request $request)
     {
         $validated = $request->validate([
-            VariantConfig::penganggaranFk($this->variant) => 'required|exists:' . (new $this->Penganggaran)->getTable() . ',id',
-            VariantConfig::penerimaanDanaFk($this->variant) => 'nullable|exists:' . (new $this->PenerimaanDana)->getTable() . ',id',
-            VariantConfig::bkuFk($this->variant) => 'nullable|exists:' . (new $this->BukuKasUmum)->getTable() . ',id',
+            VariantConfig::penganggaranFk($this->variant) => 'required|exists:'.(new $this->Penganggaran)->getTable().',id',
+            VariantConfig::penerimaanDanaFk($this->variant) => 'nullable|exists:'.(new $this->PenerimaanDana)->getTable().',id',
+            VariantConfig::bkuFk($this->variant) => 'nullable|exists:'.(new $this->BukuKasUmum)->getTable().',id',
             'nomor_sptj' => [
                 'required',
                 'string',
-                Rule::unique((new $this->Sptj)->getTable(), 'nomor_sptj')
+                Rule::unique((new $this->Sptj)->getTable(), 'nomor_sptj'),
             ],
             'tanggal_sptj' => 'required|date',
             'tahap' => 'required|in:1,2',
@@ -76,15 +83,15 @@ class SptjController extends Controller
     public function update(Request $request, $id)
     {
         $sptj = ($this->Sptj)::findOrFail($id);
-        
+
         $validated = $request->validate([
-            VariantConfig::penganggaranFk($this->variant) => 'required|exists:' . (new $this->Penganggaran)->getTable() . ',id',
-            VariantConfig::penerimaanDanaFk($this->variant) => 'nullable|exists:' . (new $this->PenerimaanDana)->getTable() . ',id',
-            VariantConfig::bkuFk($this->variant) => 'nullable|exists:' . (new $this->BukuKasUmum)->getTable() . ',id',
+            VariantConfig::penganggaranFk($this->variant) => 'required|exists:'.(new $this->Penganggaran)->getTable().',id',
+            VariantConfig::penerimaanDanaFk($this->variant) => 'nullable|exists:'.(new $this->PenerimaanDana)->getTable().',id',
+            VariantConfig::bkuFk($this->variant) => 'nullable|exists:'.(new $this->BukuKasUmum)->getTable().',id',
             'nomor_sptj' => [
                 'required',
                 'string',
-                Rule::unique((new $this->Sptj)->getTable(), 'nomor_sptj')->ignore($id)
+                Rule::unique((new $this->Sptj)->getTable(), 'nomor_sptj')->ignore($id),
             ],
             'tanggal_sptj' => 'required|date',
             'tahap' => 'required|in:1,2',
@@ -107,6 +114,7 @@ class SptjController extends Controller
     public function destroy($id)
     {
         ($this->Sptj)::findOrFail($id)->delete();
+
         return response()->json(['success' => true]);
     }
 
@@ -132,7 +140,7 @@ class SptjController extends Controller
                 ->where('tahun_anggaran', $tahun)
                 ->first();
 
-            if (!$penganggaran) {
+            if (! $penganggaran) {
                 return response()->json(['error' => "Data Penganggaran tidak ditemukan untuk tahun $tahun"], 404);
             }
 
@@ -145,15 +153,15 @@ class SptjController extends Controller
             } else {
                 // Logika asli untuk varian Reguler / Kinerja yang memiliki termin (Tahap 1 & 2)
                 $tahapSatu = ($this->PenerimaanDana)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
-                    ->where(function($q) {
+                    ->where(function ($q) {
                         $q->where('sumber_dana', 'like', '%Tahap 1%')
-                          ->orWhere('sumber_dana', 'like', '%Tahap I%');
+                            ->orWhere('sumber_dana', 'like', '%Tahap I%');
                     })->sum('jumlah_dana');
 
                 $tahapDua = ($this->PenerimaanDana)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
-                    ->where(function($q) {
+                    ->where(function ($q) {
                         $q->where('sumber_dana', 'like', '%Tahap 2%')
-                          ->orWhere('sumber_dana', 'like', '%Tahap II%');
+                            ->orWhere('sumber_dana', 'like', '%Tahap II%');
                     })->sum('jumlah_dana');
             }
 
@@ -161,41 +169,41 @@ class SptjController extends Controller
             // Filter by date range based on requested Tahap
             $startDate = $request->tahap == '1' ? "$tahun-01-01" : "$tahun-07-01";
             $endDate = $request->tahap == '1' ? "$tahun-06-30" : "$tahun-12-31";
-            
+
             // Get all BKU expenses for the period
             // Assumption: BKU has `rekening_belanja_id` which links to `RekeningBelanja`
             // and `RekeningBelanja` has `kode_rekening` or similar to identify Pegawai/Barang/Modal
-            
+
             $bkuEntries = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
                 ->whereDate('tanggal_transaksi', '>=', $startDate)
                 ->whereDate('tanggal_transaksi', '<=', $endDate)
                 ->whereNotNull('rekening_belanja_id') // Only expenses have rekening?
                 ->with(['rekeningBelanja', 'kodeKegiatan'])
                 ->get();
-                
+
             $p_pegawai = 0;
             $p_barang = 0;
             $p_modal = 0;
-            
+
             // Kode Kegiatan prefixes for Belanja Pegawai
             $pegawaiPrefixes = ['07.12.01.', '07.12.02.', '07.12.03.', '07.12.04.'];
 
             foreach ($bkuEntries as $bku) {
                 // Usually expenses are in 'pengeluaran' or 'total_transaksi_kotor'
-                // Assuming 'pengeluaran' exists or 'jumlah_keluar'. 
+                // Assuming 'pengeluaran' exists or 'jumlah_keluar'.
                 // Spmth used 'total_transaksi_kotor'. Let's check if it's an expense or revenue.
                 // Assuming if rekening_belanja_id is set, it IS an expense.
-                
-                $amount = $bku->pengeluaran ?? $bku->total_transaksi_kotor; 
-                // Note: Check actual column name in BKU table migration if needed. 
+
+                $amount = $bku->pengeluaran ?? $bku->total_transaksi_kotor;
+                // Note: Check actual column name in BKU table migration if needed.
                 // migration 2026_01_17_000003_create_buku_kas_umums_table.php had 'pengeluaran' probably.
                 // Assuming `pengeluaran` column. If null/0 check debit/credit.
-                
-                $kodeRekening = $bku->rekeningBelanja->kode_rekening ?? ''; 
+
+                $kodeRekening = $bku->rekeningBelanja->kode_rekening ?? '';
                 $kodeKegiatan = $bku->kodeKegiatan->kode ?? '';
-                
+
                 // Logic Classification
-                
+
                 // Check Belanja Pegawai based on Activity Code
                 $isPegawai = false;
                 foreach ($pegawaiPrefixes as $prefix) {
@@ -211,7 +219,7 @@ class SptjController extends Controller
                 // Check Belanja Modal based on Account Code (Strict 5.2)
                 elseif (str_starts_with($kodeRekening, '5.2')) {
                     $p_modal += $amount;
-                } 
+                }
                 // Default to Barang Jasa
                 else {
                     $p_barang += $amount;
@@ -219,11 +227,11 @@ class SptjController extends Controller
             }
 
             // 3. Sisa Kas & Bank (Balances)
-            $bukuKasService = app(\App\Services\BukuKasService::class);
+            $bukuKasService = app(BukuKasService::class);
             // Tahap 1 ends in June (6), Tahap 2 ends in December (12)
             $endMonth = $request->tahap == '1' ? 6 : 12;
 
-            // hitungSaldoTunaiSebelumBulan gets balance *before* the given month. 
+            // hitungSaldoTunaiSebelumBulan gets balance *before* the given month.
             // So we pass endMonth + 1 to get the balance up to the end of endMonth.
             $sisaTunai = $bukuKasService->hitungSaldoTunaiSebelumBulan($penganggaran->id, $endMonth + 1);
             $sisaBank = $bukuKasService->hitungSaldoBankSebelumBulan($penganggaran->id, $endMonth + 1);
@@ -237,35 +245,35 @@ class SptjController extends Controller
                 'jenis_belanja_modal' => $p_modal,
                 'sisa_kas_tunai' => $sisaTunai,
                 'sisa_dana_di_bank' => $sisaBank,
-                VariantConfig::penganggaranFk($this->variant) => $penganggaran->id
+                VariantConfig::penganggaranFk($this->variant) => $penganggaran->id,
             ]);
 
         } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage() . ' Line: ' . $e->getLine()], 500);
+            return response()->json(['error' => $e->getMessage().' Line: '.$e->getLine()], 500);
         }
     }
 
     public function generatePdf($id)
     {
         $sptj = ($this->Sptj)::with(['penganggaran'])->findOrFail($id);
-        
+
         // Manual/Implicit relations if explicit ones are missing in model or needed deeper
         // Assuming penganggaran has attributes like kepala_sekolah, nip_kepala_sekolah
         // We need 'sekolah' info. Usually penganggaran belongs to Sekolah.
         // We can load it manually if relations aren't perfect, but let's try strict.
         $penganggaran = $sptj->penganggaran;
-        $sekolah = \App\Models\SekolahProfile::find($penganggaran->sekolah_id); // Fallback if no relation on model
+        $sekolah = SekolahProfile::find($penganggaran->sekolah_id); // Fallback if no relation on model
 
         $paperSize = request()->input('paper_size', 'A4');
         $fontSize = request()->input('font_size', '12pt');
 
         $data = [
-                'sumberDana' => \App\Config\VariantConfig::title($this->variant),
+            'sumberDana' => VariantConfig::title($this->variant),
             'sptj' => $sptj,
             'sekolah' => $sekolah,
             'kepala_sekolah' => (object) [
                 'nama' => $penganggaran->kepala_sekolah,
-                'nip' => $penganggaran->nip_kepala_sekolah
+                'nip' => $penganggaran->nip_kepala_sekolah,
             ],
             'tanggal_cetak' => Carbon::parse($sptj->tanggal_sptj)->locale('id')->isoFormat('D MMMM Y'),
             'semester_text' => $sptj->tahap == '1' ? 'Semester I' : 'Semester II',
@@ -289,9 +297,10 @@ class SptjController extends Controller
         if (app()->bound('variant')) {
             $var = app('variant');
         }
-        return \Inertia\Inertia::render(VariantConfig::pagePrefix($var) . $component, array_merge($props, [
+
+        return Inertia::render(VariantConfig::pagePrefix($var).$component, array_merge($props, [
             'variant' => $var,
-            'routePrefix' => VariantConfig::routePrefix($var)
+            'routePrefix' => VariantConfig::routePrefix($var),
         ]));
     }
 }

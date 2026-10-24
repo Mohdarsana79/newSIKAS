@@ -1,12 +1,14 @@
 <?php
+
 require 'vendor/autoload.php';
 $app = require_once 'bootstrap/app.php';
-$kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
+$kernel = $app->make(Kernel::class);
 $kernel->bootstrap();
 
 use App\Http\Controllers\DashboardController;
+use Illuminate\Contracts\Console\Kernel;
 
-$controller = new DashboardController();
+$controller = new DashboardController;
 $reflection = new ReflectionClass($controller);
 $method = $reflection->getMethod('formatMataUangSingkat');
 $method->setAccessible(true);
@@ -17,10 +19,10 @@ $testData = [
     1000000 => '1 JT',
     500000 => '500.000',
     2000000000000 => '2 T',
-    1250000000000 => '1,3 T' // approx
+    1250000000000 => '1,3 T', // approx
 ];
 
 foreach ($testData as $amount => $expected) {
     $result = $method->invoke($controller, $amount);
-    echo "Amount: " . number_format($amount) . " -> Result: $result\n";
+    echo 'Amount: '.number_format($amount)." -> Result: $result\n";
 }

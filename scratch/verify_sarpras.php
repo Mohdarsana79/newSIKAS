@@ -1,11 +1,13 @@
 <?php
+
 require 'vendor/autoload.php';
 $app = require_once 'bootstrap/app.php';
-$kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
+$kernel = $app->make(Kernel::class);
 $kernel->bootstrap();
 
-use App\Models\Rkas;
 use App\Models\Penganggaran;
+use App\Models\Rkas;
+use Illuminate\Contracts\Console\Kernel;
 
 $p = Penganggaran::orderBy('id', 'desc')->first();
 if ($p) {
@@ -17,7 +19,7 @@ if ($p) {
         ->sum(function ($item) {
             return $item->jumlah * $item->harga_satuan;
         });
-    echo "Sum for ID {$p->id} (Year {$p->tahun_anggaran}): " . number_format($sum, 2) . "\n";
+    echo "Sum for ID {$p->id} (Year {$p->tahun_anggaran}): ".number_format($sum, 2)."\n";
 } else {
     echo "No Penganggaran found.\n";
 }

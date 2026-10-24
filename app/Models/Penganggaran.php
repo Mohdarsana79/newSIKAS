@@ -12,10 +12,33 @@ class Penganggaran extends Model
 
     protected $table = 'penganggarans';
 
-    protected function rkasModelClass(): string { return Rkas::class; }
-    protected function rkasForeignKey(): string { return 'penganggaran_id'; }
-    protected function penerimaanDanaModelClass(): string { return PenerimaanDana::class; }
-    protected function penerimaanDanaForeignKey(): string { return 'penganggaran_id'; }
-    protected function bukuKasUmumModelClass(): string { return BukuKasUmum::class; }
-    protected function bukuKasUmumForeignKey(): string { return 'penganggaran_id'; }
+    protected function rkasModelClass(): string
+    {
+        return Rkas::class;
+    }
+
+    protected function rkasForeignKey(): string
+    {
+        return 'penganggaran_id';
+    }
+
+    protected function penerimaanDanaModelClass(): string
+    {
+        return PenerimaanDana::class;
+    }
+
+    protected function penerimaanDanaForeignKey(): string
+    {
+        return 'penganggaran_id';
+    }
+
+    protected function bukuKasUmumModelClass(): string
+    {
+        return BukuKasUmum::class;
+    }
+
+    protected function bukuKasUmumForeignKey(): string
+    {
+        return 'penganggaran_id';
+    }
 }

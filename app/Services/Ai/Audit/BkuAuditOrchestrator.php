@@ -303,11 +303,17 @@ class BkuAuditOrchestrator
     ): array {
         $systemPrompt = $scanner->getSystemPrompt($variant, $tahun, $preScan['metadata']['periode_type'], $preScan['metadata']['periode_key']);
 
+        $sekolah = $penganggaran->sekolah ?? SekolahProfile::first();
+        $statusSekolah = $sekolah?->status_sekolah ?? 'Swasta';
+
         $userPayload = [
             'informasi_sekolah' => [
-                'nama_sekolah' => $penganggaran->sekolah?->nama_sekolah ?? 'Satuan Pendidikan',
+                'nama_sekolah' => $penganggaran->sekolah?->nama_sekolah ?? ($sekolah?->nama_sekolah ?? 'Satuan Pendidikan'),
+                'status_sekolah' => $statusSekolah,
+                'jenjang_sekolah' => $sekolah?->jenjang_sekolah ?? 'SMP',
                 'tahun_anggaran' => $tahun,
                 'varian_anggaran' => VariantConfig::title($variant),
+                'dasar_hukum_audit' => 'Permendikdasmen Nomor 8 Tahun 2026 tentang Petunjuk Teknis Pengelolaan Dana BOSP',
                 'objek_pemeriksaan' => $tabTitle,
                 'rentang_periode' => $preScan['summary']['periode_label'] ?? 'Periode Berjalan',
             ],
@@ -317,8 +323,10 @@ class BkuAuditOrchestrator
             'sampel_data_pembukuan' => $preScan['transactions'],
         ];
 
+        $globalStrictRules = "\n\nATURAN PENYAJIAN MUTLAK: DILARANG KERAS MENAMPILKAN ATAU MENYEBUT NAMA VARIABEL / KODE PEMROGRAMAN / JSON KEYS SISTEM (seperti 'total_kas_fisik_diperiksa', 'saldo_kas_tunai', 'saldo_kas_bank', 'is_bunga_record', 'total_belanja', dsb). Gunakan selalu istilah perbendaharaan dan akuntansi resmi berbahasa Indonesia (contoh: 'Total Kas Fisik', 'Saldo Kas Tunai', 'Saldo Kas Bank', 'Kepala Sekolah', 'Bendahara'). DILARANG MENAMPILKAN ID INTERNAL DATABASE.";
+
         $messages = [
-            ['role' => 'system', 'content' => $systemPrompt],
+            ['role' => 'system', 'content' => $systemPrompt.$globalStrictRules],
             ['role' => 'user', 'content' => "Berikut data {$tabTitle} untuk diaudit forensik:\n".json_encode($userPayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)],
         ];
 

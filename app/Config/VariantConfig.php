@@ -2,9 +2,11 @@
 
 namespace App\Config;
 
+use App\Models\Bast;
 use App\Models\BukuKasUmum;
 use App\Models\BukuKasUmumUraianDetail;
 use App\Models\Dokumen;
+use App\Models\KinerjaBast;
 use App\Models\KinerjaBukuKasUmum;
 use App\Models\KinerjaBukuKasUmumUraianDetail;
 use App\Models\KinerjaDokumen;
@@ -17,6 +19,7 @@ use App\Models\KinerjaRekamanPerubahan;
 use App\Models\KinerjaRkas;
 use App\Models\KinerjaRkasPerubahan;
 use App\Models\KinerjaSetorTunai;
+use App\Models\KinerjaSilpaBast;
 use App\Models\KinerjaSilpaBukuKasUmum;
 use App\Models\KinerjaSilpaBukuKasUmumUraianDetail;
 use App\Models\KinerjaSilpaDokumen;
@@ -31,11 +34,13 @@ use App\Models\KinerjaSilpaSp2b;
 use App\Models\KinerjaSilpaSpmth;
 use App\Models\KinerjaSilpaSptj;
 use App\Models\KinerjaSilpaSts;
+use App\Models\KinerjaSilpaSuratPesanan;
 use App\Models\KinerjaSilpaTandaTerima;
 use App\Models\KinerjaSp2b;
 use App\Models\KinerjaSpmth;
 use App\Models\KinerjaSptj;
 use App\Models\KinerjaSts;
+use App\Models\KinerjaSuratPesanan;
 use App\Models\KinerjaTandaTerima;
 use App\Models\Kwitansi;
 use App\Models\Lph;
@@ -46,6 +51,7 @@ use App\Models\RekamanPerubahan;
 use App\Models\Rkas;
 use App\Models\RkasPerubahan;
 use App\Models\SetorTunai;
+use App\Models\SilpaBast;
 use App\Models\SilpaBukuKasUmum;
 use App\Models\SilpaBukuKasUmumUraianDetail;
 use App\Models\SilpaDokumen;
@@ -60,11 +66,13 @@ use App\Models\SilpaSp2b;
 use App\Models\SilpaSpmth;
 use App\Models\SilpaSptj;
 use App\Models\SilpaSts;
+use App\Models\SilpaSuratPesanan;
 use App\Models\SilpaTandaTerima;
 use App\Models\Sp2b;
 use App\Models\Spmth;
 use App\Models\Sptj;
 use App\Models\Sts;
+use App\Models\SuratPesanan;
 use App\Models\TandaTerima;
 use InvalidArgumentException;
 
@@ -447,16 +455,16 @@ class VariantConfig
                 self::KINERJA_SILPA => KinerjaSilpaDokumen::class,
             ],
             'bast' => [
-                self::REGULER => \App\Models\Bast::class,
-                self::KINERJA => \App\Models\KinerjaBast::class,
-                self::SILPA => \App\Models\SilpaBast::class,
-                self::KINERJA_SILPA => \App\Models\KinerjaSilpaBast::class,
+                self::REGULER => Bast::class,
+                self::KINERJA => KinerjaBast::class,
+                self::SILPA => SilpaBast::class,
+                self::KINERJA_SILPA => KinerjaSilpaBast::class,
             ],
             'surat_pesanan' => [
-                self::REGULER => \App\Models\SuratPesanan::class,
-                self::KINERJA => \App\Models\KinerjaSuratPesanan::class,
-                self::SILPA => \App\Models\SilpaSuratPesanan::class,
-                self::KINERJA_SILPA => \App\Models\KinerjaSilpaSuratPesanan::class,
+                self::REGULER => SuratPesanan::class,
+                self::KINERJA => KinerjaSuratPesanan::class,
+                self::SILPA => SilpaSuratPesanan::class,
+                self::KINERJA_SILPA => KinerjaSilpaSuratPesanan::class,
             ],
 
             // ── Laporan ─────────────────────────────────────

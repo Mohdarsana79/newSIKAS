@@ -21,8 +21,8 @@ class KinerjaSilpaSetorTunai extends Model
         return $this->belongsTo(KinerjaSilpaPenganggaran::class, 'kinerja_silpa_penganggaran_id');
     }
 
-
-    public function penganggaran() { return $this->silpaPenganggaran(); }
+    public function penganggaran()
+    {
+        return $this->silpaPenganggaran();
+    }
 }
-
-

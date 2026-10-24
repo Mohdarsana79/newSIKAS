@@ -13,15 +13,18 @@ class KinerjaDokumen extends Model
         return $this->belongsTo(KinerjaPenganggaran::class);
     }
 
-
     public function kinerjaBukuKasUmum()
     {
         return $this->belongsTo(KinerjaBukuKasUmum::class);
     }
 
+    public function penganggaran()
+    {
+        return $this->kinerjaPenganggaran();
+    }
 
-    public function penganggaran() { return $this->kinerjaPenganggaran(); }
-
-    public function bukuKasUmum() { return $this->kinerjaBukuKasUmum(); }
+    public function bukuKasUmum()
+    {
+        return $this->kinerjaBukuKasUmum();
+    }
 }
-

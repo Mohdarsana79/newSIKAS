@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\KodeKegiatan;
+use App\Models\RekeningBelanja;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Symfony\Component\Process\Process;
-use Illuminate\Support\Facades\Log;
 
 class ReferensiKodeController extends Controller
 {
@@ -19,15 +21,15 @@ class ReferensiKodeController extends Controller
         $tipe = $request->input('tipe'); // 'kegiatan' atau 'rekening'
         $year = $request->input('year', '2026');
 
-        if (!in_array($tipe, ['kegiatan', 'rekening'])) {
+        if (! in_array($tipe, ['kegiatan', 'rekening'])) {
             return response()->json(['status' => 'error', 'message' => 'Tipe referensi tidak valid']);
         }
 
         $pythonPath = storage_path('app/arkas_engine/python.exe');
         $scriptPath = storage_path('app/arkas_engine/dump_reference.py');
-        
-        if (!file_exists($pythonPath) || !file_exists($scriptPath)) {
-             return response()->json(['status' => 'error', 'message' => 'Arkas Engine tidak ditemukan.']);
+
+        if (! file_exists($pythonPath) || ! file_exists($scriptPath)) {
+            return response()->json(['status' => 'error', 'message' => 'Arkas Engine tidak ditemukan.']);
         }
 
         $env = $_SERVER;
@@ -44,35 +46,35 @@ class ReferensiKodeController extends Controller
             $userprofile = trim(shell_exec("powershell -Command \"[Environment]::GetFolderPath('UserProfile')\""));
         }
 
-        if (empty($userprofile) && !empty($appdata)) {
+        if (empty($userprofile) && ! empty($appdata)) {
             $userprofile = dirname(dirname($appdata));
         }
 
-        if (empty($appdata) && !empty($userprofile)) {
-            $appdata = $userprofile . '\\AppData\\Roaming';
+        if (empty($appdata) && ! empty($userprofile)) {
+            $appdata = $userprofile.'\\AppData\\Roaming';
         }
 
-        $env['SystemRoot']    = $env['SystemRoot']    ?? 'C:\\Windows';
-        $env['SystemDrive']   = $env['SystemDrive']   ?? 'C:';
-        $env['USERPROFILE']   = $userprofile ?: ($env['USERPROFILE'] ?? 'C:\\Users\\Digitalisasi');
-        $env['APPDATA']       = $appdata     ?: ($env['APPDATA']     ?? 'C:\\Users\\Digitalisasi\\AppData\\Roaming');
-        $env['LOCALAPPDATA']  = $env['LOCALAPPDATA']  ?? ($userprofile ? $userprofile . '\\AppData\\Local' : '');
-        $env['TEMP']          = $env['TEMP']           ?? ($userprofile ? $userprofile . '\\AppData\\Local\\Temp' : '');
-        $env['TMP']           = $env['TMP']            ?? $env['TEMP'];
+        $env['SystemRoot'] = $env['SystemRoot'] ?? 'C:\\Windows';
+        $env['SystemDrive'] = $env['SystemDrive'] ?? 'C:';
+        $env['USERPROFILE'] = $userprofile ?: ($env['USERPROFILE'] ?? 'C:\\Users\\Digitalisasi');
+        $env['APPDATA'] = $appdata ?: ($env['APPDATA'] ?? 'C:\\Users\\Digitalisasi\\AppData\\Roaming');
+        $env['LOCALAPPDATA'] = $env['LOCALAPPDATA'] ?? ($userprofile ? $userprofile.'\\AppData\\Local' : '');
+        $env['TEMP'] = $env['TEMP'] ?? ($userprofile ? $userprofile.'\\AppData\\Local\\Temp' : '');
+        $env['TMP'] = $env['TMP'] ?? $env['TEMP'];
 
         // Pastikan path dasar Windows tersedia (Sangat Penting untuk Python & SQLCipher)
-        $env['SystemRoot']    = $env['SystemRoot']    ?? 'C:\\Windows';
-        $env['SystemDrive']   = $env['SystemDrive']   ?? 'C:';
-        $env['USERPROFILE']   = !empty($userprofile) ? $userprofile : ($env['USERPROFILE'] ?? 'C:\\Users\\Digitalisasi');
-        $env['APPDATA']       = !empty($appdata)     ? $appdata     : ($env['APPDATA']     ?? 'C:\\Users\\Digitalisasi\\AppData\\Roaming');
-        $env['LOCALAPPDATA']  = $env['LOCALAPPDATA']  ?? (empty($userprofile) ? '' : $userprofile . '\\AppData\\Local');
-        $env['TEMP']          = $env['TEMP']           ?? (empty($userprofile) ? '' : $userprofile . '\\AppData\\Local\\Temp');
-        $env['TMP']           = $env['TMP']            ?? $env['TEMP'];
+        $env['SystemRoot'] = $env['SystemRoot'] ?? 'C:\\Windows';
+        $env['SystemDrive'] = $env['SystemDrive'] ?? 'C:';
+        $env['USERPROFILE'] = ! empty($userprofile) ? $userprofile : ($env['USERPROFILE'] ?? 'C:\\Users\\Digitalisasi');
+        $env['APPDATA'] = ! empty($appdata) ? $appdata : ($env['APPDATA'] ?? 'C:\\Users\\Digitalisasi\\AppData\\Roaming');
+        $env['LOCALAPPDATA'] = $env['LOCALAPPDATA'] ?? (empty($userprofile) ? '' : $userprofile.'\\AppData\\Local');
+        $env['TEMP'] = $env['TEMP'] ?? (empty($userprofile) ? '' : $userprofile.'\\AppData\\Local\\Temp');
+        $env['TMP'] = $env['TMP'] ?? $env['TEMP'];
 
         Log::info('Arkas Referensi Fetch ENV Final', [
-            'APPDATA'    => $env['APPDATA'],
-            'USERPROFILE'=> $env['USERPROFILE'],
-            'SystemDrive'=> $env['SystemDrive']
+            'APPDATA' => $env['APPDATA'],
+            'USERPROFILE' => $env['USERPROFILE'],
+            'SystemDrive' => $env['SystemDrive'],
         ]);
 
         $dbPathManual = env('ARKAS_DB_PATH', '');
@@ -81,11 +83,11 @@ class ReferensiKodeController extends Controller
 
         $process = new Process([$pythonPath, $scriptPath, $tipe, $year, $dbPathManual], null, $env);
         // Bisa memakan waktu lebih lama karena data > 5000 baris
-        $process->setTimeout(60); 
+        $process->setTimeout(60);
         $process->run();
 
-        if (!$process->isSuccessful()) {
-             return response()->json(['status' => 'error', 'message' => 'Gagal mengeksekusi engine ARKAS. ' . $process->getErrorOutput()]);
+        if (! $process->isSuccessful()) {
+            return response()->json(['status' => 'error', 'message' => 'Gagal mengeksekusi engine ARKAS. '.$process->getErrorOutput()]);
         }
 
         $output = $process->getOutput();
@@ -96,11 +98,11 @@ class ReferensiKodeController extends Controller
         }
 
         $data = $result['data'] ?? [];
-        
+
         $existingRekening = [];
         $existingKegiatan = [];
         if ($tipe === 'kegiatan') {
-            $existingKegiatan = \App\Models\KodeKegiatan::query()
+            $existingKegiatan = KodeKegiatan::query()
                 ->select(['kode', 'program', 'sub_program', 'uraian'])
                 ->get()
                 ->keyBy('kode')
@@ -108,7 +110,7 @@ class ReferensiKodeController extends Controller
             $existing = array_keys($existingKegiatan);
         } else {
             // Untuk rekening: ambil seluruh data beserta nilai pajaknya
-            $existingRekening = \App\Models\RekeningBelanja::query()
+            $existingRekening = RekeningBelanja::query()
                 ->select(['kode_rekening', 'kategori', 'is_ppn', 'is_pph21', 'is_pph22', 'is_pph23', 'is_pph4'])
                 ->get()
                 ->keyBy('kode_rekening')
@@ -119,7 +121,7 @@ class ReferensiKodeController extends Controller
         foreach ($data as &$row) {
             if ($tipe === 'kegiatan') {
                 $kode = $row['id_kode'];
-                if (!isset($existingKegiatan[$kode])) {
+                if (! isset($existingKegiatan[$kode])) {
                     $row['status'] = 'Data Baru';
                 } else {
                     $ex = $existingKegiatan[$kode];
@@ -132,29 +134,34 @@ class ReferensiKodeController extends Controller
                 }
             } else {
                 $kode = $row['kode_rekening'];
-                if (!isset($existingRekening[$kode])) {
+                if (! isset($existingRekening[$kode])) {
                     $row['status'] = 'Data Baru';
                 } else {
                     // Deteksi perubahan kategori / pajak
                     $ex = $existingRekening[$kode];
                     $prefix = substr($kode, 0, 6);
-                    if ($prefix === '5.2.02') $kat = 'Modal Peralatan dan Mesin';
-                    elseif ($prefix === '5.2.04') $kat = 'Modal Jalan, Jaringan, dan Irigasi';
-                    elseif ($prefix === '5.2.05') $kat = 'Modal Aset Tetap Lainnya';
-                    else $kat = 'Operasi';
+                    if ($prefix === '5.2.02') {
+                        $kat = 'Modal Peralatan dan Mesin';
+                    } elseif ($prefix === '5.2.04') {
+                        $kat = 'Modal Jalan, Jaringan, dan Irigasi';
+                    } elseif ($prefix === '5.2.05') {
+                        $kat = 'Modal Aset Tetap Lainnya';
+                    } else {
+                        $kat = 'Operasi';
+                    }
 
-                    $newPpn  = isset($row['is_ppn'])   && $row['is_ppn']   ? 1 : 0;
+                    $newPpn = isset($row['is_ppn']) && $row['is_ppn'] ? 1 : 0;
                     $newPph21 = isset($row['is_pph21']) && $row['is_pph21'] ? 1 : 0;
                     $newPph22 = isset($row['is_pph22']) && $row['is_pph22'] ? 1 : 0;
                     $newPph23 = isset($row['is_pph23']) && $row['is_pph23'] ? 1 : 0;
-                    $newPph4  = isset($row['is_pph4'])  && $row['is_pph4']  ? 1 : 0;
+                    $newPph4 = isset($row['is_pph4']) && $row['is_pph4'] ? 1 : 0;
 
                     $changed = (
-                        (int)$ex['is_ppn']   !== $newPpn  ||
-                        (int)$ex['is_pph21'] !== $newPph21 ||
-                        (int)$ex['is_pph22'] !== $newPph22 ||
-                        (int)$ex['is_pph23'] !== $newPph23 ||
-                        (int)$ex['is_pph4']  !== $newPph4  ||
+                        (int) $ex['is_ppn'] !== $newPpn ||
+                        (int) $ex['is_pph21'] !== $newPph21 ||
+                        (int) $ex['is_pph22'] !== $newPph22 ||
+                        (int) $ex['is_pph23'] !== $newPph23 ||
+                        (int) $ex['is_pph4'] !== $newPph4 ||
                         $ex['kategori'] !== $kat
                     );
 
@@ -171,15 +178,15 @@ class ReferensiKodeController extends Controller
         $tipe = $request->input('tipe');
         $year = $request->input('year', '2026');
 
-        if (!in_array($tipe, ['kegiatan', 'rekening'])) {
+        if (! in_array($tipe, ['kegiatan', 'rekening'])) {
             return response()->json(['status' => 'error', 'message' => 'Tipe referensi tidak valid']);
         }
 
         $pythonPath = storage_path('app/arkas_engine/python.exe');
         $scriptPath = storage_path('app/arkas_engine/dump_reference.py');
-        
-        if (!file_exists($pythonPath) || !file_exists($scriptPath)) {
-             return response()->json(['status' => 'error', 'message' => 'Arkas Engine tidak ditemukan.']);
+
+        if (! file_exists($pythonPath) || ! file_exists($scriptPath)) {
+            return response()->json(['status' => 'error', 'message' => 'Arkas Engine tidak ditemukan.']);
         }
 
         $env = $_SERVER;
@@ -196,27 +203,27 @@ class ReferensiKodeController extends Controller
             $userprofile = trim(shell_exec("powershell -Command \"[Environment]::GetFolderPath('UserProfile')\""));
         }
 
-        if (empty($userprofile) && !empty($appdata)) {
+        if (empty($userprofile) && ! empty($appdata)) {
             $userprofile = dirname(dirname($appdata));
         }
 
-        if (empty($appdata) && !empty($userprofile)) {
-            $appdata = $userprofile . '\\AppData\\Roaming';
+        if (empty($appdata) && ! empty($userprofile)) {
+            $appdata = $userprofile.'\\AppData\\Roaming';
         }
 
         // Pastikan path dasar Windows tersedia (Sangat Penting untuk Python & SQLCipher)
-        $env['SystemRoot']    = $env['SystemRoot']    ?? 'C:\\Windows';
-        $env['SystemDrive']   = $env['SystemDrive']   ?? 'C:';
-        $env['USERPROFILE']   = !empty($userprofile) ? $userprofile : ($env['USERPROFILE'] ?? 'C:\\Users\\Digitalisasi');
-        $env['APPDATA']       = !empty($appdata)     ? $appdata     : ($env['APPDATA']     ?? 'C:\\Users\\Digitalisasi\\AppData\\Roaming');
-        $env['LOCALAPPDATA']  = $env['LOCALAPPDATA']  ?? (empty($userprofile) ? '' : $userprofile . '\\AppData\\Local');
-        $env['TEMP']          = $env['TEMP']           ?? (empty($userprofile) ? '' : $userprofile . '\\AppData\\Local\\Temp');
-        $env['TMP']           = $env['TMP']            ?? $env['TEMP'];
+        $env['SystemRoot'] = $env['SystemRoot'] ?? 'C:\\Windows';
+        $env['SystemDrive'] = $env['SystemDrive'] ?? 'C:';
+        $env['USERPROFILE'] = ! empty($userprofile) ? $userprofile : ($env['USERPROFILE'] ?? 'C:\\Users\\Digitalisasi');
+        $env['APPDATA'] = ! empty($appdata) ? $appdata : ($env['APPDATA'] ?? 'C:\\Users\\Digitalisasi\\AppData\\Roaming');
+        $env['LOCALAPPDATA'] = $env['LOCALAPPDATA'] ?? (empty($userprofile) ? '' : $userprofile.'\\AppData\\Local');
+        $env['TEMP'] = $env['TEMP'] ?? (empty($userprofile) ? '' : $userprofile.'\\AppData\\Local\\Temp');
+        $env['TMP'] = $env['TMP'] ?? $env['TEMP'];
 
         Log::info('Arkas Referensi Sync ENV Final', [
-            'APPDATA'    => $env['APPDATA'],
-            'USERPROFILE'=> $env['USERPROFILE'],
-            'SystemDrive'=> $env['SystemDrive']
+            'APPDATA' => $env['APPDATA'],
+            'USERPROFILE' => $env['USERPROFILE'],
+            'SystemDrive' => $env['SystemDrive'],
         ]);
 
         $dbPathManual = env('ARKAS_DB_PATH', '');
@@ -224,11 +231,11 @@ class ReferensiKodeController extends Controller
         $dbPathManual = str_replace('\\', '/', $dbPathManual);
 
         $process = new Process([$pythonPath, $scriptPath, $tipe, $year, $dbPathManual], null, $env);
-        $process->setTimeout(120); 
+        $process->setTimeout(120);
         $process->run();
 
-        if (!$process->isSuccessful()) {
-             return response()->json(['status' => 'error', 'message' => 'Gagal mengeksekusi engine ARKAS. ' . $process->getErrorOutput()]);
+        if (! $process->isSuccessful()) {
+            return response()->json(['status' => 'error', 'message' => 'Gagal mengeksekusi engine ARKAS. '.$process->getErrorOutput()]);
         }
 
         $output = $process->getOutput();
@@ -243,17 +250,17 @@ class ReferensiKodeController extends Controller
 
         // Menggunakan array untuk mempercepat pengecekan
         if ($tipe === 'kegiatan') {
-            $existingMap = \App\Models\KodeKegiatan::query()
+            $existingMap = KodeKegiatan::query()
                 ->select(['kode', 'program', 'sub_program', 'uraian'])
                 ->get()
                 ->keyBy('kode')
                 ->toArray();
-            
+
             $inserts = [];
             $updatedCount = 0;
 
             foreach ($data as $row) {
-                if (!isset($existingMap[$row['id_kode']])) {
+                if (! isset($existingMap[$row['id_kode']])) {
                     $inserts[] = [
                         'kode' => $row['id_kode'],
                         'program' => $row['program'] ?? '',
@@ -272,7 +279,7 @@ class ReferensiKodeController extends Controller
                     );
 
                     if ($changed) {
-                        \App\Models\KodeKegiatan::query()
+                        KodeKegiatan::query()
                             ->where('kode', $row['id_kode'])
                             ->update([
                                 'program' => $row['program'] ?? '',
@@ -287,10 +294,10 @@ class ReferensiKodeController extends Controller
             if (count($inserts) > 0) {
                 // Chunk insert untuk performa (karena bisa ribuan data)
                 foreach (array_chunk($inserts, 500) as $chunk) {
-                    \App\Models\KodeKegiatan::insert($chunk);
+                    KodeKegiatan::insert($chunk);
                 }
             }
-            
+
             $message = "Berhasil sinkronisasi $syncedCount data baru";
             if ($updatedCount > 0) {
                 $message .= " dan memperbarui $updatedCount data yang berubah";
@@ -298,15 +305,15 @@ class ReferensiKodeController extends Controller
             $message .= '.';
 
             return response()->json([
-                'status'  => 'success',
+                'status' => 'success',
                 'message' => $message,
-                'synced'  => $syncedCount,
+                'synced' => $syncedCount,
                 'updated' => $updatedCount,
             ]);
 
         } else {
             // Ambil semua data yang sudah ada, beserta nilai pajaknya
-            $existingMap = \App\Models\RekeningBelanja::query()
+            $existingMap = RekeningBelanja::query()
                 ->select(['kode_rekening', 'kategori', 'is_ppn', 'is_pph21', 'is_pph22', 'is_pph23', 'is_pph4'])
                 ->get()
                 ->keyBy('kode_rekening')
@@ -328,49 +335,49 @@ class ReferensiKodeController extends Controller
                     $kategori = 'Operasi';
                 }
 
-                $newIsppn  = isset($row['is_ppn'])   && $row['is_ppn']   ? 1 : 0;
+                $newIsppn = isset($row['is_ppn']) && $row['is_ppn'] ? 1 : 0;
                 $newIspph21 = isset($row['is_pph21']) && $row['is_pph21'] ? 1 : 0;
                 $newIspph22 = isset($row['is_pph22']) && $row['is_pph22'] ? 1 : 0;
                 $newIspph23 = isset($row['is_pph23']) && $row['is_pph23'] ? 1 : 0;
-                $newIspph4  = isset($row['is_pph4'])  && $row['is_pph4']  ? 1 : 0;
+                $newIspph4 = isset($row['is_pph4']) && $row['is_pph4'] ? 1 : 0;
 
-                if (!isset($existingMap[$row['kode_rekening']])) {
+                if (! isset($existingMap[$row['kode_rekening']])) {
                     // Data baru: insert
                     $inserts[] = [
                         'kode_rekening' => $row['kode_rekening'],
                         'rincian_objek' => $row['rekening'] ?? '',
-                        'kategori'      => $kategori,
-                        'is_ppn'        => $newIsppn,
-                        'is_pph21'      => $newIspph21,
-                        'is_pph22'      => $newIspph22,
-                        'is_pph23'      => $newIspph23,
-                        'is_pph4'       => $newIspph4,
-                        'created_at'    => now(),
-                        'updated_at'    => now(),
+                        'kategori' => $kategori,
+                        'is_ppn' => $newIsppn,
+                        'is_pph21' => $newIspph21,
+                        'is_pph22' => $newIspph22,
+                        'is_pph23' => $newIspph23,
+                        'is_pph4' => $newIspph4,
+                        'created_at' => now(),
+                        'updated_at' => now(),
                     ];
                     $syncedCount++;
                 } else {
                     // Data sudah ada: cek apakah pajak atau kategori berbeda
                     $existing = $existingMap[$row['kode_rekening']];
                     $changed = (
-                        (int)$existing['is_ppn']   !== $newIsppn   ||
-                        (int)$existing['is_pph21'] !== $newIspph21 ||
-                        (int)$existing['is_pph22'] !== $newIspph22 ||
-                        (int)$existing['is_pph23'] !== $newIspph23 ||
-                        (int)$existing['is_pph4']  !== $newIspph4  ||
+                        (int) $existing['is_ppn'] !== $newIsppn ||
+                        (int) $existing['is_pph21'] !== $newIspph21 ||
+                        (int) $existing['is_pph22'] !== $newIspph22 ||
+                        (int) $existing['is_pph23'] !== $newIspph23 ||
+                        (int) $existing['is_pph4'] !== $newIspph4 ||
                         $existing['kategori'] !== $kategori
                     );
 
                     if ($changed) {
-                        \App\Models\RekeningBelanja::query()
+                        RekeningBelanja::query()
                             ->where('kode_rekening', $row['kode_rekening'])
                             ->update([
-                                'kategori'   => $kategori,
-                                'is_ppn'     => $newIsppn,
-                                'is_pph21'   => $newIspph21,
-                                'is_pph22'   => $newIspph22,
-                                'is_pph23'   => $newIspph23,
-                                'is_pph4'    => $newIspph4,
+                                'kategori' => $kategori,
+                                'is_ppn' => $newIsppn,
+                                'is_pph21' => $newIspph21,
+                                'is_pph22' => $newIspph22,
+                                'is_pph23' => $newIspph23,
+                                'is_pph4' => $newIspph4,
                                 'updated_at' => now(),
                             ]);
                         $updatedCount++;
@@ -380,7 +387,7 @@ class ReferensiKodeController extends Controller
 
             if (count($inserts) > 0) {
                 foreach (array_chunk($inserts, 500) as $chunk) {
-                    \App\Models\RekeningBelanja::insert($chunk);
+                    RekeningBelanja::insert($chunk);
                 }
             }
 
@@ -391,9 +398,9 @@ class ReferensiKodeController extends Controller
             $message .= '.';
 
             return response()->json([
-                'status'  => 'success',
+                'status' => 'success',
                 'message' => $message,
-                'synced'  => $syncedCount,
+                'synced' => $syncedCount,
                 'updated' => $updatedCount,
             ]);
         }

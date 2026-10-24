@@ -2,12 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Imports\KodeKegiatanImport;
 use App\Models\KodeKegiatan;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
-
 use Illuminate\Support\Facades\Storage;
-use App\Imports\KodeKegiatanImport;
+use Inertia\Inertia;
 use Maatwebsite\Excel\Facades\Excel;
 
 class KodeKegiatanController extends Controller
@@ -51,7 +50,7 @@ class KodeKegiatanController extends Controller
         $kodeKegiatan = KodeKegiatan::findOrFail($id);
 
         $request->validate([
-            'kode' => 'required|string|unique:kode_kegiatans,kode,' . $id,
+            'kode' => 'required|string|unique:kode_kegiatans,kode,'.$id,
             'program' => 'required|string',
             'sub_program' => 'required|string',
             'uraian' => 'required|string',
@@ -82,6 +81,7 @@ class KodeKegiatanController extends Controller
         if (Storage::disk('public')->exists($path)) {
             return Storage::disk('public')->download($path);
         }
+
         return redirect()->back()->with('error', 'File template tidak ditemukan.');
     }
 
@@ -91,24 +91,24 @@ class KodeKegiatanController extends Controller
     public function import(Request $request)
     {
         $request->validate([
-            'file' => 'required|mimes:xlsx,xls'
+            'file' => 'required|mimes:xlsx,xls',
         ]);
 
         $import = new KodeKegiatanImport;
         Excel::import($import, $request->file('file'));
-        
+
         $count = $import->getRowCount();
         $duplicates = $import->getDuplicates();
         $failures = $import->failures();
 
         $message = "Berhasil mengimport {$count} data.";
-        
+
         if (count($duplicates) > 0) {
-            $message .= " Ditemukan " . count($duplicates) . " data duplikat (dilewati).";
+            $message .= ' Ditemukan '.count($duplicates).' data duplikat (dilewati).';
         }
-        
+
         if ($failures->count() > 0) {
-             $message .= " Gagal mengimport " . $failures->count() . " baris karena validasi.";
+            $message .= ' Gagal mengimport '.$failures->count().' baris karena validasi.';
         }
 
         return redirect()->back()->with('success', $message);

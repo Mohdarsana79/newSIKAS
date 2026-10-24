@@ -7,9 +7,9 @@ use Carbon\Carbon;
 
 /**
  * Shared behavior for all Penganggaran model variants.
- * 
+ *
  * Used by: Penganggaran, KinerjaPenganggaran, SilpaPenganggaran, KinerjaSilpaPenganggaran
- * 
+ *
  * Each model using this trait MUST define:
  *   - protected $table (Eloquent table name)
  *   - abstract methods for variant-specific relationships:
@@ -118,6 +118,7 @@ trait HasPenganggaranBehavior
         if ($this->tanggal_cetak) {
             return $this->formatTanggalIndonesia($this->tanggal_cetak);
         }
+
         return 'Belum diisi';
     }
 
@@ -126,6 +127,7 @@ trait HasPenganggaranBehavior
         if ($this->tanggal_perubahan) {
             return $this->formatTanggalIndonesia($this->tanggal_perubahan);
         }
+
         return 'Belum diisi';
     }
 
@@ -149,7 +151,7 @@ trait HasPenganggaranBehavior
     {
         $months = [
             'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-            'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+            'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
         ];
 
         $monthsMap = array_flip($months);
@@ -170,15 +172,17 @@ trait HasPenganggaranBehavior
 
         foreach ($months as $index => $month) {
             // Special case for January if no penerimaan
-            if ($index === 0 && !$hasPenerimaan) {
+            if ($index === 0 && ! $hasPenerimaan) {
                 $status[$month] = 'disabled';
                 $previousMonthClosed = false;
+
                 continue;
             }
 
             // If previous month is not closed, this month is disabled
-            if ($index > 0 && !$previousMonthClosed) {
+            if ($index > 0 && ! $previousMonthClosed) {
                 $status[$month] = 'disabled';
+
                 continue;
             }
 
@@ -197,8 +201,9 @@ trait HasPenganggaranBehavior
                 // Check if any record has tax but not reported yet
                 $hasUnreportedTax = $monthRecords->contains(function ($record) {
                     $hasTax = ($record->total_pajak > 0) || ($record->total_pajak_daerah > 0);
-                    $isReported = !is_null($record->tanggal_lapor);
-                    return $hasTax && !$isReported;
+                    $isReported = ! is_null($record->tanggal_lapor);
+
+                    return $hasTax && ! $isReported;
                 });
 
                 if ($hasUnreportedTax) {
@@ -235,10 +240,11 @@ trait HasPenganggaranBehavior
             9 => 'September',
             10 => 'Oktober',
             11 => 'November',
-            12 => 'Desember'
+            12 => 'Desember',
         ];
 
         $date = Carbon::parse($date);
-        return $date->day . ' ' . $bulan[$date->month] . ' ' . $date->year;
+
+        return $date->day.' '.$bulan[$date->month].' '.$date->year;
     }
 }

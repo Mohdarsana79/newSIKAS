@@ -3,7 +3,7 @@ import DarkModeSwitcher from '@/Components/DarkModeSwitcher';
 import FullscreenSwitcher from '@/Components/FullscreenSwitcher';
 import NotificationDropdown from '@/Components/NotificationDropdown';
 import { usePage } from '@inertiajs/react';
-import { Sparkles } from 'lucide-react';
+import { MessageSquare } from 'lucide-react';
 import type { CopilotWindowState } from '@/Layouts/AuthenticatedLayout';
 
 interface NavbarProps {
@@ -66,7 +66,7 @@ export default function Navbar({
                         }`}
                         title={copilotState !== 'closed' ? 'Tutup SIKAS AI Copilot' : 'Buka SIKAS AI Copilot'}
                     >
-                        <Sparkles className={`w-4.5 h-4.5 ${copilotState !== 'closed' ? 'text-purple-100' : 'text-purple-600 dark:text-purple-400'}`} />
+                        <MessageSquare className={`w-4.5 h-4.5 ${copilotState !== 'closed' ? 'text-purple-100' : 'text-purple-600 dark:text-purple-400'}`} />
                         {copilotState !== 'closed' ? (
                             <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>

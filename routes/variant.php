@@ -15,7 +15,6 @@ use App\Http\Controllers\BukuKasPembantuTunaiController;
 use App\Http\Controllers\BukuKasUmumController;
 use App\Http\Controllers\BukuPajakController;
 use App\Http\Controllers\BukuRobController;
-use App\Http\Controllers\CalkReportController;
 use App\Http\Controllers\DatabaseController;
 use App\Http\Controllers\DokumenController;
 use App\Http\Controllers\IntegrasiController;
@@ -185,12 +184,6 @@ Route::get('/laporan', function () {
     ]);
 })->name('laporan.index');
 
-// CaLK & Narasi LPJ AI Routes
-Route::get('/laporan/calk/data', [CalkReportController::class, 'index'])->name('laporan.calk.data');
-Route::post('/laporan/calk/generate', [CalkReportController::class, 'generate'])->name('laporan.calk.generate');
-Route::post('/laporan/calk/save', [CalkReportController::class, 'save'])->name('laporan.calk.save');
-Route::get('/laporan/calk/export-pdf/{id}', [CalkReportController::class, 'exportPdf'])->name('laporan.calk.export-pdf');
-
 // Backup
 Route::prefix('backup')->name('backup.')->group(function () {
     Route::get('/', [DatabaseController::class, 'index'])->name('index');
@@ -236,6 +229,7 @@ Route::post('/api/bku/trk-saldo-awal/save', [BukuKasUmumController::class, 'stor
 Route::get('/api/bku/kegiatan-rekening', [BukuKasUmumController::class, 'getKegiatanRekening'])->name('api.bku.kegiatan-rekening');
 Route::get('/api/bku/search-toko', [BukuKasUmumController::class, 'searchToko'])->name('api.bku.search-toko');
 Route::get('/api/bku/search-penerima', [BukuKasUmumController::class, 'searchPenerima'])->name('api.bku.search-penerima');
+Route::post('/api/bku/ai-generate-uraian', [BukuKasUmumController::class, 'generateAiUraian'])->name('api.bku.ai-generate-uraian');
 
 // Notifications
 Route::get('/api/notifications/pajak', [NotificationController::class, 'getPajakNotifications'])->name('api.notifications.pajak');

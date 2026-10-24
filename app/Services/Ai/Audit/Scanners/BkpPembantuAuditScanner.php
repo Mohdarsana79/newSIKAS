@@ -5,7 +5,6 @@ namespace App\Services\Ai\Audit\Scanners;
 use App\Config\VariantConfig;
 use App\Models\User;
 use App\Services\Ai\Audit\BaseTabAuditScanner;
-use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class BkpPembantuAuditScanner extends BaseTabAuditScanner
@@ -38,6 +37,7 @@ class BkpPembantuAuditScanner extends BaseTabAuditScanner
             'Kepatuhan Batas Maksimal Pengeluaran Tunai vs Regulasi Non-Tunai (> Rp 10 Juta)',
             'Kronologi Penarikan Kas Tunai Mendahului Belanja Tunai',
             'Pencatatan Penyetoran Sisa Kas Tunai ke Rekening Bank',
+            'Pengawasan Sisa Fisik Kas Tunai di Brankas pada Akhir Periode',
         ];
 
         $findings = [];
@@ -69,11 +69,9 @@ class BkpPembantuAuditScanner extends BaseTabAuditScanner
         $totalSetor = (float) $setors->sum('jumlah_setor');
         $totalBelanjaTunai = (float) $bkuTunai->sum('dibelanjakan');
 
-        // Saldo Awal Kas Tunai Sebelum Bulan Tersebut
-        $saldoAwalTunai = (float) $this->bukuKasService->getSaldoKasFromPembantu(
+        // Saldo Awal Kas Tunai Sebelum Bulan Tersebut (Posisi per 1 bulan berjalan)
+        $saldoAwalTunai = (float) $this->bukuKasService->hitungSaldoTunaiSebelumBulan(
             $penganggaran->id,
-            $tahun,
-            Carbon::createFromDate($tahun, $startMonth, 1)->locale('id')->isoFormat('MMMM'),
             $startMonth
         );
 
@@ -150,7 +148,7 @@ class BkpPembantuAuditScanner extends BaseTabAuditScanner
             ];
         }
 
-        // Temuan 2: Saldo Tunai Brankas Terlalu Besar Saat Penutupan
+        // Temuan 2: Saldo Tunai Brankas Terlalu Besar Saat Penutupan ATAU Pengingat Sisa Kas Tunai Belum Direalisasikan
         $saldoAkhirTunai = max(0, $runningTunai);
         $batasMaksimalBrankas = 10000000.0; // Batas regulasi kas tunai brankas 10 juta
         if ($saldoAkhirTunai > $batasMaksimalBrankas) {
@@ -159,8 +157,23 @@ class BkpPembantuAuditScanner extends BaseTabAuditScanner
                 'category' => 'pengelolaan_kas',
                 'severity' => 'warning',
                 'title' => 'Sisa Uang Tunai di Brankas Melebihi Ambang Batas Wajar (Rp '.number_format($saldoAkhirTunai, 0, ',', '.').')',
-                'description' => 'Berdasarkan prinsip tertib kas dan regulasi juknis BOSP/Permendagri 12/2019, penyimpanan uang tunai dalam jumlah besar di brankas sekolah (> Rp 10.000.000) memiliki risiko keamanan tinggi dan berpotensi menjadi catatan pemeriksaan BPK.',
+                'description' => 'Berdasarkan prinsip kehati-hatian penatausahaan kas sekolah dan tata kelola dana BOSP (Permendikdasmen No. 8 Tahun 2026 jo. Permendagri 12/2019), penyimpanan uang tunai dalam jumlah besar di brankas sekolah (> Rp 10.000.000) memiliki risiko keamanan tinggi dan berpotensi menjadi catatan pemeriksaan BPK.',
                 'recommendation' => 'Segera setorkan sisa kas tunai kembali ke rekening bank sekolah (Setor Tunai) jika belum ada rencana pembelanjaan dalam waktu dekat.',
+                'amount' => $saldoAkhirTunai,
+            ];
+        } elseif ($saldoAkhirTunai > 0) {
+            $isAkhirTahun = in_array($periodeType, ['tahunan', 'tahap']) || ($periodeType === 'bulan' && (int) $periodeKey === 12);
+            $findings[] = [
+                'id' => 'TUNAI-SISA-KAS-BRANKAS',
+                'category' => 'pengelolaan_kas',
+                'severity' => 'info',
+                'title' => 'Terdapat Sisa Kas Tunai di Brankas yang Belum Direalisasikan (Rp '.number_format($saldoAkhirTunai, 0, ',', '.').')',
+                'description' => $isAkhirTahun
+                    ? "Pada penutupan buku periode {$range['label']}, masih terdapat saldo kas fisik di brankas sebesar Rp ".number_format($saldoAkhirTunai, 0, ',', '.').' yang belum direalisasikan. Sesuai Permendikdasmen No. 8 Tahun 2026 Pasal 54, sisa dana kas BOSP pada akhir tahun anggaran harus dipertanggungjawabkan dan dicatatkan sebagai SiLPA pada RKAS tahun anggaran berikutnya.'
+                    : "Pada akhir periode {$range['label']}, tercatat saldo kas fisik di brankas sebesar Rp ".number_format($saldoAkhirTunai, 0, ',', '.').' yang belum direalisasikan untuk belanja kegiatan. Pastikan sisa kas tunai ini aman dalam brankas atau segera direalisasikan sesuai rencana kegiatan belanja operasional.',
+                'recommendation' => $isAkhirTahun
+                    ? 'Lakukan penyetoran sisa kas tunai ke rekening bank sekolah sebelum tutup buku tahunan atau catatkan secara tertib dalam Berita Acara Pemeriksaan Kas dan pembukuan SiLPA tahun berikutnya.'
+                    : 'Gunakan sisa kas tunai sesuai perencanaan belanja RKAS yang telah ditetapkan atau setorkan kembali ke bank jika kegiatan belum akan dilaksanakan.',
                 'amount' => $saldoAkhirTunai,
             ];
         }
@@ -190,6 +203,7 @@ class BkpPembantuAuditScanner extends BaseTabAuditScanner
                 'total_setor_tunai' => $totalSetor,
                 'total_belanja_tunai' => $totalBelanjaTunai,
                 'saldo_akhir_tunai' => $saldoAkhirTunai,
+                'sisa_dana_tunai_belum_realisasi' => $saldoAkhirTunai,
                 'total_transaksi_tunai' => $bkuTunai->count(),
             ],
             'compliance_score' => $this->calculateComplianceScore($findings),
@@ -211,9 +225,10 @@ Anda adalah Auditor Finansial Senior BPK RI / Inspektorat Daerah spesialis Penga
 Sistem audit internal SIKAS telah selesai memverifikasi data transaksi kas tunai dan brankas secara deterministik, menetapkan skor kepatuhan matematis dan daftar temuan resmi.
 
 Tugas Anda sebagai Auditor Konsultan / Narrator:
-1. Susun "executive_summary" yang elegan, berbobot, berwibawa, dan objektif dalam bahasa birokrasi pengawasan keuangan daerah, menelaah kepatuhan bendahara terhadap batas simpan brankas, pencegahan saldo minus, serta efektivitas pengelolaan uang tunai.
+1. Susun "executive_summary" yang elegan, berbobot, berwibawa, dan objektif dalam bahasa birokrasi pengawasan keuangan daerah, menelaah kepatuhan bendahara terhadap batas simpan brankas, pencegahan saldo minus, keberadaan sisa kas tunai yang belum direalisasikan, serta efektivitas pengelolaan uang tunai.
 2. Perkaya narasi "description" (fakta kasus riil & risiko pemeriksaan) dan "recommendation" (langkah konkrit operasional untuk bendahara/kepala sekolah) untuk setiap temuan yang terdaftar pada "temuan_resmi_sistem".
-3. ATURAN PENYAJIAN (SANGAT KETAT):
+3. Jika terdapat temuan sisa kas tunai di brankas (TUNAI-SISA-KAS-BRANKAS), ingatkan pentingnya penyetoran kembali sisa kas tunai ke rekening bank menjelang akhir tahun anggaran atau pencatatan SiLPA sesuai Permendikdasmen Nomor 8 Tahun 2026.
+4. ATURAN PENYAJIAN (SANGAT KETAT):
    - DILARANG KERAS MENAMPILKAN ATAU MENYEBUT ID INTERNAL DATABASE (seperti 'ID 108', 'ID 238', dsb).
    - Selalu rujuk transaksi menggunakan: Tanggal Transaksi, Nomor Bukti, Uraian Belanja, dan Kode/Nama Rekening Belanja.
    - Jangan menambah temuan fiktif baru di luar "temuan_resmi_sistem".

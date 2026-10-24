@@ -26,8 +26,8 @@ abstract class BaseTabAuditScanner implements TabAuditScannerInterface
         $periodeType = strtolower(trim($periodeType));
         $periodeKey = strtolower(trim($periodeKey));
 
-        if ($periodeType === 'tahapan') {
-            if ($periodeKey === 'tahap_2' || $periodeKey === 'tahap 2') {
+        if ($periodeType === 'tahapan' || $periodeType === 'tahap' || str_contains($periodeKey, 'tahap')) {
+            if ($periodeKey === 'tahap_2' || $periodeKey === 'tahap 2' || $periodeKey === '2') {
                 return [
                     'start' => 7,
                     'end' => 12,
@@ -89,6 +89,104 @@ abstract class BaseTabAuditScanner implements TabAuditScannerInterface
     }
 
     /**
+     * Menyelesaikan pagu anggaran yang proporsional sesuai dengan periode pelaporan yang diaudit.
+     */
+    protected function resolvePaguAnggaran(
+        string $variant,
+        $penganggaran,
+        int $startMonth,
+        int $endMonth,
+        string $periodeType,
+        string $periodeKey
+    ): float {
+        $paguTahunan = (float) ($penganggaran->pagu_anggaran ?? ($penganggaran->total_anggaran ?? ($penganggaran->pendapatan ?? 0.0)));
+        $fk = VariantConfig::penganggaranFk($variant);
+
+        $rkasClass = VariantConfig::getModelClass('rkas', $variant);
+        $rkasPerubahanClass = VariantConfig::getModelClass('rkas_perubahan', $variant);
+
+        // 1. Jika tahunan penuh (12 bulan)
+        if ($periodeType === 'tahunan' || $periodeKey === 'tahunan' || ($startMonth === 1 && $endMonth === 12)) {
+            if ($paguTahunan > 0) {
+                return $paguTahunan;
+            }
+            try {
+                if ($rkasClass && class_exists($rkasClass)) {
+                    $hasPerubahan = $rkasPerubahanClass && class_exists($rkasPerubahanClass) && $rkasPerubahanClass::where($fk, $penganggaran->id)->exists();
+                    $targetClass = $hasPerubahan ? $rkasPerubahanClass : $rkasClass;
+
+                    return (float) $targetClass::where($fk, $penganggaran->id)->sum(DB::raw('harga_satuan * jumlah'));
+                }
+            } catch (\Throwable $e) {
+                // Abaikan jika tabel belum ada atau error database
+            }
+
+            return 0.0;
+        }
+
+        // 2. Tentukan model RKAS yang berlaku (Perubahan untuk semester 2 jika ada)
+        $hasPerubahan = false;
+        try {
+            $hasPerubahan = $rkasPerubahanClass && class_exists($rkasPerubahanClass) && $rkasPerubahanClass::where($fk, $penganggaran->id)->exists();
+        } catch (\Throwable $e) {
+            $hasPerubahan = false;
+        }
+
+        $targetRkasClass = ($hasPerubahan && ($endMonth > 6 || $periodeKey === 'tahap_2'))
+            ? $rkasPerubahanClass
+            : $rkasClass;
+
+        // Ambil nama-nama bulan yang masuk dalam rentang periode
+        $namaBulanList = [];
+        for ($m = $startMonth; $m <= $endMonth; $m++) {
+            $monthName = Carbon::create(2026, $m, 1)->locale('id')->isoFormat('MMMM');
+            $namaBulanList[] = ucfirst(strtolower($monthName));
+        }
+
+        // Coba hitung sum belanja dari rincian RKAS sesuai bulan-bulan periode
+        try {
+            if ($targetRkasClass && class_exists($targetRkasClass)) {
+                $paguDariRkas = (float) $targetRkasClass::where($fk, $penganggaran->id)
+                    ->whereIn(DB::raw('TRIM(bulan)'), $namaBulanList)
+                    ->sum(DB::raw('harga_satuan * jumlah'));
+
+                if ($paguDariRkas > 0) {
+                    return $paguDariRkas;
+                }
+            }
+        } catch (\Throwable $e) {
+            // Abaikan jika tabel tidak ada
+        }
+
+        // 3. Jika RKAS tidak memiliki rincian bulan, gunakan penerimaan dana pada tahap/bulan tersebut jika ada
+        try {
+            $penerimaanClass = VariantConfig::getModelClass('penerimaan_dana', $variant);
+            if ($penerimaanClass && class_exists($penerimaanClass)) {
+                $tahun = (int) ($penganggaran->tahun_anggaran ?? date('Y'));
+                $penerimaanPeriode = (float) $penerimaanClass::where($fk, $penganggaran->id)
+                    ->whereYear('tanggal_terima', $tahun)
+                    ->whereBetween(DB::raw('EXTRACT(MONTH FROM tanggal_terima)'), [$startMonth, $endMonth])
+                    ->sum('jumlah_dana');
+
+                if ($penerimaanPeriode > 0) {
+                    return $penerimaanPeriode;
+                }
+            }
+        } catch (\Throwable $e) {
+            // Abaikan jika tabel tidak ada
+        }
+
+        // 4. Fallback proporsional berdasarkan jumlah bulan terhadap pagu tahunan
+        if ($paguTahunan > 0) {
+            $jumlahBulan = max(1, ($endMonth - $startMonth + 1));
+
+            return round(($paguTahunan / 12) * $jumlahBulan, 2);
+        }
+
+        return 0.0;
+    }
+
+    /**
      * Menghitung skor kepatuhan secara deterministik berbasis temuan sesuai standar audit BPK RI.
      */
     public function calculateComplianceScore(array $findings): int
@@ -136,7 +234,7 @@ abstract class BaseTabAuditScanner implements TabAuditScannerInterface
                 ];
             }
 
-            $nomorNota = ($t->nomor_nota ?? ($t->no_bukti ?? null)) ?: (! empty($t->id_transaksi) ? 'TRX-'.$t->id_transaksi : '-');
+            $nomorNota = ($t->nomor_nota ?? ($t->no_bukti ?? null)) ?: (! empty($t->id_transaksi) ? (string) $t->id_transaksi : '-');
             $rekeningBelanja = isset($t->rekeningBelanja) ? $t->rekeningBelanja : null;
             $kodeKegiatan = isset($t->kodeKegiatan) ? $t->kodeKegiatan : null;
 
@@ -147,11 +245,15 @@ abstract class BaseTabAuditScanner implements TabAuditScannerInterface
             $rekanan = ($t->nama_toko ?? ($t->nama_penerima_pembayaran ?? null)) ?: '-';
             $pajakTotal = (float) ($t->total_pajak ?? 0) + (float) ($t->total_pajak_daerah ?? 0);
 
+            $uraianTeks = ! empty(trim($t->uraian_opsional ?? ''))
+                ? trim($t->uraian_opsional)
+                : ((! empty(trim($t->uraian ?? ''))) ? trim($t->uraian) : 'Transaksi Pembukuan');
+
             return [
                 'tanggal' => $tgl,
                 'nomor_bukti' => $nomorNota,
                 'jenis' => $t->jenis_transaksi ?? 'transaksi',
-                'uraian' => ($t->uraian ?? null) ?: 'Transaksi Pembukuan',
+                'uraian' => $uraianTeks,
                 'nominal' => (float) ($t->dibelanjakan ?? ($t->nominal_transaksi ?? ($t->pengeluaran ?? 0))),
                 'kode_rekening' => $kodeRek,
                 'nama_rekening' => $namaRek,

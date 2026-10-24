@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 trait HasPenerimaanDanaBehavior
 {
     abstract protected function penganggaranModelClass(): string;
+
     abstract protected function penganggaranForeignKey(): string;
 
     public function initializeHasPenerimaanDanaBehavior(): void
@@ -20,14 +21,14 @@ trait HasPenerimaanDanaBehavior
             'tanggal_terima',
             'jumlah_dana',
             'saldo_awal',
-            'tanggal_saldo_awal'
+            'tanggal_saldo_awal',
         ]));
 
         $this->casts = array_merge($this->casts ?? [], [
             'tanggal_terima' => 'date',
             'jumlah_dana' => 'decimal:2',
             'saldo_awal' => 'decimal:2',
-            'tanggal_saldo_awal' => 'date'
+            'tanggal_saldo_awal' => 'date',
         ]);
     }
 

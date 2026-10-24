@@ -47,12 +47,28 @@ class KinerjaSilpaKwitansi extends Model
     }
 
     // Standardized Aliases for Variant Support
-    public function penganggaran() { return $this->silpaPenganggaran(); }
-    public function penerimaanDana() { return $this->silpaPenerimaanDana(); }
-    public function bukuKasUmum() { return $this->silpaBukuKasUmum(); }
-    public function bkuUraianDetail() { return $this->silpaUraianDetail(); }
+    public function penganggaran()
+    {
+        return $this->silpaPenganggaran();
+    }
 
+    public function penerimaanDana()
+    {
+        return $this->silpaPenerimaanDana();
+    }
 
-    public function uraianDetail() { return $this->silpaUraianDetail(); }
+    public function bukuKasUmum()
+    {
+        return $this->silpaBukuKasUmum();
+    }
+
+    public function bkuUraianDetail()
+    {
+        return $this->silpaUraianDetail();
+    }
+
+    public function uraianDetail()
+    {
+        return $this->silpaUraianDetail();
+    }
 }
-

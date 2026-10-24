@@ -2,12 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Imports\RekeningBelanjaImport;
 use App\Models\RekeningBelanja;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
-
 use Illuminate\Support\Facades\Storage;
-use App\Imports\RekeningBelanjaImport;
+use Inertia\Inertia;
 use Maatwebsite\Excel\Facades\Excel;
 
 class RekeningBelanjaController extends Controller
@@ -45,6 +44,7 @@ class RekeningBelanjaController extends Controller
 
         return redirect()->back()->with('success', 'Rekening Belanja berhasil ditambahkan.');
     }
+
     /**
      * Update the specified resource in storage.
      */
@@ -53,7 +53,7 @@ class RekeningBelanjaController extends Controller
         $rekeningBelanja = RekeningBelanja::findOrFail($id);
 
         $request->validate([
-            'kode_rekening' => 'required|string|unique:rekening_belanjas,kode_rekening,' . $id,
+            'kode_rekening' => 'required|string|unique:rekening_belanjas,kode_rekening,'.$id,
             'rincian_objek' => 'required|string',
             'kategori' => 'required|string',
             'is_ppn' => 'boolean',
@@ -86,8 +86,9 @@ class RekeningBelanjaController extends Controller
     {
         $path = 'templates/template_rekening_belanja.xlsx';
         if (Storage::disk('public')->exists($path)) {
-            return response()->download(storage_path('app/public/' . $path));
+            return response()->download(storage_path('app/public/'.$path));
         }
+
         return redirect()->back()->with('error', 'File template tidak ditemukan.');
     }
 
@@ -97,24 +98,24 @@ class RekeningBelanjaController extends Controller
     public function import(Request $request)
     {
         $request->validate([
-            'file' => 'required|mimes:xlsx,xls'
+            'file' => 'required|mimes:xlsx,xls',
         ]);
 
         $import = new RekeningBelanjaImport;
         Excel::import($import, $request->file('file'));
-        
+
         $count = $import->getRowCount();
         $duplicates = $import->getDuplicates();
         $failures = $import->failures();
 
         $message = "Berhasil mengimport {$count} data.";
-        
+
         if (count($duplicates) > 0) {
-            $message .= " Ditemukan " . count($duplicates) . " data duplikat (dilewati).";
+            $message .= ' Ditemukan '.count($duplicates).' data duplikat (dilewati).';
         }
-        
+
         if ($failures->count() > 0) {
-             $message .= " Gagal mengimport " . $failures->count() . " baris karena validasi.";
+            $message .= ' Gagal mengimport '.$failures->count().' baris karena validasi.';
         }
 
         return redirect()->back()->with('success', $message);

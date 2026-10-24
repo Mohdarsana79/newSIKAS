@@ -2,27 +2,22 @@
 
 namespace App\Imports;
 
-use Illuminate\Support\Collection;
-use Maatwebsite\Excel\Concerns\ToCollection;
 use App\Models\RekeningBelanja;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
+use Maatwebsite\Excel\Concerns\SkipsFailures;
+use Maatwebsite\Excel\Concerns\SkipsOnFailure;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithStartRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
-use Maatwebsite\Excel\Concerns\SkipsOnFailure;
-use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
-use Illuminate\Validation\Rule;
 
-class RekeningBelanjaImport implements
-    ToModel,
-    WithStartRow,
-    WithValidation,
-    SkipsOnFailure,
-    SkipsEmptyRows
+class RekeningBelanjaImport implements SkipsEmptyRows, SkipsOnFailure, ToModel, WithStartRow, WithValidation
 {
-    use \Maatwebsite\Excel\Concerns\SkipsFailures;
+    use SkipsFailures;
 
     private int $rowCount = 0;
+
     private array $duplicates = [];
 
     public function startRow(): int
@@ -41,8 +36,9 @@ class RekeningBelanjaImport implements
         $rincianObjek = Str::trim($row[1]);
         $kategori = Str::trim($row[2]);
 
-        $parseTax = function($val) {
+        $parseTax = function ($val) {
             $val = strtoupper(trim(strval($val ?? '')));
+
             return in_array($val, ['TRUE', '1', 'YA', 'Y']);
         };
 
@@ -60,6 +56,7 @@ class RekeningBelanjaImport implements
                 'rincian_objek' => $rincianObjek,
                 'kategori' => $kategori,
             ];
+
             return null;
         }
 

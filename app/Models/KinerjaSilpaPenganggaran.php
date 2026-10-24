@@ -12,10 +12,33 @@ class KinerjaSilpaPenganggaran extends Model
 
     protected $table = 'kinerja_silpa_penganggarans';
 
-    protected function rkasModelClass(): string { return KinerjaSilpaRkas::class; }
-    protected function rkasForeignKey(): string { return 'kinerja_silpa_penganggaran_id'; }
-    protected function penerimaanDanaModelClass(): string { return KinerjaSilpaPenerimaanDana::class; }
-    protected function penerimaanDanaForeignKey(): string { return 'kinerja_silpa_penganggaran_id'; }
-    protected function bukuKasUmumModelClass(): string { return KinerjaSilpaBukuKasUmum::class; }
-    protected function bukuKasUmumForeignKey(): string { return 'kinerja_silpa_penganggaran_id'; }
+    protected function rkasModelClass(): string
+    {
+        return KinerjaSilpaRkas::class;
+    }
+
+    protected function rkasForeignKey(): string
+    {
+        return 'kinerja_silpa_penganggaran_id';
+    }
+
+    protected function penerimaanDanaModelClass(): string
+    {
+        return KinerjaSilpaPenerimaanDana::class;
+    }
+
+    protected function penerimaanDanaForeignKey(): string
+    {
+        return 'kinerja_silpa_penganggaran_id';
+    }
+
+    protected function bukuKasUmumModelClass(): string
+    {
+        return KinerjaSilpaBukuKasUmum::class;
+    }
+
+    protected function bukuKasUmumForeignKey(): string
+    {
+        return 'kinerja_silpa_penganggaran_id';
+    }
 }

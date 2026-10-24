@@ -49,8 +49,18 @@ class KinerjaSilpaTandaTerima extends Model
     }
 
     // Standardized Aliases for Variant Support
-    public function penganggaran() { return $this->silpaPenganggaran(); }
-    public function penerimaanDana() { return $this->silpaPenerimaanDana(); }
-    public function bukuKasUmum() { return $this->silpaBukuKasUmum(); }
-}
+    public function penganggaran()
+    {
+        return $this->silpaPenganggaran();
+    }
 
+    public function penerimaanDana()
+    {
+        return $this->silpaPenerimaanDana();
+    }
+
+    public function bukuKasUmum()
+    {
+        return $this->silpaBukuKasUmum();
+    }
+}

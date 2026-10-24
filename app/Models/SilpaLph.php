@@ -34,13 +34,13 @@ class SilpaLph extends Model
         return $this->belongsTo(SekolahProfile::class, 'sekolah_id');
     }
 
-
     public function silpaPenganggaran()
     {
         return $this->belongsTo(SilpaPenganggaran::class);
     }
 
-
-    public function penganggaran() { return $this->silpaPenganggaran(); }
+    public function penganggaran()
+    {
+        return $this->silpaPenganggaran();
+    }
 }
-

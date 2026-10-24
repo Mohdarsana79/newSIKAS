@@ -8,11 +8,10 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
-use Illuminate\Support\Facades\Log;
 
 class OtpPasswordResetController extends Controller
 {
@@ -23,7 +22,7 @@ class OtpPasswordResetController extends Controller
 
     public function sendOtp(Request $request)
     {
-        Log::info('sendOtp called for email: ' . $request->email);
+        Log::info('sendOtp called for email: '.$request->email);
         $request->validate([
             'email' => 'required|email|exists:users,email',
         ], [
@@ -42,11 +41,13 @@ class OtpPasswordResetController extends Controller
 
         try {
             Mail::to($request->email)->send(new OtpMail($otp));
+
             return response()->json(['message' => 'Kode OTP telah dikirim ke email Anda.']);
         } catch (\Exception $e) {
             report($e);
+
             return response()->json([
-                'message' => 'Gagal mengirim OTP. Pastikan koneksi internet stabil dan port SMTP tidak diblokir.'
+                'message' => 'Gagal mengirim OTP. Pastikan koneksi internet stabil dan port SMTP tidak diblokir.',
             ], 422);
         }
     }
@@ -63,7 +64,7 @@ class OtpPasswordResetController extends Controller
             ->where('token', $request->otp)
             ->first();
 
-        if (!$record) {
+        if (! $record) {
             return response()->json(['message' => 'Kode OTP salah.'], 422);
         }
 
@@ -89,7 +90,7 @@ class OtpPasswordResetController extends Controller
             ->where('token', $request->otp)
             ->first();
 
-        if (!$record || now()->diffInMinutes($record->created_at) > 15) {
+        if (! $record || now()->diffInMinutes($record->created_at) > 15) {
             return response()->json(['message' => 'Sesi tidak valid atau telah kedaluwarsa.'], 422);
         }
 

@@ -12,8 +12,23 @@ class KinerjaSilpaRkas extends Model
 
     protected $table = 'kinerja_silpa_rkas';
 
-    protected function penganggaranModelClass(): string { return KinerjaSilpaPenganggaran::class; }
-    public function penganggaranForeignKey(): string { return 'kinerja_silpa_penganggaran_id'; }
-    protected function bkuUraianDetailModelClass(): string { return KinerjaSilpaBukuKasUmumUraianDetail::class; }
-    public function rkasForeignKey(): string { return 'kinerja_silpa_rkas_id'; }
+    protected function penganggaranModelClass(): string
+    {
+        return KinerjaSilpaPenganggaran::class;
+    }
+
+    public function penganggaranForeignKey(): string
+    {
+        return 'kinerja_silpa_penganggaran_id';
+    }
+
+    protected function bkuUraianDetailModelClass(): string
+    {
+        return KinerjaSilpaBukuKasUmumUraianDetail::class;
+    }
+
+    public function rkasForeignKey(): string
+    {
+        return 'kinerja_silpa_rkas_id';
+    }
 }

@@ -10,7 +10,7 @@ class BukuKasUmumUraianDetail extends Model
     use HasFactory;
 
     protected $guarded = ['id'];
-    
+
     public function bukuKasUmum()
     {
         return $this->belongsTo(BukuKasUmum::class);

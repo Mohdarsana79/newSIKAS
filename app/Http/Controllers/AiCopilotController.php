@@ -12,7 +12,9 @@ use Illuminate\Support\Facades\Log;
 class AiCopilotController extends Controller
 {
     protected string $variant;
+
     protected CopilotService $copilotService;
+
     protected BukuKasService $bukuKasService;
 
     public function __construct(CopilotService $copilotService, BukuKasService $bukuKasService)
@@ -22,6 +24,7 @@ class AiCopilotController extends Controller
 
         $this->middleware(function ($request, $next) {
             $this->variant = app()->bound('variant') ? app('variant') : 'reguler';
+
             return $next($request);
         });
     }
@@ -37,7 +40,7 @@ class AiCopilotController extends Controller
         ]);
 
         $user = Auth::user();
-        if (!$user) {
+        if (! $user) {
             return response()->json([
                 'success' => false,
                 'message' => 'Sesi pengguna tidak valid.',
@@ -54,10 +57,11 @@ class AiCopilotController extends Controller
 
             return response()->json($result, $statusCode);
         } catch (\Throwable $e) {
-            Log::error('AiCopilotController chat exception: ' . $e->getMessage());
+            Log::error('AiCopilotController chat exception: '.$e->getMessage());
+
             return response()->json([
                 'success' => false,
-                'message' => 'Terjadi kesalahan pada AI Copilot: ' . $e->getMessage(),
+                'message' => 'Terjadi kesalahan pada AI Copilot: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -92,7 +96,7 @@ class AiCopilotController extends Controller
         $penganggaranClass = VariantConfig::getModelClass('penganggaran', $this->variant);
         $penganggaran = $penganggaranClass::where('tahun_anggaran', $tahun)->first();
 
-        if (!$penganggaran) {
+        if (! $penganggaran) {
             return response()->json([
                 'success' => false,
                 'has_api_key' => $user?->hasDeepSeekKey() ?? false,

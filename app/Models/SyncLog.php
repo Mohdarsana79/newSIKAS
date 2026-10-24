@@ -11,7 +11,7 @@ class SyncLog extends Model
         'tahun',
         'status',
         'message',
-        'payload'
+        'payload',
     ];
 
     protected $casts = [

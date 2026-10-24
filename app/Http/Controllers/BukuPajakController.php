@@ -2,23 +2,27 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\BukuKasUmum;
-use App\Models\Penganggaran;
-use App\Models\Sekolah; 
-use App\Models\SekolahProfile; // Assuming SekolahProfile is the correct model from previous context
+use App\Config\VariantConfig;
+use App\Exports\BkpPajakExport;
+use App\Models\Penganggaran; // Assuming SekolahProfile is the correct model from previous context
+use App\Models\Sekolah;
+use App\Models\SekolahProfile;
+use App\Services\BukuKasService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use App\Config\VariantConfig;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
+use Inertia\Inertia;
 use Maatwebsite\Excel\Facades\Excel;
-use App\Exports\BkpPajakExport;
 
 class BukuPajakController extends Controller
 {
     protected string $variant;
+
     protected string $Penganggaran;
+
     protected string $BukuKasUmum;
 
     public function __construct()
@@ -31,6 +35,7 @@ class BukuPajakController extends Controller
             return $next($request);
         });
     }
+
     /**
      * Get data pajak untuk transaksi tertentu
      */
@@ -50,7 +55,7 @@ class BukuPajakController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal mengambil data pajak: ' . $e->getMessage(),
+                'message' => 'Gagal mengambil data pajak: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -92,7 +97,7 @@ class BukuPajakController extends Controller
                 'message' => 'Data pajak berhasil disimpan',
                 'data' => $bku,
             ]);
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             DB::rollBack();
 
             return response()->json([
@@ -102,11 +107,11 @@ class BukuPajakController extends Controller
             ], 422);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error menyimpan lapor pajak: ' . $e->getMessage());
+            Log::error('Error menyimpan lapor pajak: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal menyimpan data pajak: ' . $e->getMessage(),
+                'message' => 'Gagal menyimpan data pajak: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -123,7 +128,7 @@ class BukuPajakController extends Controller
                 ->with('sekolah') // Eager load sekolah
                 ->first();
 
-            if (!$penganggaran) {
+            if (! $penganggaran) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Data penganggaran tidak ditemukan',
@@ -150,8 +155,8 @@ class BukuPajakController extends Controller
                 ->where('is_bunga_record', true)
                 ->first();
 
-            $tanggalTutup = ($bungaRecord && $bungaRecord->tanggal_tutup) 
-                ? Carbon::parse($bungaRecord->tanggal_tutup) 
+            $tanggalTutup = ($bungaRecord && $bungaRecord->tanggal_tutup)
+                ? Carbon::parse($bungaRecord->tanggal_tutup)
                 : Carbon::create($tahun, $bulanAngka, 1)->endOfMonth();
 
             return response()->json([
@@ -167,7 +172,7 @@ class BukuPajakController extends Controller
                         'pph21' => $totalPph21,
                         'pph22' => $totalPph22,
                         'pph23' => $totalPph23,
-                        'pb1' => $totalPb1
+                        'pb1' => $totalPb1,
                     ],
                     'sekolah' => $penganggaran->sekolah,
                     'kepala_sekolah' => $penganggaran->kepala_sekolah,
@@ -178,11 +183,11 @@ class BukuPajakController extends Controller
                 ],
             ]);
         } catch (\Exception $e) {
-            Log::error('Error get BKP Pajak data: ' . $e->getMessage());
+            Log::error('Error get BKP Pajak data: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal memuat data BKP Pajak: ' . $e->getMessage(),
+                'message' => 'Gagal memuat data BKP Pajak: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -217,27 +222,27 @@ class BukuPajakController extends Controller
             } elseif ($bulan === 'Tahunan') {
                 $monthsToProcess = [
                     'januari', 'februari', 'maret', 'april', 'mei', 'juni',
-                    'juli', 'agustus', 'september', 'oktober', 'november', 'desember'
+                    'juli', 'agustus', 'september', 'oktober', 'november', 'desember',
                 ];
             }
 
             $reportData = [];
 
             $penganggaran = ($this->Penganggaran)::where('tahun_anggaran', $tahun)->with('sekolah')->first();
-            if (!$penganggaran) {
+            if (! $penganggaran) {
                 return response('Data penganggaran tidak ditemukan', 404);
             }
-            
+
             // Ambil data sekolah (Global Profile) logic fallback
-            $sekolahProfile = SekolahProfile::first(); 
+            $sekolahProfile = SekolahProfile::first();
             // Prefer penganggaran->sekolah which is related to the budget year context usually
 
-             foreach ($monthsToProcess as $m) {
+            foreach ($monthsToProcess as $m) {
                 $bulanAngka = $this->convertBulanToNumber($m);
-                
+
                 // --- CORE LOGIC START (Derived from getBkpPajakData) ---
                 $dataPajak = $this->siapkanDataRowsBkpPajak($penganggaran, $bulanAngka, $tahun);
-                
+
                 $pajakRows = [];
                 $pajakRows[] = [
                     'is_saldo_awal' => true,
@@ -247,14 +252,14 @@ class BukuPajakController extends Controller
                     'no_kode' => '-',
                     'no_buku' => '-',
                     'ppn' => 0, 'pph21' => 0, 'pph22' => 0, 'pph23' => 0, 'pb1' => 0,
-                    'jumlah' => 0, 'pengeluaran' => 0
+                    'jumlah' => 0, 'pengeluaran' => 0,
                 ];
-                
+
                 // Append generated rows
                 foreach ($dataPajak['pajakRows'] as $row) {
                     $pajakRows[] = $row;
                 }
-                
+
                 $totalPenerimaan = $dataPajak['totalPenerimaan'];
                 $totalPengeluaran = $dataPajak['totalPengeluaran'];
                 $currentSaldo = $dataPajak['currentSaldo'];
@@ -272,8 +277,8 @@ class BukuPajakController extends Controller
                     ->where('is_bunga_record', true)
                     ->first();
 
-                $tanggalTutup = ($bungaRecord && $bungaRecord->tanggal_tutup) 
-                    ? Carbon::parse($bungaRecord->tanggal_tutup) 
+                $tanggalTutup = ($bungaRecord && $bungaRecord->tanggal_tutup)
+                    ? Carbon::parse($bungaRecord->tanggal_tutup)
                     : Carbon::create($tahun, $bulanAngka, 1)->endOfMonth();
 
                 $reportData[] = [
@@ -290,8 +295,8 @@ class BukuPajakController extends Controller
                             'pph21' => $totalPph21,
                             'pph22' => $totalPph22,
                             'pph23' => $totalPph23,
-                            'pb1' => $totalPb1
-                        ]
+                            'pb1' => $totalPb1,
+                        ],
                     ],
                     'kepala_sekolah' => [
                         'nama' => $penganggaran->kepala_sekolah ?? $penganggaran->sekolah->nama_kepala_sekolah,
@@ -303,20 +308,20 @@ class BukuPajakController extends Controller
                     ],
                     'formatAkhirBulanLengkapHari' => $tanggalTutup->locale('id')->translatedFormat('d F Y'),
                 ];
-             }
+            }
 
             $pdf = Pdf::loadView('laporan.bkp_pajak_pdf', [
                 'reportData' => $reportData,
                 'paperSize' => $paperSize,
                 'orientation' => $orientation,
-                'fontSize' => $fontSize
+                'fontSize' => $fontSize,
             ]);
             $pdf->setPaper($paperSize, $orientation);
 
             return $pdf->stream("BKP_Pajak_{$bulan}_{$tahun}.pdf");
 
         } catch (\Exception $e) {
-             return response()->json(['error' => $e->getMessage()], 500);
+            return response()->json(['error' => $e->getMessage()], 500);
         }
     }
 
@@ -340,23 +345,23 @@ class BukuPajakController extends Controller
             } elseif ($bulan === 'Tahunan') {
                 $monthsToProcess = [
                     'januari', 'februari', 'maret', 'april', 'mei', 'juni',
-                    'juli', 'agustus', 'september', 'oktober', 'november', 'desember'
+                    'juli', 'agustus', 'september', 'oktober', 'november', 'desember',
                 ];
             }
 
             $reportData = [];
 
             $penganggaran = ($this->Penganggaran)::where('tahun_anggaran', $tahun)->with('sekolah')->first();
-            if (!$penganggaran) {
+            if (! $penganggaran) {
                 return response('Data penganggaran tidak ditemukan', 404);
             }
-            
-             foreach ($monthsToProcess as $m) {
+
+            foreach ($monthsToProcess as $m) {
                 $bulanAngka = $this->convertBulanToNumber($m);
-                
+
                 // --- CORE LOGIC START (Derived from getBkpPajakData) ---
                 $dataPajak = $this->siapkanDataRowsBkpPajak($penganggaran, $bulanAngka, $tahun);
-                
+
                 $pajakRows = [];
                 $pajakRows[] = [
                     'is_saldo_awal' => true,
@@ -366,14 +371,14 @@ class BukuPajakController extends Controller
                     'no_kode' => '-',
                     'no_buku' => '-',
                     'ppn' => 0, 'pph21' => 0, 'pph22' => 0, 'pph23' => 0, 'pb1' => 0,
-                    'jumlah' => 0, 'pengeluaran' => 0
+                    'jumlah' => 0, 'pengeluaran' => 0,
                 ];
-                
+
                 // Append generated rows
                 foreach ($dataPajak['pajakRows'] as $row) {
                     $pajakRows[] = $row;
                 }
-                
+
                 $totalPenerimaan = $dataPajak['totalPenerimaan'];
                 $totalPengeluaran = $dataPajak['totalPengeluaran'];
                 $currentSaldo = $dataPajak['currentSaldo'];
@@ -390,8 +395,8 @@ class BukuPajakController extends Controller
                     ->where('is_bunga_record', true)
                     ->first();
 
-                $tanggalTutup = ($bungaRecord && $bungaRecord->tanggal_tutup) 
-                    ? Carbon::parse($bungaRecord->tanggal_tutup) 
+                $tanggalTutup = ($bungaRecord && $bungaRecord->tanggal_tutup)
+                    ? Carbon::parse($bungaRecord->tanggal_tutup)
                     : Carbon::create($tahun, $bulanAngka, 1)->endOfMonth();
 
                 $reportData[] = [
@@ -408,8 +413,8 @@ class BukuPajakController extends Controller
                             'pph21' => $totalPph21,
                             'pph22' => $totalPph22,
                             'pph23' => $totalPph23,
-                            'pb1' => $totalPb1
-                        ]
+                            'pb1' => $totalPb1,
+                        ],
                     ],
                     'kepala_sekolah' => [
                         'nama' => $penganggaran->kepala_sekolah ?? $penganggaran->sekolah->nama_kepala_sekolah,
@@ -421,13 +426,14 @@ class BukuPajakController extends Controller
                     ],
                     'formatAkhirBulanLengkapHari' => $tanggalTutup->locale('id')->translatedFormat('d F Y'),
                 ];
-             }
+            }
 
             return Excel::download(new BkpPajakExport($reportData), "BKP_Pajak_{$bulan}_{$tahun}.xlsx");
 
         } catch (\Exception $e) {
-             Log::error('Error generating BKP Pajak Excel: ' . $e->getMessage());
-             return response()->json(['error' => $e->getMessage()], 500);
+            Log::error('Error generating BKP Pajak Excel: '.$e->getMessage());
+
+            return response()->json(['error' => $e->getMessage()], 500);
         }
     }
 
@@ -475,6 +481,7 @@ class BukuPajakController extends Controller
     private function getTanggalAkhirBulan($tahun, $bulan)
     {
         $bulanAngka = $this->convertBulanToNumber($bulan);
+
         return Carbon::create($tahun, $bulanAngka, 1)->endOfMonth();
     }
 
@@ -506,8 +513,12 @@ class BukuPajakController extends Controller
             ->get();
 
         $pajakRows = [];
-        $totalPpn = 0; $totalPph21 = 0; $totalPph22 = 0; $totalPph23 = 0; $totalPb1 = 0;
-        
+        $totalPpn = 0;
+        $totalPph21 = 0;
+        $totalPph22 = 0;
+        $totalPph23 = 0;
+        $totalPb1 = 0;
+
         // --- LOOP 1: TERIMA PAJAK ---
         foreach ($bkuPajakDiterima as $transaksi) {
             $pajakName = strtolower($transaksi->pajak ?? '');
@@ -516,24 +527,36 @@ class BukuPajakController extends Controller
             $hasPajakDaerah = $transaksi->total_pajak_daerah > 0;
 
             if ($hasPajakPusat) {
-                $ppn=0; $pph21=0; $pph22=0; $pph23=0;
+                $ppn = 0;
+                $pph21 = 0;
+                $pph22 = 0;
+                $pph23 = 0;
                 if (strpos($pajakName, 'pph21') !== false || strpos($pajakName, 'pph 21') !== false) {
-                    $pph21 = $transaksi->total_pajak; $totalPph21 += $pph21;
+                    $pph21 = $transaksi->total_pajak;
+                    $totalPph21 += $pph21;
                 } elseif (strpos($pajakName, 'pph22') !== false || strpos($pajakName, 'pph 22') !== false) {
-                    $pph22 = $transaksi->total_pajak; $totalPph22 += $pph22;
+                    $pph22 = $transaksi->total_pajak;
+                    $totalPph22 += $pph22;
                 } elseif (strpos($pajakName, 'pph23') !== false || strpos($pajakName, 'pph 23') !== false) {
-                    $pph23 = $transaksi->total_pajak; $totalPph23 += $pph23;
+                    $pph23 = $transaksi->total_pajak;
+                    $totalPph23 += $pph23;
                 } else {
-                    $ppn = $transaksi->total_pajak; $totalPpn += $ppn;
+                    $ppn = $transaksi->total_pajak;
+                    $totalPpn += $ppn;
                 }
 
                 $jumlah = $ppn + $pph21 + $pph22 + $pph23;
                 $uraianPusat = '';
-                $pctPusat = $transaksi->persen_pajak ? (float)$transaksi->persen_pajak : '';
-                if ($pph21 > 0) $uraianPusat = 'Terima Pajak PPh 21 ' . $pctPusat . '% ' . $baseUraian;
-                elseif ($pph22 > 0) $uraianPusat = 'Terima Pajak PPh 22 ' . $pctPusat . '% ' . $baseUraian;
-                elseif ($pph23 > 0) $uraianPusat = 'Terima Pajak PPh 23 ' . $pctPusat . '% ' . $baseUraian;
-                else $uraianPusat = 'Terima Pajak ' . ($transaksi->pajak ?? '') . ' ' . $pctPusat . '% ' . $baseUraian;
+                $pctPusat = $transaksi->persen_pajak ? (float) $transaksi->persen_pajak : '';
+                if ($pph21 > 0) {
+                    $uraianPusat = 'Terima Pajak PPh 21 '.$pctPusat.'% '.$baseUraian;
+                } elseif ($pph22 > 0) {
+                    $uraianPusat = 'Terima Pajak PPh 22 '.$pctPusat.'% '.$baseUraian;
+                } elseif ($pph23 > 0) {
+                    $uraianPusat = 'Terima Pajak PPh 23 '.$pctPusat.'% '.$baseUraian;
+                } else {
+                    $uraianPusat = 'Terima Pajak '.($transaksi->pajak ?? '').' '.$pctPusat.'% '.$baseUraian;
+                }
 
                 $pajakRows[] = [
                     'transaksi' => $transaksi,
@@ -544,15 +567,15 @@ class BukuPajakController extends Controller
                     'ppn' => $ppn, 'pph21' => $pph21, 'pph22' => $pph22, 'pph23' => $pph23, 'pb1' => 0,
                     'jumlah' => $jumlah, // Penerimaan
                     'pengeluaran' => 0,
-                    'is_penerimaan' => true
+                    'is_penerimaan' => true,
                 ];
             }
 
             if ($hasPajakDaerah) {
                 $pb1 = $transaksi->total_pajak_daerah;
                 $totalPb1 += $pb1;
-                $pctDaerah = $transaksi->persen_pajak_daerah ? (float)$transaksi->persen_pajak_daerah : '';
-                $uraianDaerah = 'Terima Pajak PB 1 ' . $pctDaerah . '% ' . $baseUraian;
+                $pctDaerah = $transaksi->persen_pajak_daerah ? (float) $transaksi->persen_pajak_daerah : '';
+                $uraianDaerah = 'Terima Pajak PB 1 '.$pctDaerah.'% '.$baseUraian;
 
                 $pajakRows[] = [
                     'transaksi' => $transaksi,
@@ -563,7 +586,7 @@ class BukuPajakController extends Controller
                     'ppn' => 0, 'pph21' => 0, 'pph22' => 0, 'pph23' => 0, 'pb1' => $pb1,
                     'jumlah' => $pb1, // Penerimaan
                     'pengeluaran' => 0,
-                    'is_penerimaan' => true
+                    'is_penerimaan' => true,
                 ];
             }
         }
@@ -576,24 +599,32 @@ class BukuPajakController extends Controller
             $hasPajakDaerah = $transaksi->total_pajak_daerah > 0;
 
             if ($hasPajakPusat) {
-                $ppn=0; $pph21=0; $pph22=0; $pph23=0;
+                $ppn = 0;
+                $pph21 = 0;
+                $pph22 = 0;
+                $pph23 = 0;
                 if (strpos($pajakName, 'pph21') !== false || strpos($pajakName, 'pph 21') !== false) {
-                    $pph21 = $transaksi->total_pajak; 
+                    $pph21 = $transaksi->total_pajak;
                 } elseif (strpos($pajakName, 'pph22') !== false || strpos($pajakName, 'pph 22') !== false) {
-                    $pph22 = $transaksi->total_pajak; 
+                    $pph22 = $transaksi->total_pajak;
                 } elseif (strpos($pajakName, 'pph23') !== false || strpos($pajakName, 'pph 23') !== false) {
-                    $pph23 = $transaksi->total_pajak; 
+                    $pph23 = $transaksi->total_pajak;
                 } else {
-                    $ppn = $transaksi->total_pajak; 
+                    $ppn = $transaksi->total_pajak;
                 }
 
                 $jumlah = $ppn + $pph21 + $pph22 + $pph23;
                 $uraianPusat = '';
-                $pctPusat = $transaksi->persen_pajak ? (float)$transaksi->persen_pajak : '';
-                if ($pph21 > 0) $uraianPusat = 'Setor Pajak PPh 21 ' . $pctPusat . '% ' . $baseUraian;
-                elseif ($pph22 > 0) $uraianPusat = 'Setor Pajak PPh 22 ' . $pctPusat . '% ' . $baseUraian;
-                elseif ($pph23 > 0) $uraianPusat = 'Setor Pajak PPh 23 ' . $pctPusat . '% ' . $baseUraian;
-                else $uraianPusat = 'Setor Pajak ' . ($transaksi->pajak ?? '') . ' ' . $pctPusat . '% ' . $baseUraian;
+                $pctPusat = $transaksi->persen_pajak ? (float) $transaksi->persen_pajak : '';
+                if ($pph21 > 0) {
+                    $uraianPusat = 'Setor Pajak PPh 21 '.$pctPusat.'% '.$baseUraian;
+                } elseif ($pph22 > 0) {
+                    $uraianPusat = 'Setor Pajak PPh 22 '.$pctPusat.'% '.$baseUraian;
+                } elseif ($pph23 > 0) {
+                    $uraianPusat = 'Setor Pajak PPh 23 '.$pctPusat.'% '.$baseUraian;
+                } else {
+                    $uraianPusat = 'Setor Pajak '.($transaksi->pajak ?? '').' '.$pctPusat.'% '.$baseUraian;
+                }
 
                 $pajakRows[] = [
                     'transaksi' => $transaksi,
@@ -602,16 +633,16 @@ class BukuPajakController extends Controller
                     'no_buku' => $transaksi->ntpn ?? $transaksi->id_transaksi,
                     'uraian' => $uraianPusat,
                     'ppn' => $ppn, 'pph21' => $pph21, 'pph22' => $pph22, 'pph23' => $pph23, 'pb1' => 0,
-                    'jumlah' => 0, 
+                    'jumlah' => 0,
                     'pengeluaran' => $jumlah, // Pengeluaran
-                    'is_penerimaan' => false
+                    'is_penerimaan' => false,
                 ];
             }
 
             if ($hasPajakDaerah) {
                 $pb1 = $transaksi->total_pajak_daerah;
-                $pctDaerah = $transaksi->persen_pajak_daerah ? (float)$transaksi->persen_pajak_daerah : '';
-                $uraianDaerah = 'Setor Pajak PB 1 ' . $pctDaerah . '% ' . $baseUraian;
+                $pctDaerah = $transaksi->persen_pajak_daerah ? (float) $transaksi->persen_pajak_daerah : '';
+                $uraianDaerah = 'Setor Pajak PB 1 '.$pctDaerah.'% '.$baseUraian;
 
                 $pajakRows[] = [
                     'transaksi' => $transaksi,
@@ -620,26 +651,27 @@ class BukuPajakController extends Controller
                     'no_buku' => '-',
                     'uraian' => $uraianDaerah,
                     'ppn' => 0, 'pph21' => 0, 'pph22' => 0, 'pph23' => 0, 'pb1' => $pb1,
-                    'jumlah' => 0, 
+                    'jumlah' => 0,
                     'pengeluaran' => $pb1, // Pengeluaran
-                    'is_penerimaan' => false
+                    'is_penerimaan' => false,
                 ];
             }
         }
-        
+
         // SORTING BY TANGGAL
         usort($pajakRows, function ($a, $b) {
-            $tA = strtotime($a['tanggal'] instanceof \Carbon\Carbon ? $a['tanggal']->toDateTimeString() : $a['tanggal']);
-            $tB = strtotime($b['tanggal'] instanceof \Carbon\Carbon ? $b['tanggal']->toDateTimeString() : $b['tanggal']);
+            $tA = strtotime($a['tanggal'] instanceof Carbon ? $a['tanggal']->toDateTimeString() : $a['tanggal']);
+            $tB = strtotime($b['tanggal'] instanceof Carbon ? $b['tanggal']->toDateTimeString() : $b['tanggal']);
             if ($tA == $tB) {
                 return $a['is_penerimaan'] === $b['is_penerimaan'] ? 0 : ($a['is_penerimaan'] ? -1 : 1);
             }
+
             return $tA - $tB;
         });
 
         // RECALCULATE SALDO
-        $saldoAwalPajak = app(\App\Services\BukuKasService::class)->hitungSaldoPajakSebelumBulan($penganggaran->id, $bulanAngka, $tahun);
-        
+        $saldoAwalPajak = app(BukuKasService::class)->hitungSaldoPajakSebelumBulan($penganggaran->id, $bulanAngka, $tahun);
+
         $runningPenerimaan = 0;
         $runningPengeluaran = 0;
         $currentSaldo = $saldoAwalPajak;
@@ -667,7 +699,7 @@ class BukuPajakController extends Controller
             'totalPph22' => $totalPph22,
             'totalPph23' => $totalPph23,
             'totalPb1' => $totalPb1,
-            'saldoAwalPajak' => $saldoAwalPajak
+            'saldoAwalPajak' => $saldoAwalPajak,
         ];
     }
 
@@ -677,9 +709,10 @@ class BukuPajakController extends Controller
         if (app()->bound('variant')) {
             $var = app('variant');
         }
-        return \Inertia\Inertia::render(VariantConfig::pagePrefix($var) . $component, array_merge($props, [
+
+        return Inertia::render(VariantConfig::pagePrefix($var).$component, array_merge($props, [
             'variant' => $var,
-            'routePrefix' => VariantConfig::routePrefix($var)
+            'routePrefix' => VariantConfig::routePrefix($var),
         ]));
     }
 }

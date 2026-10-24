@@ -8,12 +8,12 @@ use App\Models\SekolahProfile;
 use App\Models\User;
 use App\Services\BukuKasService;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class BkuAuditScanner
 {
     protected DeepSeekService $deepSeekService;
+
     protected BukuKasService $bukuKasService;
 
     public function __construct(DeepSeekService $deepSeekService, BukuKasService $bukuKasService)
@@ -49,7 +49,7 @@ class BkuAuditScanner
         $bastClass = VariantConfig::getModelClass('bast', $variant);
 
         $penganggaran = $penganggaranClass::where('tahun_anggaran', $tahun)->first();
-        if (!$penganggaran) {
+        if (! $penganggaran) {
             return [
                 'success' => false,
                 'message' => "Data penganggaran untuk tahun {$tahun} ({$variant}) tidak ditemukan.",
@@ -62,7 +62,7 @@ class BkuAuditScanner
             ->whereYear('tanggal_transaksi', $tahun)
             ->max('updated_at');
 
-        if (!$forceRefresh) {
+        if (! $forceRefresh) {
             $cachedLog = BkuAuditLog::where('user_id', $user->id)
                 ->where('variant', $variant)
                 ->where('tahun', $tahun)
@@ -74,7 +74,7 @@ class BkuAuditScanner
             if ($cachedLog) {
                 // Jika data BKU belum berubah sejak audit terakhir, kembalikan data cache
                 $cachedAt = $cachedLog->last_bku_updated_at;
-                if (!$latestBkuUpdate || ($cachedAt && Carbon::parse($cachedAt)->gte(Carbon::parse($latestBkuUpdate)))) {
+                if (! $latestBkuUpdate || ($cachedAt && Carbon::parse($cachedAt)->gte(Carbon::parse($latestBkuUpdate)))) {
                     return [
                         'success' => true,
                         'is_cached' => true,
@@ -91,7 +91,7 @@ class BkuAuditScanner
         // 5. Panggil DeepSeek-R1 Reasoning Engine
         $reasoningResult = $this->callDeepSeekAudit($apiKey, $user->deepseek_model_reasoner ?: 'deepseek-reasoner', $preScan, $penganggaran, $variant, $tahun, $bulanNormal);
 
-        if (!$reasoningResult['success']) {
+        if (! $reasoningResult['success']) {
             return [
                 'success' => false,
                 'message' => $reasoningResult['message'],
@@ -191,13 +191,13 @@ class BkuAuditScanner
             }
 
             // Cek Belanja > 2 Juta tanpa Pajak
-            if ($amount >= 2000000 && $totalPajak == 0 && !$trx->is_bunga_record) {
+            if ($amount >= 2000000 && $totalPajak == 0 && ! $trx->is_bunga_record) {
                 $findings[] = [
-                    'id' => 'PRE-TAX-' . $trx->id,
+                    'id' => 'PRE-TAX-'.$trx->id,
                     'category' => 'pajak',
                     'severity' => 'warning',
                     'title' => 'Belanja di atas Rp 2.000.000 Tanpa Pungutan Pajak',
-                    'description' => "Transaksi '{$trx->uraian}' sebesar Rp " . number_format($amount, 0, ',', '.') . " pada tanggal {$trx->tanggal_transaksi} tidak mencatat pungutan pajak PPN/PPh.",
+                    'description' => "Transaksi '{$trx->uraian}' sebesar Rp ".number_format($amount, 0, ',', '.')." pada tanggal {$trx->tanggal_transaksi} tidak mencatat pungutan pajak PPN/PPh.",
                     'recommendation' => 'Pastikan apakah rekanan dibebaskan dari pajak atau lengkapi bukti faktur pajak/SSP pembebasan.',
                     'transaction_ids' => [$trx->id],
                     'amount' => $amount,
@@ -205,7 +205,7 @@ class BkuAuditScanner
             }
 
             // Cek Belanja Modal (5.2) tanpa BAST
-            if (str_starts_with($kodeRekening, '5.2') && !in_array($trx->id, $existingBastBkuIds)) {
+            if (str_starts_with($kodeRekening, '5.2') && ! in_array($trx->id, $existingBastBkuIds)) {
                 $belanjaModalTanpaBast[] = [
                     'id' => $trx->id,
                     'tanggal' => $trx->tanggal_transaksi,
@@ -231,13 +231,13 @@ class BkuAuditScanner
             }
 
             // Cek Transaksi Tunai Nominal Besar (> 10 Juta)
-            if ($trx->jenis_transaksi === 'tunai' && $amount > 10000000 && !$trx->is_bunga_record) {
+            if ($trx->jenis_transaksi === 'tunai' && $amount > 10000000 && ! $trx->is_bunga_record) {
                 $findings[] = [
-                    'id' => 'PRE-CASH-LIMIT-' . $trx->id,
+                    'id' => 'PRE-CASH-LIMIT-'.$trx->id,
                     'category' => 'keseimbangan_kas',
                     'severity' => 'warning',
                     'title' => 'Pembayaran Tunai Melebihi Ambang Batas Transaksi Non-Tunai',
-                    'description' => "Transaksi '{$trx->uraian}' dibayarkan secara tunai sebesar Rp " . number_format($amount, 0, ',', '.') . ". Regulasi pemerintah mewajibkan transaksi bernilai besar dilakukan melalui transfer non-tunai/rekening bank.",
+                    'description' => "Transaksi '{$trx->uraian}' dibayarkan secara tunai sebesar Rp ".number_format($amount, 0, ',', '.').'. Regulasi pemerintah mewajibkan transaksi bernilai besar dilakukan melalui transfer non-tunai/rekening bank.',
                     'recommendation' => 'Gunakan metode non-tunai atau lampirkan Berita Acara pembayaran tunai darurat.',
                     'transaction_ids' => [$trx->id],
                     'amount' => $amount,
@@ -246,7 +246,7 @@ class BkuAuditScanner
 
             // Kumpulkan untuk Analisis Split-Bill per Vendor
             $vendorName = trim($trx->nama_toko ?: $trx->nama_penerima_pembayaran ?: '');
-            if (!empty($vendorName) && $amount > 0 && $amount < 2000000) {
+            if (! empty($vendorName) && $amount > 0 && $amount < 2000000) {
                 $vendorTransactions[$vendorName][] = [
                     'id' => $trx->id,
                     'tanggal' => $trx->tanggal_transaksi,
@@ -257,12 +257,12 @@ class BkuAuditScanner
         }
 
         // Susun Temuan Belanja Modal Tanpa BAST
-        if (!empty($belanjaModalTanpaBast)) {
+        if (! empty($belanjaModalTanpaBast)) {
             $findings[] = [
                 'id' => 'PRE-MODAL-NO-BAST',
                 'category' => 'belanja_modal',
                 'severity' => 'danger',
-                'title' => count($belanjaModalTanpaBast) . ' Transaksi Belanja Modal Belum Dibuatkan Dokumen BAST',
+                'title' => count($belanjaModalTanpaBast).' Transaksi Belanja Modal Belum Dibuatkan Dokumen BAST',
                 'description' => 'Terdapat belanja modal aset tetap yang belum tercatat di Berita Acara Serah Terima (BAST). Belanja modal tanpa BAST berpotensi menjadi temuan auditor BPK/Inspektorat terkait inventaris KIB.',
                 'recommendation' => 'Terbitkan dokumen BAST melalui menu Fitur Pelengkap > BAST sebelum penutupan buku kas.',
                 'transaction_ids' => array_column($belanjaModalTanpaBast, 'id'),
@@ -271,13 +271,13 @@ class BkuAuditScanner
         }
 
         // Susun Temuan Potensi Salah Akun Belanja Aset
-        if (!empty($potensiSalahAkunAset)) {
+        if (! empty($potensiSalahAkunAset)) {
             $findings[] = [
                 'id' => 'PRE-ASSET-MISCLASSIFIED',
                 'category' => 'belanja_modal',
                 'severity' => 'warning',
                 'title' => 'Indikasi Pembelian Barang Aset Dibukukan pada Belanja Habis Pakai',
-                'description' => 'Ditemukan pengadaan barang bernilai aset (misal: ' . implode(', ', array_unique(array_column($potensiSalahAkunAset, 'keyword'))) . ') yang diinput ke kode rekening Belanja Barang & Jasa Operasi (5.1.02).',
+                'description' => 'Ditemukan pengadaan barang bernilai aset (misal: '.implode(', ', array_unique(array_column($potensiSalahAkunAset, 'keyword'))).') yang diinput ke kode rekening Belanja Barang & Jasa Operasi (5.1.02).',
                 'recommendation' => 'Evaluasi nilai kapitalisasi barang: jika memenuhi kriteria aset tetap daerah, pindahkan ke akun Belanja Modal (5.2) agar masuk ke kartu inventaris.',
                 'transaction_ids' => array_column($potensiSalahAkunAset, 'id'),
                 'amount' => array_sum(array_column($potensiSalahAkunAset, 'amount')),
@@ -285,14 +285,14 @@ class BkuAuditScanner
         }
 
         // Susun Temuan Pajak Tanpa NTPN
-        if (!empty($pajakTanpaNtpn)) {
+        if (! empty($pajakTanpaNtpn)) {
             $totalPajakBelumSetor = array_sum(array_column($pajakTanpaNtpn, 'pajak'));
             $findings[] = [
                 'id' => 'PRE-TAX-NO-NTPN',
                 'category' => 'pajak',
                 'severity' => 'danger',
-                'title' => count($pajakTanpaNtpn) . ' Transaksi Pajak Dipungut Belum Memiliki Nomor NTPN',
-                'description' => 'Terdapat potongan pajak senilai total Rp ' . number_format($totalPajakBelumSetor, 0, ',', '.') . ' yang belum mencantumkan Nomor Transaksi Penerimaan Negara (NTPN). Pajak yang belum disetor saat tutup kas merupakan temuan kepatuhan serius.',
+                'title' => count($pajakTanpaNtpn).' Transaksi Pajak Dipungut Belum Memiliki Nomor NTPN',
+                'description' => 'Terdapat potongan pajak senilai total Rp '.number_format($totalPajakBelumSetor, 0, ',', '.').' yang belum mencantumkan Nomor Transaksi Penerimaan Negara (NTPN). Pajak yang belum disetor saat tutup kas merupakan temuan kepatuhan serius.',
                 'recommendation' => 'Segera setorkan pajak via e-Billing/bank persepsi dan input kode NTPN di Buku Pembantu Pajak.',
                 'transaction_ids' => array_column($pajakTanpaNtpn, 'id'),
                 'amount' => $totalPajakBelumSetor,
@@ -304,11 +304,11 @@ class BkuAuditScanner
             if (count($trxList) >= 2) {
                 $totalVendor = array_sum(array_column($trxList, 'amount'));
                 $findings[] = [
-                    'id' => 'PRE-SPLIT-' . md5($vendor),
+                    'id' => 'PRE-SPLIT-'.md5($vendor),
                     'category' => 'split_bill',
                     'severity' => 'warning',
                     'title' => "Indikasi Pemecahan Transaksi Belanja ke Rekanan '{$vendor}'",
-                    'description' => "Terdapat " . count($trxList) . " transaksi belanja berturut-turut ke '{$vendor}' dengan nominal masing-masing di bawah Rp 2.000.000 (total Rp " . number_format($totalVendor, 0, ',', '.') . ").",
+                    'description' => 'Terdapat '.count($trxList)." transaksi belanja berturut-turut ke '{$vendor}' dengan nominal masing-masing di bawah Rp 2.000.000 (total Rp ".number_format($totalVendor, 0, ',', '.').').',
                     'recommendation' => 'Pastikan transaksi bukan pemecahan yang disengaja untuk menghindari pajak PPh 22 atau batas pengadaan langsung/SIPLah.',
                     'transaction_ids' => array_column($trxList, 'id'),
                     'amount' => $totalVendor,
@@ -350,7 +350,7 @@ class BkuAuditScanner
      */
     protected function callDeepSeekAudit(string $apiKey, string $model, array $preScan, $penganggaran, string $variant, int $tahun, string $bulan): array
     {
-        $systemPrompt = <<<PROMPT
+        $systemPrompt = <<<'PROMPT'
 Anda adalah Auditor Finansial Senior BPK / Inspektorat Daerah yang bertugas mengaudit pertanggungjawaban dana BOSP (Bantuan Operasional Satuan Pendidikan) sekolah di Indonesia.
 Tugas Anda adalah menelaah data Buku Kas Umum (BKU) penatausahaan sekolah sebelum penutupan buku kas bulanan.
 
@@ -395,7 +395,7 @@ PROMPT;
 
         $messages = [
             ['role' => 'system', 'content' => $systemPrompt],
-            ['role' => 'user', 'content' => "Berikut data BKU bulan {$bulan} {$tahun} untuk diaudit:\n" . json_encode($userPayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)],
+            ['role' => 'user', 'content' => "Berikut data BKU bulan {$bulan} {$tahun} untuk diaudit:\n".json_encode($userPayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)],
         ];
 
         $response = $this->deepSeekService->callReasoner($apiKey, $messages, [
@@ -403,10 +403,10 @@ PROMPT;
             'timeout' => 90,
         ]);
 
-        if (!$response['success']) {
+        if (! $response['success']) {
             // Jika panggilan AI gagal (misal koneksi timeout), gunakan temuan deterministik sebagai fallback cerdas
             Log::warning("DeepSeek audit call failed: {$response['message']}. Using deterministic fallback.");
-            
+
             $score = 100;
             foreach ($preScan['pre_findings'] as $f) {
                 $score -= ($f['severity'] === 'danger' ? 15 : 7);
@@ -417,7 +417,7 @@ PROMPT;
                 'success' => true,
                 'data' => [
                     'compliance_score' => $score,
-                    'executive_summary' => "Pemindaian audit deterministik selesai. Ditemukan " . count($preScan['pre_findings']) . " potensi catatan kepatuhan yang memerlukan perhatian bendahara sebelum penutupan kas bulan {$bulan} {$tahun}.",
+                    'executive_summary' => 'Pemindaian audit deterministik selesai. Ditemukan '.count($preScan['pre_findings'])." potensi catatan kepatuhan yang memerlukan perhatian bendahara sebelum penutupan kas bulan {$bulan} {$tahun}.",
                     'findings' => $preScan['pre_findings'],
                     'rules_checked' => $preScan['rules_checked'],
                 ],
@@ -434,8 +434,9 @@ PROMPT;
 
         $parsedJson = json_decode($rawContent, true);
 
-        if (!is_array($parsedJson) || !isset($parsedJson['compliance_score'])) {
-            Log::error('Failed to parse DeepSeek JSON response: ' . $rawContent);
+        if (! is_array($parsedJson) || ! isset($parsedJson['compliance_score'])) {
+            Log::error('Failed to parse DeepSeek JSON response: '.$rawContent);
+
             return [
                 'success' => true,
                 'data' => [

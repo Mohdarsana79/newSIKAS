@@ -2,17 +2,23 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\SekolahProfile;
 use App\Config\VariantConfig;
+use App\Models\BukuKasUmumUraianDetail;
+use App\Models\SekolahProfile;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Inertia\Inertia;
 
 class BastController extends Controller
 {
     protected string $variant;
+
     protected string $Penganggaran;
+
     protected string $BukuKasUmum;
+
     protected string $Bast;
 
     public function __construct()
@@ -50,8 +56,10 @@ class BastController extends Controller
             if ($tahun && is_numeric($tahun)) {
                 $query->where(VariantConfig::penganggaranFk($this->variant), $tahun);
             } elseif ($tahun && strlen($tahun) == 4) {
-                 $p = ($this->Penganggaran)::where('tahun_anggaran', $tahun)->first();
-                 if ($p) $query->where(VariantConfig::penganggaranFk($this->variant), $p->id);
+                $p = ($this->Penganggaran)::where('tahun_anggaran', $tahun)->first();
+                if ($p) {
+                    $query->where(VariantConfig::penganggaranFk($this->variant), $p->id);
+                }
             }
 
             if ($startDate) {
@@ -69,11 +77,11 @@ class BastController extends Controller
             if ($search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('nomor_bast', 'ILIKE', "%{$search}%")
-                      ->orWhere('pihak_pertama_nama', 'ILIKE', "%{$search}%")
-                      ->orWhereHas('bukuKasUmum', function ($q2) use ($search) {
-                          $q2->where('uraian', 'ILIKE', "%{$search}%")
-                             ->orWhere('uraian_opsional', 'ILIKE', "%{$search}%");
-                      });
+                        ->orWhere('pihak_pertama_nama', 'ILIKE', "%{$search}%")
+                        ->orWhereHas('bukuKasUmum', function ($q2) use ($search) {
+                            $q2->where('uraian', 'ILIKE', "%{$search}%")
+                                ->orWhere('uraian_opsional', 'ILIKE', "%{$search}%");
+                        });
                 });
             }
 
@@ -87,8 +95,8 @@ class BastController extends Controller
                     'number' => $number,
                     'nomor_bast' => $bast->nomor_bast,
                     'uraian' => $bast->bukuKasUmum->uraian_opsional ?? $bast->bukuKasUmum->uraian,
-                    'tanggal' => $bast->tanggal_bast ? \Carbon\Carbon::parse($bast->tanggal_bast)->format('d/m/Y') : \Carbon\Carbon::parse($bast->bukuKasUmum->tanggal_transaksi)->format('d/m/Y'),
-                    'tanggal_bast_raw' => $bast->tanggal_bast ? \Carbon\Carbon::parse($bast->tanggal_bast)->format('Y-m-d') : \Carbon\Carbon::parse($bast->bukuKasUmum->tanggal_transaksi)->format('Y-m-d'),
+                    'tanggal' => $bast->tanggal_bast ? Carbon::parse($bast->tanggal_bast)->format('d/m/Y') : Carbon::parse($bast->bukuKasUmum->tanggal_transaksi)->format('d/m/Y'),
+                    'tanggal_bast_raw' => $bast->tanggal_bast ? Carbon::parse($bast->tanggal_bast)->format('Y-m-d') : Carbon::parse($bast->bukuKasUmum->tanggal_transaksi)->format('Y-m-d'),
                     'pihak_pertama_nama' => $bast->pihak_pertama_nama,
                     'pihak_pertama_jabatan' => $bast->pihak_pertama_jabatan,
                     'pihak_pertama_instansi' => $bast->pihak_pertama_instansi,
@@ -106,8 +114,8 @@ class BastController extends Controller
                     'uraian_details' => $bast->bukuKasUmum->uraianDetails ?? collect([]),
                     'delete_data' => [
                         'id' => $bast->id,
-                        'uraian' => 'BAST ' . ($bast->nomor_bast ?? 'Tanpa Nomor')
-                    ]
+                        'uraian' => 'BAST '.($bast->nomor_bast ?? 'Tanpa Nomor'),
+                    ],
                 ];
             });
 
@@ -123,7 +131,8 @@ class BastController extends Controller
                 ],
             ]);
         } catch (\Exception $e) {
-            Log::error('Error searching bast: ' . $e->getMessage());
+            Log::error('Error searching bast: '.$e->getMessage());
+
             return response()->json([
                 'success' => false,
                 'message' => 'Terjadi kesalahan saat mencari data',
@@ -136,7 +145,7 @@ class BastController extends Controller
         try {
             $bkuFk = VariantConfig::bkuFk($this->variant);
             $validated = $request->validate([
-                $bkuFk => 'required|exists:' . (new $this->BukuKasUmum)->getTable() . ',id',
+                $bkuFk => 'required|exists:'.(new $this->BukuKasUmum)->getTable().',id',
                 'nomor_bast' => 'nullable|string',
                 'tanggal_bast' => 'nullable|date',
                 'pihak_pertama_nama' => 'nullable|string',
@@ -151,7 +160,7 @@ class BastController extends Controller
 
             $bukuKasUmum = ($this->BukuKasUmum)::with('penganggaran.sekolah')->find($validated[$bkuFk]);
 
-            if (!$bukuKasUmum) {
+            if (! $bukuKasUmum) {
                 return response()->json(['success' => false, 'message' => 'BKU tidak ditemukan'], 404);
             }
 
@@ -161,12 +170,12 @@ class BastController extends Controller
             }
 
             $sekolahId = $bukuKasUmum->penganggaran->sekolah_id;
-            if (!$sekolahId) {
+            if (! $sekolahId) {
                 $sekolahId = SekolahProfile::first()->id ?? null;
             }
 
             $penganggaranFk = VariantConfig::penganggaranFk($this->variant);
-            
+
             $bast = new ($this->Bast);
             $bast->sekolah_id = $sekolahId;
             $bast->$penganggaranFk = $bukuKasUmum->$penganggaranFk;
@@ -178,7 +187,7 @@ class BastController extends Controller
             $bast->pihak_pertama_jabatan = array_key_exists('pihak_pertama_jabatan', $validated) ? $validated['pihak_pertama_jabatan'] : 'Pimpinan';
             $bast->pihak_pertama_instansi = array_key_exists('pihak_pertama_instansi', $validated) ? $validated['pihak_pertama_instansi'] : ($bukuKasUmum->nama_toko ?? null);
             $bast->pihak_pertama_alamat = array_key_exists('pihak_pertama_alamat', $validated) ? $validated['pihak_pertama_alamat'] : ($bukuKasUmum->alamat_toko ?? null);
-            
+
             $bast->pihak_kedua_nama = array_key_exists('pihak_kedua_nama', $validated) ? $validated['pihak_kedua_nama'] : ($bukuKasUmum->penganggaran->kepala_sekolah ?? null);
             $bast->pihak_kedua_jabatan = array_key_exists('pihak_kedua_jabatan', $validated) ? $validated['pihak_kedua_jabatan'] : 'Kepala Sekolah';
             $bast->pihak_kedua_instansi = array_key_exists('pihak_kedua_instansi', $validated) ? $validated['pihak_kedua_instansi'] : ($bukuKasUmum->penganggaran->sekolah->nama_sekolah ?? 'Sekolah');
@@ -188,11 +197,12 @@ class BastController extends Controller
 
             return response()->json(['success' => true, 'message' => 'BAST berhasil dibuat!', 'data' => $bast]);
         } catch (\Exception $e) {
-            Log::error('Error creating bast: ' . $e->getMessage());
+            Log::error('Error creating bast: '.$e->getMessage());
+
             return response()->json(['success' => false, 'message' => 'Gagal membuat BAST'], 500);
         }
     }
-    
+
     public function update(Request $request, $id)
     {
         try {
@@ -209,12 +219,13 @@ class BastController extends Controller
                 'pihak_kedua_instansi' => 'nullable|string',
                 'pihak_kedua_alamat' => 'nullable|string',
             ]);
-            
+
             $bast->update($validated);
-            
+
             return response()->json(['success' => true, 'message' => 'BAST berhasil diubah!']);
         } catch (\Exception $e) {
-            Log::error('Error updating bast: ' . $e->getMessage());
+            Log::error('Error updating bast: '.$e->getMessage());
+
             return response()->json(['success' => false, 'message' => 'Gagal mengubah BAST'], 500);
         }
     }
@@ -227,9 +238,9 @@ class BastController extends Controller
             ]);
 
             $modelClass = VariantConfig::getModelClass('bku_uraian_detail', $this->variant);
-            if (!$modelClass) {
+            if (! $modelClass) {
                 // If variant is reguler, the model is BukuKasUmumUraianDetail
-                $modelClass = \App\Models\BukuKasUmumUraianDetail::class;
+                $modelClass = BukuKasUmumUraianDetail::class;
             }
 
             $detail = $modelClass::findOrFail($id);
@@ -238,7 +249,8 @@ class BastController extends Controller
 
             return response()->json(['success' => true, 'message' => 'Kondisi barang berhasil disimpan']);
         } catch (\Exception $e) {
-            Log::error('Error updating kondisi barang: ' . $e->getMessage());
+            Log::error('Error updating kondisi barang: '.$e->getMessage());
+
             return response()->json(['success' => false, 'message' => 'Gagal mengubah kondisi barang'], 500);
         }
     }
@@ -261,7 +273,7 @@ class BastController extends Controller
                 'data' => $tahunAnggaran,
             ]);
         } catch (\Exception $e) {
-            Log::error('Error getting tahun anggaran BAST: ' . $e->getMessage());
+            Log::error('Error getting tahun anggaran BAST: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
@@ -286,7 +298,9 @@ class BastController extends Controller
                     $query->where($penganggaranFk, $tahun);
                 } else {
                     $p = ($this->Penganggaran)::where('tahun_anggaran', $tahun)->first();
-                    if ($p) $query->where($penganggaranFk, $p->id);
+                    if ($p) {
+                        $query->where($penganggaranFk, $p->id);
+                    }
                 }
             }
 
@@ -303,7 +317,7 @@ class BastController extends Controller
                 return [
                     'id' => $bku->id,
                     'uraian' => $bku->uraian_opsional ?? $bku->uraian,
-                    'tanggal' => \Carbon\Carbon::parse($bku->tanggal_transaksi)->format('Y-m-d'),
+                    'tanggal' => Carbon::parse($bku->tanggal_transaksi)->format('Y-m-d'),
                     'nominal' => $bku->total_transaksi_kotor ?? $bku->dibelanjakan ?? 0,
                     'pihak_pertama_nama' => $bku->nama_toko ?? $bku->nama_penerima_pembayaran ?? '',
                     'pihak_pertama_alamat' => $bku->alamat_toko ?? '',
@@ -316,10 +330,11 @@ class BastController extends Controller
 
             return response()->json([
                 'success' => true,
-                'data' => $formatted
+                'data' => $formatted,
             ]);
         } catch (\Exception $e) {
-            Log::error('Error getting available BKU: ' . $e->getMessage());
+            Log::error('Error getting available BKU: '.$e->getMessage());
+
             return response()->json(['success' => false, 'message' => 'Gagal mengambil data BKU yang tersedia']);
         }
     }
@@ -329,9 +344,11 @@ class BastController extends Controller
         try {
             $bast = ($this->Bast)::findOrFail($id);
             $bast->delete();
+
             return response()->json(['success' => true, 'message' => 'BAST berhasil dihapus!']);
         } catch (\Exception $e) {
-            Log::error('Error deleting bast: ' . $e->getMessage());
+            Log::error('Error deleting bast: '.$e->getMessage());
+
             return response()->json(['success' => false, 'message' => 'Gagal menghapus BAST'], 500);
         }
     }
@@ -340,7 +357,7 @@ class BastController extends Controller
     {
         return $this->renderPdf($request, $id, false);
     }
-    
+
     public function previewPdf(Request $request, $id)
     {
         return $this->renderPdf($request, $id, true);
@@ -352,7 +369,7 @@ class BastController extends Controller
             $bast = ($this->Bast)::with([
                 'bukuKasUmum.uraianDetails',
                 'penganggaran',
-                'sekolah'
+                'sekolah',
             ])->findOrFail($id);
 
             $uraianDetails = $bast->bukuKasUmum->uraianDetails ?? collect([]);
@@ -364,8 +381,8 @@ class BastController extends Controller
                     $totalKeseluruhan += ($detail->volume * $detail->harga_satuan);
                 }
             }
-            
-            $terbilangText = ucwords($this->convertToText($totalKeseluruhan) . ' Rupiah');
+
+            $terbilangText = ucwords($this->convertToText($totalKeseluruhan).' Rupiah');
 
             $fontSize = $request->query('fontSize', '11pt');
             $paperSize = $request->query('paperSize', 'A4');
@@ -380,8 +397,8 @@ class BastController extends Controller
                 'bast' => $bast,
                 'bku' => $bast->bukuKasUmum,
                 'uraianDetails' => $uraianDetails,
-                'tanggalBku' => \Carbon\Carbon::parse($bast->bukuKasUmum->tanggal_transaksi)->locale('id'),
-                'tanggalBast' => $bast->tanggal_bast ? \Carbon\Carbon::parse($bast->tanggal_bast)->locale('id') : \Carbon\Carbon::parse($bast->bukuKasUmum->tanggal_transaksi)->locale('id'),
+                'tanggalBku' => Carbon::parse($bast->bukuKasUmum->tanggal_transaksi)->locale('id'),
+                'tanggalBast' => $bast->tanggal_bast ? Carbon::parse($bast->tanggal_bast)->locale('id') : Carbon::parse($bast->bukuKasUmum->tanggal_transaksi)->locale('id'),
                 'totalKeseluruhan' => $totalKeseluruhan,
                 'terbilangText' => $terbilangText,
                 'fontSize' => $fontSize,
@@ -394,11 +411,13 @@ class BastController extends Controller
                 return response($pdf->output(), 200)
                     ->header('Content-Type', 'application/pdf');
             }
-            
+
             $safeNomorBast = str_replace(['/', '\\'], '_', $bast->nomor_bast ?? $bast->id);
-            return $pdf->stream('BAST_' . $safeNomorBast . '.pdf');
+
+            return $pdf->stream('BAST_'.$safeNomorBast.'.pdf');
         } catch (\Exception $e) {
-            Log::error('Error rendering BAST PDF: ' . $e->getMessage());
+            Log::error('Error rendering BAST PDF: '.$e->getMessage());
+
             return redirect()->back()->with('error', 'Gagal memuat PDF BAST');
         }
     }
@@ -419,7 +438,7 @@ class BastController extends Controller
             if ($chunk != 0) {
                 $chunkWords = $this->convertChunk($chunk);
                 if ($unitIndex > 0) {
-                    $chunkWords .= ' ' . $units[$unitIndex];
+                    $chunkWords .= ' '.$units[$unitIndex];
                 }
                 array_unshift($words, $chunkWords);
             }
@@ -441,11 +460,11 @@ class BastController extends Controller
         if ($number < 12) {
             return $ones[$number];
         } elseif ($number < 20) {
-            return $ones[$number - 10] . ' belas';
+            return $ones[$number - 10].' belas';
         } elseif ($number < 100) {
-            return $ones[floor($number / 10)] . ' puluh ' . $ones[$number % 10];
+            return $ones[floor($number / 10)].' puluh '.$ones[$number % 10];
         } else {
-            return $ones[floor($number / 100)] . ' ratus ' . $this->convertChunk($number % 100);
+            return $ones[floor($number / 100)].' ratus '.$this->convertChunk($number % 100);
         }
     }
 
@@ -455,9 +474,10 @@ class BastController extends Controller
         if (app()->bound('variant')) {
             $var = app('variant');
         }
-        return \Inertia\Inertia::render(VariantConfig::pagePrefix($var) . $component, array_merge($props, [
+
+        return Inertia::render(VariantConfig::pagePrefix($var).$component, array_merge($props, [
             'variant' => $var,
-            'routePrefix' => VariantConfig::routePrefix($var)
+            'routePrefix' => VariantConfig::routePrefix($var),
         ]));
     }
 }

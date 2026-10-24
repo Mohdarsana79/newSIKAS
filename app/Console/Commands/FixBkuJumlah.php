@@ -32,6 +32,7 @@ class FixBkuJumlah extends Command
 
         if ($totalBermasalah === 0) {
             $this->info('Tidak ada data yang perlu diperbaiki. Semua kolom jumlah sudah benar.');
+
             return 0;
         }
 

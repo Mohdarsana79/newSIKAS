@@ -21,7 +21,8 @@ class KinerjaSetorTunai extends Model
         return $this->belongsTo(KinerjaPenganggaran::class, 'kinerja_penganggaran_id');
     }
 
-
-    public function penganggaran() { return $this->kinerjaPenganggaran(); }
+    public function penganggaran()
+    {
+        return $this->kinerjaPenganggaran();
+    }
 }
-

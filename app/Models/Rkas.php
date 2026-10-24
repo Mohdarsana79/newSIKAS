@@ -12,8 +12,23 @@ class Rkas extends Model
 
     protected $table = 'rkas';
 
-    protected function penganggaranModelClass(): string { return Penganggaran::class; }
-    public function penganggaranForeignKey(): string { return 'penganggaran_id'; }
-    protected function bkuUraianDetailModelClass(): string { return BukuKasUmumUraianDetail::class; }
-    public function rkasForeignKey(): string { return 'rkas_id'; }
+    protected function penganggaranModelClass(): string
+    {
+        return Penganggaran::class;
+    }
+
+    public function penganggaranForeignKey(): string
+    {
+        return 'penganggaran_id';
+    }
+
+    protected function bkuUraianDetailModelClass(): string
+    {
+        return BukuKasUmumUraianDetail::class;
+    }
+
+    public function rkasForeignKey(): string
+    {
+        return 'rkas_id';
+    }
 }

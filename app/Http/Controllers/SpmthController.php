@@ -2,17 +2,23 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Config\VariantConfig;
-
+use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Inertia\Inertia;
 
 class SpmthController extends Controller
 {
     protected string $variant;
+
     protected string $Penganggaran;
+
     protected string $PenerimaanDana;
+
     protected string $BukuKasUmum;
+
     protected string $Spmth;
 
     public function __construct()
@@ -27,7 +33,9 @@ class SpmthController extends Controller
             return $next($request);
         });
     }
-    public function index(Request $request) {
+
+    public function index(Request $request)
+    {
         $query = ($this->Spmth)::query()
             ->with(['penganggaran', 'sekolah']);
 
@@ -35,39 +43,41 @@ class SpmthController extends Controller
             $search = $request->search;
             $query->where('nomor_surat', 'like', "%{$search}%");
         }
-        
+
         // Filter by current school/user if necessary (assuming implementation detail)
         // $query->where('sekolah_id', auth()->user()->sekolah_id);
 
         $perPage = $request->input('per_page', 10);
+
         return response()->json($query->latest()->paginate($perPage));
     }
 
-    public function calculate(Request $request) {
+    public function calculate(Request $request)
+    {
         // Inputs: tahun_anggaran, tahap (1 or 2), penganggaran_id (optional if we can derive from session/user)
         try {
             $tahun = $request->tahun_anggaran;
             $tahap = $request->tahap;
-            $sekolahId = auth()->user()->sekolah_id ?? 1; 
-            
+            $sekolahId = auth()->user()->sekolah_id ?? 1;
+
             // 1. Get Penganggaran ID for the year/school
             $penganggaran = ($this->Penganggaran)::where('sekolah_id', $sekolahId)
                 ->where('tahun_anggaran', $tahun)
                 ->first();
 
-            if (!$penganggaran) {
+            if (! $penganggaran) {
                 return response()->json(['error' => "Data Penganggaran tidak ditemukan untuk tahun $tahun"], 404);
             }
 
             // 2. Calculate Pagu (Total Penerimaan)
             // Modified per user request to use pagu_anggaran from Penganggaran model
             $pagu = $penganggaran->pagu_anggaran;
-            
+
             /* Previous Logic:
             $pagu = ($this->PenerimaanDana)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
-                ->where('sumber_dana', 'like', "%Tahap $tahap%") 
+                ->where('sumber_dana', 'like', "%Tahap $tahap%")
                 ->sum('jumlah_dana');
-            
+
             if ($pagu == 0) {
                  $months = $tahap == '1' ? [1,2,3,4,5,6] : [7,8,9,10,11,12];
                  $pagu = ($this->PenerimaanDana)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
@@ -80,34 +90,34 @@ class SpmthController extends Controller
             // 3. Calculate Realisasi (Expenditure)
             // Semester I: Jan - Jun
             // Semester II: Jul - Dec
-            
+
             // Realisasi Lalu (Previous Semester)
             $realisasiLalu = 0;
             if ($tahap == '2') {
-                 // Sum of Sem 1
-                 $realisasiLalu = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
+                // Sum of Sem 1
+                $realisasiLalu = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
                     ->where('is_bunga_record', false)
                     ->whereYear('tanggal_transaksi', $tahun)
-                    ->whereIn(\DB::raw('EXTRACT(MONTH FROM tanggal_transaksi)'), [1,2,3,4,5,6])
+                    ->whereIn(\DB::raw('EXTRACT(MONTH FROM tanggal_transaksi)'), [1, 2, 3, 4, 5, 6])
                     ->sum('total_transaksi_kotor'); // Using total_transaksi_kotor as typically used
             }
 
             // Realisasi Ini (Current Semester)
-            $monthsIni = $tahap == '1' ? [1,2,3,4,5,6] : [7,8,9,10,11,12];
+            $monthsIni = $tahap == '1' ? [1, 2, 3, 4, 5, 6] : [7, 8, 9, 10, 11, 12];
             $realisasiIni = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
-                    ->where('is_bunga_record', false)
-                    ->whereYear('tanggal_transaksi', $tahun)
-                    ->whereIn(\DB::raw('EXTRACT(MONTH FROM tanggal_transaksi)'), $monthsIni)
-                    ->sum('total_transaksi_kotor');
+                ->where('is_bunga_record', false)
+                ->whereYear('tanggal_transaksi', $tahun)
+                ->whereIn(\DB::raw('EXTRACT(MONTH FROM tanggal_transaksi)'), $monthsIni)
+                ->sum('total_transaksi_kotor');
 
             $sisa = $pagu - ($realisasiLalu + $realisasiIni); // Usually Sisa is (Pagu - Total Usage)
-            
+
             return response()->json([
                 VariantConfig::penganggaranFk($this->variant) => $penganggaran->id,
                 'pagu' => $pagu,
                 'realisasi_lalu' => $realisasiLalu,
                 'realisasi_ini' => $realisasiIni,
-                'sisa' => $sisa
+                'sisa' => $sisa,
             ]);
 
         } catch (\Exception $e) {
@@ -115,18 +125,19 @@ class SpmthController extends Controller
         }
     }
 
-    public function store(Request $request) {
+    public function store(Request $request)
+    {
         $validated = $request->validate([
             'nomor_surat' => [
                 'required',
                 'string',
                 Rule::unique((new $this->Spmth)->getTable())->where(function ($query) use ($request) {
                     return $query->where('tahap', $request->tahap)
-                                 ->where(VariantConfig::penganggaranFk($this->variant), $request->{VariantConfig::penganggaranFk($this->variant)});
-                })
+                        ->where(VariantConfig::penganggaranFk($this->variant), $request->{VariantConfig::penganggaranFk($this->variant)});
+                }),
             ],
             'tahap' => 'required|in:1,2',
-            VariantConfig::penganggaranFk($this->variant) => 'required|exists:' . (new $this->Penganggaran)->getTable() . ',id',
+            VariantConfig::penganggaranFk($this->variant) => 'required|exists:'.(new $this->Penganggaran)->getTable().',id',
             'realisasi_lalu' => 'required|numeric',
             'realisasi_ini' => 'required|numeric',
             'sisa' => 'required|numeric',
@@ -141,72 +152,78 @@ class SpmthController extends Controller
 
         return response()->json(['success' => true]);
     }
-    
-    public function update(Request $request, $id) {
-         $spmth = ($this->Spmth)::findOrFail($id);
-         $validated = $request->validate([
+
+    public function update(Request $request, $id)
+    {
+        $spmth = ($this->Spmth)::findOrFail($id);
+        $validated = $request->validate([
             'nomor_surat' => [
                 'required',
                 'string',
                 Rule::unique((new $this->Spmth)->getTable())->ignore($id)->where(function ($query) use ($request) {
                     return $query->where('tahap', $request->tahap)
-                                 ->where(VariantConfig::penganggaranFk($this->variant), $request->{VariantConfig::penganggaranFk($this->variant)});
-                })
+                        ->where(VariantConfig::penganggaranFk($this->variant), $request->{VariantConfig::penganggaranFk($this->variant)});
+                }),
             ],
             'tahap' => 'required|in:1,2',
-            VariantConfig::penganggaranFk($this->variant) => 'required|exists:' . (new $this->Penganggaran)->getTable() . ',id',
+            VariantConfig::penganggaranFk($this->variant) => 'required|exists:'.(new $this->Penganggaran)->getTable().',id',
             'realisasi_lalu' => 'required|numeric',
             'realisasi_ini' => 'required|numeric',
             'sisa' => 'required|numeric',
             'tanggal_spmth' => 'nullable|date',
         ], [
-            'nomor_surat.unique' => 'SPMTH Tahap Tersebut Sudah Ada',
-        ]);
-        
+             'nomor_surat.unique' => 'SPMTH Tahap Tersebut Sudah Ada',
+         ]);
+
         $spmth->update($validated);
+
         return response()->json(['success' => true]);
     }
 
-    public function destroy($id) {
+    public function destroy($id)
+    {
         ($this->Spmth)::findOrFail($id)->delete();
+
         return response()->json(['success' => true]);
     }
 
-    public function generatePdf($id) {
+    public function generatePdf($id)
+    {
         $spmth = ($this->Spmth)::with(['sekolah', 'penganggaran'])->findOrFail($id);
-        
+
         $paperSize = request()->input('paper_size', 'A4');
         $fontSize = request()->input('font_size', '12pt');
 
         $data = [
-                'sumberDana' => \App\Config\VariantConfig::title($this->variant),
+            'sumberDana' => VariantConfig::title($this->variant),
             'spmth' => $spmth,
             'sekolah' => $spmth->sekolah,
             'kepala_sekolah' => (object) [
                 'nama' => $spmth->penganggaran->kepala_sekolah,
-                'nip' => $spmth->penganggaran->nip_kepala_sekolah
+                'nip' => $spmth->penganggaran->nip_kepala_sekolah,
             ],
-            'tanggal_cetak' => $spmth->tanggal_spmth 
-                ? \Carbon\Carbon::parse($spmth->tanggal_spmth)->locale('id')->isoFormat('D MMMM Y') 
+            'tanggal_cetak' => $spmth->tanggal_spmth
+                ? Carbon::parse($spmth->tanggal_spmth)->locale('id')->isoFormat('D MMMM Y')
                 : now()->locale('id')->isoFormat('D MMMM Y'),
             'semester_text' => $spmth->tahap == '1' ? 'Semester I' : 'Semester II',
             'pagu' => $this->calculatePagu($spmth->{VariantConfig::penganggaranFk($this->variant)}, $spmth->tahap, $spmth->penganggaran->tahun_anggaran),
             'fontSize' => $fontSize,
         ];
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('laporan.spmth_pdf', $data);
-        
+        $pdf = Pdf::loadView('laporan.spmth_pdf', $data);
+
         // Handle custom paper sizes if necessary, or just pass the string
         if (strtolower($paperSize) === 'folio') {
-             $pdf->setPaper([0, 0, 595.28, 935.43], 'portrait'); // F4 / Folio approx
+            $pdf->setPaper([0, 0, 595.28, 935.43], 'portrait'); // F4 / Folio approx
         } else {
-             $pdf->setPaper($paperSize, 'portrait');
+            $pdf->setPaper($paperSize, 'portrait');
         }
 
         return $pdf->stream('spmth.pdf');
     }
 
-    public function getTahunAnggaran() {
+    public function getTahunAnggaran()
+    {
         $sekolahId = auth()->user()->sekolah_id ?? 1;
         $tahuns = ($this->Penganggaran)::where('sekolah_id', $sekolahId)
             ->select('id', 'tahun_anggaran')
@@ -216,8 +233,10 @@ class SpmthController extends Controller
         return response()->json($tahuns);
     }
 
-    private function calculatePagu($penganggaranId, $tahap, $tahun) {
+    private function calculatePagu($penganggaranId, $tahap, $tahun)
+    {
         $penganggaran = ($this->Penganggaran)::find($penganggaranId);
+
         return $penganggaran ? $penganggaran->pagu_anggaran : 0;
     }
 
@@ -227,9 +246,10 @@ class SpmthController extends Controller
         if (app()->bound('variant')) {
             $var = app('variant');
         }
-        return \Inertia\Inertia::render(VariantConfig::pagePrefix($var) . $component, array_merge($props, [
+
+        return Inertia::render(VariantConfig::pagePrefix($var).$component, array_merge($props, [
             'variant' => $var,
-            'routePrefix' => VariantConfig::routePrefix($var)
+            'routePrefix' => VariantConfig::routePrefix($var),
         ]));
     }
 }

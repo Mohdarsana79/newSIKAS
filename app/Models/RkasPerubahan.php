@@ -33,7 +33,7 @@ class RkasPerubahan extends Model
         'status_penerima',
         'golongan',
         'uraian_gabungan',
-        'nomor_kwitansi'
+        'nomor_kwitansi',
     ];
 
     protected $casts = [
@@ -53,7 +53,7 @@ class RkasPerubahan extends Model
         return $this->belongsTo(KodeKegiatan::class, 'kode_id')->withDefault([
             'program' => '-',
             'sub_program' => '-',
-            'uraian' => '-'
+            'uraian' => '-',
         ]);
     }
 
@@ -64,7 +64,7 @@ class RkasPerubahan extends Model
     {
         return $this->belongsTo(RekeningBelanja::class, 'kode_rekening_id')->withDefault([
             'kode_rekening' => '-',
-            'rincian_objek' => '-'
+            'rincian_objek' => '-',
         ]);
     }
 
@@ -81,7 +81,7 @@ class RkasPerubahan extends Model
      */
     public function getHargaSatuanFormattedAttribute()
     {
-        return 'Rp ' . number_format($this->harga_satuan, 0, ',', '.');
+        return 'Rp '.number_format($this->harga_satuan, 0, ',', '.');
     }
 
     /**
@@ -89,7 +89,7 @@ class RkasPerubahan extends Model
      */
     public function getTotalAnggaranFormattedAttribute()
     {
-        return 'Rp ' . number_format($this->total_anggaran, 0, ',', '.');
+        return 'Rp '.number_format($this->total_anggaran, 0, ',', '.');
     }
 
     /**
@@ -133,7 +133,7 @@ class RkasPerubahan extends Model
             'September',
             'Oktober',
             'November',
-            'Desember'
+            'Desember',
         ];
     }
 
@@ -222,6 +222,7 @@ class RkasPerubahan extends Model
 
         return $query;
     }
+
     public function bkuUraianDetails()
     {
         return $this->hasMany(BukuKasUmumUraianDetail::class, 'rkas_perubahan_id');

@@ -7,7 +7,7 @@ use App\Models\RekeningBelanja;
 
 /**
  * Shared behavior for all BukuKasUmum model variants.
- * 
+ *
  * Used by: BukuKasUmum, KinerjaBukuKasUmum, SilpaBukuKasUmum, KinerjaSilpaBukuKasUmum
  */
 trait HasBukuKasUmumBehavior
@@ -15,22 +15,28 @@ trait HasBukuKasUmumBehavior
     // ─── Abstract methods: each model MUST override ────────────────
 
     abstract protected function penganggaranModelClass(): string;
+
     abstract protected function penganggaranForeignKey(): string;
-    
+
     abstract protected function uraianDetailModelClass(): string;
+
     abstract protected function bkuForeignKey(): string; // foreign key on uraian, kwitansi, etc pointing to this BKU
-    
+
     abstract protected function kwitansiModelClass(): string;
+
     abstract protected function tandaTerimaModelClass(): string;
+
     abstract protected function dokumenModelClass(): string;
+
     abstract protected function bastModelClass(): string;
+
     abstract protected function suratPesananModelClass(): string;
 
     // ─── Fillable & Casts ──────────────────────────────────────────
 
     public function initializeHasBukuKasUmumBehavior(): void
     {
-        // Many variants just use $guarded = ['id'] which is fine, 
+        // Many variants just use $guarded = ['id'] which is fine,
         // we'll just merge casts.
         $this->casts = array_merge($this->casts ?? [], [
             'tanggal_transaksi' => 'date',
@@ -55,9 +61,9 @@ trait HasBukuKasUmumBehavior
     {
         return $this->belongsTo(RekeningBelanja::class);
     }
-    
+
     // ─── Variant-Aware Relationships ───────────────────────────────
-    
+
     public function uraianDetails()
     {
         return $this->hasMany($this->uraianDetailModelClass(), $this->bkuForeignKey());

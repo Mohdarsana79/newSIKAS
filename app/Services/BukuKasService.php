@@ -22,6 +22,7 @@ class BukuKasService
         if ($this->explicitVariant) {
             return $this->explicitVariant;
         }
+
         return app()->bound('variant') ? app('variant') : 'reguler';
     }
 

@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Penganggaran;
 use App\Models\SekolahProfile;
-use Illuminate\Http\Request;
-use Inertia\Inertia;
+use App\Models\SyncLog;
 use App\Services\BospSyncService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
+use Inertia\Inertia;
 
 class IntegrasiController extends Controller
 {
@@ -22,8 +25,9 @@ class IntegrasiController extends Controller
     public function apiIndex()
     {
         $sekolah = SekolahProfile::first();
+
         return Inertia::render('Integrasi/Api', [
-            'sekolah' => $sekolah
+            'sekolah' => $sekolah,
         ]);
     }
 
@@ -33,8 +37,8 @@ class IntegrasiController extends Controller
     public function apiUpdate(Request $request)
     {
         $sekolah = SekolahProfile::first();
-        
-        if (!$sekolah) {
+
+        if (! $sekolah) {
             return redirect()->back()->with('error', 'Silakan lengkapi Profil Sekolah terlebih dahulu.');
         }
 
@@ -62,12 +66,12 @@ class IntegrasiController extends Controller
         ]);
 
         try {
-            $response = \Illuminate\Support\Facades\Http::withHeaders([
-                'X-SIMS-Token' => $request->token
+            $response = Http::withHeaders([
+                'X-SIMS-Token' => $request->token,
             ])->timeout(10)->post($request->url, [
                 'type' => 'bosp',
                 'data' => [
-                    'tahun' => (int)date('Y'),
+                    'tahun' => (int) date('Y'),
                     'summary' => [
                         'pagu_anggaran' => 0,
                         'total_realisasi' => 0,
@@ -79,29 +83,29 @@ class IntegrasiController extends Controller
                         [
                             'nama_kegiatan' => 'Test Connection',
                             'anggaran' => 0,
-                            'realisasi' => 0
-                        ]
+                            'realisasi' => 0,
+                        ],
                     ],
                     'reports' => [],
-                    'is_test' => true
-                ]
+                    'is_test' => true,
+                ],
             ]);
 
             if ($response->successful()) {
                 return response()->json([
                     'success' => true,
-                    'message' => 'Koneksi Berhasil! Website merespon dengan status: ' . $response->status()
+                    'message' => 'Koneksi Berhasil! Website merespon dengan status: '.$response->status(),
                 ]);
             }
 
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal terhubung. Status: ' . $response->status() . '. ' . $response->body()
+                'message' => 'Gagal terhubung. Status: '.$response->status().'. '.$response->body(),
             ], 400);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Kesalahan koneksi: ' . $e->getMessage()
+                'message' => 'Kesalahan koneksi: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -112,18 +116,18 @@ class IntegrasiController extends Controller
     public function syncIndex()
     {
         $sekolah = SekolahProfile::first();
-        $availableYears = \App\Models\Penganggaran::distinct()
+        $availableYears = Penganggaran::distinct()
             ->orderBy('tahun_anggaran', 'desc')
             ->pluck('tahun_anggaran')
             ->toArray();
 
-        $syncLogs = \App\Models\SyncLog::orderBy('created_at', 'desc')
+        $syncLogs = SyncLog::orderBy('created_at', 'desc')
             ->get();
 
         return Inertia::render('Integrasi/Sync', [
             'sekolah' => $sekolah,
             'availableYears' => $availableYears,
-            'syncLogs' => $syncLogs
+            'syncLogs' => $syncLogs,
         ]);
     }
 
@@ -137,7 +141,7 @@ class IntegrasiController extends Controller
         ]);
 
         $sekolah = SekolahProfile::first();
-        if (!$sekolah) {
+        if (! $sekolah) {
             return response()->json(['error' => 'Profil Sekolah belum diatur.'], 400);
         }
 
@@ -156,10 +160,11 @@ class IntegrasiController extends Controller
         ]);
 
         $sekolah = SekolahProfile::first();
-        
-        if (!$sekolah || !$sekolah->website_sync_url) {
+
+        if (! $sekolah || ! $sekolah->website_sync_url) {
             $msg = 'Konfigurasi API belum diatur. Silakan atur di menu API.';
-            return $request->wantsJson() 
+
+            return $request->wantsJson()
                 ? response()->json(['success' => false, 'message' => $msg], 400)
                 : redirect()->back()->with('error', $msg);
         }
@@ -167,12 +172,12 @@ class IntegrasiController extends Controller
         $result = $this->syncService->syncData($request->tahun, $sekolah->id);
 
         // Save Log
-        \App\Models\SyncLog::create([
+        SyncLog::create([
             'sekolah_id' => $sekolah->id,
             'tahun' => $request->tahun,
             'status' => $result['success'] ? 'success' : 'failed',
             'message' => $result['message'],
-            'payload' => $result['payload'] ?? null
+            'payload' => $result['payload'] ?? null,
         ]);
 
         if ($request->wantsJson()) {

@@ -2,17 +2,22 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\SekolahProfile;
 use App\Config\VariantConfig;
+use App\Models\SekolahProfile;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Inertia\Inertia;
 
 class SuratPesananController extends Controller
 {
     protected string $variant;
+
     protected string $Penganggaran;
+
     protected string $BukuKasUmum;
+
     protected string $SuratPesanan;
 
     public function __construct()
@@ -45,8 +50,10 @@ class SuratPesananController extends Controller
             if ($tahun && is_numeric($tahun)) {
                 $query->where(VariantConfig::penganggaranFk($this->variant), $tahun);
             } elseif ($tahun && strlen($tahun) == 4) {
-                 $p = ($this->Penganggaran)::where('tahun_anggaran', $tahun)->first();
-                 if ($p) $query->where(VariantConfig::penganggaranFk($this->variant), $p->id);
+                $p = ($this->Penganggaran)::where('tahun_anggaran', $tahun)->first();
+                if ($p) {
+                    $query->where(VariantConfig::penganggaranFk($this->variant), $p->id);
+                }
             }
 
             if ($startDate) {
@@ -64,11 +71,11 @@ class SuratPesananController extends Controller
             if ($search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('nomor_sp', 'ILIKE', "%{$search}%")
-                      ->orWhere('pihak_kedua_nama_perusahaan', 'ILIKE', "%{$search}%")
-                      ->orWhereHas('bukuKasUmum', function ($q2) use ($search) {
-                          $q2->where('uraian', 'ILIKE', "%{$search}%")
-                             ->orWhere('uraian_opsional', 'ILIKE', "%{$search}%");
-                      });
+                        ->orWhere('pihak_kedua_nama_perusahaan', 'ILIKE', "%{$search}%")
+                        ->orWhereHas('bukuKasUmum', function ($q2) use ($search) {
+                            $q2->where('uraian', 'ILIKE', "%{$search}%")
+                                ->orWhere('uraian_opsional', 'ILIKE', "%{$search}%");
+                        });
                 });
             }
 
@@ -82,8 +89,8 @@ class SuratPesananController extends Controller
                     'number' => $number,
                     'nomor_sp' => $sp->nomor_sp,
                     'uraian' => $sp->bukuKasUmum->uraian_opsional ?? $sp->bukuKasUmum->uraian,
-                    'tanggal' => $sp->tanggal_sp ? \Carbon\Carbon::parse($sp->tanggal_sp)->format('d/m/Y') : \Carbon\Carbon::parse($sp->bukuKasUmum->tanggal_transaksi)->format('d/m/Y'),
-                    'tanggal_sp_raw' => $sp->tanggal_sp ? \Carbon\Carbon::parse($sp->tanggal_sp)->format('Y-m-d') : \Carbon\Carbon::parse($sp->bukuKasUmum->tanggal_transaksi)->format('Y-m-d'),
+                    'tanggal' => $sp->tanggal_sp ? Carbon::parse($sp->tanggal_sp)->format('d/m/Y') : Carbon::parse($sp->bukuKasUmum->tanggal_transaksi)->format('d/m/Y'),
+                    'tanggal_sp_raw' => $sp->tanggal_sp ? Carbon::parse($sp->tanggal_sp)->format('Y-m-d') : Carbon::parse($sp->bukuKasUmum->tanggal_transaksi)->format('Y-m-d'),
                     'pihak_kesatu_nama' => $sp->pihak_kesatu_nama,
                     'pihak_kesatu_nip' => $sp->pihak_kesatu_nip,
                     'pihak_kesatu_jabatan' => $sp->pihak_kesatu_jabatan,
@@ -107,8 +114,8 @@ class SuratPesananController extends Controller
                     'uraian_details' => $sp->bukuKasUmum->uraianDetails ?? collect([]),
                     'delete_data' => [
                         'id' => $sp->id,
-                        'uraian' => 'Surat Pesanan ' . ($sp->nomor_sp ?? 'Tanpa Nomor')
-                    ]
+                        'uraian' => 'Surat Pesanan '.($sp->nomor_sp ?? 'Tanpa Nomor'),
+                    ],
                 ];
             });
 
@@ -124,7 +131,8 @@ class SuratPesananController extends Controller
                 ],
             ]);
         } catch (\Exception $e) {
-            Log::error('Error searching Surat Pesanan: ' . $e->getMessage());
+            Log::error('Error searching Surat Pesanan: '.$e->getMessage());
+
             return response()->json([
                 'success' => false,
                 'message' => 'Terjadi kesalahan saat mencari data',
@@ -137,7 +145,7 @@ class SuratPesananController extends Controller
         try {
             $bkuFk = VariantConfig::bkuFk($this->variant);
             $validated = $request->validate([
-                $bkuFk => 'required|exists:' . (new $this->BukuKasUmum)->getTable() . ',id',
+                $bkuFk => 'required|exists:'.(new $this->BukuKasUmum)->getTable().',id',
                 'nomor_sp' => 'nullable|string',
                 'tanggal_sp' => 'nullable|date',
                 'pihak_kesatu_nama' => 'nullable|string',
@@ -158,7 +166,7 @@ class SuratPesananController extends Controller
 
             $bukuKasUmum = ($this->BukuKasUmum)::with('penganggaran.sekolah')->find($validated[$bkuFk]);
 
-            if (!$bukuKasUmum) {
+            if (! $bukuKasUmum) {
                 return response()->json(['success' => false, 'message' => 'BKU tidak ditemukan'], 404);
             }
 
@@ -168,12 +176,12 @@ class SuratPesananController extends Controller
             }
 
             $sekolahId = $bukuKasUmum->penganggaran->sekolah_id;
-            if (!$sekolahId) {
+            if (! $sekolahId) {
                 $sekolahId = SekolahProfile::first()->id ?? null;
             }
 
             $penganggaranFk = VariantConfig::penganggaranFk($this->variant);
-            
+
             $sp = new ($this->SuratPesanan);
             $sp->sekolah_id = $sekolahId;
             $sp->$penganggaranFk = $bukuKasUmum->$penganggaranFk;
@@ -186,7 +194,7 @@ class SuratPesananController extends Controller
             $sp->pihak_kesatu_jabatan = $validated['pihak_kesatu_jabatan'] ?? null;
             $sp->pihak_kesatu_instansi = $validated['pihak_kesatu_instansi'] ?? null;
             $sp->pihak_kesatu_alamat = $validated['pihak_kesatu_alamat'] ?? null;
-            
+
             $sp->pihak_kedua_nama_perusahaan = $validated['pihak_kedua_nama_perusahaan'] ?? null;
             $sp->pihak_kedua_penanggung_jawab = $validated['pihak_kedua_penanggung_jawab'] ?? null;
             $sp->pihak_kedua_alamat = $validated['pihak_kedua_alamat'] ?? null;
@@ -196,17 +204,18 @@ class SuratPesananController extends Controller
             $sp->waktu_pengiriman = $validated['waktu_pengiriman'] ?? 'Barang harus dikirimkan selambat-lambatnya setelah Surat Pesanan ini disetujui.';
             $sp->kondisi_barang = $validated['kondisi_barang'] ?? 'Barang yang dikirim harus dalam keadaan baru, tidak cacat, dan sesuai dengan spesifikasi yang tertera. PIHAK KESATU berhak menolak barang yang tidak sesuai.';
             $sp->ketentuan_pembayaran = $validated['ketentuan_pembayaran'] ?? 'Pembayaran akan ditransfer ke rekening PIHAK KEDUA setelah seluruh barang diterima dengan baik yang dibuktikan dengan penandatanganan Berita Acara Serah Terima (BAST).';
-            $sp->sumber_dana = $validated['sumber_dana'] ?? 'Pembiayaan pengadaan barang ini dibebankan pada dana Bantuan Operasional Satuan Pendidikan (BOSP) Tahun Anggaran ' . ($bukuKasUmum->penganggaran->tahun_anggaran ?? date('Y')) . '.';
+            $sp->sumber_dana = $validated['sumber_dana'] ?? 'Pembiayaan pengadaan barang ini dibebankan pada dana Bantuan Operasional Satuan Pendidikan (BOSP) Tahun Anggaran '.($bukuKasUmum->penganggaran->tahun_anggaran ?? date('Y')).'.';
 
             $sp->save();
 
             return response()->json(['success' => true, 'message' => 'Surat Pesanan berhasil dibuat!', 'data' => $sp]);
         } catch (\Exception $e) {
-            Log::error('Error creating Surat Pesanan: ' . $e->getMessage());
+            Log::error('Error creating Surat Pesanan: '.$e->getMessage());
+
             return response()->json(['success' => false, 'message' => 'Gagal membuat Surat Pesanan'], 500);
         }
     }
-    
+
     public function update(Request $request, $id)
     {
         try {
@@ -229,12 +238,13 @@ class SuratPesananController extends Controller
                 'ketentuan_pembayaran' => 'nullable|string',
                 'sumber_dana' => 'nullable|string',
             ]);
-            
+
             $sp->update($validated);
-            
+
             return response()->json(['success' => true, 'message' => 'Surat Pesanan berhasil diubah!']);
         } catch (\Exception $e) {
-            Log::error('Error updating Surat Pesanan: ' . $e->getMessage());
+            Log::error('Error updating Surat Pesanan: '.$e->getMessage());
+
             return response()->json(['success' => false, 'message' => 'Gagal mengubah Surat Pesanan'], 500);
         }
     }
@@ -257,7 +267,7 @@ class SuratPesananController extends Controller
                 'data' => $tahunAnggaran,
             ]);
         } catch (\Exception $e) {
-            Log::error('Error getting tahun anggaran Surat Pesanan: ' . $e->getMessage());
+            Log::error('Error getting tahun anggaran Surat Pesanan: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
@@ -282,7 +292,9 @@ class SuratPesananController extends Controller
                     $query->where($penganggaranFk, $tahun);
                 } else {
                     $p = ($this->Penganggaran)::where('tahun_anggaran', $tahun)->first();
-                    if ($p) $query->where($penganggaranFk, $p->id);
+                    if ($p) {
+                        $query->where($penganggaranFk, $p->id);
+                    }
                 }
             }
 
@@ -299,7 +311,7 @@ class SuratPesananController extends Controller
                 return [
                     'id' => $bku->id,
                     'uraian' => $bku->uraian_opsional ?? $bku->uraian,
-                    'tanggal' => \Carbon\Carbon::parse($bku->tanggal_transaksi)->format('Y-m-d'),
+                    'tanggal' => Carbon::parse($bku->tanggal_transaksi)->format('Y-m-d'),
                     'nominal' => $bku->total_transaksi_kotor ?? $bku->dibelanjakan ?? 0,
                     'pihak_kedua_nama_perusahaan' => $bku->nama_toko ?? $bku->nama_penerima_pembayaran ?? '',
                     'pihak_kedua_alamat' => $bku->alamat_toko ?? '',
@@ -311,10 +323,11 @@ class SuratPesananController extends Controller
 
             return response()->json([
                 'success' => true,
-                'data' => $formatted
+                'data' => $formatted,
             ]);
         } catch (\Exception $e) {
-            Log::error('Error getting available BKU: ' . $e->getMessage());
+            Log::error('Error getting available BKU: '.$e->getMessage());
+
             return response()->json(['success' => false, 'message' => 'Gagal mengambil data BKU yang tersedia']);
         }
     }
@@ -324,9 +337,11 @@ class SuratPesananController extends Controller
         try {
             $sp = ($this->SuratPesanan)::findOrFail($id);
             $sp->delete();
+
             return response()->json(['success' => true, 'message' => 'Surat Pesanan berhasil dihapus!']);
         } catch (\Exception $e) {
-            Log::error('Error deleting Surat Pesanan: ' . $e->getMessage());
+            Log::error('Error deleting Surat Pesanan: '.$e->getMessage());
+
             return response()->json(['success' => false, 'message' => 'Gagal menghapus Surat Pesanan'], 500);
         }
     }
@@ -335,7 +350,7 @@ class SuratPesananController extends Controller
     {
         return $this->renderPdf($request, $id, false);
     }
-    
+
     public function previewPdf(Request $request, $id)
     {
         return $this->renderPdf($request, $id, true);
@@ -347,7 +362,7 @@ class SuratPesananController extends Controller
             $sp = ($this->SuratPesanan)::with([
                 'bukuKasUmum.uraianDetails',
                 'penganggaran',
-                'sekolah'
+                'sekolah',
             ])->findOrFail($id);
 
             $uraianDetails = $sp->bukuKasUmum->uraianDetails ?? collect([]);
@@ -359,8 +374,8 @@ class SuratPesananController extends Controller
                     $totalKeseluruhan += ($detail->volume * $detail->harga_satuan);
                 }
             }
-            
-            $terbilangText = ucwords($this->convertToText($totalKeseluruhan) . ' Rupiah');
+
+            $terbilangText = ucwords($this->convertToText($totalKeseluruhan).' Rupiah');
 
             $fontSize = $request->query('fontSize', '11pt');
             $paperSize = $request->query('paperSize', 'A4');
@@ -375,8 +390,8 @@ class SuratPesananController extends Controller
                 'suratPesanan' => $sp,
                 'bku' => $sp->bukuKasUmum,
                 'uraianDetails' => $uraianDetails,
-                'tanggalBku' => \Carbon\Carbon::parse($sp->bukuKasUmum->tanggal_transaksi)->locale('id'),
-                'tanggalSp' => $sp->tanggal_sp ? \Carbon\Carbon::parse($sp->tanggal_sp)->locale('id') : \Carbon\Carbon::parse($sp->bukuKasUmum->tanggal_transaksi)->locale('id'),
+                'tanggalBku' => Carbon::parse($sp->bukuKasUmum->tanggal_transaksi)->locale('id'),
+                'tanggalSp' => $sp->tanggal_sp ? Carbon::parse($sp->tanggal_sp)->locale('id') : Carbon::parse($sp->bukuKasUmum->tanggal_transaksi)->locale('id'),
                 'totalKeseluruhan' => $totalKeseluruhan,
                 'terbilangText' => $terbilangText,
                 'fontSize' => $fontSize,
@@ -390,9 +405,11 @@ class SuratPesananController extends Controller
                     ->header('Content-Type', 'application/pdf');
             }
             $safeName = str_replace(['/', '\\'], '_', $sp->nomor_sp ?? $sp->id);
-            return $pdf->stream('Surat_Pesanan_' . $safeName . '.pdf');
+
+            return $pdf->stream('Surat_Pesanan_'.$safeName.'.pdf');
         } catch (\Exception $e) {
-            Log::error('Error rendering Surat Pesanan PDF: ' . $e->getMessage());
+            Log::error('Error rendering Surat Pesanan PDF: '.$e->getMessage());
+
             return redirect()->back()->with('error', 'Gagal memuat PDF Surat Pesanan');
         }
     }
@@ -413,7 +430,7 @@ class SuratPesananController extends Controller
             if ($chunk != 0) {
                 $chunkWords = $this->convertChunk($chunk);
                 if ($unitIndex > 0) {
-                    $chunkWords .= ' ' . $units[$unitIndex];
+                    $chunkWords .= ' '.$units[$unitIndex];
                 }
                 array_unshift($words, $chunkWords);
             }
@@ -435,11 +452,11 @@ class SuratPesananController extends Controller
         if ($number < 12) {
             return $ones[$number];
         } elseif ($number < 20) {
-            return $ones[$number - 10] . ' belas';
+            return $ones[$number - 10].' belas';
         } elseif ($number < 100) {
-            return $ones[floor($number / 10)] . ' puluh ' . $ones[$number % 10];
+            return $ones[floor($number / 10)].' puluh '.$ones[$number % 10];
         } else {
-            return $ones[floor($number / 100)] . ' ratus ' . $this->convertChunk($number % 100);
+            return $ones[floor($number / 100)].' ratus '.$this->convertChunk($number % 100);
         }
     }
 
@@ -449,9 +466,10 @@ class SuratPesananController extends Controller
         if (app()->bound('variant')) {
             $var = app('variant');
         }
-        return \Inertia\Inertia::render(VariantConfig::pagePrefix($var) . $component, array_merge($props, [
+
+        return Inertia::render(VariantConfig::pagePrefix($var).$component, array_merge($props, [
             'variant' => $var,
-            'routePrefix' => VariantConfig::routePrefix($var)
+            'routePrefix' => VariantConfig::routePrefix($var),
         ]));
     }
 }

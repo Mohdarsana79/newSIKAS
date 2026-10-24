@@ -23,6 +23,7 @@ interface PenganggaranItem {
     status: 'regular' | 'perubahan';
     has_perubahan: boolean;
     has_bku: boolean;
+    reports?: string[];
     tahun: string;
 }
 
@@ -64,6 +65,7 @@ export default function Index({
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editMode, setEditMode] = useState(false);
     const [editId, setEditId] = useState<number | null>(null);
+    const [isPerubahanLocked, setIsPerubahanLocked] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [deleteId, setDeleteId] = useState<number | null>(null);
     const [deleteStatus, setDeleteStatus] = useState<'regular' | 'perubahan' | null>(null);
@@ -165,6 +167,7 @@ export default function Index({
                     reset();
                     setEditMode(false);
                     setEditId(null);
+                    setIsPerubahanLocked(false);
                 },
             });
         } else {
@@ -172,9 +175,15 @@ export default function Index({
                 onSuccess: () => {
                     setIsModalOpen(false);
                     reset();
+                    setIsPerubahanLocked(false);
                 },
             });
         }
+    };
+
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
+        setIsPerubahanLocked(false);
     };
 
     const handleCreate = () => {
@@ -184,6 +193,7 @@ export default function Index({
         }
         setEditMode(false);
         setEditId(null);
+        setIsPerubahanLocked(false);
         reset();
         clearErrors();
         setIsModalOpen(true);
@@ -192,6 +202,8 @@ export default function Index({
     const handleEdit = (id: number) => {
         const item = anggarans.find(a => a.id === id);
         if (item) {
+            const regularItem = items.find(i => i.id === id && i.status === 'regular');
+            setIsPerubahanLocked(Boolean(regularItem?.has_perubahan));
             setEditMode(true);
             setEditId(id);
             setData({
@@ -214,7 +226,17 @@ export default function Index({
 
     const handleDelete = (id: number, status: 'regular' | 'perubahan') => {
         const item = items.find(i => i.id === id && i.status === status);
-        if (item && item.has_bku) {
+        if (!item) return;
+
+        // 1. Validasi jika status regular tapi masih ada RKAS Perubahan
+        if (status === 'regular' && item.has_perubahan) {
+            setAlertMessage("Penganggaran RKAS awal tidak dapat dihapus karena RKAS Perubahan masih ada. Anda perlu menghapus RKAS Perubahan terlebih dahulu.");
+            setIsAlertModalOpen(true);
+            return;
+        }
+
+        // 2. Validasi BKU
+        if (item.has_bku) {
             if (status === 'perubahan') {
                 setAlertMessage("RKAS Perubahan tidak dapat dihapus karena sudah ada data belanja pada BKU bulan Juli - Desember. Anda perlu menghapus data BKU pada periode tersebut terlebih dahulu.");
             } else {
@@ -223,6 +245,15 @@ export default function Index({
             setIsAlertModalOpen(true);
             return;
         }
+
+        // 3. Validasi Dokumen Laporan (SP2B, SPTJ, SPMTH, LPH)
+        if (item.reports && item.reports.length > 0) {
+            const reportNames = item.reports.join(', ');
+            setAlertMessage(`Dokumen ${reportNames} telah dibuat. Tidak bisa menghapus penganggaran ini karena berisiko merusak data. Hapus ${reportNames} terlebih dahulu agar bisa menghapus penganggaran ini.`);
+            setIsAlertModalOpen(true);
+            return;
+        }
+
         setDeleteId(id);
         setDeleteStatus(status);
         setIsDeleteModalOpen(true);
@@ -360,7 +391,7 @@ export default function Index({
 
                                         <div className="flex items-center gap-3 w-full sm:w-auto mt-4 sm:mt-0">
                                             {/* Edit Button - Conditional */}
-                                            {item.status === 'regular' && !item.has_perubahan && (
+                                            {item.status === 'regular' && (
                                                 <button
                                                     onClick={() => handleEdit(item.id)}
                                                     className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-gray-700 rounded-full transition-colors"
@@ -443,7 +474,7 @@ export default function Index({
             </div>
 
             {/* Modal Tambah Baru */}
-            <Modal show={isModalOpen} onClose={() => setIsModalOpen(false)} maxWidth="2xl">
+            <Modal show={isModalOpen} onClose={handleCloseModal} maxWidth="2xl">
                 <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl overflow-hidden max-h-[90vh] flex flex-col">
                     {/* Modal Header with Gradient */}
                     <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 px-6 py-4 flex items-center justify-between shrink-0">
@@ -454,7 +485,7 @@ export default function Index({
                             {editMode ? 'Edit Data Anggaran' : 'Tambah Anggaran Baru'}
                         </h2>
                         <button
-                            onClick={() => setIsModalOpen(false)}
+                            onClick={handleCloseModal}
                             className="text-white/80 hover:text-white hover:bg-white/20 rounded-full p-1 transition-colors"
                         >
                             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -482,6 +513,7 @@ export default function Index({
                                             </div>
                                             <TextInput
                                                 value={data.pagu_anggaran.replace('Rp ', '')}
+                                                disabled={editMode && isPerubahanLocked}
                                                 onChange={(e) => {
                                                     let value = e.target.value.replace(/[^,\d]/g, '');
                                                     if (value) {
@@ -502,10 +534,19 @@ export default function Index({
                                                     }
                                                 }}
                                                 placeholder="50.000.000"
-                                                className="block w-full pl-10 bg-white border-gray-300 dark:bg-gray-800 dark:border-gray-600 dark:text-white focus:border-indigo-500 focus:ring-indigo-500 rounded-lg shadow-sm"
+                                                className={`block w-full pl-10 bg-white border-gray-300 dark:bg-gray-800 dark:border-gray-600 dark:text-white focus:border-indigo-500 focus:ring-indigo-500 rounded-lg shadow-sm ${
+                                                    editMode && isPerubahanLocked
+                                                        ? 'bg-gray-100 text-gray-500 cursor-not-allowed dark:bg-gray-700/50 dark:text-gray-400'
+                                                        : ''
+                                                }`}
                                                 required
                                             />
                                         </div>
+                                        {editMode && isPerubahanLocked && (
+                                            <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                                                Pagu anggaran tidak dapat diubah karena sudah memiliki RKAS Perubahan.
+                                            </p>
+                                        )}
                                         <InputError message={errors.pagu_anggaran} className="mt-2" />
                                     </div>
 
@@ -514,10 +555,20 @@ export default function Index({
                                         <TextInput
                                             type="number"
                                             value={data.tahun_anggaran}
+                                            disabled={editMode && isPerubahanLocked}
                                             onChange={(e) => setData('tahun_anggaran', e.target.value)}
-                                            className="mt-1 block w-full bg-white border-gray-300 dark:bg-gray-800 dark:border-gray-600 dark:text-white rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                            className={`mt-1 block w-full bg-white border-gray-300 dark:bg-gray-800 dark:border-gray-600 dark:text-white rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 ${
+                                                editMode && isPerubahanLocked
+                                                    ? 'bg-gray-100 text-gray-500 cursor-not-allowed dark:bg-gray-700/50 dark:text-gray-400'
+                                                    : ''
+                                            }`}
                                             required
                                         />
+                                        {editMode && isPerubahanLocked && (
+                                            <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                                                Tahun anggaran tidak dapat diubah karena sudah memiliki RKAS Perubahan.
+                                            </p>
+                                        )}
                                         <InputError message={errors.tahun_anggaran} className="mt-2" />
                                     </div>
 
@@ -642,7 +693,7 @@ export default function Index({
 
                             {/* Footer / Actions */}
                             <div className="flex justify-end gap-3 pt-6 border-t border-gray-200 dark:border-gray-700">
-                                <SecondaryButton onClick={() => setIsModalOpen(false)} disabled={processing}>
+                                <SecondaryButton onClick={handleCloseModal} disabled={processing}>
                                     Batal
                                 </SecondaryButton>
                                 <PrimaryButton

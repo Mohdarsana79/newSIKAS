@@ -54,7 +54,7 @@
             <tr style="font-weight: bold; background-color: #f2f2f2;">
                 <td colspan="3" style="border: 1px solid #000; padding: 5px; text-align: center;">JUMLAH</td>
                 <td style="border: 1px solid #000; padding: 5px; text-align: right;">
-                    {{ number_format($data['totalPenerimaan'] + $data['saldoAwalTunai'], 0, ',', '.') }}
+                    {{ number_format($data['totalPenerimaan'], 0, ',', '.') }}
                 </td>
                 <td style="border: 1px solid #000; padding: 5px; text-align: right;">
                     {{ number_format($data['totalPengeluaran'], 0, ',', '.') }}

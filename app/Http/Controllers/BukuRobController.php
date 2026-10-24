@@ -2,22 +2,23 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\BukuKasService;
-use App\Models\Penganggaran;
-use App\Models\BukuKasUmum;
+use App\Config\VariantConfig;
 use App\Models\SekolahProfile; // CHANGED FROM Sekolah
+use App\Services\BukuKasService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use App\Config\VariantConfig;
 use Illuminate\Support\Facades\Log;
+use Inertia\Inertia;
 
 class BukuRobController extends Controller
 {
     protected $bukuKasService;
 
-        protected string $variant;
+    protected string $variant;
+
     protected string $Penganggaran;
+
     protected string $BukuKasUmum;
 
     public function __construct(BukuKasService $bukuKasService)
@@ -46,7 +47,7 @@ class BukuRobController extends Controller
                 ->with('sekolah')
                 ->first();
 
-            if (!$penganggaran) {
+            if (! $penganggaran) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Data penganggaran tidak ditemukan',
@@ -69,8 +70,8 @@ class BukuRobController extends Controller
                 ->orderBy('rekening_belanja_id') // Corrected Column
                 ->orderBy('tanggal_transaksi')
                 ->get();
-            
-            Log::info("BKU Data Count for ROB: " . $bkuData->count());
+
+            Log::info('BKU Data Count for ROB: '.$bkuData->count());
 
             $robData = [];
             $totalRealisasi = 0;
@@ -83,16 +84,17 @@ class BukuRobController extends Controller
 
                 // Skip items without valid account code if they shouldn't be here (optional)
                 if ($kodeRekening === 'N/A') {
-                     Log::warning("Skipping transaction ID {$transaksi->id} due to missing Rekening Belanja");
-                     continue; 
+                    Log::warning("Skipping transaction ID {$transaksi->id} due to missing Rekening Belanja");
+
+                    continue;
                 }
 
-                if (!isset($robData[$kodeRekening])) {
+                if (! isset($robData[$kodeRekening])) {
                     $robData[$kodeRekening] = [
                         'kode' => $kodeRekening,
                         'nama_rekening' => $namaRekening,
                         'transaksi' => [],
-                        'total_realisasi' => 0
+                        'total_realisasi' => 0,
                     ];
                 }
 
@@ -107,16 +109,17 @@ class BukuRobController extends Controller
                     'uraian' => $transaksi->uraian_opsional ?? $transaksi->uraian,
                     'realisasi' => $realisasi,
                     'jumlah' => $runningTotal,
-                    'sisa_anggaran' => $saldoAwal - $runningTotal
+                    'sisa_anggaran' => $saldoAwal - $runningTotal,
                 ];
             }
 
             // HTML return is kept empty if view doesn't exist, to prevent error.
             // If user has the view, they can uncomment or I can wrap in try-catch
-            $html = ''; 
+            $html = '';
             try {
-                 // $html = view('laporan.partials.bkp-rob-table', ...)->render();
-            } catch (\Exception $e) {}
+                // $html = view('laporan.partials.bkp-rob-table', ...)->render();
+            } catch (\Exception $e) {
+            }
 
             // Ambil tanggal tutup BKU jika ada
             $bungaRecord = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
@@ -125,8 +128,8 @@ class BukuRobController extends Controller
                 ->where('is_bunga_record', true)
                 ->first();
 
-            $tanggalTutup = ($bungaRecord && $bungaRecord->tanggal_tutup) 
-                ? Carbon::parse($bungaRecord->tanggal_tutup) 
+            $tanggalTutup = ($bungaRecord && $bungaRecord->tanggal_tutup)
+                ? Carbon::parse($bungaRecord->tanggal_tutup)
                 : Carbon::create($tahun, $bulanAngka, 1)->endOfMonth();
 
             return response()->json([
@@ -146,7 +149,8 @@ class BukuRobController extends Controller
                 ],
             ]);
         } catch (\Exception $e) {
-            Log::error('Error get BKP ROB data: ' . $e->getMessage());
+            Log::error('Error get BKP ROB data: '.$e->getMessage());
+
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
@@ -158,7 +162,9 @@ class BukuRobController extends Controller
             $bulanInput = $request->query('bulan');
 
             $penganggaran = ($this->Penganggaran)::where('tahun_anggaran', $tahun)->first();
-            if (!$penganggaran) return response()->json(['error' => 'Data penganggaran tidak ditemukan'], 404);
+            if (! $penganggaran) {
+                return response()->json(['error' => 'Data penganggaran tidak ditemukan'], 404);
+            }
 
             $sekolah = SekolahProfile::first();
 
@@ -200,14 +206,16 @@ class BukuRobController extends Controller
                     $kodeRekening = $transaksi->rekeningBelanja?->kode_rekening ?? 'N/A';
                     $namaRekening = $transaksi->rekeningBelanja?->rincian_objek ?? 'N/A';
 
-                    if ($kodeRekening === 'N/A') continue;
+                    if ($kodeRekening === 'N/A') {
+                        continue;
+                    }
 
-                    if (!isset($robData[$kodeRekening])) {
+                    if (! isset($robData[$kodeRekening])) {
                         $robData[$kodeRekening] = [
                             'kode' => $kodeRekening,
                             'nama_rekening' => $namaRekening,
                             'transaksi' => [],
-                            'total_realisasi' => 0
+                            'total_realisasi' => 0,
                         ];
                     }
 
@@ -222,7 +230,7 @@ class BukuRobController extends Controller
                         'uraian' => $transaksi->uraian_opsional ?? $transaksi->uraian,
                         'realisasi' => $realisasi,
                         'jumlah' => $runningTotal,
-                        'sisa_anggaran' => $saldoAwal - $runningTotal
+                        'sisa_anggaran' => $saldoAwal - $runningTotal,
                     ];
                 }
 
@@ -233,8 +241,8 @@ class BukuRobController extends Controller
                     ->where('is_bunga_record', true)
                     ->first();
 
-                $tanggalTutup = ($bungaRecord && $bungaRecord->tanggal_tutup) 
-                    ? Carbon::parse($bungaRecord->tanggal_tutup) 
+                $tanggalTutup = ($bungaRecord && $bungaRecord->tanggal_tutup)
+                    ? Carbon::parse($bungaRecord->tanggal_tutup)
                     : Carbon::create($tahun, $bulanAngka, 1)->endOfMonth();
 
                 $reports[] = [
@@ -254,14 +262,16 @@ class BukuRobController extends Controller
             $printSettings = [
                 'ukuran_kertas' => request()->input('paperSize', 'A4'),
                 'orientasi' => request()->input('orientation', 'landscape'),
-                'font_size' => request()->input('fontSize', '10pt')
+                'font_size' => request()->input('fontSize', '10pt'),
             ];
 
             $data = [
                 'reports' => $reports,
                 'printSettings' => $printSettings,
-                 // Pass these for fallback or if needed by view global logic, though reports loop handles it
-                'convertNumberToBulan' => function ($angka) { return $this->convertNumberToBulan($angka); },
+                // Pass these for fallback or if needed by view global logic, though reports loop handles it
+                'convertNumberToBulan' => function ($angka) {
+                    return $this->convertNumberToBulan($angka);
+                },
             ];
 
             $pdf = Pdf::loadView('laporan.rob_pdf', $data);
@@ -274,18 +284,20 @@ class BukuRobController extends Controller
                 'chroot' => realpath(base_path()),
             ]);
             $filename = "BKP_ROB_{$bulanInput}_{$tahun}.pdf";
+
             return $pdf->stream($filename);
 
         } catch (\Exception $e) {
-            Log::error('Error generating BKP ROB PDF: ' . $e->getMessage());
-            return response()->json(['error' => 'Gagal generate PDF: ' . $e->getMessage()], 500);
+            Log::error('Error generating BKP ROB PDF: '.$e->getMessage());
+
+            return response()->json(['error' => 'Gagal generate PDF: '.$e->getMessage()], 500);
         }
     }
 
     public function generateRobHtml($penganggaran, $tahun, $bulan, $bulanAngka)
     {
-         // Placeholder implementation if needed, aligning with above fixes
-          return '';
+        // Placeholder implementation if needed, aligning with above fixes
+        return '';
     }
 
     /**
@@ -321,7 +333,8 @@ class BukuRobController extends Controller
 
             return max(0, $saldoAwal);
         } catch (\Exception $e) {
-            Log::error('Error hitungSaldoAwalRob: ' . $e->getMessage());
+            Log::error('Error hitungSaldoAwalRob: '.$e->getMessage());
+
             return 0;
         }
     }
@@ -343,9 +356,10 @@ class BukuRobController extends Controller
         if (app()->bound('variant')) {
             $var = app('variant');
         }
-        return \Inertia\Inertia::render(VariantConfig::pagePrefix($var) . $component, array_merge($props, [
+
+        return Inertia::render(VariantConfig::pagePrefix($var).$component, array_merge($props, [
             'variant' => $var,
-            'routePrefix' => VariantConfig::routePrefix($var)
+            'routePrefix' => VariantConfig::routePrefix($var),
         ]));
     }
 }

@@ -730,64 +730,81 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                         {/* Content Area */}
                         {activeTab === 'bkp_bank' && (
                             <div className="space-y-8 animate-fade-in-up">
-                                {/* Control Bar */}
-                                <div className="flex flex-col md:flex-row justify-between items-center bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
-                                    <div className="flex items-center gap-4 w-full md:w-auto">
-                                        <label htmlFor="bulanBank" className="text-sm font-medium text-gray-700 dark:text-gray-300">Pilih Bulan:</label>
-                                        <select
-                                            id="bulanBank"
-                                            value={bulanBank.toLowerCase()}
-                                            onChange={(e) => setBulanBank(e.target.value)}
-                                            className="border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 px-3 py-2 text-gray-700 dark:text-gray-300 w-full md:w-48 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent capitalize"
-                                        >
-                                            {monthList.map((m) => (
-                                                <option key={m} value={m}>
-                                                    {m.charAt(0).toUpperCase() + m.slice(1)}
-                                                </option>
-                                            ))}
-                                        </select>
+                                {/* Control Bar - 2 Baris Terstruktur */}
+                                <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg border border-gray-200 dark:border-gray-700 space-y-3">
+                                    {/* Baris 1: Filter Bulan & Aksi Dokumen Output */}
+                                    <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                                        <div className="flex items-center gap-3 w-full sm:w-auto">
+                                            <label htmlFor="bulanBank" className="text-sm font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                                                Pilih Bulan:
+                                            </label>
+                                            <select
+                                                id="bulanBank"
+                                                value={bulanBank.toLowerCase()}
+                                                onChange={(e) => setBulanBank(e.target.value)}
+                                                className="border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 px-3 py-2 text-gray-700 dark:text-gray-300 w-full sm:w-48 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent capitalize shadow-sm"
+                                            >
+                                                {monthList.map((m) => (
+                                                    <option key={m} value={m}>
+                                                        {m.charAt(0).toUpperCase() + m.slice(1)}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                                            <button
+                                                onClick={handleExportExcelBkpBank}
+                                                className="inline-flex items-center px-4 py-2 bg-green-800 dark:bg-green-700 hover:bg-green-700 dark:hover:bg-green-600 text-white rounded-md font-semibold text-xs uppercase tracking-widest shadow-sm transition ease-in-out duration-150"
+                                            >
+                                                <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                </svg>
+                                                Export Excel
+                                            </button>
+
+                                            <button
+                                                onClick={() => setShowPrintModal(true)}
+                                                className="inline-flex items-center px-4 py-2 bg-gray-800 dark:bg-gray-900 hover:bg-gray-700 dark:hover:bg-gray-800 text-white rounded-md font-semibold text-xs uppercase tracking-widest shadow-sm transition ease-in-out duration-150"
+                                            >
+                                                <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                                </svg>
+                                                CETAK BKP BANK
+                                            </button>
+                                        </div>
                                     </div>
-                                    <div className="mt-4 md:mt-0 flex flex-wrap gap-2">
-                                        {renderAuditButton('bkp_bank')}
-                                        <button
-                                            onClick={() => setShowTrkSaldoAwalModal(true)}
-                                            className="inline-flex items-center px-4 py-2 bg-yellow-600 dark:bg-yellow-500 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-yellow-500 dark:hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 transition ease-in-out duration-150"
-                                        >
-                                            <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                            </svg>
-                                            {bkpBankData?.data?.is_trk_saldo_awal_year ? 'Update Check Saldo Awal' : 'Check Saldo Awal'}
-                                        </button>
 
-                                        <button
-                                            onClick={() => setShowCheckStsModal(true)}
-                                            className="inline-flex items-center px-4 py-2 bg-green-600 dark:bg-green-500 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-500 dark:hover:bg-green-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition ease-in-out duration-150"
-                                        >
-                                            <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                            </svg>
-                                            {bkpBankData?.data?.has_sts_year ? 'Update Check STS' : 'Check STS'}
-                                        </button>
+                                    {/* Baris 2: Alat Pemeriksaan & Validasi Kas Bank (AI, Saldo Awal, STS) */}
+                                    <div className="pt-3 border-t border-gray-200 dark:border-gray-600/70 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                                        <div className="flex items-center gap-2 text-xs font-medium text-gray-500 dark:text-gray-400">
+                                            <span className="inline-block w-2 h-2 rounded-full bg-blue-500"></span>
+                                            <span>Alat Pemeriksaan & Validasi Kas Bank:</span>
+                                        </div>
 
-                                        <button
-                                            onClick={handleExportExcelBkpBank}
-                                            className="inline-flex items-center px-4 py-2 bg-green-800 dark:bg-green-200 border border-transparent rounded-md font-semibold text-xs text-white dark:text-green-800 uppercase tracking-widest hover:bg-green-700 dark:hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition ease-in-out duration-150"
-                                        >
-                                            <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                            </svg>
-                                            Export Excel
-                                        </button>
+                                        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-start md:justify-end">
+                                            {renderAuditButton('bkp_bank')}
 
-                                        <button
-                                            onClick={() => setShowPrintModal(true)}
-                                            className="inline-flex items-center px-4 py-2 bg-gray-800 dark:bg-gray-200 border border-transparent rounded-md font-semibold text-xs text-white dark:text-gray-800 uppercase tracking-widest hover:bg-gray-700 dark:hover:bg-white focus:bg-gray-700 dark:focus:bg-white active:bg-gray-900 dark:active:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150"
-                                        >
-                                            <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                                            </svg>
-                                            CETAK BKP BANK
-                                        </button>
+                                            <button
+                                                onClick={() => setShowTrkSaldoAwalModal(true)}
+                                                className="inline-flex items-center px-4 py-2 bg-yellow-600 dark:bg-yellow-500 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-yellow-500 dark:hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 transition ease-in-out duration-150 shadow-sm"
+                                            >
+                                                <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                </svg>
+                                                {bkpBankData?.data?.is_trk_saldo_awal_year ? 'Update Check Saldo Awal' : 'Check Saldo Awal'}
+                                            </button>
+
+                                            <button
+                                                onClick={() => setShowCheckStsModal(true)}
+                                                className="inline-flex items-center px-4 py-2 bg-green-600 dark:bg-green-500 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-500 dark:hover:bg-green-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition ease-in-out duration-150 shadow-sm"
+                                            >
+                                                <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                </svg>
+                                                {bkpBankData?.data?.has_sts_year ? 'Update Check STS' : 'Check STS'}
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -2571,16 +2588,14 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                                     <td className="border border-gray-600 p-2 text-right">
                                                         {(() => {
                                                             const saldoAwal = Number(bkpPembantuData?.data?.saldoAwalTunai || 0);
-                                                            const totalPenarikan = Number(bkpPembantuData?.data?.totalPenarikan || 0);
-                                                            return formatCurrency(saldoAwal + totalPenarikan);
+                                                            return formatCurrency(saldoAwal);
                                                         })()}
                                                     </td>
                                                     <td className="border border-gray-600 p-2 text-right">-</td>
                                                     <td className="border border-gray-600 p-2 text-right font-bold">
                                                         {(() => {
                                                             const saldoAwal = Number(bkpPembantuData?.data?.saldoAwalTunai || 0);
-                                                            const totalPenarikan = Number(bkpPembantuData?.data?.totalPenarikan || 0);
-                                                            return formatCurrency(saldoAwal + totalPenarikan);
+                                                            return formatCurrency(saldoAwal);
                                                         })()}
                                                     </td>
                                                 </tr>
@@ -2594,15 +2609,8 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                                 ) : (
                                                     (() => {
                                                         const saldoAwal = Number(bkpPembantuData?.data?.saldoAwalTunai || 0);
-                                                        const allItems = bkpPembantuData?.items || [];
-
-                                                        // Calculate Total Penarikan from data
-                                                        const totalPenarikan = Number(bkpPembantuData?.data?.totalPenarikan || 0);
-
-                                                        // Items already excluded penarikan in controller
-                                                        const items = allItems;
-
-                                                        let runningBalance = saldoAwal + totalPenarikan;
+                                                        const items = bkpPembantuData?.items || [];
+                                                        let runningBalance = saldoAwal;
 
                                                         if (items.length === 0) {
                                                             return (

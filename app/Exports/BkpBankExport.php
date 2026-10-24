@@ -19,7 +19,7 @@ class BkpBankExport implements FromView, ShouldAutoSize, WithTitle
     public function view(): View
     {
         return view('laporan.bkp_bank_excel', [
-            'reportData' => $this->reportData
+            'reportData' => $this->reportData,
         ]);
     }
 

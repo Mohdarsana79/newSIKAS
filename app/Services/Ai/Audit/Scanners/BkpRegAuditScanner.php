@@ -5,7 +5,7 @@ namespace App\Services\Ai\Audit\Scanners;
 use App\Config\VariantConfig;
 use App\Models\User;
 use App\Services\Ai\Audit\BaseTabAuditScanner;
-use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class BkpRegAuditScanner extends BaseTabAuditScanner
 {
@@ -43,14 +43,9 @@ class BkpRegAuditScanner extends BaseTabAuditScanner
         // 1. Ambil Semua Transaksi Periode
         $transactions = $this->getPeriodTransactions($variant, $penganggaran, $tahun, $startMonth, $endMonth);
 
-        // 2. Hitung Saldo Bank & Tunai di Akhir Periode
+        // 2. Hitung Saldo Bank & Tunai di Awal Periode
         $saldoBankAwal = (float) $this->bukuKasService->hitungSaldoBankSebelumBulan($penganggaran->id, $startMonth);
-        $saldoTunaiAwal = (float) $this->bukuKasService->getSaldoKasFromPembantu(
-            $penganggaran->id,
-            $tahun,
-            Carbon::createFromDate($tahun, $startMonth, 1)->locale('id')->isoFormat('MMMM'),
-            $startMonth
-        );
+        $saldoTunaiAwal = (float) $this->bukuKasService->hitungSaldoTunaiSebelumBulan($penganggaran->id, $startMonth);
 
         $penarikanClass = VariantConfig::getModelClass('penarikan_tunai', $variant);
         $penerimaanClass = VariantConfig::getModelClass('penerimaan_dana', $variant);

@@ -2,29 +2,31 @@
 
 namespace App\Http\Controllers;
 
+use App\Config\VariantConfig;
 use App\Models\Penganggaran;
 use App\Models\Sekolah;
 use App\Models\SekolahProfile;
+use App\Services\BukuKasService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
-use App\Models\PenerimaanDana;
-use App\Models\PenarikanTunai;
-use App\Models\SetorTunai;
-use App\Models\BukuKasUmum;
 use Illuminate\Http\Request;
-use App\Config\VariantConfig;
-use App\Services\BukuKasService;
 use Illuminate\Support\Facades\Log;
+use Inertia\Inertia;
 
 class BeritaAcaraPenutupanController extends Controller
 {
     protected $bukuKasService;
 
-        protected string $variant;
+    protected string $variant;
+
     protected string $Penganggaran;
+
     protected string $PenerimaanDana;
+
     protected string $BukuKasUmum;
+
     protected string $PenarikanTunai;
+
     protected string $SetorTunai;
 
     public function __construct(BukuKasService $bukuKasService)
@@ -100,7 +102,7 @@ class BeritaAcaraPenutupanController extends Controller
                 VariantConfig::penganggaranFk($this->variant) => $penganggaran->id,
                 'tahun' => $tahun,
                 'bulan' => $bulan,
-                'bulan_angka' => $bulanAngka
+                'bulan_angka' => $bulanAngka,
             ]);
 
             // Ambil data untuk Berita Acara
@@ -112,7 +114,7 @@ class BeritaAcaraPenutupanController extends Controller
                 'saldoBank' => $data['saldoBank'],
                 'totalKas' => $data['totalKas'],
                 'saldoBuku' => $data['saldoBuku'],
-                'perbedaan' => $data['perbedaan']
+                'perbedaan' => $data['perbedaan'],
             ]);
 
             $html = view('laporan.partials.ba-pemeriksaan-kas-table', $data)->render();
@@ -121,10 +123,10 @@ class BeritaAcaraPenutupanController extends Controller
 
             return $html;
         } catch (\Exception $e) {
-            Log::error('Error generate Berita Acara HTML: ' . $e->getMessage());
-            Log::error('Stack trace: ' . $e->getTraceAsString());
+            Log::error('Error generate Berita Acara HTML: '.$e->getMessage());
+            Log::error('Stack trace: '.$e->getTraceAsString());
 
-            return '<div class="alert alert-danger">Error: ' . $e->getMessage() . '</div>';
+            return '<div class="alert alert-danger">Error: '.$e->getMessage().'</div>';
         }
     }
 
@@ -137,14 +139,14 @@ class BeritaAcaraPenutupanController extends Controller
             $penganggaran = ($this->Penganggaran)::find($penganggaran_id);
             $sekolah = SekolahProfile::first();
 
-            if (!$penganggaran || !$sekolah) {
+            if (! $penganggaran || ! $sekolah) {
                 dd('Data penganggaran atau sekolah tidak ditemukan', $penganggaran_id);
                 // throw new \Exception('Data penganggaran atau sekolah tidak ditemukan');
             }
 
             // Hitung tanggal akhir bulan
             $tanggalAkhirBulan = Carbon::create($tahun, $bulanAngka, 1)->endOfMonth();
-            
+
             // Check for BKU closing date
             $bungaRecord = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran_id)
                 ->whereMonth('tanggal_transaksi', $bulanAngka)
@@ -152,8 +154,8 @@ class BeritaAcaraPenutupanController extends Controller
                 ->where('is_bunga_record', true)
                 ->first();
 
-            $actualDate = ($bungaRecord && $bungaRecord->tanggal_tutup) 
-                ? Carbon::parse($bungaRecord->tanggal_tutup) 
+            $actualDate = ($bungaRecord && $bungaRecord->tanggal_tutup)
+                ? Carbon::parse($bungaRecord->tanggal_tutup)
                 : $tanggalAkhirBulan;
 
             $namaHariAkhirBulan = $this->getNamaHariIndonesia($actualDate->dayOfWeek);
@@ -163,9 +165,9 @@ class BeritaAcaraPenutupanController extends Controller
                 'tahun' => $tahun,
                 'bulan' => $bulan,
                 'bulan_angka' => $bulanAngka,
-                'used_date' => $actualDate->format('Y-m-d')
+                'used_date' => $actualDate->format('Y-m-d'),
             ]);
-            
+
             // 1. Saldo Bank - ambil dari hitungSaldoAkhirBkpBank
             $saldoBank = $this->bukuKasService->hitungSaldoAkhirBkpBank($penganggaran_id, $tahun, $bulan);
 
@@ -209,7 +211,7 @@ class BeritaAcaraPenutupanController extends Controller
                 'totalKas' => $totalKas,
                 'perbedaan' => $perbedaan,
                 'denominasi_uang_kertas' => $uangKertas,
-                'denominasi_uang_logam' => $uangLogam
+                'denominasi_uang_logam' => $uangLogam,
             ]);
 
             // Validasi data
@@ -217,7 +219,7 @@ class BeritaAcaraPenutupanController extends Controller
                 Log::warning('Ada nilai negatif dalam perhitungan saldo', [
                     'saldoBank' => $saldoBank,
                     'saldoKas' => $saldoKas,
-                    'saldoBuku' => $saldoBuku
+                    'saldoBuku' => $saldoBuku,
                 ]);
             }
 
@@ -242,7 +244,7 @@ class BeritaAcaraPenutupanController extends Controller
                 'tanggalPemeriksaan' => $actualDate->locale('id')->translatedFormat('d F Y'),
                 // Dates for SK, etc.
                 'tanggalMulai' => Carbon::parse($tahun.'-01-01')->locale('id')->translatedFormat('d F Y'), // Placeholder if needed
-                
+
                 'namaBendahara' => $penganggaran->bendahara ?? '-',
                 'namaKepalaSekolah' => $penganggaran->kepala_sekolah ?? '-',
                 'nipBendahara' => $penganggaran->nip_bendahara ?? '-',
@@ -252,12 +254,12 @@ class BeritaAcaraPenutupanController extends Controller
                 'tanggalSkKepsek' => $penganggaran->tanggal_sk_kepala_sekolah ? Carbon::parse($penganggaran->tanggal_sk_kepala_sekolah)->locale('id')->translatedFormat('d F Y') : '-',
                 'skBendahara' => $penganggaran->sk_bendahara ?? '-', // Adjust field name if needed
                 'tanggalSkBendahara' => $penganggaran->tanggal_sk_bendahara ? Carbon::parse($penganggaran->tanggal_sk_bendahara)->locale('id')->translatedFormat('d F Y') : '-',
-                
-                'namaKecamatan' => $sekolah->kecamatan ?? '.....................'
+
+                'namaKecamatan' => $sekolah->kecamatan ?? '.....................',
             ];
         } catch (\Exception $e) {
-            Log::error('Error getDataForBeritaAcara: ' . $e->getMessage());
-            Log::error('Stack trace: ' . $e->getTraceAsString());
+            Log::error('Error getDataForBeritaAcara: '.$e->getMessage());
+            Log::error('Stack trace: '.$e->getTraceAsString());
             throw $e;
         }
     }
@@ -272,7 +274,7 @@ class BeritaAcaraPenutupanController extends Controller
                 VariantConfig::penganggaranFk($this->variant) => $penganggaran_id,
                 'tahun' => $tahun,
                 'bulan' => $bulan,
-                'bulan_angka' => $bulanAngka
+                'bulan_angka' => $bulanAngka,
             ]);
 
             // Ambil semua data yang diperlukan untuk BKP Umum
@@ -312,31 +314,31 @@ class BeritaAcaraPenutupanController extends Controller
 
             Log::info('Saldo Awal dari Service:', [
                 'saldoAwal' => $saldoAwal,
-                'saldoAwalTunai' => $saldoAwalTunai
+                'saldoAwalTunai' => $saldoAwalTunai,
             ]);
 
             // Hitung total penerimaan dasar
             $totalPenerimaan = $saldoAwal; // + $saldoAwalTunai; // Correct logic might be just saldoAwal if it includes physics.
-             // Wait, hitungSaldoAwalBkpUmum usually returns the ending balance of previous month (Tunai + Bank).
-             // Let's assume saldoAwal is correct.
-             
-             // Recalculating logic based on user code provided in prompt:
-             // $totalPenerimaan = $saldoAwal + $saldoAwalTunai; 
-             // This looks like double counting if saldoAwal implies total balance.
-             // But the user PROMPTED this logic. I must follow the user's logic unless it's clearly broken.
-             // "Gunakan method dari BukuKasService untuk hitung saldo awal... $saldoAwal = ... $saldoAwalTunai = ... $totalPenerimaan = $saldoAwal + $saldoAwalTunai;"
-             // Code provided by user says:
-             // $saldoAwal = $this->bukuKasService->hitungSaldoAwalBkpUmum($penganggaran_id, $tahun, $bulan);
-             // $saldoAwalTunai = $this->bukuKasService->hitungSaldoTunaiSebelumBulan($penganggaran_id, $bulanAngka);
-             // $totalPenerimaan = $saldoAwal + $saldoAwalTunai;
-             
-             // I will use strict provided logic.
+            // Wait, hitungSaldoAwalBkpUmum usually returns the ending balance of previous month (Tunai + Bank).
+            // Let's assume saldoAwal is correct.
+
+            // Recalculating logic based on user code provided in prompt:
+            // $totalPenerimaan = $saldoAwal + $saldoAwalTunai;
+            // This looks like double counting if saldoAwal implies total balance.
+            // But the user PROMPTED this logic. I must follow the user's logic unless it's clearly broken.
+            // "Gunakan method dari BukuKasService untuk hitung saldo awal... $saldoAwal = ... $saldoAwalTunai = ... $totalPenerimaan = $saldoAwal + $saldoAwalTunai;"
+            // Code provided by user says:
+            // $saldoAwal = $this->bukuKasService->hitungSaldoAwalBkpUmum($penganggaran_id, $tahun, $bulan);
+            // $saldoAwalTunai = $this->bukuKasService->hitungSaldoTunaiSebelumBulan($penganggaran_id, $bulanAngka);
+            // $totalPenerimaan = $saldoAwal + $saldoAwalTunai;
+
+            // I will use strict provided logic.
 
             $totalPenerimaan = $saldoAwal + $saldoAwalTunai;
 
             // Tambahkan penerimaan dana di bulan ini
             $penerimaanBulanIni = $penerimaanDanas->filter(function ($penerimaan) use ($bulanAngka) {
-                return \Carbon\Carbon::parse($penerimaan->tanggal_terima)->month == $bulanAngka;
+                return Carbon::parse($penerimaan->tanggal_terima)->month == $bulanAngka;
             });
             $totalPenerimaanDanaBulanIni = $penerimaanBulanIni->sum('jumlah_dana');
             $totalPenerimaan += $totalPenerimaanDanaBulanIni;
@@ -348,11 +350,11 @@ class BeritaAcaraPenutupanController extends Controller
             // PERBAIKAN: Hitung bunga bank yang EFEKTIF (hanya yang belum ada NTPN)
             $bungaEfektif = 0;
             $bungaRecordInfo = [
-                'ada_bunga_record' => !is_null($bungaRecord),
+                'ada_bunga_record' => ! is_null($bungaRecord),
                 'bunga_bank' => $bungaRecord ? $bungaRecord->bunga_bank : 0,
                 'pajak_bunga_bank' => $bungaRecord ? $bungaRecord->pajak_bunga_bank : 0,
                 'ntpn' => $bungaRecord ? $bungaRecord->ntpn : null,
-                'bunga_efektif' => 0
+                'bunga_efektif' => 0,
             ];
 
             if ($bungaRecord) {
@@ -371,7 +373,7 @@ class BeritaAcaraPenutupanController extends Controller
                 'totalPenerimaanDanaBulanIni' => $totalPenerimaanDanaBulanIni,
                 'totalPenarikanTunai' => $totalPenarikanTunai,
                 'bungaRecord' => $bungaRecordInfo,
-                'totalPenerimaan_sebelum_pajak' => $totalPenerimaan
+                'totalPenerimaan_sebelum_pajak' => $totalPenerimaan,
             ]);
 
             // Hitung pajak untuk BKP Umum
@@ -384,7 +386,7 @@ class BeritaAcaraPenutupanController extends Controller
                 // Pajak Pusat
                 if ($transaksi->total_pajak > 0) {
                     $pajakPenerimaan += $transaksi->total_pajak;
-                    if (!empty($transaksi->ntpn)) {
+                    if (! empty($transaksi->ntpn)) {
                         $pajakPengeluaran += $transaksi->total_pajak;
                     }
                 }
@@ -392,7 +394,7 @@ class BeritaAcaraPenutupanController extends Controller
                 // Pajak Daerah
                 if ($transaksi->total_pajak_daerah > 0) {
                     $pajakDaerahPenerimaan += $transaksi->total_pajak_daerah;
-                    if (!empty($transaksi->ntpn)) {
+                    if (! empty($transaksi->ntpn)) {
                         $pajakDaerahPengeluaran += $transaksi->total_pajak_daerah;
                     }
                 }
@@ -413,19 +415,20 @@ class BeritaAcaraPenutupanController extends Controller
                 'totalBelanja' => $totalBelanja,
                 'pajakPengeluaran' => $pajakPengeluaran,
                 'pajakDaerahPengeluaran' => $pajakDaerahPengeluaran,
-                'totalPengeluaran' => $totalPengeluaran
+                'totalPengeluaran' => $totalPengeluaran,
             ]);
 
             Log::info('Hasil Akhir Perhitungan Saldo Buku:', [
                 'totalPenerimaan' => $totalPenerimaan,
                 'totalPengeluaran' => $totalPengeluaran,
-                'currentSaldo' => $currentSaldo
+                'currentSaldo' => $currentSaldo,
             ]);
 
             return $currentSaldo;
         } catch (\Exception $e) {
-            Log::error('Error getCurrentSaldoFromBkpUmum: ' . $e->getMessage());
-            Log::error('Stack trace: ' . $e->getTraceAsString());
+            Log::error('Error getCurrentSaldoFromBkpUmum: '.$e->getMessage());
+            Log::error('Stack trace: '.$e->getTraceAsString());
+
             return 0;
         }
     }
@@ -473,7 +476,7 @@ class BeritaAcaraPenutupanController extends Controller
 
             $penganggaran = ($this->Penganggaran)::where('tahun_anggaran', $tahun)->with('sekolah')->first();
 
-            if (!$penganggaran) {
+            if (! $penganggaran) {
                 return response()->json(['error' => 'Data penganggaran tidak ditemukan'], 404);
             }
 
@@ -491,28 +494,28 @@ class BeritaAcaraPenutupanController extends Controller
             $reports = [];
 
             foreach ($monthsToProcess as $bulan) {
-                 $bulan = ucfirst(strtolower($bulan));
-                 $bulanAngka = $this->convertBulanToNumber($bulan);
-                 
-                 // Get data using existing method logic BUT need to ensure it returns array.
-                 // getDataForBeritaAcara returns an array directly. perfect.
-                 $reportData = $this->getDataForBeritaAcara($penganggaran->id, $tahun, $bulan, $bulanAngka);
-                 $reports[] = $reportData;
+                $bulan = ucfirst(strtolower($bulan));
+                $bulanAngka = $this->convertBulanToNumber($bulan);
+
+                // Get data using existing method logic BUT need to ensure it returns array.
+                // getDataForBeritaAcara returns an array directly. perfect.
+                $reportData = $this->getDataForBeritaAcara($penganggaran->id, $tahun, $bulan, $bulanAngka);
+                $reports[] = $reportData;
             }
 
             $printSettings = [
                 'ukuran_kertas' => request()->input('paperSize', 'A4'),
                 'orientasi' => request()->input('orientation', 'portrait'),
-                'font_size' => request()->input('fontSize', '11pt')
+                'font_size' => request()->input('fontSize', '11pt'),
             ];
-            
+
             $data = [
                 'reports' => $reports,
                 'printSettings' => $printSettings,
                 'tanggal_cetak' => now()->format('d/m/Y'),
             ];
 
-            $pdf = PDF::loadView('laporan.berita_acara_pemeriksaan_kas_pdf', $data);
+            $pdf = Pdf::loadView('laporan.berita_acara_pemeriksaan_kas_pdf', $data);
 
             $pdf->setPaper($printSettings['ukuran_kertas'], $printSettings['orientasi']);
 
@@ -528,8 +531,9 @@ class BeritaAcaraPenutupanController extends Controller
 
             return $pdf->stream($filename);
         } catch (\Exception $e) {
-            Log::error('Error generating Berita Acara PDF: ' . $e->getMessage());
-            return response()->json(['error' => 'Gagal generate PDF: ' . $e->getMessage()], 500);
+            Log::error('Error generating Berita Acara PDF: '.$e->getMessage());
+
+            return response()->json(['error' => 'Gagal generate PDF: '.$e->getMessage()], 500);
         }
     }
 
@@ -543,7 +547,7 @@ class BeritaAcaraPenutupanController extends Controller
             $bulan = $request->input('bulan');
             $penganggaran = ($this->Penganggaran)::where('tahun_anggaran', $tahun)->with('sekolah')->first();
 
-            if (!$penganggaran) {
+            if (! $penganggaran) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Data penganggaran tidak ditemukan',
@@ -561,10 +565,11 @@ class BeritaAcaraPenutupanController extends Controller
                 'data' => $data,
             ]);
         } catch (\Exception $e) {
-            Log::error('Error get Berita Acara data: ' . $e->getMessage());
+            Log::error('Error get Berita Acara data: '.$e->getMessage());
+
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal memuat data Berita Acara: ' . $e->getMessage(),
+                'message' => 'Gagal memuat data Berita Acara: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -608,9 +613,10 @@ class BeritaAcaraPenutupanController extends Controller
         if (app()->bound('variant')) {
             $var = app('variant');
         }
-        return \Inertia\Inertia::render(VariantConfig::pagePrefix($var) . $component, array_merge($props, [
+
+        return Inertia::render(VariantConfig::pagePrefix($var).$component, array_merge($props, [
             'variant' => $var,
-            'routePrefix' => VariantConfig::routePrefix($var)
+            'routePrefix' => VariantConfig::routePrefix($var),
         ]));
     }
 }

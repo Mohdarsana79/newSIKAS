@@ -19,7 +19,7 @@ class BkpPajakExport implements FromView, ShouldAutoSize, WithTitle
     public function view(): View
     {
         return view('laporan.bkp_pajak_excel', [
-            'reportData' => $this->reportData
+            'reportData' => $this->reportData,
         ]);
     }
 

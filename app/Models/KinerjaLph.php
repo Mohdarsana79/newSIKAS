@@ -34,13 +34,13 @@ class KinerjaLph extends Model
         return $this->belongsTo(SekolahProfile::class, 'sekolah_id');
     }
 
-
     public function kinerjaPenganggaran()
     {
         return $this->belongsTo(KinerjaPenganggaran::class);
     }
 
-
-    public function penganggaran() { return $this->kinerjaPenganggaran(); }
+    public function penganggaran()
+    {
+        return $this->kinerjaPenganggaran();
+    }
 }
-

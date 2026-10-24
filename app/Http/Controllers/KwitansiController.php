@@ -2,26 +2,27 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\BukuKasUmum;
-use App\Models\BukuKasUmumUraianDetail;
+use App\Config\VariantConfig;
 use App\Models\Kwitansi;
-use App\Models\PenerimaanDana;
-use App\Models\Penganggaran;
 use App\Models\SekolahProfile;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
-use App\Config\VariantConfig;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 
 class KwitansiController extends Controller
 {
     protected string $variant;
+
     protected string $Penganggaran;
+
     protected string $PenerimaanDana;
+
     protected string $BukuKasUmum;
+
     protected string $BukuKasUmumUraianDetail;
+
     protected string $Kwitansi;
 
     public function __construct()
@@ -37,6 +38,7 @@ class KwitansiController extends Controller
             return $next($request);
         });
     }
+
     public function getTahunAnggaran()
     {
         try {
@@ -55,7 +57,7 @@ class KwitansiController extends Controller
                 'data' => $tahunAnggaran,
             ]);
         } catch (\Exception $e) {
-            Log::error('Error getting tahun anggaran: ' . $e->getMessage());
+            Log::error('Error getting tahun anggaran: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
@@ -88,8 +90,10 @@ class KwitansiController extends Controller
             if ($tahun && is_numeric($tahun)) {
                 $query->where(VariantConfig::penganggaranFk($this->variant), $tahun);
             } elseif ($tahun && strlen($tahun) == 4) {
-                 $p = ($this->Penganggaran)::where('tahun_anggaran', $tahun)->first();
-                 if ($p) $query->where(VariantConfig::penganggaranFk($this->variant), $p->id);
+                $p = ($this->Penganggaran)::where('tahun_anggaran', $tahun)->first();
+                if ($p) {
+                    $query->where(VariantConfig::penganggaranFk($this->variant), $p->id);
+                }
             }
 
             // Filter berdasarkan tanggal
@@ -129,8 +133,8 @@ class KwitansiController extends Controller
                     'number' => $number,
                     'kode_rekening' => $kwitansi->rekeningBelanja->kode_rekening ?? '-',
                     'uraian' => $kwitansi->bukuKasUmum->uraian_opsional ?? $kwitansi->bukuKasUmum->uraian,
-                    'tanggal' => \Carbon\Carbon::parse($kwitansi->bukuKasUmum->tanggal_transaksi)->format('d/m/Y'),
-                    'jumlah' => 'Rp ' . number_format($kwitansi->bukuKasUmum->total_transaksi_kotor, 0, ',', '.'),
+                    'tanggal' => Carbon::parse($kwitansi->bukuKasUmum->tanggal_transaksi)->format('d/m/Y'),
+                    'jumlah' => 'Rp '.number_format($kwitansi->bukuKasUmum->total_transaksi_kotor, 0, ',', '.'),
                     'preview_url' => route(VariantConfig::routeName($this->variant, 'kwitansi.preview'), $kwitansi->id),
                     'preview_url_2' => route(VariantConfig::routeName($this->variant, 'kwitansi.preview2'), $kwitansi->id),
                     'preview_url_3' => route(VariantConfig::routeName($this->variant, 'kwitansi.preview3'), $kwitansi->id),
@@ -141,8 +145,8 @@ class KwitansiController extends Controller
                     'pdf_url_4' => route(VariantConfig::routeName($this->variant, 'kwitansi.pdf4'), $kwitansi->id),
                     'delete_data' => [
                         'id' => $kwitansi->id,
-                        'uraian' => $kwitansi->bukuKasUmum->uraian_opsional ?? $kwitansi->bukuKasUmum->uraian
-                    ]
+                        'uraian' => $kwitansi->bukuKasUmum->uraian_opsional ?? $kwitansi->bukuKasUmum->uraian,
+                    ],
                 ];
             });
 
@@ -170,12 +174,12 @@ class KwitansiController extends Controller
                 ],
             ]);
         } catch (\Exception $e) {
-            Log::error('Error searching kwitansi: ' . $e->getMessage());
+            Log::error('Error searching kwitansi: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
                 'message' => 'Terjadi kesalahan saat mencari data',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -189,7 +193,7 @@ class KwitansiController extends Controller
     {
         try {
             $validated = $request->validate([
-                VariantConfig::bkuFk($this->variant) => 'required|exists:' . (new $this->BukuKasUmum)->getTable() . ',id',
+                VariantConfig::bkuFk($this->variant) => 'required|exists:'.(new $this->BukuKasUmum)->getTable().',id',
                 'bku_uraian_detail_id' => 'required|exists:buku_kas_umum_uraian_details,id',
             ]);
 
@@ -244,18 +248,18 @@ class KwitansiController extends Controller
                 'data' => $kwitansi,
             ]);
         } catch (\Exception $e) {
-            Log::error('Error creating kwitansi: ' . $e->getMessage());
+            Log::error('Error creating kwitansi: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal membuat kwitansi: ' . $e->getMessage(),
+                'message' => 'Gagal membuat kwitansi: '.$e->getMessage(),
             ], 500);
         }
     }
 
     public function show(Kwitansi $kwitansi)
     {
-         // unused
+        // unused
     }
 
     private function calculateTotalFromUraianDetails($bukuKasUmum)
@@ -275,7 +279,7 @@ class KwitansiController extends Controller
         $defaultUraian = '-';
 
         if (! $kodeKegiatan) {
-             return [
+            return [
                 'kode_full' => '06.05.01',
                 'kode_program' => '06',
                 'kode_sub_program' => '06.05',
@@ -289,7 +293,7 @@ class KwitansiController extends Controller
         $kode = $kodeKegiatan->kode ?? '-';
         $kodeParts = explode('.', $kode);
         $kodeProgram = $kodeParts[0] ?? '-';
-        $kodeSubProgram = ($kodeParts[0] ?? '-') . '.' . ($kodeParts[1] ?? '-');
+        $kodeSubProgram = ($kodeParts[0] ?? '-').'.'.($kodeParts[1] ?? '-');
         $kodeUraian = $kode;
 
         return [
@@ -326,7 +330,7 @@ class KwitansiController extends Controller
             $pajakData = $this->klasifikasiPajak($kwitansi->bukuKasUmum, $totalAmount);
 
             // Calculate Tahap Roman
-            $bulan = \Carbon\Carbon::parse($kwitansi->bukuKasUmum->tanggal_transaksi)->month;
+            $bulan = Carbon::parse($kwitansi->bukuKasUmum->tanggal_transaksi)->month;
             $tahapRoman = $bulan <= 6 ? 'THP-I' : 'THP-II';
 
             // Get Request Parameters (Need to use global request() helper or inject Request)
@@ -335,27 +339,27 @@ class KwitansiController extends Controller
             $orientation = request()->input('orientation', 'portrait');
 
             $data = [
-                'sumberDana' => \App\Config\VariantConfig::title($this->variant),
+                'sumberDana' => VariantConfig::title($this->variant),
                 'kwitansi' => $kwitansi,
                 'parsedKode' => $parsedKode,
                 'jumlahUangText' => $jumlahUang,
-                'totalAmount' => $totalAmount, 
+                'totalAmount' => $totalAmount,
                 'tanggalLunas' => $this->formatTanggalLunas($kwitansi->bukuKasUmum->tanggal_transaksi),
                 'pajakData' => $pajakData,
                 'tahapRoman' => $tahapRoman,
                 'fontSize' => $fontSize,
             ];
 
-            $pdf = PDF::loadView('pelengkap.kwitansi_pdf', $data);
+            $pdf = Pdf::loadView('pelengkap.kwitansi_pdf', $data);
             $pdf->setPaper($paperSize, $orientation);
 
             $filename = "Kwitansi_{$kwitansi->bukuKasUmum->uraian_opsional}.pdf";
 
             return $pdf->stream($filename);
         } catch (\Exception $e) {
-            Log::error('Error generating kwitansi PDF: ' . $e->getMessage());
+            Log::error('Error generating kwitansi PDF: '.$e->getMessage());
 
-            return redirect()->route('kwitansi.index')->with('error', 'Gagal generate PDF: ' . $e->getMessage());
+            return redirect()->route('kwitansi.index')->with('error', 'Gagal generate PDF: '.$e->getMessage());
         }
     }
 
@@ -422,7 +426,7 @@ class KwitansiController extends Controller
                 $pajakData = $this->klasifikasiPajak($kwitansi->bukuKasUmum, $totalAmount);
 
                 // Calculate Tahap Roman for each
-                $bulan = \Carbon\Carbon::parse($kwitansi->bukuKasUmum->tanggal_transaksi)->month;
+                $bulan = Carbon::parse($kwitansi->bukuKasUmum->tanggal_transaksi)->month;
                 $tahap = $bulan <= 6 ? 'THP-I' : 'THP-II';
 
                 $kwitansiData[] = [
@@ -441,7 +445,7 @@ class KwitansiController extends Controller
             $orientation = request()->input('orientation', 'portrait');
 
             $data = [
-                'sumberDana' => \App\Config\VariantConfig::title($this->variant),
+                'sumberDana' => VariantConfig::title($this->variant),
                 'kwitansis' => $kwitansiData,
                 'totalKwitansi' => $kwitansis->count(),
                 'tanggalDownload' => now()->format('d/m/Y H:i'),
@@ -451,20 +455,21 @@ class KwitansiController extends Controller
                     'tahun' => $tahun,
                     'start_date' => $startDate,
                     'end_date' => $endDate,
-                    'has_filter' => $search || $tahun || $startDate || $endDate
-                ]
+                    'has_filter' => $search || $tahun || $startDate || $endDate,
+                ],
             ];
 
-            $pdf = PDF::loadView('pelengkap.download_all_pdf', $data);
+            $pdf = Pdf::loadView('pelengkap.download_all_pdf', $data);
             $pdf->setPaper($paperSize, $orientation);
 
             $filename = $this->generateDownloadFilename($search, $tahun, $startDate, $endDate, $kwitansis->count());
 
             return $pdf->stream($filename);
         } catch (\Exception $e) {
-            Log::error('Error downloading all kwitansi: ' . $e->getMessage());
+            Log::error('Error downloading all kwitansi: '.$e->getMessage());
+
             return redirect()->route('kwitansi.index')
-                ->with('error', 'Gagal mengunduh semua kwitansi: ' . $e->getMessage());
+                ->with('error', 'Gagal mengunduh semua kwitansi: '.$e->getMessage());
         }
     }
 
@@ -472,27 +477,28 @@ class KwitansiController extends Controller
     {
         $baseName = 'Kwitansi';
         $parts = [];
-        $parts[] = $count . 'data';
+        $parts[] = $count.'data';
 
         if ($tahun) {
             $tahunSelect = ($this->Penganggaran)::find($tahun);
             if ($tahunSelect) {
-                $parts[] = 'Tahun_' . $tahunSelect->tahun_anggaran;
+                $parts[] = 'Tahun_'.$tahunSelect->tahun_anggaran;
             }
         }
 
         if ($startDate && $endDate) {
-            $start = \Carbon\Carbon::parse($startDate)->format('d-m-Y');
-            $end = \Carbon\Carbon::parse($endDate)->format('d-m-Y');
-            $parts[] = $start . '_sd_' . $end;
+            $start = Carbon::parse($startDate)->format('d-m-Y');
+            $end = Carbon::parse($endDate)->format('d-m-Y');
+            $parts[] = $start.'_sd_'.$end;
         } elseif ($startDate) {
-            $parts[] = 'dari_' . \Carbon\Carbon::parse($startDate)->format('d-m-Y');
+            $parts[] = 'dari_'.Carbon::parse($startDate)->format('d-m-Y');
         } elseif ($endDate) {
-            $parts[] = 'sampai_' . \Carbon\Carbon::parse($endDate)->format('d-m-Y');
+            $parts[] = 'sampai_'.Carbon::parse($endDate)->format('d-m-Y');
         }
 
         $parts[] = now()->format('Y-m-d_H-i-s');
-        $filename = $baseName . '_' . implode('_', $parts) . '.pdf';
+        $filename = $baseName.'_'.implode('_', $parts).'.pdf';
+
         return preg_replace('/[^a-zA-Z0-9._-]/', '_', $filename);
     }
 
@@ -531,6 +537,7 @@ class KwitansiController extends Controller
                 }
             }
         }
+
         return $pajakData;
     }
 
@@ -538,10 +545,11 @@ class KwitansiController extends Controller
     {
         // Hilangkan kata-kata yang mengandung angka pasal/jenis pajak (misal "pph 21", "pasal 22", "pb1")
         $cleanName = preg_replace('/(?:pph|pasal|pb)\s*\d+/i', '', $pajakName);
-        
+
         // Cari persentase terlebih dahulu (misal "10%", "5.5%", "0%")
         if (preg_match('/(\d+(?:\.\d+)?)\s*%/', $cleanName, $percentMatches)) {
-            $percentage = (float)$percentMatches[1];
+            $percentage = (float) $percentMatches[1];
+
             return ($percentage / 100) * $totalAmount;
         }
 
@@ -550,17 +558,19 @@ class KwitansiController extends Controller
 
         // Ambil angka yang tersisa sebagai nominal uang
         preg_match_all('/\d+/', $cleanName, $matches);
-        
+
         if (! empty($matches[0])) {
             // Cari angka terbesar dari semua angka yang tersisa sebagai asumsi nominal uang
             $maxVal = 0;
             foreach ($matches[0] as $match) {
-                if ((float)$match > $maxVal) {
-                    $maxVal = (float)$match;
+                if ((float) $match > $maxVal) {
+                    $maxVal = (float) $match;
                 }
             }
+
             return $maxVal;
         }
+
         return 0;
     }
 
@@ -585,7 +595,7 @@ class KwitansiController extends Controller
             $pajakData = $this->klasifikasiPajak($kwitansi->bukuKasUmum, $totalAmount);
 
             // Calculate Tahap Roman
-            $bulan = \Carbon\Carbon::parse($kwitansi->bukuKasUmum->tanggal_transaksi)->month;
+            $bulan = Carbon::parse($kwitansi->bukuKasUmum->tanggal_transaksi)->month;
             $tahapRoman = $bulan <= 6 ? 'THP-I' : 'THP-II';
 
             // Get Request Parameters
@@ -594,7 +604,7 @@ class KwitansiController extends Controller
             $orientation = request()->input('orientation', 'portrait');
 
             $data = [
-                'sumberDana' => \App\Config\VariantConfig::title($this->variant),
+                'sumberDana' => VariantConfig::title($this->variant),
                 'kwitansi' => $kwitansi,
                 'parsedKode' => $parsedKode,
                 'jumlahUangText' => $jumlahUang,
@@ -606,17 +616,18 @@ class KwitansiController extends Controller
                 'fontSize' => $fontSize,
             ];
 
-            $pdf = PDF::loadView('pelengkap.kwitansi_pdf', $data);
+            $pdf = Pdf::loadView('pelengkap.kwitansi_pdf', $data);
             $pdf->setPaper($paperSize, $orientation);
 
-            return $pdf->stream('Kwitansi_Preview_' . $kwitansi->id . '.pdf', [
+            return $pdf->stream('Kwitansi_Preview_'.$kwitansi->id.'.pdf', [
                 'Content-Type' => 'application/pdf',
             ]);
         } catch (\Exception $e) {
-            Log::error('Error generating preview PDF for ID ' . $id . ': ' . $e->getMessage());
+            Log::error('Error generating preview PDF for ID '.$id.': '.$e->getMessage());
+
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal generate preview PDF: ' . $e->getMessage(),
+                'message' => 'Gagal generate preview PDF: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -644,7 +655,7 @@ class KwitansiController extends Controller
             $pajakData = $this->klasifikasiPajak($kwitansi->bukuKasUmum, $totalAmount);
 
             // Calculate Tahap Roman
-            $bulan = \Carbon\Carbon::parse($kwitansi->bukuKasUmum->tanggal_transaksi)->month;
+            $bulan = Carbon::parse($kwitansi->bukuKasUmum->tanggal_transaksi)->month;
             $tahapRoman = $bulan <= 6 ? 'THP-I' : 'THP-II';
 
             // Get Request Parameters (Need to use global request() helper or inject Request)
@@ -653,27 +664,27 @@ class KwitansiController extends Controller
             $orientation = request()->input('orientation', 'portrait');
 
             $data = [
-                'sumberDana' => \App\Config\VariantConfig::title($this->variant),
+                'sumberDana' => VariantConfig::title($this->variant),
                 'kwitansi' => $kwitansi,
                 'parsedKode' => $parsedKode,
                 'jumlahUangText' => $jumlahUang,
-                'totalAmount' => $totalAmount, 
+                'totalAmount' => $totalAmount,
                 'tanggalLunas' => $this->formatTanggalLunas($kwitansi->bukuKasUmum->tanggal_transaksi),
                 'pajakData' => $pajakData,
                 'tahapRoman' => $tahapRoman,
                 'fontSize' => $fontSize,
             ];
 
-            $pdf = PDF::loadView('pelengkap.kwitansi_dua_pdf', $data);
+            $pdf = Pdf::loadView('pelengkap.kwitansi_dua_pdf', $data);
             $pdf->setPaper($paperSize, $orientation);
 
             $filename = "Kwitansi_{$kwitansi->bukuKasUmum->uraian_opsional}.pdf";
 
             return $pdf->stream($filename);
         } catch (\Exception $e) {
-            Log::error('Error generating kwitansi PDF: ' . $e->getMessage());
+            Log::error('Error generating kwitansi PDF: '.$e->getMessage());
 
-            return redirect()->route('kwitansi.index')->with('error', 'Gagal generate PDF: ' . $e->getMessage());
+            return redirect()->route('kwitansi.index')->with('error', 'Gagal generate PDF: '.$e->getMessage());
         }
     }
 
@@ -740,7 +751,7 @@ class KwitansiController extends Controller
                 $pajakData = $this->klasifikasiPajak($kwitansi->bukuKasUmum, $totalAmount);
 
                 // Calculate Tahap Roman for each
-                $bulan = \Carbon\Carbon::parse($kwitansi->bukuKasUmum->tanggal_transaksi)->month;
+                $bulan = Carbon::parse($kwitansi->bukuKasUmum->tanggal_transaksi)->month;
                 $tahap = $bulan <= 6 ? 'THP-I' : 'THP-II';
 
                 $kwitansiData[] = [
@@ -759,7 +770,7 @@ class KwitansiController extends Controller
             $orientation = request()->input('orientation', 'portrait');
 
             $data = [
-                'sumberDana' => \App\Config\VariantConfig::title($this->variant),
+                'sumberDana' => VariantConfig::title($this->variant),
                 'kwitansis' => $kwitansiData,
                 'totalKwitansi' => $kwitansis->count(),
                 'tanggalDownload' => now()->format('d/m/Y H:i'),
@@ -769,20 +780,21 @@ class KwitansiController extends Controller
                     'tahun' => $tahun,
                     'start_date' => $startDate,
                     'end_date' => $endDate,
-                    'has_filter' => $search || $tahun || $startDate || $endDate
-                ]
+                    'has_filter' => $search || $tahun || $startDate || $endDate,
+                ],
             ];
 
-            $pdf = PDF::loadView('pelengkap.download_all_dua_pdf', $data);
+            $pdf = Pdf::loadView('pelengkap.download_all_dua_pdf', $data);
             $pdf->setPaper($paperSize, $orientation);
 
             $filename = $this->generateDownloadFilename($search, $tahun, $startDate, $endDate, $kwitansis->count());
 
             return $pdf->stream($filename);
         } catch (\Exception $e) {
-            Log::error('Error downloading all kwitansi: ' . $e->getMessage());
+            Log::error('Error downloading all kwitansi: '.$e->getMessage());
+
             return redirect()->route('kwitansi.index')
-                ->with('error', 'Gagal mengunduh semua kwitansi: ' . $e->getMessage());
+                ->with('error', 'Gagal mengunduh semua kwitansi: '.$e->getMessage());
         }
     }
 
@@ -807,7 +819,7 @@ class KwitansiController extends Controller
             $pajakData = $this->klasifikasiPajak($kwitansi->bukuKasUmum, $totalAmount);
 
             // Calculate Tahap Roman
-            $bulan = \Carbon\Carbon::parse($kwitansi->bukuKasUmum->tanggal_transaksi)->month;
+            $bulan = Carbon::parse($kwitansi->bukuKasUmum->tanggal_transaksi)->month;
             $tahapRoman = $bulan <= 6 ? 'THP-I' : 'THP-II';
 
             // Get Request Parameters
@@ -816,7 +828,7 @@ class KwitansiController extends Controller
             $orientation = request()->input('orientation', 'portrait');
 
             $data = [
-                'sumberDana' => \App\Config\VariantConfig::title($this->variant),
+                'sumberDana' => VariantConfig::title($this->variant),
                 'kwitansi' => $kwitansi,
                 'parsedKode' => $parsedKode,
                 'jumlahUangText' => $jumlahUang,
@@ -828,17 +840,18 @@ class KwitansiController extends Controller
                 'fontSize' => $fontSize,
             ];
 
-            $pdf = PDF::loadView('pelengkap.kwitansi_dua_pdf', $data);
+            $pdf = Pdf::loadView('pelengkap.kwitansi_dua_pdf', $data);
             $pdf->setPaper($paperSize, $orientation);
 
-            return $pdf->stream('Kwitansi_Preview_' . $kwitansi->id . '.pdf', [
+            return $pdf->stream('Kwitansi_Preview_'.$kwitansi->id.'.pdf', [
                 'Content-Type' => 'application/pdf',
             ]);
         } catch (\Exception $e) {
-            Log::error('Error generating preview PDF for ID ' . $id . ': ' . $e->getMessage());
+            Log::error('Error generating preview PDF for ID '.$id.': '.$e->getMessage());
+
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal generate preview PDF: ' . $e->getMessage(),
+                'message' => 'Gagal generate preview PDF: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -863,10 +876,11 @@ class KwitansiController extends Controller
                 'message' => "Kwitansi untuk '{$uraian}' berhasil dihapus!",
             ]);
         } catch (\Exception $e) {
-            Log::error('Error deleting kwitansi: ' . $e->getMessage());
+            Log::error('Error deleting kwitansi: '.$e->getMessage());
+
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal menghapus kwitansi: ' . $e->getMessage(),
+                'message' => 'Gagal menghapus kwitansi: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -875,7 +889,7 @@ class KwitansiController extends Controller
     {
         try {
             $tahun = $request->input('tahun');
-            
+
             $query = ($this->BukuKasUmum)::whereDoesntHave('kwitansi')
                 ->where('is_bunga_record', false);
 
@@ -894,7 +908,7 @@ class KwitansiController extends Controller
                 ],
             ]);
         } catch (\Exception $e) {
-            Log::error('Error checking available data: ' . $e->getMessage());
+            Log::error('Error checking available data: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
@@ -909,9 +923,11 @@ class KwitansiController extends Controller
             $limit = $request->input('limit', 20);
             $offset = $request->input('offset', 0); // Add offset support
             $tahun = $request->input('tahun');
-            
-            if ($limit > 100) $limit = 100;
-            
+
+            if ($limit > 100) {
+                $limit = 100;
+            }
+
             Log::info("Starting batch generation chunk with limit {$limit} offset {$offset}");
 
             $query = ($this->BukuKasUmum)::with([
@@ -923,11 +939,11 @@ class KwitansiController extends Controller
                 ->whereDoesntHave('kwitansi')
                 ->where('is_bunga_record', false)
                 ->orderBy('id');
-            
+
             if ($tahun) {
                 $query->where(VariantConfig::penganggaranFk($this->variant), $tahun);
             }
-            
+
             $totalWithoutKwitansi = $query->count(); // Count total matching query
 
             // Get only the chunk with offset
@@ -963,10 +979,11 @@ class KwitansiController extends Controller
                 ],
             ]);
         } catch (\Exception $e) {
-            Log::error('Error in generateBatch: ' . $e->getMessage());
+            Log::error('Error in generateBatch: '.$e->getMessage());
+
             return response()->json([
                 'success' => false,
-                'message' => 'Terjadi kesalahan saat proses generate: ' . $e->getMessage(),
+                'message' => 'Terjadi kesalahan saat proses generate: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -978,18 +995,18 @@ class KwitansiController extends Controller
             'kode_rekening' => $bukuKasUmum->rekeningBelanja->kode_rekening ?? '-',
             'uraian' => $bukuKasUmum->uraian_opsional ?? $bukuKasUmum->uraian,
             'status' => 'pending',
-            'message' => ''
+            'message' => '',
         ];
 
         try {
             $existingKwitansi = ($this->Kwitansi)::where(VariantConfig::bkuFk($this->variant), $bukuKasUmum->id)->first();
 
-            if (!$existingKwitansi) {
+            if (! $existingKwitansi) {
                 $penerimaanDana = ($this->PenerimaanDana)::where(VariantConfig::penganggaranFk($this->variant), $bukuKasUmum->{VariantConfig::penganggaranFk($this->variant)})->first();
 
                 if ($penerimaanDana) {
                     $sekolahId = $bukuKasUmum->penganggaran->sekolah_id;
-                    if (!$sekolahId) {
+                    if (! $sekolahId) {
                         $sekolah = SekolahProfile::first();
                         $sekolahId = $sekolah->id ?? null;
                     }
@@ -998,6 +1015,7 @@ class KwitansiController extends Controller
                     if (is_null($bukuKasUmum->rekening_belanja_id)) {
                         $itemResult['status'] = 'failed';
                         $itemResult['message'] = 'Kode Rekening ID tidak ditemukan (null), pastikan BKU memiliki rekening belanja.';
+
                         return $itemResult;
                     }
 
@@ -1035,7 +1053,7 @@ class KwitansiController extends Controller
             }
         } catch (\Exception $e) {
             $itemResult['status'] = 'error';
-            $itemResult['message'] = 'Error: ' . $e->getMessage();
+            $itemResult['message'] = 'Error: '.$e->getMessage();
         }
 
         return $itemResult;
@@ -1064,11 +1082,11 @@ class KwitansiController extends Controller
                 ],
             ]);
         } catch (\Exception $e) {
-            Log::error('Error deleting all kwitansi: ' . $e->getMessage());
+            Log::error('Error deleting all kwitansi: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal menghapus semua data kwitansi: ' . $e->getMessage(),
+                'message' => 'Gagal menghapus semua data kwitansi: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -1093,7 +1111,7 @@ class KwitansiController extends Controller
                 ],
             ]);
         } catch (\Exception $e) {
-            Log::error('Error in debugDataCount: ' . $e->getMessage());
+            Log::error('Error in debugDataCount: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
@@ -1118,7 +1136,7 @@ class KwitansiController extends Controller
             if ($chunk != 0) {
                 $chunkWords = $this->convertChunk($chunk);
                 if ($unitIndex > 0) {
-                    $chunkWords .= ' ' . $units[$unitIndex];
+                    $chunkWords .= ' '.$units[$unitIndex];
                 }
                 array_unshift($words, $chunkWords);
             }
@@ -1126,7 +1144,8 @@ class KwitansiController extends Controller
             $unitIndex++;
         }
 
-        $result = implode(' ', $words) . ' Rupiah';
+        $result = implode(' ', $words).' Rupiah';
+
         return ucfirst(strtolower($result));
     }
 
@@ -1142,7 +1161,7 @@ class KwitansiController extends Controller
             if ($hundreds == 1) {
                 $words[] = 'seratus';
             } else {
-                $words[] = $ones[$hundreds] . ' ratus';
+                $words[] = $ones[$hundreds].' ratus';
             }
             $number %= 100;
         }
@@ -1159,6 +1178,7 @@ class KwitansiController extends Controller
                 $words[] = $ones[$onesDigit];
             }
         }
+
         return implode(' ', $words);
     }
 
@@ -1179,7 +1199,7 @@ class KwitansiController extends Controller
             'December' => 'Desember',
         ];
 
-        $tanggalObj = \Carbon\Carbon::parse($tanggal);
+        $tanggalObj = Carbon::parse($tanggal);
         $bulan = $bulanIndonesia[$tanggalObj->format('F')] ?? $tanggalObj->format('F');
 
         return "Lunas Bayar, {$tanggalObj->format('d')} {$bulan} {$tanggalObj->format('Y')}";
@@ -1208,7 +1228,7 @@ class KwitansiController extends Controller
             $pajakData = $this->klasifikasiPajak($kwitansi->bukuKasUmum, $totalAmount);
 
             // Calculate Tahap Roman
-            $bulan = \Carbon\Carbon::parse($kwitansi->bukuKasUmum->tanggal_transaksi)->month;
+            $bulan = Carbon::parse($kwitansi->bukuKasUmum->tanggal_transaksi)->month;
             $tahapRoman = $bulan <= 6 ? 'THP-I' : 'THP-II';
 
             // Get Request Parameters
@@ -1217,11 +1237,11 @@ class KwitansiController extends Controller
             $orientation = request()->input('orientation', 'portrait');
 
             $data = [
-                'sumberDana' => \App\Config\VariantConfig::title($this->variant),
+                'sumberDana' => VariantConfig::title($this->variant),
                 'kwitansi' => $kwitansi,
                 'parsedKode' => $parsedKode,
                 'jumlahUangText' => $jumlahUang,
-                'totalAmount' => $totalAmount, 
+                'totalAmount' => $totalAmount,
                 'tanggalLunas' => $this->formatTanggalLunas($kwitansi->bukuKasUmum->tanggal_transaksi),
                 'pajakData' => $pajakData,
                 'sekolah' => $kwitansi->sekolah,
@@ -1229,15 +1249,16 @@ class KwitansiController extends Controller
                 'fontSize' => $fontSize,
             ];
 
-            $pdf = PDF::loadView('pelengkap.kwitansi_tiga_pdf', $data);
+            $pdf = Pdf::loadView('pelengkap.kwitansi_tiga_pdf', $data);
             $pdf->setPaper($paperSize, $orientation);
 
             $filename = "Kwitansi_BOSP_{$kwitansi->bukuKasUmum->uraian_opsional}.pdf";
 
             return $pdf->stream($filename);
         } catch (\Exception $e) {
-            Log::error('Error generating kwitansi PDF: ' . $e->getMessage());
-            return redirect()->route('kwitansi.index')->with('error', 'Gagal generate PDF: ' . $e->getMessage());
+            Log::error('Error generating kwitansi PDF: '.$e->getMessage());
+
+            return redirect()->route('kwitansi.index')->with('error', 'Gagal generate PDF: '.$e->getMessage());
         }
     }
 
@@ -1246,7 +1267,7 @@ class KwitansiController extends Controller
         try {
             ini_set('memory_limit', '512M');
             ini_set('max_execution_time', '300');
-            
+
             $query = ($this->Kwitansi)::with([
                 'sekolah',
                 'penganggaran',
@@ -1266,11 +1287,11 @@ class KwitansiController extends Controller
 
             if ($search) {
                 $query->whereHas('bukuKasUmum', function ($q) use ($search) {
-                    $q->where('uraian', 'like', '%' . $search . '%')
-                      ->orWhere('uraian_opsional', 'like', '%' . $search . '%');
+                    $q->where('uraian', 'like', '%'.$search.'%')
+                        ->orWhere('uraian_opsional', 'like', '%'.$search.'%');
                 })->orWhereHas('rekeningBelanja', function ($q) use ($search) {
-                    $q->where('kode_rekening', 'like', '%' . $search . '%')
-                      ->orWhere('rincian_objek', 'like', '%' . $search . '%');
+                    $q->where('kode_rekening', 'like', '%'.$search.'%')
+                        ->orWhere('rincian_objek', 'like', '%'.$search.'%');
                 });
             }
 
@@ -1304,9 +1325,9 @@ class KwitansiController extends Controller
                 $totalAmount = $this->calculateTotalFromUraianDetails($kwitansi->bukuKasUmum);
                 $jumlahUang = $this->convertToText($totalAmount);
                 $pajakData = $this->klasifikasiPajak($kwitansi->bukuKasUmum, $totalAmount);
-                
+
                 // Calculate Tahap Roman
-                $bulan = \Carbon\Carbon::parse($kwitansi->bukuKasUmum->tanggal_transaksi)->month;
+                $bulan = Carbon::parse($kwitansi->bukuKasUmum->tanggal_transaksi)->month;
                 $tahapRoman = $bulan <= 6 ? 'THP-I' : 'THP-II';
 
                 $processedData[] = [
@@ -1326,21 +1347,22 @@ class KwitansiController extends Controller
             $orientation = $request->input('orientation', 'portrait');
 
             $data = [
-                'sumberDana' => \App\Config\VariantConfig::title($this->variant),
+                'sumberDana' => VariantConfig::title($this->variant),
                 'kwitansis' => $processedData,
                 'fontSize' => $fontSize,
             ];
 
-            $pdf = PDF::loadView('pelengkap.kwitansi_tiga_pdf_all', $data);
+            $pdf = Pdf::loadView('pelengkap.kwitansi_tiga_pdf_all', $data);
             $pdf->setPaper($paperSize, $orientation);
 
-            $filename = "Kwitansi_BOSP_All_" . date('Ymd_His') . ".pdf";
+            $filename = 'Kwitansi_BOSP_All_'.date('Ymd_His').'.pdf';
 
             return $pdf->stream($filename);
         } catch (\Exception $e) {
-            Log::error('Error downloading all kwitansi 3: ' . $e->getMessage());
+            Log::error('Error downloading all kwitansi 3: '.$e->getMessage());
+
             return redirect()->route('kwitansi.index')
-                ->with('error', 'Gagal mengunduh semua kwitansi: ' . $e->getMessage());
+                ->with('error', 'Gagal mengunduh semua kwitansi: '.$e->getMessage());
         }
     }
 
@@ -1365,7 +1387,7 @@ class KwitansiController extends Controller
             $pajakData = $this->klasifikasiPajak($kwitansi->bukuKasUmum, $totalAmount);
 
             // Calculate Tahap Roman
-            $bulan = \Carbon\Carbon::parse($kwitansi->bukuKasUmum->tanggal_transaksi)->month;
+            $bulan = Carbon::parse($kwitansi->bukuKasUmum->tanggal_transaksi)->month;
             $tahapRoman = $bulan <= 6 ? 'THP-I' : 'THP-II';
 
             // Get Request Parameters
@@ -1374,7 +1396,7 @@ class KwitansiController extends Controller
             $orientation = request()->input('orientation', 'portrait');
 
             $data = [
-                'sumberDana' => \App\Config\VariantConfig::title($this->variant),
+                'sumberDana' => VariantConfig::title($this->variant),
                 'kwitansi' => $kwitansi,
                 'parsedKode' => $parsedKode,
                 'jumlahUangText' => $jumlahUang,
@@ -1386,9 +1408,9 @@ class KwitansiController extends Controller
                 'fontSize' => $fontSize,
             ];
 
-            $pdf = PDF::loadView('pelengkap.kwitansi_tiga_pdf', $data);
+            $pdf = Pdf::loadView('pelengkap.kwitansi_tiga_pdf', $data);
             $pdf->setPaper($paperSize, $orientation);
-            
+
             $output = $pdf->output();
 
             return response($output, 200)
@@ -1396,10 +1418,11 @@ class KwitansiController extends Controller
                 ->header('Content-Disposition', 'inline; filename="preview_3.pdf"');
 
         } catch (\Exception $e) {
-            Log::error('Error generating preview PDF 3: ' . $e->getMessage());
+            Log::error('Error generating preview PDF 3: '.$e->getMessage());
+
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal generate preview PDF: ' . $e->getMessage(),
+                'message' => 'Gagal generate preview PDF: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -1427,7 +1450,7 @@ class KwitansiController extends Controller
             $pajakData = $this->klasifikasiPajak($kwitansi->bukuKasUmum, $totalAmount);
 
             // Calculate Tahap Roman
-            $bulan = \Carbon\Carbon::parse($kwitansi->bukuKasUmum->tanggal_transaksi)->month;
+            $bulan = Carbon::parse($kwitansi->bukuKasUmum->tanggal_transaksi)->month;
             $tahapRoman = $bulan <= 6 ? 'THP-I' : 'THP-II';
 
             // Get Request Parameters
@@ -1436,11 +1459,11 @@ class KwitansiController extends Controller
             $orientation = request()->input('orientation', 'portrait');
 
             $data = [
-                'sumberDana' => \App\Config\VariantConfig::title($this->variant),
+                'sumberDana' => VariantConfig::title($this->variant),
                 'kwitansi' => $kwitansi,
                 'parsedKode' => $parsedKode,
                 'jumlahUangText' => $jumlahUang,
-                'totalAmount' => $totalAmount, 
+                'totalAmount' => $totalAmount,
                 'tanggalLunas' => $this->formatTanggalLunas($kwitansi->bukuKasUmum->tanggal_transaksi),
                 'pajakData' => $pajakData,
                 'sekolah' => $kwitansi->sekolah,
@@ -1448,15 +1471,16 @@ class KwitansiController extends Controller
                 'fontSize' => $fontSize,
             ];
 
-            $pdf = PDF::loadView('pelengkap.kwitansi_empat_pdf', $data);
+            $pdf = Pdf::loadView('pelengkap.kwitansi_empat_pdf', $data);
             $pdf->setPaper($paperSize, $orientation);
 
             $filename = "Kwitansi_Format_4_{$kwitansi->bukuKasUmum->uraian_opsional}.pdf";
 
             return $pdf->stream($filename);
         } catch (\Exception $e) {
-            Log::error('Error generating kwitansi PDF 4: ' . $e->getMessage());
-            return redirect()->route('kwitansi.index')->with('error', 'Gagal generate PDF: ' . $e->getMessage());
+            Log::error('Error generating kwitansi PDF 4: '.$e->getMessage());
+
+            return redirect()->route('kwitansi.index')->with('error', 'Gagal generate PDF: '.$e->getMessage());
         }
     }
 
@@ -1465,7 +1489,7 @@ class KwitansiController extends Controller
         try {
             ini_set('memory_limit', '512M');
             ini_set('max_execution_time', '300');
-            
+
             $query = ($this->Kwitansi)::with([
                 'sekolah',
                 'penganggaran',
@@ -1485,11 +1509,11 @@ class KwitansiController extends Controller
 
             if ($search) {
                 $query->whereHas('bukuKasUmum', function ($q) use ($search) {
-                    $q->where('uraian', 'like', '%' . $search . '%')
-                      ->orWhere('uraian_opsional', 'like', '%' . $search . '%');
+                    $q->where('uraian', 'like', '%'.$search.'%')
+                        ->orWhere('uraian_opsional', 'like', '%'.$search.'%');
                 })->orWhereHas('rekeningBelanja', function ($q) use ($search) {
-                    $q->where('kode_rekening', 'like', '%' . $search . '%')
-                      ->orWhere('rincian_objek', 'like', '%' . $search . '%');
+                    $q->where('kode_rekening', 'like', '%'.$search.'%')
+                        ->orWhere('rincian_objek', 'like', '%'.$search.'%');
                 });
             }
 
@@ -1523,9 +1547,9 @@ class KwitansiController extends Controller
                 $totalAmount = $this->calculateTotalFromUraianDetails($kwitansi->bukuKasUmum);
                 $jumlahUang = $this->convertToText($totalAmount);
                 $pajakData = $this->klasifikasiPajak($kwitansi->bukuKasUmum, $totalAmount);
-                
+
                 // Calculate Tahap Roman
-                $bulan = \Carbon\Carbon::parse($kwitansi->bukuKasUmum->tanggal_transaksi)->month;
+                $bulan = Carbon::parse($kwitansi->bukuKasUmum->tanggal_transaksi)->month;
                 $tahapRoman = $bulan <= 6 ? 'THP-I' : 'THP-II';
 
                 $processedData[] = [
@@ -1545,21 +1569,22 @@ class KwitansiController extends Controller
             $orientation = $request->input('orientation', 'portrait');
 
             $data = [
-                'sumberDana' => \App\Config\VariantConfig::title($this->variant),
+                'sumberDana' => VariantConfig::title($this->variant),
                 'kwitansis' => $processedData,
                 'fontSize' => $fontSize,
             ];
 
-            $pdf = PDF::loadView('pelengkap.kwitansi_empat_pdf_all', $data);
+            $pdf = Pdf::loadView('pelengkap.kwitansi_empat_pdf_all', $data);
             $pdf->setPaper($paperSize, $orientation);
 
-            $filename = "Kwitansi_Format_4_All_" . date('Ymd_His') . ".pdf";
+            $filename = 'Kwitansi_Format_4_All_'.date('Ymd_His').'.pdf';
 
             return $pdf->stream($filename);
         } catch (\Exception $e) {
-            Log::error('Error downloading all kwitansi 4: ' . $e->getMessage());
+            Log::error('Error downloading all kwitansi 4: '.$e->getMessage());
+
             return redirect()->route('kwitansi.index')
-                ->with('error', 'Gagal mengunduh semua kwitansi: ' . $e->getMessage());
+                ->with('error', 'Gagal mengunduh semua kwitansi: '.$e->getMessage());
         }
     }
 
@@ -1584,7 +1609,7 @@ class KwitansiController extends Controller
             $pajakData = $this->klasifikasiPajak($kwitansi->bukuKasUmum, $totalAmount);
 
             // Calculate Tahap Roman
-            $bulan = \Carbon\Carbon::parse($kwitansi->bukuKasUmum->tanggal_transaksi)->month;
+            $bulan = Carbon::parse($kwitansi->bukuKasUmum->tanggal_transaksi)->month;
             $tahapRoman = $bulan <= 6 ? 'THP-I' : 'THP-II';
 
             // Get Request Parameters
@@ -1593,7 +1618,7 @@ class KwitansiController extends Controller
             $orientation = request()->input('orientation', 'portrait');
 
             $data = [
-                'sumberDana' => \App\Config\VariantConfig::title($this->variant),
+                'sumberDana' => VariantConfig::title($this->variant),
                 'kwitansi' => $kwitansi,
                 'parsedKode' => $parsedKode,
                 'jumlahUangText' => $jumlahUang,
@@ -1605,9 +1630,9 @@ class KwitansiController extends Controller
                 'fontSize' => $fontSize,
             ];
 
-            $pdf = PDF::loadView('pelengkap.kwitansi_empat_pdf', $data);
+            $pdf = Pdf::loadView('pelengkap.kwitansi_empat_pdf', $data);
             $pdf->setPaper($paperSize, $orientation);
-            
+
             $output = $pdf->output();
 
             return response($output, 200)
@@ -1615,10 +1640,11 @@ class KwitansiController extends Controller
                 ->header('Content-Disposition', 'inline; filename="preview_4.pdf"');
 
         } catch (\Exception $e) {
-            Log::error('Error generating preview PDF 4: ' . $e->getMessage());
+            Log::error('Error generating preview PDF 4: '.$e->getMessage());
+
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal generate preview PDF: ' . $e->getMessage(),
+                'message' => 'Gagal generate preview PDF: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -1629,9 +1655,10 @@ class KwitansiController extends Controller
         if (app()->bound('variant')) {
             $var = app('variant');
         }
-        return \Inertia\Inertia::render(VariantConfig::pagePrefix($var) . $component, array_merge($props, [
+
+        return Inertia::render(VariantConfig::pagePrefix($var).$component, array_merge($props, [
             'variant' => $var,
-            'routePrefix' => VariantConfig::routePrefix($var)
+            'routePrefix' => VariantConfig::routePrefix($var),
         ]));
     }
 }

@@ -29,7 +29,7 @@ export default function ChangelogModal() {
                         Informasi Rilis
                     </h2>
                     <span className="bg-indigo-100 text-indigo-800 text-sm font-semibold px-3 py-1 rounded-full dark:bg-indigo-900 dark:text-indigo-300">
-                        SIKAS V.2026.28
+                        SIKAS V.2026.29
                     </span>
                 </div>
 
@@ -44,13 +44,16 @@ export default function ChangelogModal() {
                         </h3>
                         <ul className="list-disc pl-6 text-sm text-gray-700 dark:text-gray-300 space-y-2 leading-relaxed">
                             <li>
-                                <span className="font-medium">Penambahan Fitur Tarik Rkas Online:</span> Penambahan fitur tarik dari ARKAS Online pada halaman RKAS Awal dan RKAS PERUBAHAN. Fitur ini berfungsi menarik data Rkas Langsung dari ARKAS Online
+                                <span className="font-medium">Penambahan Integrasi AI:</span> Penambahan fitur API Key dan Model AI (DeepSeek) pada halaman Settings. Memungkinkan pengguna untuk menggunakan AI untuk analisis dan perancangan.
                             </li>
                             <li>
-                                <span className="font-medium">Penambahan Format RKA Tahapan V.1 dan V.2 Pada Rkas Perubahan:</span> Penambahan Format RKA Tahapan Baru pada Rkas Perubahan Sesuai dengan Format RKA Tahapan V.1 dan V.2.
+                                <span className="font-medium">Penambahan Chat AI:</span> Penambahan fitur Chat AI untuk membantu pengguna dalam menjawab pertanyaan dan memberikan informasi terkait dengan SIKAS dan mampu membantu pengguna untuk menyusun perencanaan yang lebih baik dan penyusunan laporan dengan mencegah terjadinya temuan.
                             </li>
                             <li>
-                                <span className="font-medium">Penambahan Fitur Tarik BKU Online:</span> Penambahan Fitur Tarik BKU Online pada halaman BKU yang langsung menarik BKU Online Satu Tahun atau Menariknya Perbulan langsung dari ARKAS Online.
+                                <span className="font-medium">Penambahan Pra Audit AI:</span> Penambahan fitur Pra Audit untuk membantu pengguna dalam melakukan audit internal pada pembukuan yang telah di lakukan. agar mengantisipasi terjadinya temuan. 
+                            </li>
+                            <li>
+                                <span className="font-medium">Penambahan Analisis Tarik Data Arkas AI:</span> Penambahan fitur Analisis Tarik Data AI pada halaman BKU untuk membantu pengguna dalam melakukan pengecekan data yang di tarik dari aplikasi arkas. hal ini bisa mencegah terjadinya penimpaan data yang beresiko salah.
                             </li>
                         </ul>
                     </div>
@@ -64,7 +67,9 @@ export default function ChangelogModal() {
                             Perbaikan
                         </h3>
                         <ul className="list-disc pl-6 text-sm text-gray-700 dark:text-gray-300 space-y-2 leading-relaxed">
-                            <li><span className="font-medium">Perbaikan Arkas Tools:</span> Perbaikan Arkas Tools Agar Data yang di tarik dapat masuk kedalam database aplikasi newSIKAS. </li>
+                            <li><span className="font-medium">Perbaikan BKP Pembantu Tunai:</span> Perbaikan Saldo awal pada BKP Pembantu tunai yang lebih dulu tampil daripada tarik tunai. </li>
+                            <li><span className="font-medium">Perbaikan Keamanan Sistem:</span> Perbaikan pada peningkatan keamanan sistem lisensi untuk kenyamanan pengguna. </li>
+                            <li><span className="font-medium">Perbaikan Edit Penganggaran:</span> Perbaikan pada fitur edit penganggaran pada rkas awal dan mengaktifkannya kembali walaupun rkas perubahan telah di lakukan. </li>
                         </ul>
                     </div>
                 </div>

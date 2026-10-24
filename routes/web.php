@@ -1,40 +1,12 @@
 <?php
 
+use App\Config\VariantConfig;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
+use App\Models\User;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
-use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\PenganggaranController;
-use App\Http\Controllers\PenatausahaanController;
-use App\Http\Controllers\StsController;
-use App\Http\Controllers\SekolahProfileController;
-use App\Http\Controllers\KodeKegiatanController;
-use App\Http\Controllers\RekeningBelanjaController;
-use App\Http\Controllers\KwitansiController;
-use App\Http\Controllers\TandaTerimaController;
-use App\Http\Controllers\DatabaseController;
-use App\Http\Controllers\SpmthController;
-use App\Http\Controllers\SptjController;
-use App\Http\Controllers\Sp2bController;
-use App\Http\Controllers\BukuKasUmumController;
-use App\Http\Controllers\RekapitulasiController;
-use App\Http\Controllers\RekapitulasiRealisasiController;
-use App\Http\Controllers\RegistrasiPenutupanKasController;
-use App\Http\Controllers\PenerimaanDanaController;
-use App\Http\Controllers\RkasController;
-use App\Http\Controllers\RkasPerubahanController;
-use App\Http\Controllers\RkasSummaryController;
-use App\Http\Controllers\BukuBankController;
-use App\Http\Controllers\BukuKasPembantuTunaiController;
-use App\Http\Controllers\BukuPajakController;
-use App\Http\Controllers\BukuRobController;
-use App\Http\Controllers\BeritaAcaraPenutupanController;
-use App\Http\Controllers\LphController;
-use App\Http\Controllers\ArkasToolController;
-use App\Http\Controllers\ReferensiKodeController;
-use App\Http\Controllers\ArkasSettingController;
-use App\Http\Controllers\NotificationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -51,7 +23,7 @@ Route::get('/', function () {
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),
         'canRegister' => Route::has('register'),
-        'hasUsers' => \App\Models\User::count() > 0,
+        'hasUsers' => User::count() > 0,
         'laravelVersion' => Application::VERSION,
         'phpVersion' => PHP_VERSION,
     ]);
@@ -71,16 +43,16 @@ Route::middleware('auth')->group(function () {
     Route::post('/profile/deepseek-settings', [ProfileController::class, 'updateDeepSeekSettings'])->name('profile.deepseek-settings');
     Route::post('/profile/deepseek-test', [ProfileController::class, 'testDeepSeekConnection'])->name('profile.deepseek-test');
 
-    foreach (\App\Config\VariantConfig::VARIANTS as $variant) {
+    foreach (VariantConfig::VARIANTS as $variant) {
         if ($variant === 'reguler') {
             Route::middleware(["variant:$variant"])
-                 ->group(base_path('routes/variant.php'));
+                ->group(base_path('routes/variant.php'));
         } else {
             $prefix = str_replace('_', '-', $variant);
             Route::middleware(["variant:$variant"])
-                 ->prefix($prefix)
-                 ->name("$prefix-")
-                 ->group(base_path('routes/variant.php'));
+                ->prefix($prefix)
+                ->name("$prefix-")
+                ->group(base_path('routes/variant.php'));
         }
     }
 });

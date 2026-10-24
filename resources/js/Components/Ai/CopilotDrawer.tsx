@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import useVariantRoute from '@/Hooks/useVariantRoute';
-import { usePage, Link } from '@inertiajs/react';
+import { usePage, Link, router } from '@inertiajs/react';
 import axios from 'axios';
 import Chart from 'react-apexcharts';
 import { 
@@ -21,9 +21,25 @@ import {
     Minimize2,
     Maximize2,
     Minus,
-    BarChart3
+    BarChart3,
+    BookOpen,
+    Compass,
+    FileText,
+    FileCheck,
+    Printer,
+    Layers,
+    Settings,
+    FolderSync,
+    ShieldCheck
 } from 'lucide-react';
 import type { CopilotWindowState } from '@/Layouts/AuthenticatedLayout';
+
+export interface ActionButton {
+    label: string;
+    url: string;
+    icon?: string;
+    description?: string;
+}
 
 interface StagingDraft {
     type: 'bku_transaction_draft';
@@ -58,6 +74,7 @@ interface Message {
     content: string;
     staging_card?: StagingDraft;
     analytics_chart?: any;
+    action_buttons?: ActionButton[];
     timestamp: string;
 }
 
@@ -272,6 +289,10 @@ export default function CopilotDrawer({
         }
     }, [messages, isOpen, isMinimized, isSending]);
 
+    const [promptCategory, setPromptCategory] = useState<'guide' | 'finance'>('guide');
+
+
+
     const handleClearChat = () => {
         if (confirm('Mulai obrolan baru dan bersihkan riwayat sesi ini?')) {
             setMessages([]);
@@ -313,6 +334,7 @@ export default function CopilotDrawer({
                     content: response.data.content || 'Saya telah memproses permintaan Anda.',
                     staging_card: response.data.staging_card || undefined,
                     analytics_chart: response.data.analytics_chart || undefined,
+                    action_buttons: response.data.action_buttons || undefined,
                     timestamp: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
                 };
                 setMessages([...updatedMessages, assistantMsg]);
@@ -584,34 +606,81 @@ export default function CopilotDrawer({
                             {/* Message List */}
                             <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs">
                                 {messages.length === 0 ? (
-                                    <div className="py-8 text-center space-y-3">
+                                    <div className="py-6 text-center space-y-3">
                                         <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/40 rounded-2xl flex items-center justify-center mx-auto text-purple-600 dark:text-purple-300">
                                             <Sparkles className="w-6 h-6" />
                                         </div>
                                         <h5 className="font-bold text-gray-800 dark:text-gray-200 text-sm">
-                                            Asisten Keuangan SIKAS Siap Membantu
+                                            Asisten & Pemandu SIKAS Siap Membantu
                                         </h5>
-                                        <p className="text-gray-500 dark:text-gray-400 max-w-xs mx-auto">
-                                            Ketik instruksi belanja untuk draf BKU, kalkulasi pajak, atau tanyakan perbandingan anggaran.
+                                        <p className="text-gray-500 dark:text-gray-400 max-w-xs mx-auto text-[11px]">
+                                            Tanyakan panduan operasional menu aplikasi atau instruksi pencatatan belanja & analisis keuangan BOSP.
                                         </p>
 
-                                        {/* Suggested Quick Prompt Chips */}
-                                        <div className="pt-2 flex flex-col gap-1.5 text-left max-w-xs mx-auto">
-                                            {[
-                                                '💰 Berapa pagu anggaran dan penerimaan dana tahun ini?',
-                                                '📝 Catat belanja konsumsi rapat Rp 350.000 tunai ke Katering Berkah',
-                                                '📊 Bandingkan realisasi serapan belanja per triwulan',
-                                                '🧾 Berapa tarif pajak untuk belanja laptop Rp 8.500.000?',
-                                            ].map((prompt, idx) => (
-                                                <button
-                                                    key={idx}
-                                                    onClick={() => handleSendMessage(prompt)}
-                                                    className="p-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-indigo-400 dark:hover:border-indigo-500 text-gray-700 dark:text-gray-300 text-left transition flex items-center justify-between group"
-                                                >
-                                                    <span className="truncate pr-1">{prompt}</span>
-                                                    <ChevronRight className="w-3.5 h-3.5 text-gray-400 group-hover:text-indigo-600 flex-shrink-0" />
-                                                </button>
-                                            ))}
+                                        {/* Tab Switcher Kategori Saran Cepat */}
+                                        <div className="flex items-center justify-center gap-1.5 pt-1">
+                                            <button
+                                                type="button"
+                                                onClick={() => setPromptCategory('guide')}
+                                                className={`px-3 py-1 rounded-full text-[11px] font-bold transition flex items-center gap-1.5 ${
+                                                    promptCategory === 'guide'
+                                                        ? 'bg-indigo-600 text-white shadow-xs'
+                                                        : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:text-indigo-600'
+                                                }`}
+                                            >
+                                                <BookOpen className="w-3 h-3" />
+                                                Panduan Aplikasi
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setPromptCategory('finance')}
+                                                className={`px-3 py-1 rounded-full text-[11px] font-bold transition flex items-center gap-1.5 ${
+                                                    promptCategory === 'finance'
+                                                        ? 'bg-indigo-600 text-white shadow-xs'
+                                                        : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:text-indigo-600'
+                                                }`}
+                                            >
+                                                <Coins className="w-3 h-3" />
+                                                Keuangan & Draf
+                                            </button>
+                                        </div>
+
+                                        {/* Suggested Quick Prompt Chips Berdasarkan Kategori */}
+                                        <div className="pt-1.5 flex flex-col gap-1.5 text-left max-w-xs mx-auto">
+                                            {promptCategory === 'guide' ? (
+                                                [
+                                                    '📖 Bagaimana alur dan cara tutup buku BKU setiap akhir bulan?',
+                                                    '📥 Bagaimana cara tarik data RKAS & BKU dari ARKAS desktop?',
+                                                    '🖨️ Bagaimana cara mencetak kuitansi SPJ secara massal/sekaligus?',
+                                                    '⚖️ Bagaimana cara mengatasi selisih kas di BKU dan Buku Bank?',
+                                                    '📝 Bagaimana cara membuat Berita Acara Serah Terima (BAST)?',
+                                                ].map((prompt, idx) => (
+                                                    <button
+                                                        key={idx}
+                                                        onClick={() => handleSendMessage(prompt)}
+                                                        className="p-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-indigo-400 dark:hover:border-indigo-500 text-gray-700 dark:text-gray-300 text-left transition flex items-center justify-between group shadow-2xs hover:shadow-xs"
+                                                    >
+                                                        <span className="truncate pr-1 text-[11px]">{prompt}</span>
+                                                        <ChevronRight className="w-3.5 h-3.5 text-gray-400 group-hover:text-indigo-600 flex-shrink-0" />
+                                                    </button>
+                                                ))
+                                            ) : (
+                                                [
+                                                    '💰 Berapa pagu anggaran dan penerimaan dana tahun ini?',
+                                                    '📝 Catat belanja konsumsi rapat Rp 350.000 tunai ke Katering Berkah',
+                                                    '📊 Bandingkan realisasi serapan belanja per triwulan',
+                                                    '🧾 Berapa tarif pajak untuk belanja laptop Rp 8.500.000?',
+                                                ].map((prompt, idx) => (
+                                                    <button
+                                                        key={idx}
+                                                        onClick={() => handleSendMessage(prompt)}
+                                                        className="p-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-indigo-400 dark:hover:border-indigo-500 text-gray-700 dark:text-gray-300 text-left transition flex items-center justify-between group shadow-2xs hover:shadow-xs"
+                                                    >
+                                                        <span className="truncate pr-1 text-[11px]">{prompt}</span>
+                                                        <ChevronRight className="w-3.5 h-3.5 text-gray-400 group-hover:text-indigo-600 flex-shrink-0" />
+                                                    </button>
+                                                ))
+                                            )}
                                         </div>
                                     </div>
                                 ) : (
@@ -742,6 +811,7 @@ export default function CopilotDrawer({
                                                         />
                                                     </div>
                                                 )}
+
                                             </div>
                                             <span className="text-[9px] text-gray-400 mt-1 px-1">
                                                 {msg.timestamp}

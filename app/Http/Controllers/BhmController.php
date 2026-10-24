@@ -2,19 +2,21 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\BukuKasUmum;
-use App\Models\Penganggaran;
+use App\Config\VariantConfig;
+use App\Models\SekolahProfile;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use App\Config\VariantConfig;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Inertia\Inertia;
 
 class BhmController extends Controller
 {
     protected string $variant;
+
     protected string $Penganggaran;
+
     protected string $BukuKasUmum;
 
     public function __construct()
@@ -27,6 +29,7 @@ class BhmController extends Controller
             return $next($request);
         });
     }
+
     /**
      * Get BHM (Barang Modal/Aset) data for the frontend table
      */
@@ -34,7 +37,7 @@ class BhmController extends Controller
     {
         try {
             $tahun = $request->get('tahun');
-            if (!$tahun) {
+            if (! $tahun) {
                 $penganggaranAktif = ($this->Penganggaran)::orderBy('tahun_anggaran', 'desc')->first();
                 $tahun = $penganggaranAktif ? $penganggaranAktif->tahun_anggaran : date('Y');
             }
@@ -44,10 +47,10 @@ class BhmController extends Controller
 
             $penganggaran = ($this->Penganggaran)::where('tahun_anggaran', $tahun)->first();
 
-            if (!$penganggaran) {
+            if (! $penganggaran) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Data penganggaran untuk tahun ' . $tahun . ' tidak ditemukan',
+                    'message' => 'Data penganggaran untuk tahun '.$tahun.' tidak ditemukan',
                 ], 404);
             }
 
@@ -62,10 +65,11 @@ class BhmController extends Controller
                 'periode_info' => $tanggalPeriode,
             ]);
         } catch (\Exception $e) {
-            Log::error('Error get BHM data: ' . $e->getMessage());
+            Log::error('Error get BHM data: '.$e->getMessage());
+
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal memuat data BHM: ' . $e->getMessage(),
+                'message' => 'Gagal memuat data BHM: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -80,27 +84,27 @@ class BhmController extends Controller
             $periode = $request->get('periode');
             $jenisLaporan = $request->get('jenis_laporan', 'bulanan');
 
-            if (!$tahun) {
+            if (! $tahun) {
                 $penganggaranAktif = ($this->Penganggaran)::orderBy('tahun_anggaran', 'desc')->first();
                 $tahun = $penganggaranAktif ? $penganggaranAktif->tahun_anggaran : date('Y');
             }
 
             $penganggaran = ($this->Penganggaran)::where('tahun_anggaran', $tahun)->first();
-            if (!$penganggaran) {
-                return redirect()->back()->with('error', 'Data tahun ' . $tahun . ' tidak ditemukan.');
+            if (! $penganggaran) {
+                return redirect()->back()->with('error', 'Data tahun '.$tahun.' tidak ditemukan.');
             }
-            $sekolah = \App\Models\SekolahProfile::first();
+            $sekolah = SekolahProfile::first();
 
             $bulanTarget = $this->tentukanBulanDariPeriode($periode, $jenisLaporan);
             $bhmData = $this->getBhmTransactions($penganggaran->id, $tahun, $bulanTarget);
-            
+
             $periodeInfo = $this->tentukanTanggalPeriode($periode, $tahun, $jenisLaporan);
             if ($jenisLaporan === 'tahunan') {
                 $periodeInfo['label'] = 'TAHUNAN';
             } elseif ($jenisLaporan === 'tahap') {
                 $periodeInfo['label'] = strtoupper($periode);
             } else {
-                 $periodeInfo['label'] = 'BULAN : ' . strtoupper($periode);
+                $periodeInfo['label'] = 'BULAN : '.strtoupper($periode);
             }
 
             // Tentukan tanggal cetak
@@ -147,8 +151,9 @@ class BhmController extends Controller
 
             return $pdf->stream("Rekapitulasi_BHM_{$periode}_{$tahun}.pdf");
         } catch (\Exception $e) {
-            Log::error('Error generate BHM PDF: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Gagal mencetak PDF BHM: ' . $e->getMessage());
+            Log::error('Error generate BHM PDF: '.$e->getMessage());
+
+            return redirect()->back()->with('error', 'Gagal mencetak PDF BHM: '.$e->getMessage());
         }
     }
 
@@ -162,7 +167,7 @@ class BhmController extends Controller
             ->whereYear('tanggal_transaksi', $tahun)
             ->whereIn(DB::raw('EXTRACT(MONTH FROM tanggal_transaksi)'), $bulanTarget)
             ->where('is_bunga_record', false)
-            ->whereHas('rekeningBelanja', function($q) {
+            ->whereHas('rekeningBelanja', function ($q) {
                 $q->where('kode_rekening', 'like', '5.2%');
             })
             ->with(['kodeKegiatan', 'rekeningBelanja', 'uraianDetails'])
@@ -183,7 +188,7 @@ class BhmController extends Controller
                     'kode_rekening' => $rekening ? $rekening->kode_rekening : '-',
                     'no_bukti' => $bku->id_transaksi,
                     'uraian' => $detail->uraian,
-                    'volume' => (int)$detail->volume,
+                    'volume' => (int) $detail->volume,
                     'satuan' => $detail->satuan,
                     'harga_satuan' => $detail->harga_satuan,
                     'jumlah' => $detail->jumlah, // Realisasi
@@ -201,7 +206,7 @@ class BhmController extends Controller
             'mei' => 5, 'juni' => 6, 'juli' => 7, 'agustus' => 8,
             'september' => 9, 'oktober' => 10, 'november' => 11, 'desember' => 12,
         ];
-        
+
         $periode = strtolower($periode);
 
         if ($jenisLaporan === 'tahunan') {
@@ -225,35 +230,38 @@ class BhmController extends Controller
             'Mei' => 5, 'Juni' => 6, 'Juli' => 7, 'Agustus' => 8,
             'September' => 9, 'Oktober' => 10, 'November' => 11, 'Desember' => 12,
         ];
+
         return $bulanList[$bulan] ?? 1;
     }
 
     private function tentukanTanggalPeriode($periode, $tahun, $jenisLaporan)
     {
         if ($jenisLaporan === 'tahunan') {
-            return ['periode_awal' => '01 Januari ' . $tahun, 'periode_akhir' => '31 Desember ' . $tahun];
+            return ['periode_awal' => '01 Januari '.$tahun, 'periode_akhir' => '31 Desember '.$tahun];
         } elseif ($jenisLaporan === 'tahap') {
             if (strtolower($periode) === 'tahap 1') {
-                return ['periode_awal' => '01 Januari ' . $tahun, 'periode_akhir' => '30 Juni ' . $tahun];
+                return ['periode_awal' => '01 Januari '.$tahun, 'periode_akhir' => '30 Juni '.$tahun];
             } else {
-                return ['periode_awal' => '01 Juli ' . $tahun, 'periode_akhir' => '31 Desember ' . $tahun];
+                return ['periode_awal' => '01 Juli '.$tahun, 'periode_akhir' => '31 Desember '.$tahun];
             }
         } else {
             $bulan = $this->convertBulanToNumber($periode);
-            $tanggalAwal = '01 ' . $this->convertNumberToBulan($bulan) . ' ' . $tahun;
+            $tanggalAwal = '01 '.$this->convertNumberToBulan($bulan).' '.$tahun;
             $tanggalAkhirBulan = Carbon::create($tahun, $bulan, 1)->endOfMonth()->format('d');
-            $tanggalAkhir = $tanggalAkhirBulan . ' ' . $this->convertNumberToBulan($bulan) . ' ' . $tahun;
-            
+            $tanggalAkhir = $tanggalAkhirBulan.' '.$this->convertNumberToBulan($bulan).' '.$tahun;
+
             return ['periode_awal' => $tanggalAwal, 'periode_akhir' => $tanggalAkhir];
         }
     }
 
-    private function convertNumberToBulan($number) {
+    private function convertNumberToBulan($number)
+    {
         $bulan = [
             1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
             5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
             9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember',
         ];
+
         return $bulan[$number] ?? 'Januari';
     }
 
@@ -263,9 +271,10 @@ class BhmController extends Controller
         if (app()->bound('variant')) {
             $var = app('variant');
         }
-        return \Inertia\Inertia::render(VariantConfig::pagePrefix($var) . $component, array_merge($props, [
+
+        return Inertia::render(VariantConfig::pagePrefix($var).$component, array_merge($props, [
             'variant' => $var,
-            'routePrefix' => VariantConfig::routePrefix($var)
+            'routePrefix' => VariantConfig::routePrefix($var),
         ]));
     }
 }

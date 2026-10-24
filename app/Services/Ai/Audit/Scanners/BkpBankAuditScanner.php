@@ -150,11 +150,15 @@ class BkpBankAuditScanner extends BaseTabAuditScanner
                     ]);
                 }
             } else {
+                $uraianBank = ! empty(trim($b->uraian_opsional ?? ''))
+                    ? trim($b->uraian_opsional)
+                    : ($b->uraian ?: 'Belanja Non-Tunai');
+
                 $allEvents->push([
                     'tgl' => $b->tanggal_transaksi,
-                    'no_bukti' => $b->nomor_nota ?: ($b->id_transaksi ? 'TRX-'.$b->id_transaksi : '-'),
+                    'no_bukti' => $b->nomor_nota ?: ($b->id_transaksi ? (string) $b->id_transaksi : '-'),
                     'jenis' => 'Belanja Non-Tunai Transfer',
-                    'uraian' => $b->uraian ?: 'Belanja Non-Tunai',
+                    'uraian' => $uraianBank,
                     'kode_rekening' => $b->rekeningBelanja?->kode_rekening ?: '-',
                     'nama_rekening' => $b->rekeningBelanja?->nama_rekening ?: '-',
                     'masuk' => 0.0,

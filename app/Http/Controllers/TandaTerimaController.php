@@ -2,14 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\BukuKasUmum;
-use App\Models\PenerimaanDana;
-use App\Models\Penganggaran;
-use App\Models\SekolahProfile; // CHANGED
+use App\Config\VariantConfig; // CHANGED
+use App\Models\SekolahProfile;
 use App\Models\TandaTerima;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
-use App\Config\VariantConfig;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
@@ -17,9 +15,13 @@ use Inertia\Inertia;
 class TandaTerimaController extends Controller
 {
     protected string $variant;
+
     protected string $Penganggaran;
+
     protected string $PenerimaanDana;
+
     protected string $BukuKasUmum;
+
     protected string $TandaTerima;
 
     public function __construct()
@@ -34,6 +36,7 @@ class TandaTerimaController extends Controller
             return $next($request);
         });
     }
+
     // Method untuk mendapatkan tahun anggaran (internal)
     private function getTahunAnggaranData()
     {
@@ -50,7 +53,8 @@ class TandaTerimaController extends Controller
 
             return $tahunAnggaran;
         } catch (\Exception $e) {
-            Log::error('Error fetching tahun anggaran: ' . $e->getMessage());
+            Log::error('Error fetching tahun anggaran: '.$e->getMessage());
+
             return collect();
         }
     }
@@ -66,7 +70,7 @@ class TandaTerimaController extends Controller
                 'data' => $tahunAnggaran,
             ]);
         } catch (\Exception $e) {
-            Log::error('Error fetching tahun anggaran: ' . $e->getMessage());
+            Log::error('Error fetching tahun anggaran: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
@@ -138,8 +142,8 @@ class TandaTerimaController extends Controller
                     'number' => $number,
                     'kode_rekening' => $tandaTerima->rekeningBelanja->kode_rekening ?? '-',
                     'uraian' => $tandaTerima->bukuKasUmum->uraian_opsional ?? $tandaTerima->bukuKasUmum->uraian,
-                    'tanggal' => \Carbon\Carbon::parse($tandaTerima->bukuKasUmum->tanggal_transaksi)->format('d/m/Y'),
-                    'jumlah' => 'Rp ' . number_format($tandaTerima->bukuKasUmum->total_transaksi_kotor, 0, ',', '.'),
+                    'tanggal' => Carbon::parse($tandaTerima->bukuKasUmum->tanggal_transaksi)->format('d/m/Y'),
+                    'jumlah' => 'Rp '.number_format($tandaTerima->bukuKasUmum->total_transaksi_kotor, 0, ',', '.'),
                     'preview_url' => route(VariantConfig::routeName($this->variant, 'tanda-terima.preview'), $tandaTerima->id),
                     'pdf_url' => route(VariantConfig::routeName($this->variant, 'tanda-terima.pdf'), $tandaTerima->id),
                     // 'delete_url' => route(VariantConfig::routeName($this->variant, 'tanda-terima.destroy'), $tandaTerima->id),
@@ -175,7 +179,7 @@ class TandaTerimaController extends Controller
                 ],
             ]);
         } catch (\Exception $e) {
-            Log::error('Error searching tanda terima: ' . $e->getMessage());
+            Log::error('Error searching tanda terima: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
@@ -189,7 +193,7 @@ class TandaTerimaController extends Controller
     {
         try {
             $year = $request->input('year');
-            
+
             // Only count records that have REQUIRED fields for TandaTerima
             $query = ($this->BukuKasUmum)::whereDoesntHave('tandaTerima')
                 ->where('is_bunga_record', false)
@@ -197,7 +201,7 @@ class TandaTerimaController extends Controller
                 ->where('nama_penerima_pembayaran', '!=', '')
                 ->whereNotNull('kode_kegiatan_id')
                 ->whereNotNull('rekening_belanja_id');
-            
+
             if ($year) {
                 // Assuming year is penganggaran_id based on frontend
                 $query->where(VariantConfig::penganggaranFk($this->variant), $year);
@@ -205,7 +209,7 @@ class TandaTerimaController extends Controller
 
             $availableCount = $query->count();
 
-            Log::info('Available data count for Tanda Terima: ' . $availableCount . ' Year: ' . $year);
+            Log::info('Available data count for Tanda Terima: '.$availableCount.' Year: '.$year);
 
             return response()->json([
                 'success' => true,
@@ -216,7 +220,7 @@ class TandaTerimaController extends Controller
                 ],
             ]);
         } catch (\Exception $e) {
-            Log::error('Error checking available data for Tanda Terima: ' . $e->getMessage());
+            Log::error('Error checking available data for Tanda Terima: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
@@ -237,7 +241,7 @@ class TandaTerimaController extends Controller
                 ->where('nama_penerima_pembayaran', '!=', '')
                 ->whereNotNull('kode_kegiatan_id')
                 ->whereNotNull('rekening_belanja_id');
-                
+
             if ($year) {
                 $baseQuery->where(VariantConfig::penganggaranFk($this->variant), $year);
             }
@@ -276,21 +280,21 @@ class TandaTerimaController extends Controller
                 ->whereNotNull('kode_kegiatan_id')
                 ->whereNotNull('rekening_belanja_id')
                 ->orderBy('id');
-            
+
             if ($year) {
                 $query->where(VariantConfig::penganggaranFk($this->variant), $year);
             }
-            
+
             $bukuKasUmums = $query->skip($offset)->limit(50)->get();
 
             Log::info("Found {$bukuKasUmums->count()} BukuKasUmum to process");
-            
+
             $processed = 0;
             $success = 0;
             $failed = 0;
 
             if ($bukuKasUmums->isEmpty()) {
-                 return response()->json([
+                return response()->json([
                     'success' => true,
                     'data' => [
                         'processed' => 0,
@@ -311,21 +315,27 @@ class TandaTerimaController extends Controller
                 foreach ($bukuKasUmums as $bukuKasUmum) {
                     try {
                         $existing = ($this->TandaTerima)::where(VariantConfig::bkuFk($this->variant), $bukuKasUmum->id)->first();
-                        if (!$existing) {
+                        if (! $existing) {
                             if (empty($bukuKasUmum->nama_penerima_pembayaran)) {
                                 Log::warning("Skipping BKU ID {$bukuKasUmum->id}: No receiver name");
-                                $failed++; $processed++; continue;
+                                $failed++;
+                                $processed++;
+
+                                continue;
                             }
-                            
+
                             $sekolahId = $bukuKasUmum->penganggaran->sekolah_id ?? SekolahProfile::first()?->id;
 
-                            if (!$sekolahId) {
+                            if (! $sekolahId) {
                                 Log::warning("Skipping BKU ID {$bukuKasUmum->id}: No Sekolah ID found");
-                                $failed++; $processed++; continue;
+                                $failed++;
+                                $processed++;
+
+                                continue;
                             }
 
                             $penerimaanDana = ($this->PenerimaanDana)::where(VariantConfig::penganggaranFk($this->variant), $bukuKasUmum->{VariantConfig::penganggaranFk($this->variant)})->first();
-                            if (!$penerimaanDana) {
+                            if (! $penerimaanDana) {
                                 // Fallback logic from user code
                                 $penerimaanDana = ($this->PenerimaanDana)::create([
                                     VariantConfig::penganggaranFk($this->variant) => $bukuKasUmum->{VariantConfig::penganggaranFk($this->variant)},
@@ -335,9 +345,12 @@ class TandaTerimaController extends Controller
                                 ]);
                             }
 
-                             if (!$bukuKasUmum->kode_kegiatan_id || !$bukuKasUmum->rekening_belanja_id) {
+                            if (! $bukuKasUmum->kode_kegiatan_id || ! $bukuKasUmum->rekening_belanja_id) {
                                 Log::warning("Skipping BKU ID {$bukuKasUmum->id}: Missing Kode Kegiatan or Rekening Belanja");
-                                $failed++; $processed++; continue;
+                                $failed++;
+                                $processed++;
+
+                                continue;
                             }
 
                             $tandaTerima = new ($this->TandaTerima);
@@ -352,9 +365,9 @@ class TandaTerimaController extends Controller
                         }
                         $processed++;
                     } catch (\Exception $e) {
-                         Log::error('Error processing item ' . $bukuKasUmum->id . ': ' . $e->getMessage());
-                         $failed++;
-                         $processed++;
+                        Log::error('Error processing item '.$bukuKasUmum->id.': '.$e->getMessage());
+                        $failed++;
+                        $processed++;
                     }
                 }
                 DB::commit();
@@ -367,7 +380,7 @@ class TandaTerimaController extends Controller
             $totalProcessedSoFar = $offset + $processed;
             $progress = 0;
             if ($totalWithoutTandaTerima > 0) {
-                 $progress = min(100, (int) round(($totalProcessedSoFar / $totalWithoutTandaTerima) * 100));
+                $progress = min(100, (int) round(($totalProcessedSoFar / $totalWithoutTandaTerima) * 100));
             }
 
             $remainingQuery = ($this->BukuKasUmum)::whereDoesntHave('tandaTerima')
@@ -376,14 +389,14 @@ class TandaTerimaController extends Controller
                 ->where('nama_penerima_pembayaran', '!=', '')
                 ->whereNotNull('kode_kegiatan_id')
                 ->whereNotNull('rekening_belanja_id');
-            
+
             if ($year) {
                 $remainingQuery->where(VariantConfig::penganggaranFk($this->variant), $year);
             }
             $remainingAfterProcess = $remainingQuery->count();
 
             $hasMore = $remainingAfterProcess > 0;
-            
+
             return response()->json([
                 'success' => true,
                 'data' => [
@@ -399,7 +412,8 @@ class TandaTerimaController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Error in generateBatch: ' . $e->getMessage());
+            Log::error('Error in generateBatch: '.$e->getMessage());
+
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
@@ -421,22 +435,24 @@ class TandaTerimaController extends Controller
                 'message' => "Tanda terima untuk '{$uraian}' berhasil dihapus!",
             ]);
         } catch (\Exception $e) {
-            Log::error('Error deleting tanda terima: ' . $e->getMessage());
+            Log::error('Error deleting tanda terima: '.$e->getMessage());
+
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
 
     public function deleteAll(Request $request)
     {
-         try {
-             $deletedCount = ($this->TandaTerima)::query()->delete();
-             return response()->json([
+        try {
+            $deletedCount = ($this->TandaTerima)::query()->delete();
+
+            return response()->json([
                 'success' => true,
                 'message' => "Berhasil menghapus {$deletedCount} data tanda terima",
-             ]);
-         } catch (\Exception $e) {
+            ]);
+        } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
-         }
+        }
     }
 
     public function generatePdf(Request $request, $id)
@@ -465,7 +481,7 @@ class TandaTerimaController extends Controller
             $orientation = $request->input('orientation', 'landscape');
 
             $data = [
-                'sumberDana' => \App\Config\VariantConfig::title($this->variant),
+                'sumberDana' => VariantConfig::title($this->variant),
                 'tandaTerima' => $tandaTerima,
                 'kodeKegiatan' => $kodeKegiatan,
                 'rekeningBelanja' => $rekeningBelanja,
@@ -479,7 +495,7 @@ class TandaTerimaController extends Controller
                 'fontSize' => $fontSize,
             ];
 
-            $pdf = PDF::loadView('pelengkap.tanda_terima_pdf', $data);
+            $pdf = Pdf::loadView('pelengkap.tanda_terima_pdf', $data);
 
             // Handle Paper Size
             if ($paperSize === 'Folio') {
@@ -493,13 +509,15 @@ class TandaTerimaController extends Controller
             return $pdf->stream('Tanda_Terima_Honor_'.$tandaTerima->id.'.pdf');
 
         } catch (\Exception $e) {
-            Log::error('Error generate PDF: ' . $e->getMessage());
+            Log::error('Error generate PDF: '.$e->getMessage());
+
             return redirect()->back()->with('error', $e->getMessage());
         }
     }
-    
+
     // Preview URL logic
-    public function previewPdf($id, Request $request) {
+    public function previewPdf($id, Request $request)
+    {
         return $this->generatePdf($request, $id); // Reuse Logic
     }
 
@@ -510,13 +528,13 @@ class TandaTerimaController extends Controller
             $tahun = $request->input('tahun', '');
             $startDate = $request->input('start_date', '');
             $endDate = $request->input('end_date', '');
-            
+
             // Get Settings
             $paperSize = $request->input('paper_size', 'Folio');
             $fontSize = $request->input('font_size', '10pt');
             $orientation = $request->input('orientation', 'landscape');
 
-             $query = ($this->TandaTerima)::with([
+            $query = ($this->TandaTerima)::with([
                 'sekolah',
                 'penganggaran',
                 'kodeKegiatan',
@@ -525,8 +543,10 @@ class TandaTerimaController extends Controller
                 'bukuKasUmum.uraianDetails',
             ]);
 
-            if ($tahun) $query->where(VariantConfig::penganggaranFk($this->variant), $tahun);
-             if ($startDate) {
+            if ($tahun) {
+                $query->where(VariantConfig::penganggaranFk($this->variant), $tahun);
+            }
+            if ($startDate) {
                 $query->whereHas('bukuKasUmum', function ($q) use ($startDate) {
                     $q->whereDate('tanggal_transaksi', '>=', $startDate);
                 });
@@ -536,7 +556,7 @@ class TandaTerimaController extends Controller
                     $q->whereDate('tanggal_transaksi', '<=', $endDate);
                 });
             }
-             if ($search) {
+            if ($search) {
                 $query->where(function ($query) use ($search) {
                     $query->whereHas('bukuKasUmum', function ($q) use ($search) {
                         $q->where('uraian', 'ILIKE', "%{$search}%")
@@ -550,19 +570,19 @@ class TandaTerimaController extends Controller
 
             $tandaTerimas = $query->latest()->get();
 
-             if ($tandaTerimas->isEmpty()) {
-                 return redirect()->back()->with('error', 'Tidak ada data.');
-             }
+            if ($tandaTerimas->isEmpty()) {
+                return redirect()->back()->with('error', 'Tidak ada data.');
+            }
 
-             $tandaTerimaData = [];
-             foreach ($tandaTerimas as $tandaTerima) {
-                 $bukuKasUmum = $tandaTerima->bukuKasUmum;
-                 $totalAmount = $bukuKasUmum->total_transaksi_kotor ?? 0;
-                 $pajakPusat = $bukuKasUmum->total_pajak ?? 0;
-                 $jumlahTerima = $totalAmount - $pajakPusat;
-                 $jumlahUang = $this->formatJumlahUang($jumlahTerima);
+            $tandaTerimaData = [];
+            foreach ($tandaTerimas as $tandaTerima) {
+                $bukuKasUmum = $tandaTerima->bukuKasUmum;
+                $totalAmount = $bukuKasUmum->total_transaksi_kotor ?? 0;
+                $pajakPusat = $bukuKasUmum->total_pajak ?? 0;
+                $jumlahTerima = $totalAmount - $pajakPusat;
+                $jumlahUang = $this->formatJumlahUang($jumlahTerima);
 
-                 $tandaTerimaData[] = [
+                $tandaTerimaData[] = [
                     'tandaTerima' => $tandaTerima,
                     'penganggaran' => $tandaTerima->penganggaran,
                     'kodeKegiatan' => $tandaTerima->kodeKegiatan,
@@ -573,31 +593,32 @@ class TandaTerimaController extends Controller
                     'pajakPusat' => $pajakPusat,
                     'jumlahTerima' => $jumlahTerima,
                     'tanggalLunas' => $this->formatTanggalLunas($bukuKasUmum->tanggal_transaksi ?? now()),
-                 ];
-             }
+                ];
+            }
 
-             $data = [
-                'sumberDana' => \App\Config\VariantConfig::title($this->variant),
-                 'tandaTerimas' => $tandaTerimaData,
-                 'totalTandaTerima' => count($tandaTerimaData),
-                 'tanggalDownload' => now()->format('d/m/Y H:i'),
-                 'sekolah' => SekolahProfile::first(),
-                 'fontSize' => $fontSize,
-             ];
+            $data = [
+                'sumberDana' => VariantConfig::title($this->variant),
+                'tandaTerimas' => $tandaTerimaData,
+                'totalTandaTerima' => count($tandaTerimaData),
+                'tanggalDownload' => now()->format('d/m/Y H:i'),
+                'sekolah' => SekolahProfile::first(),
+                'fontSize' => $fontSize,
+            ];
 
-             $pdf = PDF::loadView('pelengkap.download_all_tanda_terima_pdf', $data);
-             
+            $pdf = Pdf::loadView('pelengkap.download_all_tanda_terima_pdf', $data);
+
             // Handle Paper Size
             if ($paperSize === 'Folio') {
                 $pdf->setPaper([0, 0, 612.28, 935.43], $orientation);
             } else {
                 $pdf->setPaper($paperSize, $orientation);
             }
-             
-             return $pdf->stream('Tanda_Terima_All.pdf');
+
+            return $pdf->stream('Tanda_Terima_All.pdf');
 
         } catch (\Exception $e) {
-            Log::error('Error download all: ' . $e->getMessage());
+            Log::error('Error download all: '.$e->getMessage());
+
             return redirect()->back()->with('error', $e->getMessage());
         }
     }
@@ -607,6 +628,7 @@ class TandaTerimaController extends Controller
         if (class_exists('NumberFormatter')) {
             $formatter = new \NumberFormatter('id_ID', \NumberFormatter::SPELLOUT);
             $words = $formatter->format($amount);
+
             return ucfirst($words).' Rupiah';
         }
 
@@ -632,7 +654,7 @@ class TandaTerimaController extends Controller
                     if ($unitIndex == 1 && $chunkWords == 'satu') {
                         $chunkWords = 'seribu';
                     } else {
-                        $chunkWords .= ' ' . $units[$unitIndex];
+                        $chunkWords .= ' '.$units[$unitIndex];
                     }
                 }
                 array_unshift($words, $chunkWords);
@@ -641,7 +663,8 @@ class TandaTerimaController extends Controller
             $unitIndex++;
         }
 
-        $result = implode(' ', $words) . ' Rupiah';
+        $result = implode(' ', $words).' Rupiah';
+
         return ucfirst(strtolower($result));
     }
 
@@ -657,7 +680,7 @@ class TandaTerimaController extends Controller
             if ($hundreds == 1) {
                 $words[] = 'seratus';
             } else {
-                $words[] = $ones[$hundreds] . ' ratus';
+                $words[] = $ones[$hundreds].' ratus';
             }
             $number %= 100;
         }
@@ -674,6 +697,7 @@ class TandaTerimaController extends Controller
                 $words[] = $ones[$onesDigit];
             }
         }
+
         return implode(' ', $words);
     }
 
@@ -686,8 +710,9 @@ class TandaTerimaController extends Controller
             'October' => 'Oktober', 'November' => 'November', 'December' => 'Desember',
         ];
 
-        $tanggalObj = \Carbon\Carbon::parse($tanggal);
-        return "Lunas Bayar, {$tanggalObj->format('d')} " . ($bulanIndonesia[$tanggalObj->format('F')] ?? '') . " {$tanggalObj->format('Y')}";
+        $tanggalObj = Carbon::parse($tanggal);
+
+        return "Lunas Bayar, {$tanggalObj->format('d')} ".($bulanIndonesia[$tanggalObj->format('F')] ?? '')." {$tanggalObj->format('Y')}";
     }
 
     protected function renderVariant($component, $props = [])
@@ -696,9 +721,10 @@ class TandaTerimaController extends Controller
         if (app()->bound('variant')) {
             $var = app('variant');
         }
-        return \Inertia\Inertia::render(VariantConfig::pagePrefix($var) . $component, array_merge($props, [
+
+        return Inertia::render(VariantConfig::pagePrefix($var).$component, array_merge($props, [
             'variant' => $var,
-            'routePrefix' => VariantConfig::routePrefix($var)
+            'routePrefix' => VariantConfig::routePrefix($var),
         ]));
     }
 }

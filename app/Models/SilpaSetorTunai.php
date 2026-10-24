@@ -21,7 +21,8 @@ class SilpaSetorTunai extends Model
         return $this->belongsTo(SilpaPenganggaran::class, 'silpa_penganggaran_id');
     }
 
-
-    public function penganggaran() { return $this->silpaPenganggaran(); }
+    public function penganggaran()
+    {
+        return $this->silpaPenganggaran();
+    }
 }
-

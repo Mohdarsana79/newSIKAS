@@ -34,15 +34,13 @@ class KinerjaSilpaLph extends Model
         return $this->belongsTo(SekolahProfile::class, 'sekolah_id');
     }
 
-
     public function silpaPenganggaran()
     {
         return $this->belongsTo(KinerjaSilpaPenganggaran::class, 'kinerja_silpa_penganggaran_id');
     }
 
-
-    public function penganggaran() { return $this->silpaPenganggaran(); }
+    public function penganggaran()
+    {
+        return $this->silpaPenganggaran();
+    }
 }
-
-
-

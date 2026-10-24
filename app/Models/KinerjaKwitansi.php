@@ -47,11 +47,28 @@ class KinerjaKwitansi extends Model
     }
 
     // Standardized Aliases for Variant Support
-    public function penganggaran() { return $this->kinerjaPenganggaran(); }
-    public function penerimaanDana() { return $this->kinerjaPenerimaanDana(); }
-    public function bukuKasUmum() { return $this->kinerjaBukuKasUmum(); }
-    public function bkuUraianDetail() { return $this->kinerjaUraianDetail(); }
+    public function penganggaran()
+    {
+        return $this->kinerjaPenganggaran();
+    }
 
+    public function penerimaanDana()
+    {
+        return $this->kinerjaPenerimaanDana();
+    }
 
-    public function uraianDetail() { return $this->kinerjaUraianDetail(); }
+    public function bukuKasUmum()
+    {
+        return $this->kinerjaBukuKasUmum();
+    }
+
+    public function bkuUraianDetail()
+    {
+        return $this->kinerjaUraianDetail();
+    }
+
+    public function uraianDetail()
+    {
+        return $this->kinerjaUraianDetail();
+    }
 }

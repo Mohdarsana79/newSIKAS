@@ -32,7 +32,7 @@ class BhmAuditScanner extends BaseTabAuditScanner
             'Kelengkapan Dokumen Berita Acara Serah Terima (BAST) Belanja Modal',
             'Ketepatan Nilai Kapitalisasi Aset Tetap Daerah (Barang Tahan Lama)',
             'Pencatatan Rincian Spesifikasi Barang (Merk, Tipe, Unit, Lokasi)',
-            'Sinkronisasi Pengadaan Belanja Modal dengan Kartu Inventaris Barang (KIB B/C/E)',
+            'Kepatuhan Larangan Membangun Gedung/Ruang Baru (Pasal 66 Permendikdasmen 8/2026)',
             'Kesesuaian Penggunaan Akun 5.2 (Belanja Modal Peralatan, Mesin, Buku)',
         ];
 
@@ -47,6 +47,7 @@ class BhmAuditScanner extends BaseTabAuditScanner
 
         $belanjaModalTanpaBast = [];
         $belanjaModalNilaiKecil = []; // Potensi di bawah nilai kapitalisasi
+        $belanjaBangunGedung = []; // Larangan bangun gedung baru (Pasal 66 ayat 1 huruf j)
 
         foreach ($transactions as $t) {
             if ($t->is_bunga_record) {
@@ -54,6 +55,7 @@ class BhmAuditScanner extends BaseTabAuditScanner
             }
 
             $rek = $t->rekeningBelanja?->kode_rekening ?? '';
+            $uraian = strtolower($t->uraian ?? '');
             $amt = (float) ($t->dibelanjakan ?? $t->nominal_transaksi ?? 0);
 
             if (str_starts_with($rek, '5.2')) {
@@ -71,8 +73,18 @@ class BhmAuditScanner extends BaseTabAuditScanner
                 }
 
                 // Cek nilai kecil (di bawah Rp 500.000)
-                if ($amt < 500000 && ! str_contains(strtolower($t->uraian ?? ''), 'buku')) {
+                if ($amt < 500000 && ! str_contains($uraian, 'buku')) {
                     $belanjaModalNilaiKecil[] = [
+                        'id' => $t->id,
+                        'tanggal' => $t->tanggal_transaksi,
+                        'uraian' => $t->uraian,
+                        'amount' => $amt,
+                    ];
+                }
+
+                // Cek larangan bangun gedung baru / rehab sedang-berat (Pasal 66 ayat 1 huruf i & j)
+                if (str_starts_with($rek, '5.2.03') || str_contains($uraian, 'bangun gedung') || str_contains($uraian, 'bangun ruang') || str_contains($uraian, 'pembangunan gedung') || str_contains($uraian, 'pembangunan ruang') || str_contains($uraian, 'rehab berat') || str_contains($uraian, 'rehab sedang')) {
+                    $belanjaBangunGedung[] = [
                         'id' => $t->id,
                         'tanggal' => $t->tanggal_transaksi,
                         'uraian' => $t->uraian,
@@ -96,7 +108,21 @@ class BhmAuditScanner extends BaseTabAuditScanner
             ];
         }
 
-        // Temuan 2: Belanja Modal Bernilai di Bawah Ambang Kapitalisasi (WARNING)
+        // Temuan 2: Belanja Modal Pembangunan Gedung/Ruang Baru (DANGER - Pasal 66 ayat 1 huruf j)
+        if (! empty($belanjaBangunGedung)) {
+            $totalGedung = array_sum(array_column($belanjaBangunGedung, 'amount'));
+            $findings[] = [
+                'id' => 'BHM-LARANGAN-BANGUN-GEDUNG',
+                'category' => 'larangan_juknis',
+                'severity' => 'danger',
+                'title' => 'Indikasi Pelanggaran Larangan Penggunaan Dana BOSP untuk Pembangunan Gedung/Ruang Baru',
+                'description' => 'Ditemukan indikasi belanja modal untuk pembangunan gedung/ruangan baru senilai Rp '.number_format($totalGedung, 0, ',', '.').'. Hal ini dilarang keras berdasarkan Pasal 66 ayat (1) huruf i & j Permendikdasmen No. 8 Tahun 2026.',
+                'recommendation' => 'Dana BOSP hanya diperkenankan untuk pemeliharaan kerusakan ringan nonstruktural (Pasal 42 ayat 1 huruf h). Pembiayaan pembangunan gedung atau ruangan baru wajib bersumber dari DAK Fisik atau APBD, bukan Dana BOSP.',
+                'amount' => $totalGedung,
+            ];
+        }
+
+        // Temuan 3: Belanja Modal Bernilai di Bawah Ambang Kapitalisasi (WARNING)
         if (! empty($belanjaModalNilaiKecil)) {
             $totalKecil = array_sum(array_column($belanjaModalNilaiKecil, 'amount'));
             $findings[] = [

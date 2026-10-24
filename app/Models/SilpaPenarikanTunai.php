@@ -10,7 +10,7 @@ class SilpaPenarikanTunai extends Model
     use HasFactory;
 
     protected $guarded = ['id'];
-    
+
     protected $casts = [
         'tanggal_penarikan' => 'date',
         'jumlah_penarikan' => 'decimal:2',
@@ -21,7 +21,8 @@ class SilpaPenarikanTunai extends Model
         return $this->belongsTo(SilpaPenganggaran::class, 'silpa_penganggaran_id');
     }
 
-
-    public function penganggaran() { return $this->silpaPenganggaran(); }
+    public function penganggaran()
+    {
+        return $this->silpaPenganggaran();
+    }
 }
-

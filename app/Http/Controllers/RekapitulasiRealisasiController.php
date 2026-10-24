@@ -2,22 +2,26 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\BukuKasUmum;
-use App\Models\PenerimaanDana;
+use App\Config\VariantConfig;
 use App\Models\Penganggaran;
+use App\Models\SekolahProfile;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use App\Config\VariantConfig;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Inertia\Inertia;
 
 class RekapitulasiRealisasiController extends Controller
 {
     protected string $variant;
+
     protected string $Penganggaran;
+
     protected string $PenerimaanDana;
+
     protected string $BukuKasUmum;
+
     protected string $Sts;
 
     public function __construct()
@@ -32,6 +36,7 @@ class RekapitulasiRealisasiController extends Controller
             return $next($request);
         });
     }
+
     /**
      * Get realisasi data per rekening belanja for specific columns
      */
@@ -40,13 +45,13 @@ class RekapitulasiRealisasiController extends Controller
      */
     private function getRekapRealisasiPerRekeningInternal($tahun, $faseTarget = 'Tahunan')
     {
-        if (!$tahun) {
+        if (! $tahun) {
             $penganggaranAktif = ($this->Penganggaran)::orderBy('tahun_anggaran', 'desc')->first();
             $tahun = $penganggaranAktif ? $penganggaranAktif->tahun_anggaran : date('Y');
         }
 
         $penganggaran = ($this->Penganggaran)::where('tahun_anggaran', $tahun)->first();
-        if (!$penganggaran) {
+        if (! $penganggaran) {
             return null;
         }
 
@@ -115,8 +120,8 @@ class RekapitulasiRealisasiController extends Controller
                 'barang_jasa' => $barangJasa,
                 'modal_peralatan' => $modalPeralatan,
                 'modal_aset_lain' => $modalAsetLain,
-                'total' => $pakaiHabis + $barangJasa + $modalPeralatan + $modalAsetLain
-            ]
+                'total' => $pakaiHabis + $barangJasa + $modalPeralatan + $modalAsetLain,
+            ],
         ];
     }
 
@@ -130,23 +135,24 @@ class RekapitulasiRealisasiController extends Controller
             $faseTarget = $request->get('fase', 'Tahunan');
             $data = $this->getRekapRealisasiPerRekeningInternal($tahun, $faseTarget);
 
-            if (!$data) {
+            if (! $data) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Data penganggaran tidak ditemukan'
+                    'message' => 'Data penganggaran tidak ditemukan',
                 ], 404);
             }
 
             return response()->json([
                 'success' => true,
-                'data' => $data
+                'data' => $data,
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Error fetching Rekap Realisasi Per Rekening: ' . $e->getMessage());
+            Log::error('Error fetching Rekap Realisasi Per Rekening: '.$e->getMessage());
+
             return response()->json([
                 'success' => false,
-                'message' => 'Internal Server Error'
+                'message' => 'Internal Server Error',
             ], 500);
         }
     }
@@ -161,8 +167,8 @@ class RekapitulasiRealisasiController extends Controller
             $faseTarget = $request->get('fase', 'Tahunan');
             $data = $this->getRekapRealisasiPerRekeningInternal($tahun, $faseTarget);
 
-            if (!$data) {
-               return redirect()->back()->with('error', 'Data tahun ' . $tahun . ' tidak ditemukan.');
+            if (! $data) {
+                return redirect()->back()->with('error', 'Data tahun '.$tahun.' tidak ditemukan.');
             }
 
             $pdf = Pdf::loadView('laporan.rek_realisasi_pdf', [
@@ -171,13 +177,15 @@ class RekapitulasiRealisasiController extends Controller
                 'fase' => $faseTarget,
             ])->setPaper('legal', 'landscape');
 
-            return $pdf->stream('Rekap_Realisasi_Rekening_Tahun_' . $tahun . '.pdf');
+            return $pdf->stream('Rekap_Realisasi_Rekening_Tahun_'.$tahun.'.pdf');
 
         } catch (\Exception $e) {
-            Log::error('Error generating PDF Rekap Realisasi Per Rekening: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Gagal mencetak PDF: ' . $e->getMessage());
+            Log::error('Error generating PDF Rekap Realisasi Per Rekening: '.$e->getMessage());
+
+            return redirect()->back()->with('error', 'Gagal mencetak PDF: '.$e->getMessage());
         }
     }
+
     /**
      * Hitung realisasi dengan mapping kode - VERSI PUBLIC untuk dashboard
      */
@@ -315,47 +323,47 @@ class RekapitulasiRealisasiController extends Controller
 
         if ($jenisLaporan === 'tahunan') {
             return [
-                'periode_awal' => '01 Januari ' . $tahun,
-                'periode_akhir' => '31 Desember ' . $tahun,
-                'tahap' => 'Tahunan'
+                'periode_awal' => '01 Januari '.$tahun,
+                'periode_akhir' => '31 Desember '.$tahun,
+                'tahap' => 'Tahunan',
             ];
         } elseif ($jenisLaporan === 'tahap') {
             if ($periode === 'tahap 1') {
                 return [
-                    'periode_awal' => '01 Januari ' . $tahun,
-                    'periode_akhir' => '30 Juni ' . $tahun,
-                    'tahap' => '1'
+                    'periode_awal' => '01 Januari '.$tahun,
+                    'periode_akhir' => '30 Juni '.$tahun,
+                    'tahap' => '1',
                 ];
             } elseif ($periode === 'tahap 2') {
                 return [
-                    'periode_awal' => '01 Juli ' . $tahun,
-                    'periode_akhir' => '31 Desember ' . $tahun,
-                    'tahap' => '2'
+                    'periode_awal' => '01 Juli '.$tahun,
+                    'periode_akhir' => '31 Desember '.$tahun,
+                    'tahap' => '2',
                 ];
             }
         } else {
             // Laporan bulanan
             $bulan = $bulanList[$periode] ?? 1;
             // Format tanggal awal: 01 [Bulan Indonesia] [Tahun]
-            $tanggalAwal = '01 ' . $this->convertNumberToBulan($bulan) . ' ' . $tahun;
+            $tanggalAwal = '01 '.$this->convertNumberToBulan($bulan).' '.$tahun;
 
             // Format tanggal akhir: [tanggal akhir] [Bulan Indonesia] [Tahun]
             $tanggalAkhirBulan = Carbon::create($tahun, $bulan, 1)->endOfMonth()->format('d');
 
-            $tanggalAkhir = $tanggalAkhirBulan . ' ' . $this->convertNumberToBulan($bulan) . ' ' . $tahun;
+            $tanggalAkhir = $tanggalAkhirBulan.' '.$this->convertNumberToBulan($bulan).' '.$tahun;
 
             return [
                 'periode_awal' => $tanggalAwal,
                 'periode_akhir' => $tanggalAkhir,
-                'tahap' => $this->tentukanTahapDariBulan($bulan)
+                'tahap' => $this->tentukanTahapDariBulan($bulan),
             ];
         }
 
         // Fallback default
         return [
-            'periode_awal' => '01 Januari ' . $tahun,
-            'periode_akhir' => '31 Desember ' . $tahun,
-            'tahap' => 'Tahunan'
+            'periode_awal' => '01 Januari '.$tahun,
+            'periode_akhir' => '31 Desember '.$tahun,
+            'tahap' => 'Tahunan',
         ];
     }
 
@@ -403,7 +411,7 @@ class RekapitulasiRealisasiController extends Controller
             if (! $penganggaran) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Data penganggaran untuk tahun ' . $tahun . ' tidak ditemukan',
+                    'message' => 'Data penganggaran untuk tahun '.$tahun.' tidak ditemukan',
                 ], 404);
             }
 
@@ -424,7 +432,7 @@ class RekapitulasiRealisasiController extends Controller
                 'tahun_used' => $tahun,
                 'periode_info' => $tanggalPeriode,
                 'penganggaran' => $penganggaran,
-                'sekolah' => $penganggaran->sekolah
+                'sekolah' => $penganggaran->sekolah,
             ];
 
             // Merge calculation results (realisasi_data, realisasi_per_komponen, etc) into root response
@@ -432,11 +440,11 @@ class RekapitulasiRealisasiController extends Controller
 
             return response()->json($response);
         } catch (\Exception $e) {
-            Log::error('Error get realisasi data: ' . $e->getMessage());
+            Log::error('Error get realisasi data: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal memuat data realisasi: ' . $e->getMessage(),
+                'message' => 'Gagal memuat data realisasi: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -491,10 +499,10 @@ class RekapitulasiRealisasiController extends Controller
             $totalTrkSebelumnya = 0;
             $penganggaran = ($this->Penganggaran)::find($penganggaranId);
             if ($penganggaran && $penganggaran->is_trk_saldo_awal && $penganggaran->tanggal_trk_saldo_awal) {
-                 $tglTrk = Carbon::parse($penganggaran->tanggal_trk_saldo_awal);
-                 if ($tglTrk->year == $tahun && in_array($tglTrk->month, $bulanSebelumnya)) {
-                     $totalTrkSebelumnya = $penganggaran->jumlah_trk_saldo_awal;
-                 }
+                $tglTrk = Carbon::parse($penganggaran->tanggal_trk_saldo_awal);
+                if ($tglTrk->year == $tahun && in_array($tglTrk->month, $bulanSebelumnya)) {
+                    $totalTrkSebelumnya = $penganggaran->jumlah_trk_saldo_awal;
+                }
             }
 
             $saldoSebelumnya = $totalPenerimaanSebelumnya - $totalRealisasiSebelumnya - $totalStsSebelumnya - $totalTrkSebelumnya;
@@ -509,7 +517,7 @@ class RekapitulasiRealisasiController extends Controller
             return max(0, $saldoSebelumnya); // Pastikan tidak negatif
 
         } catch (\Exception $e) {
-            Log::error('Error hitung saldo periode sebelumnya: ' . $e->getMessage());
+            Log::error('Error hitung saldo periode sebelumnya: '.$e->getMessage());
 
             return 0;
         }
@@ -577,8 +585,6 @@ class RekapitulasiRealisasiController extends Controller
                 return $total;
             });
 
-
-
             // Hitung STS periode ini
             $totalSts = ($this->Sts)::where(VariantConfig::penganggaranFk($this->variant), $penganggaranId)
                 ->whereYear('tanggal_bayar', $tahun)
@@ -590,15 +596,15 @@ class RekapitulasiRealisasiController extends Controller
             $totalTrk = 0;
             $penganggaran = ($this->Penganggaran)::find($penganggaranId);
             if ($penganggaran && $penganggaran->is_trk_saldo_awal && $penganggaran->tanggal_trk_saldo_awal) {
-                 $tglTrk = Carbon::parse($penganggaran->tanggal_trk_saldo_awal);
-                 if ($tglTrk->year == $tahun && in_array($tglTrk->month, $bulanTarget)) {
-                     $totalTrk = $penganggaran->jumlah_trk_saldo_awal;
-                 }
+                $tglTrk = Carbon::parse($penganggaran->tanggal_trk_saldo_awal);
+                if ($tglTrk->year == $tahun && in_array($tglTrk->month, $bulanTarget)) {
+                    $totalTrk = $penganggaran->jumlah_trk_saldo_awal;
+                }
             }
 
             return $totalPenerimaan - $totalSts - $totalTrk;
         } catch (\Exception $e) {
-            Log::error('Error hitung total penerimaan periode ini: ' . $e->getMessage());
+            Log::error('Error hitung total penerimaan periode ini: '.$e->getMessage());
 
             return 0;
         }
@@ -626,12 +632,12 @@ class RekapitulasiRealisasiController extends Controller
             $realisasiData = [];
             $totalRealisasi = 0;
             $realisasiPerKomponen = array_fill_keys(array_keys($komponenBosDisplay), 0);
-            
+
             // Temporary array untuk menyimpan data realisasi yang terorganisir per program
             $tempRealisasi = [];
-             foreach ($strukturProgram as $noUrut => $programData) {
+            foreach ($strukturProgram as $noUrut => $programData) {
                 $tempRealisasi[$noUrut] = [
-                    'realisasi_komponen' => array_fill_keys(array_keys($komponenBosDisplay), 0)
+                    'realisasi_komponen' => array_fill_keys(array_keys($komponenBosDisplay), 0),
                 ];
             }
 
@@ -674,13 +680,13 @@ class RekapitulasiRealisasiController extends Controller
                     $totalRealisasi += $nilaiTransaksi;
                 } else {
                     // Log fail match for debugging
-                     Log::warning('Mapping failed for:', ['kode' => $kodeKegiatan, 'program' => $programTerkait, 'komponen' => $komponenTerkait]);
+                    Log::warning('Mapping failed for:', ['kode' => $kodeKegiatan, 'program' => $programTerkait, 'komponen' => $komponenTerkait]);
                 }
             }
 
             // Format data untuk view
             foreach ($strukturProgram as $noUrut => $programData) {
-                 // Gunakan data dari $tempRealisasi yang sudah diisi
+                // Gunakan data dari $tempRealisasi yang sudah diisi
                 $realisasiKomponen = $tempRealisasi[$noUrut]['realisasi_komponen'];
 
                 $realisasiData[] = [
@@ -732,7 +738,7 @@ class RekapitulasiRealisasiController extends Controller
                 ],
             ];
         } catch (\Exception $e) {
-            Log::error('Error hitung realisasi dengan mapping kode: ' . $e->getMessage());
+            Log::error('Error hitung realisasi dengan mapping kode: '.$e->getMessage());
 
             return [
                 'realisasi_data' => [],
@@ -795,7 +801,7 @@ class RekapitulasiRealisasiController extends Controller
             'november' => 11,
             'desember' => 12,
         ];
-        
+
         $periode = strtolower($periode);
 
         if ($jenisLaporan === 'tahunan') {
@@ -892,7 +898,7 @@ class RekapitulasiRealisasiController extends Controller
                 'komponen_bos' => $komponenBos,
             ];
         } catch (\Exception $e) {
-            Log::error('Error hitung realisasi dari data aktual: ' . $e->getMessage());
+            Log::error('Error hitung realisasi dari data aktual: '.$e->getMessage());
 
             return [
                 'realisasi_data' => [],
@@ -962,8 +968,8 @@ class RekapitulasiRealisasiController extends Controller
 
                             // Log mapping detail
                             $mappingDetails[] = [
-                                'program' => $noUrut . ' - ' . $strukturProgram[$noUrut]['nama'], // FIX: structure is array with 'nama'
-                                'kegiatan' => $kegiatan->kode . ' - ' . $kegiatan->sub_program,
+                                'program' => $noUrut.' - '.$strukturProgram[$noUrut]['nama'], // FIX: structure is array with 'nama'
+                                'kegiatan' => $kegiatan->kode.' - '.$kegiatan->sub_program,
                                 'keyword' => $keyword,
                                 'nilai' => $transaksi->total_transaksi_kotor,
                             ];
@@ -1004,7 +1010,7 @@ class RekapitulasiRealisasiController extends Controller
             Log::info('Detail mapping transaksi:', $mappingDetails);
             Log::info('Realisasi aktual setelah mapping:', $realisasiAktual);
         } catch (\Exception $e) {
-            Log::error('Error hitung realisasi aktual: ' . $e->getMessage());
+            Log::error('Error hitung realisasi aktual: '.$e->getMessage());
         }
 
         return $realisasiAktual;
@@ -1096,7 +1102,7 @@ class RekapitulasiRealisasiController extends Controller
 
             return $totalDana;
         } catch (\Exception $e) {
-            Log::error('Error hitung total dana tersedia: ' . $e->getMessage());
+            Log::error('Error hitung total dana tersedia: '.$e->getMessage());
 
             return 0;
         }
@@ -1124,7 +1130,7 @@ class RekapitulasiRealisasiController extends Controller
                 return response()->json(['error' => 'Data penganggaran tidak ditemukan'], 404);
             }
 
-            $sekolah = \App\Models\SekolahProfile::first();
+            $sekolah = SekolahProfile::first();
 
             $bulanTarget = $this->tentukanBulanDariPeriode($periode, $jenisLaporan);
             $realisasiData = $this->hitungRealisasiDenganMappingKode($penganggaran->id, $tahun, $bulanTarget, $jenisLaporan);
@@ -1137,14 +1143,14 @@ class RekapitulasiRealisasiController extends Controller
 
             // Tentukan tanggal periode untuk PDF
             $periodeInfo = $this->tentukanTanggalPeriode($periode, $tahun, $jenisLaporan);
-            
+
             // Tambahkan label tahap untuk header
             if ($jenisLaporan === 'tahunan') {
                 $periodeInfo['tahap_label'] = 'TAHUNAN';
             } elseif ($jenisLaporan === 'tahap') {
                 $periodeInfo['tahap_label'] = strtoupper($periode);
             } else {
-                 $periodeInfo['tahap_label'] = 'BULAN ' . strtoupper($periode);
+                $periodeInfo['tahap_label'] = 'BULAN '.strtoupper($periode);
             }
 
             // Siapkan komponen BOS
@@ -1159,27 +1165,27 @@ class RekapitulasiRealisasiController extends Controller
             $totalPenerimaan = $this->hitungTotalPenerimaanPeriodeIni($penganggaran->id, $tahun, $bulanTarget);
             $totalRealisasi = $realisasiData['total_realisasi'] ?? 0;
             $akhirSaldo = $saldoSebelumnya + $totalPenerimaan - $totalRealisasi;
-            
+
             $ringkasanKeuangan = [
-                 'saldo_periode_sebelumnya' => $saldoSebelumnya,
-                 'total_penerimaan_periode_ini' => $totalPenerimaan,
-                 'total_penggunaan_periode_ini' => $totalRealisasi,
-                 'akhir_saldo_periode_ini' => $akhirSaldo
+                'saldo_periode_sebelumnya' => $saldoSebelumnya,
+                'total_penerimaan_periode_ini' => $totalPenerimaan,
+                'total_penggunaan_periode_ini' => $totalRealisasi,
+                'akhir_saldo_periode_ini' => $akhirSaldo,
             ];
 
             // Tentukan tanggal cetak
             $tanggalCetakObj = now();
             if ($jenisLaporan === 'bulanan') {
                 $bulanNum = $this->convertBulanToNumber($periode);
-                $tanggalCetakObj = \Carbon\Carbon::createFromDate($tahun, $bulanNum, 1)->endOfMonth();
+                $tanggalCetakObj = Carbon::createFromDate($tahun, $bulanNum, 1)->endOfMonth();
             } elseif ($jenisLaporan === 'tahap') {
                 if ($periode === 'Tahap 1') {
-                    $tanggalCetakObj = \Carbon\Carbon::createFromDate($tahun, 6, 30);
+                    $tanggalCetakObj = Carbon::createFromDate($tahun, 6, 30);
                 } else {
-                    $tanggalCetakObj = \Carbon\Carbon::createFromDate($tahun, 12, 31);
+                    $tanggalCetakObj = Carbon::createFromDate($tahun, 12, 31);
                 }
             } elseif ($jenisLaporan === 'tahunan') {
-                $tanggalCetakObj = \Carbon\Carbon::createFromDate($tahun, 12, 31);
+                $tanggalCetakObj = Carbon::createFromDate($tahun, 12, 31);
             }
 
             $data = [
@@ -1188,15 +1194,15 @@ class RekapitulasiRealisasiController extends Controller
                 'jenisLaporan' => $jenisLaporan,
                 'penganggaran' => $penganggaran,
                 'sekolah' => $sekolah,
-                
+
                 'realisasi_data' => $realisasiData['realisasi_data'] ?? [],
                 'komponen_bos' => $komponenBosDisplay,
                 'ringkasan_keuangan' => $ringkasanKeuangan,
-                
+
                 'printSettings' => $printSettings,
                 'tanggal_cetak' => $tanggalCetakObj->locale('id')->translatedFormat('d F Y'),
                 'debug' => $debug,
-                'periode_info' => $periodeInfo
+                'periode_info' => $periodeInfo,
             ];
 
             // Log data untuk debugging
@@ -1207,7 +1213,7 @@ class RekapitulasiRealisasiController extends Controller
                 'jumlah_program' => count($realisasiData['realisasi_data'] ?? []),
             ]);
 
-            $pdf = PDF::loadView('laporan.rekapitulasi_realisasi_pdf', $data);
+            $pdf = Pdf::loadView('laporan.rekapitulasi_realisasi_pdf', $data);
 
             // Set paper configuration
             $pdf->setPaper($printSettings['ukuran_kertas'], $printSettings['orientasi']);
@@ -1225,11 +1231,11 @@ class RekapitulasiRealisasiController extends Controller
 
             return $pdf->stream($filename);
         } catch (\Exception $e) {
-            Log::error('Error generate realisasi PDF: ' . $e->getMessage());
-            Log::error('Stack trace: ' . $e->getTraceAsString());
+            Log::error('Error generate realisasi PDF: '.$e->getMessage());
+            Log::error('Stack trace: '.$e->getTraceAsString());
 
             return response()->json([
-                'error' => 'Gagal generate PDF: ' . $e->getMessage(),
+                'error' => 'Gagal generate PDF: '.$e->getMessage(),
                 'trace' => env('APP_DEBUG') ? $e->getTraceAsString() : null,
             ], 500);
         }
@@ -1247,7 +1253,7 @@ class RekapitulasiRealisasiController extends Controller
                 return response()->json(['error' => 'Data penganggaran tidak ditemukan'], 404);
             }
 
-            $sekolah = \App\Models\SekolahProfile::first();
+            $sekolah = SekolahProfile::first();
 
             $bulanTarget = [$this->convertBulanToNumber($bulan)];
             $realisasiData = $this->hitungRealisasiDenganMappingKode($penganggaran->id, $tahun, $bulanTarget, 'bulanan');
@@ -1271,7 +1277,7 @@ class RekapitulasiRealisasiController extends Controller
                 'tanggal_cetak' => now()->format('d/m/Y'),
             ];
 
-            $pdf = PDF::loadView('laporan.realisasi-pdf', $data);
+            $pdf = Pdf::loadView('laporan.realisasi-pdf', $data);
             $pdf->setPaper($printSettings['ukuran_kertas'], $printSettings['orientasi']);
             $pdf->setOptions(['defaultFont' => 'Arial']);
 
@@ -1279,7 +1285,7 @@ class RekapitulasiRealisasiController extends Controller
 
             return $pdf->stream($filename);
         } catch (\Exception $e) {
-            Log::error('Error generate realisasi PDF for rekapan: ' . $e->getMessage());
+            Log::error('Error generate realisasi PDF for rekapan: '.$e->getMessage());
 
             return response()->json(['error' => 'Gagal generate PDF'], 500);
         }
@@ -1309,7 +1315,8 @@ class RekapitulasiRealisasiController extends Controller
     /**
      * Helper function untuk konversi number ke bulan
      */
-    private function convertNumberToBulan($number) {
+    private function convertNumberToBulan($number)
+    {
         $bulan = [
             1 => 'Januari',
             2 => 'Februari',
@@ -1327,11 +1334,13 @@ class RekapitulasiRealisasiController extends Controller
 
         return $bulan[$number] ?? 'Januari';
     }
+
     public function generatePdf(Request $request)
     {
-         $tahun = $request->input('tahun');
-         $periode = $request->input('periode') ?? $request->input('bulan');
-         return $this->generateRealisasiPdf($request, $tahun, $periode);
+        $tahun = $request->input('tahun');
+        $periode = $request->input('periode') ?? $request->input('bulan');
+
+        return $this->generateRealisasiPdf($request, $tahun, $periode);
     }
 
     protected function renderVariant($component, $props = [])
@@ -1340,9 +1349,10 @@ class RekapitulasiRealisasiController extends Controller
         if (app()->bound('variant')) {
             $var = app('variant');
         }
-        return \Inertia\Inertia::render(VariantConfig::pagePrefix($var) . $component, array_merge($props, [
+
+        return Inertia::render(VariantConfig::pagePrefix($var).$component, array_merge($props, [
             'variant' => $var,
-            'routePrefix' => VariantConfig::routePrefix($var)
+            'routePrefix' => VariantConfig::routePrefix($var),
         ]));
     }
 }

@@ -1,4 +1,5 @@
 <?php
+
 $files = ['app/Http/Controllers/KwitansiController.php', 'app/Http/Controllers/TandaTerimaController.php'];
 foreach ($files as $file) {
     $content = file_get_contents($file);

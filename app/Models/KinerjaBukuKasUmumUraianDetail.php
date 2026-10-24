@@ -16,25 +16,23 @@ class KinerjaBukuKasUmumUraianDetail extends Model
         return $this->belongsTo(KinerjaBukuKasUmum::class, 'kinerja_buku_kas_umum_id');
     }
 
-
     public function kodeKegiatan()
     {
         return $this->belongsTo(KodeKegiatan::class);
     }
-
 
     public function rekeningBelanja()
     {
         return $this->belongsTo(RekeningBelanja::class);
     }
 
-
     public function kinerjaRkas()
     {
         return $this->belongsTo(KinerjaRkas::class, 'kinerja_rkas_id');
     }
 
-
-    public function bukuKasUmum() { return $this->kinerjaBukuKasUmum(); }
+    public function bukuKasUmum()
+    {
+        return $this->kinerjaBukuKasUmum();
+    }
 }
-

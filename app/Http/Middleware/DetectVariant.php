@@ -10,11 +10,11 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * Middleware that detects the budget variant from the route parameter
  * and makes it available throughout the request lifecycle.
- * 
+ *
  * Usage in routes:
  *   Route::middleware('variant:kinerja')->group(function () { ... });
  *   Route::middleware('variant:silpa')->group(function () { ... });
- * 
+ *
  * Access in controllers:
  *   $variant = app('variant');  // Returns 'reguler', 'kinerja', 'silpa', or 'kinerja_silpa'
  */

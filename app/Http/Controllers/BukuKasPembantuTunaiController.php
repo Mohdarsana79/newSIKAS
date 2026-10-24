@@ -478,7 +478,6 @@ class BukuKasPembantuTunaiController extends Controller
                 'saldoAwalTunai' => $saldoAwalTunai,
                 'totalPenerimaan' => $totalPenerimaan,
                 'totalPengeluaran' => $totalPengeluaran,
-                'totalPengeluaran' => $totalPengeluaran,
                 'currentSaldo' => $currentSaldo,
                 'totalPenarikan' => $totalPenarikanTunai,
             ],

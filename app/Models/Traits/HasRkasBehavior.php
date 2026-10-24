@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Shared behavior for all Rkas model variants.
- * 
+ *
  * Used by: Rkas, KinerjaRkas, SilpaRkas, KinerjaSilpaRkas
  */
 trait HasRkasBehavior
@@ -16,8 +16,11 @@ trait HasRkasBehavior
     // ─── Abstract methods: each model MUST override ────────────────
 
     abstract protected function penganggaranModelClass(): string;
+
     abstract public function penganggaranForeignKey(): string;
+
     abstract protected function bkuUraianDetailModelClass(): string;
+
     abstract public function rkasForeignKey(): string;
 
     // ─── Fillable & Casts ──────────────────────────────────────────
@@ -44,7 +47,7 @@ trait HasRkasBehavior
             'pot_pph21_narasumber',
             'status_penerima',
             'golongan',
-            'nomor_kwitansi'
+            'nomor_kwitansi',
         ]));
 
         $this->casts = array_merge($this->casts ?? [], [
@@ -60,7 +63,7 @@ trait HasRkasBehavior
         return $this->belongsTo(KodeKegiatan::class, 'kode_id')->withDefault([
             'program' => '-',
             'sub_program' => '-',
-            'uraian' => '-'
+            'uraian' => '-',
         ]);
     }
 
@@ -68,10 +71,10 @@ trait HasRkasBehavior
     {
         return $this->belongsTo(RekeningBelanja::class, 'kode_rekening_id')->withDefault([
             'kode_rekening' => '-',
-            'rincian_objek' => '-'
+            'rincian_objek' => '-',
         ]);
     }
-    
+
     // ─── Variant-Aware Relationships ───────────────────────────────
 
     public function penganggaran()
@@ -93,12 +96,12 @@ trait HasRkasBehavior
 
     public function getHargaSatuanFormattedAttribute()
     {
-        return 'Rp ' . number_format($this->harga_satuan, 0, ',', '.');
+        return 'Rp '.number_format($this->harga_satuan, 0, ',', '.');
     }
 
     public function getTotalAnggaranFormattedAttribute()
     {
-        return 'Rp ' . number_format($this->total_anggaran, 0, ',', '.');
+        return 'Rp '.number_format($this->total_anggaran, 0, ',', '.');
     }
 
     // ─── Scopes ────────────────────────────────────────────────────
@@ -138,7 +141,7 @@ trait HasRkasBehavior
     {
         return [
             'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-            'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+            'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
         ];
     }
 

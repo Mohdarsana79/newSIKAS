@@ -1,14 +1,16 @@
 <?php
+
 require __DIR__.'/../vendor/autoload.php';
 $app = require_once __DIR__.'/../bootstrap/app.php';
-$kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
+$kernel = $app->make(Kernel::class);
 $kernel->bootstrap();
 
 use App\Models\KinerjaBukuKasUmum;
 use App\Models\KinerjaPenganggaran;
+use Illuminate\Contracts\Console\Kernel;
 
 $penganggaran = KinerjaPenganggaran::where('tahun_anggaran', '2027')->first();
-if (!$penganggaran) {
+if (! $penganggaran) {
     echo "Penganggaran Kinerja 2027 not found.\n";
     exit;
 }
@@ -42,8 +44,8 @@ foreach ($transaksi as $trx) {
     if ($masuk) {
         $total_terhitung += $jumlah;
     }
-    
-    echo "- Kode: $kode | Jumlah: $jumlah | Terhitung: " . ($masuk ? 'Ya' : 'Tidak') . "\n";
+
+    echo "- Kode: $kode | Jumlah: $jumlah | Terhitung: ".($masuk ? 'Ya' : 'Tidak')."\n";
 }
 
 echo "\nTotal Semua: $total_semua\n";
