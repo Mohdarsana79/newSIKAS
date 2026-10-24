@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class DatabaseController extends Controller
@@ -544,8 +545,12 @@ class DatabaseController extends Controller
      */
     public function updateNpsn(Request $request)
     {
+        $allowedNpsns = (array) config('license.allowed_npsn', []);
+
         $request->validate([
-            'npsn_code' => 'required|string|max:255',
+            'npsn_code' => ['required', 'string', 'max:255', Rule::in($allowedNpsns)],
+        ], [
+            'npsn_code.in' => 'NPSN yang dimasukkan tidak terdaftar dalam lisensi resmi aplikasi.',
         ]);
 
         $path = app()->environmentFilePath();

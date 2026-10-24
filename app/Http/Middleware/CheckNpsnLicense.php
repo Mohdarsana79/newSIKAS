@@ -4,15 +4,15 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\DB;
+use Symfony\Component\HttpFoundation\Response;
 
 class CheckNpsnLicense
 {
     /**
      * Handle an incoming request.
      *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
+     * @param  Closure(Request): (Response)  $next
      */
     public function handle(Request $request, Closure $next): Response
     {
@@ -21,32 +21,37 @@ class CheckNpsnLicense
             return $next($request);
         }
 
-        $envNpsn = env('APP_NPSN_CODE');
-
-        // Jika tidak ada NPSN di .env (misal belum diinstall via installer yang baru), kita anggap saja lolos
-        // atau bisa juga dipaksa gagal. Di sini kita biarkan lolos jika kosong,
-        // namun untuk proteksi maksimal, sebaiknya jika kosong diarahkan ke halaman error juga.
-        if (empty($envNpsn)) {
-            // Uncomment baris di bawah jika ingin memblokir akses saat tidak ada NPSN di .env sama sekali
-            // return redirect()->route('license.invalid');
+        // Pengecualian saat menjalankan unit test umum (kecuali saat pengujian lisensi spesifik)
+        if (app()->runningUnitTests() && ! $request->attributes->get('test_license_middleware')) {
             return $next($request);
         }
 
-        // Ambil NPSN dari database (tabel sekolahs sesuai migration 2026_01_11_000001_create_sekolah_profile_table)
-        // Kita menggunakan Query Builder agar tidak perlu pusing dependensi Model jika belum di-import atau namanya berbeda.
+        $envNpsn = trim((string) env('APP_NPSN_CODE'));
+        $allowedNpsns = (array) config('license.allowed_npsn', []);
+
+        // 1. Wajib ada APP_NPSN_CODE
+        if (empty($envNpsn)) {
+            return redirect()->route('license.invalid');
+        }
+
+        // 2. Wajib terdaftar di whitelist resmi
+        if (! in_array($envNpsn, $allowedNpsns, true)) {
+            return redirect()->route('license.invalid');
+        }
+
+        // 3. Wajib cocok dengan profil sekolah di database jika sudah terisi
         try {
             $sekolah = DB::table('sekolahs')->first();
-            
+
             if ($sekolah) {
-                $dbNpsn = $sekolah->npsn;
-                
-                if ((string)$dbNpsn !== (string)$envNpsn) {
+                $dbNpsn = (string) $sekolah->npsn;
+
+                if ($dbNpsn !== $envNpsn || ! in_array($dbNpsn, $allowedNpsns, true)) {
                     return redirect()->route('license.invalid');
                 }
             }
         } catch (\Exception $e) {
             // Jika tabel sekolahs belum ada (misal sedang migrate), biarkan lewat
-            // return $next($request);
         }
 
         return $next($request);

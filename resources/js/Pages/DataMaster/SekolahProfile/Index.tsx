@@ -26,7 +26,7 @@ interface Sekolah {
     website_sync_token?: string;
 }
 
-export default function Index({ auth, sekolah }: PageProps<{ sekolah?: Sekolah }>) {
+export default function Index({ auth, sekolah, licensedNpsn }: PageProps<{ sekolah?: Sekolah; licensedNpsn?: string }>) {
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     const [isUploadOpen, setIsUploadOpen] = useState(false);
@@ -36,7 +36,7 @@ export default function Index({ auth, sekolah }: PageProps<{ sekolah?: Sekolah }
     // Form for Data Sekolah
     const { data, setData, post, put, processing, errors, reset } = useForm({
         nama_sekolah: '',
-        npsn: '',
+        npsn: sekolah?.npsn || licensedNpsn || '',
         status_sekolah: '',
         jenjang_sekolah: '',
         kelurahan_desa: '',
@@ -64,8 +64,10 @@ export default function Index({ auth, sekolah }: PageProps<{ sekolah?: Sekolah }
                 provinsi: sekolah.provinsi,
                 alamat: sekolah.alamat,
             });
+        } else if (licensedNpsn) {
+            setData('npsn', licensedNpsn);
         }
-    }, [sekolah]);
+    }, [sekolah, licensedNpsn]);
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
@@ -270,7 +272,8 @@ export default function Index({ auth, sekolah }: PageProps<{ sekolah?: Sekolah }
                                             </svg>
                                         </div>
                                         <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mb-1">Kop Surat Belum Ada</p>
-                                        <p className="text-xs text-gray-400 mb-6">Format JPG/PNG, Max 2MB</p>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Format: .jpg, .jpeg, .png (Maks. 2MB)</p>
+                                        <p className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold mb-6">Disarankan: Lebar 2480 px & Tinggi 588 px</p>
 
                                         <PrimaryButton
                                             onClick={() => setIsUploadOpen(true)}
@@ -317,15 +320,26 @@ export default function Index({ auth, sekolah }: PageProps<{ sekolah?: Sekolah }
                         </div>
 
                         <div>
-                            <InputLabel htmlFor="npsn" value="NPSN" />
+                            <div className="flex items-center justify-between">
+                                <InputLabel htmlFor="npsn" value="NPSN" />
+                                <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                    </svg>
+                                    Lisensi Terverifikasi
+                                </span>
+                            </div>
                             <TextInput
                                 id="npsn"
-                                value={data.npsn}
-                                onChange={(e) => setData('npsn', e.target.value)}
-                                className="mt-1 block w-full text-gray-900"
+                                value={data.npsn || licensedNpsn || ''}
+                                readOnly={true}
+                                className="mt-1 block w-full text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700/60 cursor-not-allowed border-gray-300 dark:border-gray-600 focus:ring-0 focus:border-gray-300"
                                 required
                             />
-                            <InputError message={errors.npsn} className="mt-2" />
+                            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                NPSN terdaftar otomatis sesuai lisensi aplikasi ini.
+                            </p>
+                            <InputError message={errors.npsn} className="mt-1" />
                         </div>
 
                         <div>
@@ -448,14 +462,18 @@ export default function Index({ auth, sekolah }: PageProps<{ sekolah?: Sekolah }
             {/* Modal Upload Kop */}
             <Modal show={isUploadOpen} onClose={() => setIsUploadOpen(false)} maxWidth="sm">
                 <div className="p-6">
-                    <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
+                    <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
                         Upload Kop Surat
                     </h2>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-4 leading-relaxed">
+                        Gunakan file gambar dengan ekstensi <span className="font-semibold text-gray-700 dark:text-gray-200">.jpg, .jpeg, .png</span> (Maks. 2MB).
+                        Disarankan untuk kop sekolah lebarnya <span className="font-semibold text-indigo-600 dark:text-indigo-400">2480 px</span> dan tingginya <span className="font-semibold text-indigo-600 dark:text-indigo-400">588 px</span> agar hasil cetak dokumen SPJ & laporan presisi.
+                    </p>
                     <form onSubmit={submitKop}>
-                        <div className="mt-4">
+                        <div className="mt-2">
                             <input
                                 type="file"
-                                accept="image/*"
+                                accept="image/jpeg,image/png,image/jpg"
                                 onChange={(e) => setKopData('kop_surat', e.target.files ? e.target.files[0] : null)}
                                 className="block w-full text-sm text-gray-500
                                   file:mr-4 file:py-2 file:px-4

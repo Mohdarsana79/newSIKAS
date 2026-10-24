@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Penganggaran;
 use App\Models\SekolahProfile;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
+use Inertia\Inertia;
 
 class SekolahProfileController extends Controller
 {
@@ -16,8 +18,11 @@ class SekolahProfileController extends Controller
     {
         // Get the single profile
         $sekolah = SekolahProfile::first();
+        $licensedNpsn = (string) env('APP_NPSN_CODE');
+
         return Inertia::render('DataMaster/SekolahProfile/Index', [
-            'sekolah' => $sekolah
+            'sekolah' => $sekolah,
+            'licensedNpsn' => $licensedNpsn,
         ]);
     }
 
@@ -26,10 +31,12 @@ class SekolahProfileController extends Controller
      */
     public function store(Request $request)
     {
+        $licensedNpsn = (string) env('APP_NPSN_CODE');
+
         // Validate
         $request->validate([
             'nama_sekolah' => 'required|string|max:255',
-            'npsn' => 'required|string|max:20', // Removed unique here if logic is singleton check, but model has unique.
+            'npsn' => ['required', 'string', 'max:20', Rule::in([$licensedNpsn])],
             'status_sekolah' => 'required|string',
             'jenjang_sekolah' => 'required|string',
             'kelurahan_desa' => 'required|string',
@@ -37,13 +44,15 @@ class SekolahProfileController extends Controller
             'kabupaten_kota' => 'required|string',
             'provinsi' => 'required|string',
             'alamat' => 'required|string',
+        ], [
+            'npsn.in' => 'NPSN harus sesuai dengan lisensi resmi aplikasi yang terdaftar.',
         ]);
 
         // Create
         $sekolah = SekolahProfile::create($request->all());
 
         // Fill missing foreign keys for penganggarans
-        \App\Models\Penganggaran::whereNull('sekolah_id')->update(['sekolah_id' => $sekolah->id]);
+        Penganggaran::whereNull('sekolah_id')->update(['sekolah_id' => $sekolah->id]);
 
         return redirect()->back()->with('success', 'Data Sekolah berhasil disimpan.');
     }
@@ -54,10 +63,11 @@ class SekolahProfileController extends Controller
     public function update(Request $request, string $id)
     {
         $sekolah = SekolahProfile::findOrFail($id);
-        
+        $licensedNpsn = (string) env('APP_NPSN_CODE');
+
         $request->validate([
             'nama_sekolah' => 'required|string|max:255',
-            'npsn' => 'required|string|max:20|unique:sekolahs,npsn,'.$id,
+            'npsn' => ['required', 'string', 'max:20', Rule::in([$licensedNpsn]), 'unique:sekolahs,npsn,'.$id],
             'status_sekolah' => 'required|string',
             'jenjang_sekolah' => 'required|string',
             'kelurahan_desa' => 'required|string',
@@ -65,12 +75,14 @@ class SekolahProfileController extends Controller
             'kabupaten_kota' => 'required|string',
             'provinsi' => 'required|string',
             'alamat' => 'required|string',
+        ], [
+            'npsn.in' => 'NPSN harus sesuai dengan lisensi resmi aplikasi yang terdaftar.',
         ]);
 
         $sekolah->update($request->all());
 
         // Also fix any penganggarans that might have null sekola_id
-        \App\Models\Penganggaran::whereNull('sekolah_id')->update(['sekolah_id' => $sekolah->id]);
+        Penganggaran::whereNull('sekolah_id')->update(['sekolah_id' => $sekolah->id]);
 
         return redirect()->back()->with('success', 'Data Sekolah berhasil diperbarui.');
     }
@@ -91,7 +103,7 @@ class SekolahProfileController extends Controller
             if ($sekolah->kop_surat) {
                 // Try to delete from public disk primarily
                 if (Storage::disk('public')->exists($sekolah->kop_surat)) {
-                     Storage::disk('public')->delete($sekolah->kop_surat);
+                    Storage::disk('public')->delete($sekolah->kop_surat);
                 }
                 // Fallback cleanup for old incorrect private paths (optional, but good practice)
                 if (Storage::disk('local')->exists($sekolah->kop_surat)) {
@@ -107,7 +119,7 @@ class SekolahProfileController extends Controller
         return redirect()->back()->with('success', 'Kop Surat berhasil diupload.');
     }
 
-      /**
+    /**
      * Delete Kop Surat
      */
     public function destroyKop(string $id)
@@ -115,14 +127,15 @@ class SekolahProfileController extends Controller
         $sekolah = SekolahProfile::findOrFail($id);
         if ($sekolah->kop_surat) {
             if (Storage::disk('public')->exists($sekolah->kop_surat)) {
-                 Storage::disk('public')->delete($sekolah->kop_surat);
+                Storage::disk('public')->delete($sekolah->kop_surat);
             }
-             // Fallback for old private paths
-             if (Storage::disk('local')->exists($sekolah->kop_surat)) {
-                 Storage::disk('local')->delete($sekolah->kop_surat);
-             }
+            // Fallback for old private paths
+            if (Storage::disk('local')->exists($sekolah->kop_surat)) {
+                Storage::disk('local')->delete($sekolah->kop_surat);
+            }
             $sekolah->update(['kop_surat' => null]);
         }
+
         return redirect()->back()->with('success', 'Kop Surat berhasil dihapus.');
     }
 }
