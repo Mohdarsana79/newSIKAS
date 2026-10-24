@@ -548,7 +548,7 @@ class DatabaseController extends Controller
             'npsn_code' => 'required|string|max:255',
         ]);
 
-        $path = base_path('.env');
+        $path = app()->environmentFilePath();
 
         if (file_exists($path)) {
             $envContent = file_get_contents($path);
