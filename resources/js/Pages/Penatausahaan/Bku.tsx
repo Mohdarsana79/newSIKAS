@@ -210,6 +210,10 @@ export default function Bku({
     const [selectedActivityId, setSelectedActivityId] = useState<string>('');
     const [selectedAccountId, setSelectedAccountId] = useState<string>('');
     const [detailUraian, setDetailUraian] = useState<string>(''); // For "Uraian Belanja (Opsional)"
+    const [isGeneratingAiUraian, setIsGeneratingAiUraian] = useState<boolean>(false);
+    const [aiUraianVariantIndex, setAiUraianVariantIndex] = useState<number>(0);
+    const [isAiApiKeyModalOpen, setIsAiApiKeyModalOpen] = useState<boolean>(false);
+    const [aiErrorMessage, setAiErrorMessage] = useState<string>('');
 
     // API State
     const [fetchedActivities, setFetchedActivities] = useState<any[]>([]);
@@ -1720,6 +1724,63 @@ export default function Bku({
         </div>
     );
 
+    const handleGenerateAiUraian = async (isRegenerate: boolean = false) => {
+        // Cari label kegiatan dan rekening
+        const currentActivity = fetchedActivities.find(act => String(act.id || act.kode) === String(selectedActivityId));
+        const currentAccount = fetchedAccounts.find(acc => String(acc.id || acc.kode_rekening) === String(selectedAccountId));
+
+        const kegiatanText = currentActivity 
+            ? `${currentActivity.kode || ''} - ${currentActivity.uraian || ''}`.trim().replace(/^- |-$/, '') 
+            : '';
+        const rekeningText = currentAccount 
+            ? `${currentAccount.kode_rekening || ''} - ${currentAccount.rincian_objek || ''}`.trim().replace(/^- |-$/, '') 
+            : '';
+
+        const rekananText = (data.nama_toko || data.nama_penerima_pembayaran || '').trim();
+
+        // Validasi minimal: harus ada kegiatan, rekening, atau items
+        if (!selectedActivityId && !selectedAccountId && (!data.items || data.items.length === 0)) {
+            alert('Silakan pilih Jenis Kegiatan, Rekening Belanja, atau rincian item belanja terlebih dahulu agar Asisten AI dapat merumuskan uraian.');
+            return;
+        }
+
+        const nextVariantIndex = isRegenerate ? aiUraianVariantIndex + 1 : 0;
+        setIsGeneratingAiUraian(true);
+
+        try {
+            const payload = {
+                nama_rekanan: rekananText,
+                kegiatan: kegiatanText,
+                rekening: rekeningText,
+                items: (data.items || []).map((item: any) => ({
+                    uraian: item.uraian,
+                    volume: item.volume,
+                    satuan: item.satuan,
+                })),
+                jenis_transaksi: data.jenis_transaksi,
+                nomor_nota: data.nomor_nota,
+                variant_index: nextVariantIndex,
+            };
+
+            const res = await axios.post(vroute('api.bku.ai-generate-uraian'), payload);
+            if (res.data && res.data.success) {
+                setDetailUraian(res.data.uraian);
+                setAiUraianVariantIndex(nextVariantIndex);
+            }
+        } catch (err: any) {
+            console.error('Error generating AI Uraian:', err);
+            if (err.response && err.response.status === 403 && err.response.data?.error_type === 'NO_API_KEY') {
+                setAiErrorMessage(err.response.data.message || 'Kunci API DeepSeek belum dikonfigurasi pada profil Anda.');
+                setIsAiApiKeyModalOpen(true);
+            } else {
+                const errMsg = err.response?.data?.message || 'Gagal memanggil Asisten AI. Pastikan server terhubung.';
+                alert(errMsg);
+            }
+        } finally {
+            setIsGeneratingAiUraian(false);
+        }
+    };
+
     const renderStep2 = () => {
         const isSelected = (rkasId: number) => data.items.some(i => Number(i.rkas_id) === Number(rkasId));
         const getItem = (rkasId: number) => data.items.find(i => Number(i.rkas_id) === Number(rkasId));
@@ -1814,7 +1875,49 @@ export default function Bku({
 
                         {/* Uraian Belanja (Opsional) */}
                         <div>
-                            <InputLabel value="Uraian Belanja (Opsional)" className="!text-[10pt] mb-1" />
+                            <div className="flex items-center justify-between mb-1">
+                                <InputLabel value="Uraian Belanja (Opsional)" className="!text-[10pt]" />
+                                <div className="flex items-center gap-1.5">
+                                    <button
+                                        type="button"
+                                        onClick={() => handleGenerateAiUraian(false)}
+                                        disabled={isGeneratingAiUraian}
+                                        className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[8.5pt] font-semibold text-white bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-600 hover:from-purple-700 hover:via-indigo-700 hover:to-cyan-700 rounded-md shadow-sm transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+                                        title="Buat uraian belanja otomatis menggunakan Asisten AI"
+                                    >
+                                        {isGeneratingAiUraian ? (
+                                            <>
+                                                <svg className="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
+                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                                                </svg>
+                                                <span>Menyusun Uraian...</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <svg className="w-3.5 h-3.5 text-amber-300" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                                </svg>
+                                                <span>Asisten AI</span>
+                                            </>
+                                        )}
+                                    </button>
+                                    {detailUraian && (
+                                        <button
+                                            type="button"
+                                            onClick={() => handleGenerateAiUraian(true)}
+                                            disabled={isGeneratingAiUraian}
+                                            className="inline-flex items-center gap-1 px-2 py-1 text-[8.5pt] font-medium text-gray-700 dark:text-gray-200 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-md border border-gray-300 dark:border-gray-600 transition-colors disabled:opacity-50 cursor-pointer"
+                                            title="Buat variasi redaksi kalimat alternatif"
+                                        >
+                                            <svg className="w-3 h-3 text-cyan-600 dark:text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                            </svg>
+                                            <span>Variasi</span>
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
                             <textarea
                                 value={detailUraian}
                                 onChange={(e) => setDetailUraian(e.target.value)}
@@ -2852,6 +2955,33 @@ export default function Bku({
                 </div>
             </Modal>
 
+            {/* Modal Peringatan Belum Ada API Key DeepSeek */}
+            <Modal show={isAiApiKeyModalOpen} onClose={() => setIsAiApiKeyModalOpen(false)} maxWidth="md">
+                <div className="p-6">
+                    <div className="flex items-center gap-3 text-purple-600 mb-4">
+                        <div className="p-2.5 bg-purple-100 dark:bg-purple-900/30 rounded-xl">
+                            <Brain className="w-7 h-7 text-purple-600 dark:text-purple-400" />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">Kunci API DeepSeek Diperlukan</h3>
+                            <p className="text-xs text-gray-500">Asisten AI Penulis Uraian BKU</p>
+                        </div>
+                    </div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-6 leading-relaxed">
+                        {aiErrorMessage || 'Kunci API DeepSeek belum dikonfigurasi pada profil akun Anda. Silakan masukkan API Key DeepSeek Anda pada menu Profil Pengguna untuk mengaktifkan fitur Asisten AI.'}
+                    </p>
+                    <div className="flex justify-end gap-3">
+                        <SecondaryButton onClick={() => setIsAiApiKeyModalOpen(false)}>Tutup</SecondaryButton>
+                        <Link
+                            href={route('profile.edit')}
+                            className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-md font-semibold text-xs uppercase tracking-widest transition"
+                        >
+                            Buka Pengaturan Profil
+                        </Link>
+                    </div>
+                </div>
+            </Modal>
+
             {/* Modal Tarik Tunai */}
             <Modal show={isTarikTunaiOpen} onClose={() => setIsTarikTunaiOpen(false)} maxWidth="5xl">
                 <div className="relative bg-white dark:bg-gray-800 rounded-lg">
@@ -3553,7 +3683,10 @@ export default function Bku({
                     <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-gray-100 dark:border-gray-700 pt-4">
                         <button
                             type="button"
-                            onClick={() => setIsArkasAiModalOpen(true)}
+                            onClick={() => {
+                                setIsArkasMonthlyModalOpen(false);
+                                setIsArkasAiModalOpen(true);
+                            }}
                             className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/50 dark:text-indigo-300 dark:hover:bg-indigo-900/50 rounded-lg border border-indigo-200 dark:border-indigo-800 transition"
                         >
                             <Brain className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
@@ -3596,7 +3729,15 @@ export default function Bku({
             {/* Modal Diagnosa Selisih AI ARKAS */}
             <ArkasDiagnosticModal
                 isOpen={isArkasAiModalOpen}
-                onClose={() => setIsArkasAiModalOpen(false)}
+                onClose={() => {
+                    setIsArkasAiModalOpen(false);
+                    setIsArkasMonthlyModalOpen(true);
+                }}
+                onProceedWithAction={() => {
+                    setIsArkasAiModalOpen(false);
+                    setIsArkasMonthlyModalOpen(true);
+                }}
+                actionButtonLabel="Lanjutkan ke Tarik BKU"
                 tahun={tahun}
                 scope="bku_month"
                 context={{

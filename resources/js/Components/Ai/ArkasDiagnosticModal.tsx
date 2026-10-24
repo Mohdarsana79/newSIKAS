@@ -34,6 +34,7 @@ export interface ArkasDiagnosticModalProps {
         [key: string]: any;
     };
     onProceedWithAction?: () => void;
+    actionButtonLabel?: string;
 }
 
 export default function ArkasDiagnosticModal({
@@ -42,7 +43,8 @@ export default function ArkasDiagnosticModal({
     tahun = 2026,
     scope = 'comprehensive',
     context = {},
-    onProceedWithAction
+    onProceedWithAction,
+    actionButtonLabel
 }: ArkasDiagnosticModalProps) {
     const vroute = useVariantRoute();
     const [loading, setLoading] = useState(false);
@@ -147,7 +149,7 @@ Dibuat otomatis oleh SIKAS AI DeepSeek Suite`;
     };
 
     return (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[70] overflow-y-auto bg-gray-900/60 backdrop-blur-sm flex items-center justify-center p-4">
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[92vh] flex flex-col overflow-hidden border border-gray-100 dark:border-gray-700 animate-in fade-in zoom-in-95 duration-200">
                 {/* Header Modal */}
                 <div className="px-6 py-5 border-b border-gray-100 dark:border-gray-700/80 flex items-center justify-between bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-800/80">
@@ -170,7 +172,7 @@ Dibuat otomatis oleh SIKAS AI DeepSeek Suite`;
                                     ? `Diagnosa Selisih BKU Bulan ${context.bulan || ''} Tahun ${tahun}`
                                     : scope === 'rkas'
                                     ? `Audit Integritas Pagu & RKAS Tahun ${tahun}`
-                                    : `Audit Menyeluruh Antar-Sistem (PostgreSQL SIKAS vs SQLCipher ARKAS)`}
+                                    : `Audit Menyeluruh Antar-Sistem`}
                             </p>
                         </div>
                     </div>
@@ -673,7 +675,7 @@ Dibuat otomatis oleh SIKAS AI DeepSeek Suite`;
                                 }}
                                 className="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm transition flex items-center gap-1.5"
                             >
-                                Lanjutkan Tindakan
+                                {actionButtonLabel || 'Lanjutkan Tindakan'}
                                 <ArrowRight className="w-3.5 h-3.5" />
                             </button>
                         )}
