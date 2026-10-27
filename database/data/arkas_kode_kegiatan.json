@@ -1,0 +1,1880 @@
+[
+    {
+        "id_kode": "02.02.01.",
+        "program": "Standar Isi",
+        "sub_program": "Pengembangan perpustakaan dan\/atau layanan pojok baca",
+        "uraian_kode": "Kegiatan pemberdayaan perpustakaan terutama untuk pengembangan minat baca peserta didik\/warga belajar"
+    },
+    {
+        "id_kode": "02.03.01.",
+        "program": "Standar Isi",
+        "sub_program": "Pelaksanaan kegiatan pembelajaran dan bermain",
+        "uraian_kode": "Penyusunan Kurikulum"
+    },
+    {
+        "id_kode": "02.03.02.",
+        "program": "Standar Isi",
+        "sub_program": "Pelaksanaan kegiatan pembelajaran dan bermain",
+        "uraian_kode": "Penyusunan kurikulum kompetensi keahlian"
+    },
+    {
+        "id_kode": "02.03.03.",
+        "program": "Standar Isi",
+        "sub_program": "Pelaksanaan kegiatan pembelajaran dan bermain",
+        "uraian_kode": "Penyusunan analisis konteks pendidikan kesetaraan"
+    },
+    {
+        "id_kode": "02.06.01.",
+        "program": "Standar Isi",
+        "sub_program": "Pengembangan profesi pendidik dan tenaga kependidikan",
+        "uraian_kode": "Kegiatan diskusi kolaborasi pengembangan RPP dalam Komunitas Belajar (termasuk Forum Tutor, Forum PKBM, Forum SKB )"
+    },
+    {
+        "id_kode": "02.34.02.",
+        "program": "Standar Isi",
+        "sub_program": "Penguatan mutu Satuan Pendidikan",
+        "uraian_kode": "Layanan pojok baca"
+    },
+    {
+        "id_kode": "03.01.01.",
+        "program": "Standar Proses",
+        "sub_program": "Penerimaan Murid baru",
+        "uraian_kode": "Pelaksanaan Pendaftaran Murid Baru (PMB)"
+    },
+    {
+        "id_kode": "03.01.02.",
+        "program": "Standar Proses",
+        "sub_program": "Penerimaan Murid baru",
+        "uraian_kode": "Pendataan ulang bagi Peserta Didik lama"
+    },
+    {
+        "id_kode": "03.01.03.",
+        "program": "Standar Proses",
+        "sub_program": "Penerimaan Murid baru",
+        "uraian_kode": "Pelaksanaan kegiatan orientasi bagi peserta didik baru dan orangtua yang bersifat akademik dan pengenalan lingkungan"
+    },
+    {
+        "id_kode": "03.01.04.",
+        "program": "Standar Proses",
+        "sub_program": "Penerimaan Murid baru",
+        "uraian_kode": "Penentuan peminatan bagi sekolah yang diselenggarakan oleh Pemerintah Daerah"
+    },
+    {
+        "id_kode": "03.01.05.",
+        "program": "Standar Proses",
+        "sub_program": "Penerimaan Murid baru",
+        "uraian_kode": "Tes bakat skolastik atau tes potensi akademik bagi sekolah yang diselenggarakan oleh masyarakat"
+    },
+    {
+        "id_kode": "03.01.06.",
+        "program": "Standar Proses",
+        "sub_program": "Penerimaan Murid baru",
+        "uraian_kode": "Pendataan atau proses identifikasi Murid berkebutuhan khusus"
+    },
+    {
+        "id_kode": "03.02.01.",
+        "program": "Standar Proses",
+        "sub_program": "Pengembangan perpustakaan dan\/atau layanan pojok baca",
+        "uraian_kode": "Pelaksanaan kegiatan publikasi berkala satuan pendidikan (Majalah satuan pendidikan, Majalah Dinding)"
+    },
+    {
+        "id_kode": "03.02.02.",
+        "program": "Standar Proses",
+        "sub_program": "Pengembangan perpustakaan dan\/atau layanan pojok baca",
+        "uraian_kode": "Pembeliaan Buku Lembar Kerja Siswa"
+    },
+    {
+        "id_kode": "03.02.03.",
+        "program": "Standar Proses",
+        "sub_program": "Pengembangan perpustakaan dan\/atau layanan pojok baca",
+        "uraian_kode": "Penyediaan atau pembiayaan langganan platform perpustakaan digital"
+    },
+    {
+        "id_kode": "03.02.04.",
+        "program": "Standar Proses",
+        "sub_program": "Pengembangan perpustakaan dan\/atau layanan pojok baca",
+        "uraian_kode": "Peningkatan minat baca Murid"
+    },
+    {
+        "id_kode": "03.03.01.",
+        "program": "Standar Proses",
+        "sub_program": "Pelaksanaan kegiatan pembelajaran dan bermain",
+        "uraian_kode": "Penyusunan Silabus \/ Tujuan Pembelajaran"
+    },
+    {
+        "id_kode": "03.03.02.",
+        "program": "Standar Proses",
+        "sub_program": "Pelaksanaan kegiatan pembelajaran dan bermain",
+        "uraian_kode": "Pengembangan Kegiatan Literasi dan Numerasi"
+    },
+    {
+        "id_kode": "03.03.04.",
+        "program": "Standar Proses",
+        "sub_program": "Pelaksanaan kegiatan pembelajaran dan bermain",
+        "uraian_kode": "Pengembangan pembelajaran berbasis projek (termasuk P5)"
+    },
+    {
+        "id_kode": "03.03.05.",
+        "program": "Standar Proses",
+        "sub_program": "Pelaksanaan kegiatan pembelajaran dan bermain",
+        "uraian_kode": "Penyelenggaraan Perbaikan\/Pengayaan (Remedial)"
+    },
+    {
+        "id_kode": "03.03.06.",
+        "program": "Standar Proses",
+        "sub_program": "Pelaksanaan kegiatan pembelajaran dan bermain",
+        "uraian_kode": "Pelaksanaan Ekstrakurikuler Kepramukaan"
+    },
+    {
+        "id_kode": "03.03.07.",
+        "program": "Standar Proses",
+        "sub_program": "Pelaksanaan kegiatan pembelajaran dan bermain",
+        "uraian_kode": "Pelaksanaan Kegiatan Ekstrakurikuler (diluar Kepramukaan)"
+    },
+    {
+        "id_kode": "03.03.08.",
+        "program": "Standar Proses",
+        "sub_program": "Pelaksanaan kegiatan pembelajaran dan bermain",
+        "uraian_kode": "Program Pembinaan Kesiswaan dan Kepemimpinan Siswa"
+    },
+    {
+        "id_kode": "03.03.10.",
+        "program": "Standar Proses",
+        "sub_program": "Pelaksanaan kegiatan pembelajaran dan bermain",
+        "uraian_kode": "Pengembangan program pencegahan dan penanganan kekerasan di satuan pendidikan (termasuk program roots)"
+    },
+    {
+        "id_kode": "03.03.11.",
+        "program": "Standar Proses",
+        "sub_program": "Pelaksanaan kegiatan pembelajaran dan bermain",
+        "uraian_kode": "Penerapan program pencegahan perundungan"
+    },
+    {
+        "id_kode": "03.03.12.",
+        "program": "Standar Proses",
+        "sub_program": "Pelaksanaan kegiatan pembelajaran dan bermain",
+        "uraian_kode": "Penyelenggaraan: pencegahan penyalahgunaan narkotika, psikotropika, zat adiktif (narkoba), minuman keras, merokok, dan HIV AIDS"
+    },
+    {
+        "id_kode": "03.03.13.",
+        "program": "Standar Proses",
+        "sub_program": "Pelaksanaan kegiatan pembelajaran dan bermain",
+        "uraian_kode": "Konsultasi peningkatan mutu pendidikan (Konsultan & Psikolog)"
+    },
+    {
+        "id_kode": "03.03.14.",
+        "program": "Standar Proses",
+        "sub_program": "Pelaksanaan kegiatan pembelajaran dan bermain",
+        "uraian_kode": "Penyelenggaraan Pesantren Kilat dan Kegiatan Keagamaan Sejenis"
+    },
+    {
+        "id_kode": "03.03.15.",
+        "program": "Standar Proses",
+        "sub_program": "Pelaksanaan kegiatan pembelajaran dan bermain",
+        "uraian_kode": "Pengembangan kegiatan pelibatan orang tua\/wali\/keluarga di pembelajaran"
+    },
+    {
+        "id_kode": "03.03.16.",
+        "program": "Standar Proses",
+        "sub_program": "Pelaksanaan kegiatan pembelajaran dan bermain",
+        "uraian_kode": "Penyusunan Pembagian Tugas Guru\/Tutor dan Jadwal Pelajaran"
+    },
+    {
+        "id_kode": "03.03.17.",
+        "program": "Standar Proses",
+        "sub_program": "Pelaksanaan kegiatan pembelajaran dan bermain",
+        "uraian_kode": "Pembiayaan untuk partisipasi kegiatan berbagi praktik baik"
+    },
+    {
+        "id_kode": "03.03.18.",
+        "program": "Standar Proses",
+        "sub_program": "Pelaksanaan kegiatan pembelajaran dan bermain",
+        "uraian_kode": "Pengayaan TIK untuk memfasilitasi kegiatan pembelajaran"
+    },
+    {
+        "id_kode": "03.03.19.",
+        "program": "Standar Proses",
+        "sub_program": "Pelaksanaan kegiatan pembelajaran dan bermain",
+        "uraian_kode": "Pelaksanaan Lomba Lomba"
+    },
+    {
+        "id_kode": "03.03.20.",
+        "program": "Standar Proses",
+        "sub_program": "Pelaksanaan kegiatan pembelajaran dan bermain",
+        "uraian_kode": "Pelaksanaan Program-Program Satuan Pendidikan Lainnya"
+    },
+    {
+        "id_kode": "03.03.21.",
+        "program": "Standar Proses",
+        "sub_program": "Pelaksanaan kegiatan pembelajaran dan bermain",
+        "uraian_kode": "Perayaan Hari Besar Agama, Nasional, dan Daerah"
+    },
+    {
+        "id_kode": "03.03.22.",
+        "program": "Standar Proses",
+        "sub_program": "Pelaksanaan kegiatan pembelajaran dan bermain",
+        "uraian_kode": "Penyelenggaraan Pembelajaran aktif, kreatif, efektif, dan nyaman"
+    },
+    {
+        "id_kode": "03.03.23.",
+        "program": "Standar Proses",
+        "sub_program": "Pelaksanaan kegiatan pembelajaran dan bermain",
+        "uraian_kode": "Mengembangkan media pembelajaran berbasis teknologi informasi dan komunikasi"
+    },
+    {
+        "id_kode": "03.03.24.",
+        "program": "Standar Proses",
+        "sub_program": "Pelaksanaan kegiatan pembelajaran dan bermain",
+        "uraian_kode": "Penyediaan dan\/atau pengembangan konten pembelajaran"
+    },
+    {
+        "id_kode": "03.03.25.",
+        "program": "Standar Proses",
+        "sub_program": "Pelaksanaan kegiatan pembelajaran dan bermain",
+        "uraian_kode": "Penguatan pendidikan karakter dan penumbuhan budi pekerti"
+    },
+    {
+        "id_kode": "03.03.26.",
+        "program": "Standar Proses",
+        "sub_program": "Pelaksanaan kegiatan pembelajaran dan bermain",
+        "uraian_kode": "Penyediaan bahan pendukung pembelajaran"
+    },
+    {
+        "id_kode": "03.03.27.",
+        "program": "Standar Proses",
+        "sub_program": "Pelaksanaan kegiatan pembelajaran dan bermain",
+        "uraian_kode": "Pengembangan kegiatan praliterasi"
+    },
+    {
+        "id_kode": "03.03.28.",
+        "program": "Standar Proses",
+        "sub_program": "Pelaksanaan kegiatan pembelajaran dan bermain",
+        "uraian_kode": "Pembiayaan diskusi perkembangan anak"
+    },
+    {
+        "id_kode": "03.03.29.",
+        "program": "Standar Proses",
+        "sub_program": "Pelaksanaan kegiatan pembelajaran dan bermain",
+        "uraian_kode": "Pelaksanaan pembelajaran melalui kunjungan rumah Murid"
+    },
+    {
+        "id_kode": "03.03.30.",
+        "program": "Standar Proses",
+        "sub_program": "Pelaksanaan kegiatan pembelajaran dan bermain",
+        "uraian_kode": "Kegiatan pembelajaran luar kelas"
+    },
+    {
+        "id_kode": "03.03.31.",
+        "program": "Standar Proses",
+        "sub_program": "Pelaksanaan kegiatan pembelajaran dan bermain",
+        "uraian_kode": "Penguatan\/pengembangan pembelajaran literasi dan numerasi"
+    },
+    {
+        "id_kode": "03.03.32.",
+        "program": "Standar Proses",
+        "sub_program": "Pelaksanaan kegiatan pembelajaran dan bermain",
+        "uraian_kode": "Penguatan\/pengembangan berpikir komputasional berbasis sains, teknologi, rekayasa, seni, dan matematika"
+    },
+    {
+        "id_kode": "03.04.01.",
+        "program": "Standar Proses",
+        "sub_program": "Pelaksanaan kegiatan asesmen dan evaluasi pembelajaran",
+        "uraian_kode": "Pelaksanaan supervisi pembelajaran semua mapel\/guru\/tutor di satuan pendidikan"
+    },
+    {
+        "id_kode": "03.04.02.",
+        "program": "Standar Proses",
+        "sub_program": "Pelaksanaan kegiatan asesmen dan evaluasi pembelajaran",
+        "uraian_kode": "Pelaksanaan Evaluasi kegiatan ekstrakurikuler"
+    },
+    {
+        "id_kode": "03.05.01.",
+        "program": "Standar Proses",
+        "sub_program": "Pelaksanaan administrasi kegiatan sekolah",
+        "uraian_kode": "Kegiatan koordinasi dan pelaporan untuk mendukung program prioritas pusat (program indonesia pintar, BOSP, sekolah penggerak, dll.)"
+    },
+    {
+        "id_kode": "03.05.02.",
+        "program": "Standar Proses",
+        "sub_program": "Pelaksanaan administrasi kegiatan sekolah",
+        "uraian_kode": "Penyelenggaraan UKS, penyediaan alat peralatan UKS dan bahan\/obat-obatan penunjang kesehatan satuan pendidikan"
+    },
+    {
+        "id_kode": "03.10.01.",
+        "program": "Standar Proses",
+        "sub_program": "Penyelenggaraan Kegiatan Peningkatan Komptetensi Keahlian",
+        "uraian_kode": "Pengembangan kerja sama industri dalam rangka peningkatan kompetensi keahlian di SMK atau SMALB"
+    },
+    {
+        "id_kode": "03.10.02.",
+        "program": "Standar Proses",
+        "sub_program": "Penyelenggaraan Kegiatan Peningkatan Komptetensi Keahlian",
+        "uraian_kode": "Pengembangan Ruang Lingkup Skema Sertifikasi"
+    },
+    {
+        "id_kode": "03.10.03.",
+        "program": "Standar Proses",
+        "sub_program": "Penyelenggaraan Kegiatan Peningkatan Komptetensi Keahlian",
+        "uraian_kode": "Pengembangan Pembelajaran Teaching Factory"
+    },
+    {
+        "id_kode": "03.11.01.",
+        "program": "Standar Proses",
+        "sub_program": "Pengembangan sumber daya manusia ",
+        "uraian_kode": "Pembelajaran terkait budaya kerja"
+    },
+    {
+        "id_kode": "03.11.02.",
+        "program": "Standar Proses",
+        "sub_program": "Pengembangan sumber daya manusia ",
+        "uraian_kode": "Penyelenggaraan bursa kerja khusus SMK atau SMALB"
+    },
+    {
+        "id_kode": "03.11.03.",
+        "program": "Standar Proses",
+        "sub_program": "Pengembangan sumber daya manusia ",
+        "uraian_kode": "Pemantauan kebekerjaan lulusan (tracer study) SMK atau SMALB"
+    },
+    {
+        "id_kode": "03.11.04.",
+        "program": "Standar Proses",
+        "sub_program": "Pengembangan sumber daya manusia ",
+        "uraian_kode": "Penyelenggaraan Pendidikan Kejuruan bagi Peserta Didik SMK\/SMALB"
+    },
+    {
+        "id_kode": "03.17.01.",
+        "program": "Standar Proses",
+        "sub_program": "Asesmen dan pemetaan talenta",
+        "uraian_kode": "Penyelenggaraan Asesmen Talenta Peserta Didik"
+    },
+    {
+        "id_kode": "03.18.02.",
+        "program": "Standar Proses",
+        "sub_program": "Pelatihan dan pengembangan talenta",
+        "uraian_kode": "Kegiatan pelatihan dan pengembangan talenta"
+    },
+    {
+        "id_kode": "03.19.06.",
+        "program": "Standar Proses",
+        "sub_program": "Pengembangan Manajemen dan Ekosistem",
+        "uraian_kode": "Pelaksanaan kegiatan pengembangan manajemen dan ekosistem"
+    },
+    {
+        "id_kode": "03.21.01.",
+        "program": "Standar Proses",
+        "sub_program": "Pembinaan dan Pengembangan Prestasi Satuan Pendidikan Lain",
+        "uraian_kode": "Pengembangan kapasitas sumber daya manusia talenta Satuan Pendidikan imbas"
+    },
+    {
+        "id_kode": "03.21.02.",
+        "program": "Standar Proses",
+        "sub_program": "Pembinaan dan Pengembangan Prestasi Satuan Pendidikan Lain",
+        "uraian_kode": "Kegiatan pemberian pendampingan dan layanan konsultasi pelaksanaan pengembangan program manajemen talenta bagi Satuan Pendidikan imbas"
+    },
+    {
+        "id_kode": "03.21.03.",
+        "program": "Standar Proses",
+        "sub_program": "Pembinaan dan Pengembangan Prestasi Satuan Pendidikan Lain",
+        "uraian_kode": "Pengembangan talenta Satuan Pendidikan imbas melalui kemitraan"
+    },
+    {
+        "id_kode": "03.21.04.",
+        "program": "Standar Proses",
+        "sub_program": "Pembinaan dan Pengembangan Prestasi Satuan Pendidikan Lain",
+        "uraian_kode": "Penyelenggaraan kompetisi lokal antar Satuan Pendidikan bersama Satuan Pendidikan imbas"
+    },
+    {
+        "id_kode": "03.24.03.",
+        "program": "Standar Proses",
+        "sub_program": "Kegiatan pembelajaran mendalam",
+        "uraian_kode": "Pengembangan digitalisasi pembelajaran mendalam"
+    },
+    {
+        "id_kode": "03.25.03.",
+        "program": "Standar Proses",
+        "sub_program": "Kegiatan pembelajaran koding dan kecerdasan artifisial",
+        "uraian_kode": "Pengembangan digitalisasi pembelajaran koding dan kecerdasan"
+    },
+    {
+        "id_kode": "03.26.01.",
+        "program": "Standar Proses",
+        "sub_program": "Pengembangan talenta dan aktualisasi prestasi",
+        "uraian_kode": "Peningkatan kapasitas Murid berprestasi"
+    },
+    {
+        "id_kode": "03.26.02.",
+        "program": "Standar Proses",
+        "sub_program": "Pengembangan talenta dan aktualisasi prestasi",
+        "uraian_kode": "Peningkatan kapasitas bagi Murid berprestasi untuk melanjutkan karier belajar"
+    },
+    {
+        "id_kode": "03.26.04.",
+        "program": "Standar Proses",
+        "sub_program": "Pengembangan talenta dan aktualisasi prestasi",
+        "uraian_kode": "Penyelenggaraan kompetisi internal sekolah"
+    },
+    {
+        "id_kode": "03.26.05.",
+        "program": "Standar Proses",
+        "sub_program": "Pengembangan talenta dan aktualisasi prestasi",
+        "uraian_kode": "Pembinaan dan partisipasi kompetisi eksternal"
+    },
+    {
+        "id_kode": "03.27.02.",
+        "program": "Standar Proses",
+        "sub_program": "Penguatan literasi dan numerasi",
+        "uraian_kode": "Penyediaan perangkat dan bahan ajar penunjang"
+    },
+    {
+        "id_kode": "03.27.03.",
+        "program": "Standar Proses",
+        "sub_program": "Penguatan literasi dan numerasi",
+        "uraian_kode": "Kegiatan perlombaan dan kompetensi literasi"
+    },
+    {
+        "id_kode": "03.27.04.",
+        "program": "Standar Proses",
+        "sub_program": "Penguatan literasi dan numerasi",
+        "uraian_kode": "Kegiatan perlombaan dan kompetensi numerasi"
+    },
+    {
+        "id_kode": "03.28.02.",
+        "program": "Standar Proses",
+        "sub_program": "Penguatan implementasi digitalisasi pembelajaran",
+        "uraian_kode": "Penyusunan dan pengembangan konten pembelajaran"
+    },
+    {
+        "id_kode": "03.28.04.",
+        "program": "Standar Proses",
+        "sub_program": "Penguatan implementasi digitalisasi pembelajaran",
+        "uraian_kode": "Pengembangan digitalisasi pembelajaran untuk mendukung pemanfaatan Papan Interaktif Digital (PID)"
+    },
+    {
+        "id_kode": "03.34.01.",
+        "program": "Standar Proses",
+        "sub_program": "Penguatan mutu Satuan Pendidikan",
+        "uraian_kode": "Pelatihan"
+    },
+    {
+        "id_kode": "03.34.03.",
+        "program": "Standar Proses",
+        "sub_program": "Penguatan mutu Satuan Pendidikan",
+        "uraian_kode": "Kegiatan pembelajaran dan ekstrakurikuler"
+    },
+    {
+        "id_kode": "04.06.01.",
+        "program": "Standar Tenaga Kependidikan",
+        "sub_program": "Pengembangan profesi pendidik dan tenaga kependidikan",
+        "uraian_kode": "Pelaksanaan kegiatan komunitas belajar di satuan pendidikan"
+    },
+    {
+        "id_kode": "04.06.02.",
+        "program": "Standar Tenaga Kependidikan",
+        "sub_program": "Pengembangan profesi pendidik dan tenaga kependidikan",
+        "uraian_kode": "Kegiatan Komunitas Belajar antar satuan pendidikan (termasuk Forum Tutor, Forum PKBM, Forum SKB )"
+    },
+    {
+        "id_kode": "04.06.03.",
+        "program": "Standar Tenaga Kependidikan",
+        "sub_program": "Pengembangan profesi pendidik dan tenaga kependidikan",
+        "uraian_kode": "Pengembangan diri guru dan tenaga kependidikan materi lain di luar PMM"
+    },
+    {
+        "id_kode": "04.06.04.",
+        "program": "Standar Tenaga Kependidikan",
+        "sub_program": "Pengembangan profesi pendidik dan tenaga kependidikan",
+        "uraian_kode": "Pengembangan diri guru dan tenaga kependidikan materi lain melalui PMM"
+    },
+    {
+        "id_kode": "04.06.05.",
+        "program": "Standar Tenaga Kependidikan",
+        "sub_program": "Pengembangan profesi pendidik dan tenaga kependidikan",
+        "uraian_kode": "Peningkatan Kompetensi Guru\/Tutor"
+    },
+    {
+        "id_kode": "04.06.06.",
+        "program": "Standar Tenaga Kependidikan",
+        "sub_program": "Pengembangan profesi pendidik dan tenaga kependidikan",
+        "uraian_kode": "Peningkatan Kompetensi Kepala Satuan Pendidikan"
+    },
+    {
+        "id_kode": "04.06.07.",
+        "program": "Standar Tenaga Kependidikan",
+        "sub_program": "Pengembangan profesi pendidik dan tenaga kependidikan",
+        "uraian_kode": "Pembinaan dan Peningkatan Kompetensi Tenaga Pelaksana Satuan Pendidikan (Tenaga Ekstrakurikuler, TU, Laboratorium, Perustakaan, dan UKS)"
+    },
+    {
+        "id_kode": "04.06.08.",
+        "program": "Standar Tenaga Kependidikan",
+        "sub_program": "Pengembangan profesi pendidik dan tenaga kependidikan",
+        "uraian_kode": "Fasilitasi kepesertaan Guru\/Tutor dalam berbagai kegiatan prestasi guru\/tutor"
+    },
+    {
+        "id_kode": "04.06.09.",
+        "program": "Standar Tenaga Kependidikan",
+        "sub_program": "Pengembangan profesi pendidik dan tenaga kependidikan",
+        "uraian_kode": "Kegiatan Magang Guru di Sekolah Lain "
+    },
+    {
+        "id_kode": "04.06.11.",
+        "program": "Standar Tenaga Kependidikan",
+        "sub_program": "Pengembangan profesi pendidik dan tenaga kependidikan",
+        "uraian_kode": "Peningkatan Kompetensi Guru\/Tutor untuk keterlibatan orangtua\/wali dan masyarakat dalam pembelajaran"
+    },
+    {
+        "id_kode": "04.06.12.",
+        "program": "Standar Tenaga Kependidikan",
+        "sub_program": "Pengembangan profesi pendidik dan tenaga kependidikan",
+        "uraian_kode": "Workshop peningkatan kompetensi pengelolaan kelas bagi guru\/tutor"
+    },
+    {
+        "id_kode": "04.06.13.",
+        "program": "Standar Tenaga Kependidikan",
+        "sub_program": "Pengembangan profesi pendidik dan tenaga kependidikan",
+        "uraian_kode": "Peningkatan Kompetensi Guru untuk memperkuat numerasi"
+    },
+    {
+        "id_kode": "04.06.14.",
+        "program": "Standar Tenaga Kependidikan",
+        "sub_program": "Pengembangan profesi pendidik dan tenaga kependidikan",
+        "uraian_kode": "Peningkatan Kompetensi Guru\/Tutor untuk memperkuat literasi"
+    },
+    {
+        "id_kode": "04.06.22.",
+        "program": "Standar Tenaga Kependidikan",
+        "sub_program": "Pengembangan profesi pendidik dan tenaga kependidikan",
+        "uraian_kode": "Peningkatan Kompetensi Guru\/Tutor untuk memahami konten pembelajaran dan cara mengajarkannya"
+    },
+    {
+        "id_kode": "04.06.23.",
+        "program": "Standar Tenaga Kependidikan",
+        "sub_program": "Pengembangan profesi pendidik dan tenaga kependidikan",
+        "uraian_kode": "Peningkatan Kompetensi Guru\/Tutor untuk memahami Kurikulum dan cara mengajarkannya"
+    },
+    {
+        "id_kode": "04.06.24.",
+        "program": "Standar Tenaga Kependidikan",
+        "sub_program": "Pengembangan profesi pendidik dan tenaga kependidikan",
+        "uraian_kode": "Peningkatan Kompetensi Guru untuk pengembangan diri melalui kebiasaan refleksi"
+    },
+    {
+        "id_kode": "04.06.25.",
+        "program": "Standar Tenaga Kependidikan",
+        "sub_program": "Pengembangan profesi pendidik dan tenaga kependidikan",
+        "uraian_kode": "Workshop peningkatan kompetensi semua guru\/tutor mapel tentang analisis input peserta didik\/warga belajar dalam penentuan KKM"
+    },
+    {
+        "id_kode": "04.06.26.",
+        "program": "Standar Tenaga Kependidikan",
+        "sub_program": "Pengembangan profesi pendidik dan tenaga kependidikan",
+        "uraian_kode": "Peningkatan Kompetensi Guru untuk meamahami kematangam moral, emosi, dan spiritaul untuk berperilaku sesuai kode etik guru"
+    },
+    {
+        "id_kode": "04.06.27.",
+        "program": "Standar Tenaga Kependidikan",
+        "sub_program": "Pengembangan profesi pendidik dan tenaga kependidikan",
+        "uraian_kode": "Peningkatan Kompetensi Guru\/Tutor untuk asesmen, umpan balik dan pelaporan yang berpusat pada peserta didik"
+    },
+    {
+        "id_kode": "04.06.31.",
+        "program": "Standar Tenaga Kependidikan",
+        "sub_program": "Pengembangan profesi pendidik dan tenaga kependidikan",
+        "uraian_kode": "Peningkatan Kompetensi Guru untuk Pemahaman Profil Pelajar Pancasila: Bertakwa Kepada Tuhan YME dan Berakhlak Mulia"
+    },
+    {
+        "id_kode": "04.06.32.",
+        "program": "Standar Tenaga Kependidikan",
+        "sub_program": "Pengembangan profesi pendidik dan tenaga kependidikan",
+        "uraian_kode": "Peningkatan Kompetensi Guru untuk Pemahaman Profil Pelajar Pancasila: Gotong Royong"
+    },
+    {
+        "id_kode": "04.06.33.",
+        "program": "Standar Tenaga Kependidikan",
+        "sub_program": "Pengembangan profesi pendidik dan tenaga kependidikan",
+        "uraian_kode": "Peningkatan Kompetensi Guru untuk Pemahaman Profil Pelajar Pancasila: Kreativitas"
+    },
+    {
+        "id_kode": "04.06.34.",
+        "program": "Standar Tenaga Kependidikan",
+        "sub_program": "Pengembangan profesi pendidik dan tenaga kependidikan",
+        "uraian_kode": "Peningkatan Kompetensi Guru untuk Pemahaman Profil Pelajar Pancasila: Nalar Kritis"
+    },
+    {
+        "id_kode": "04.06.35.",
+        "program": "Standar Tenaga Kependidikan",
+        "sub_program": "Pengembangan profesi pendidik dan tenaga kependidikan",
+        "uraian_kode": "Peningkatan Kompetensi Guru untuk Pemahaman Profil Pelajar Pancasila: Kebinekaan Global"
+    },
+    {
+        "id_kode": "04.06.36.",
+        "program": "Standar Tenaga Kependidikan",
+        "sub_program": "Pengembangan profesi pendidik dan tenaga kependidikan",
+        "uraian_kode": "Peningkatan Kompetensi Guru untuk Pemahaman Profil Pelajar Pancasila: Kemandirian"
+    },
+    {
+        "id_kode": "04.06.41.",
+        "program": "Standar Tenaga Kependidikan",
+        "sub_program": "Pengembangan profesi pendidik dan tenaga kependidikan",
+        "uraian_kode": "Peningkatan Kompetensi Guru untuk memahami tentang perundungan, kekerasan, dan kekerasan seksual"
+    },
+    {
+        "id_kode": "04.06.42.",
+        "program": "Standar Tenaga Kependidikan",
+        "sub_program": "Pengembangan profesi pendidik dan tenaga kependidikan",
+        "uraian_kode": "Peningkatan Kompetensi Guru untuk memahami tentang disiplin positif (dan menghindari hukuman fisik)"
+    },
+    {
+        "id_kode": "04.06.43.",
+        "program": "Standar Tenaga Kependidikan",
+        "sub_program": "Pengembangan profesi pendidik dan tenaga kependidikan",
+        "uraian_kode": "Peningkatan Kompetensi Guru untuk memahami penyalahgunaan narkotika, psikotropika, zat adiktif (narkoba), minuman keras, merokok, dan HIV AIDS"
+    },
+    {
+        "id_kode": "04.06.44.",
+        "program": "Standar Tenaga Kependidikan",
+        "sub_program": "Pengembangan profesi pendidik dan tenaga kependidikan",
+        "uraian_kode": "Peningkatan Kompetensi Guru untuk memahami toleransi\/kesetaraan\/moderasi beragama dan budaya"
+    },
+    {
+        "id_kode": "04.06.45.",
+        "program": "Standar Tenaga Kependidikan",
+        "sub_program": "Pengembangan profesi pendidik dan tenaga kependidikan",
+        "uraian_kode": "Peningkatan Kompetensi Guru untuk memahami komitmen dan nilai-nilai kebangsaan"
+    },
+    {
+        "id_kode": "04.06.46.",
+        "program": "Standar Tenaga Kependidikan",
+        "sub_program": "Pengembangan profesi pendidik dan tenaga kependidikan",
+        "uraian_kode": "Peningkatan Kompetensi Guru untuk memahami sikap inklusif, toleran, dan kesertaan gender (termasuk pendidikan inklusif\/disabilitas)"
+    },
+    {
+        "id_kode": "04.06.47.",
+        "program": "Standar Tenaga Kependidikan",
+        "sub_program": "Pengembangan profesi pendidik dan tenaga kependidikan",
+        "uraian_kode": "Pelatihan pembelajaran mendalam"
+    },
+    {
+        "id_kode": "04.06.48.",
+        "program": "Standar Tenaga Kependidikan",
+        "sub_program": "Pengembangan profesi pendidik dan tenaga kependidikan",
+        "uraian_kode": "Pelatihan pembelajaran koding dan kecerdasan artifisial"
+    },
+    {
+        "id_kode": "04.06.49.",
+        "program": "Standar Tenaga Kependidikan",
+        "sub_program": "Pengembangan profesi pendidik dan tenaga kependidikan",
+        "uraian_kode": "Pengembangan\/peningkatan kompetensi pendidik dan tenaga kependidikan yang menangani Murid berkebutuhan khusus"
+    },
+    {
+        "id_kode": "04.06.50.",
+        "program": "Standar Tenaga Kependidikan",
+        "sub_program": "Pengembangan profesi pendidik dan tenaga kependidikan",
+        "uraian_kode": "Pelatihan implementasi digitalisasi pembelajaran"
+    },
+    {
+        "id_kode": "04.06.51.",
+        "program": "Standar Tenaga Kependidikan",
+        "sub_program": "Pengembangan profesi pendidik dan tenaga kependidikan",
+        "uraian_kode": "Pengembangan pendidik dan tenaga kependidikan terkait kapasitas perencanaan pembelajaran"
+    },
+    {
+        "id_kode": "04.06.52.",
+        "program": "Standar Tenaga Kependidikan",
+        "sub_program": "Pengembangan profesi pendidik dan tenaga kependidikan",
+        "uraian_kode": "Pengembangan inovasi terkait konten pembelajaran dan metode pembelajaran"
+    },
+    {
+        "id_kode": "04.06.53.",
+        "program": "Standar Tenaga Kependidikan",
+        "sub_program": "Pengembangan profesi pendidik dan tenaga kependidikan",
+        "uraian_kode": "Pengembangan\/peningkatan kompetensi pendidik dan tenaga kependidikan"
+    },
+    {
+        "id_kode": "04.19.01.",
+        "program": "Standar Tenaga Kependidikan",
+        "sub_program": "Pengembangan Manajemen dan Ekosistem",
+        "uraian_kode": "Peningkatan kapasitas guru dalam rangka asesmen dan pemetaan talenta"
+    },
+    {
+        "id_kode": "04.24.01.",
+        "program": "Standar Tenaga Kependidikan",
+        "sub_program": "Kegiatan pembelajaran mendalam",
+        "uraian_kode": "Pelatihan pembelajaran mendalam bagi guru dan tenaga kependidikan"
+    },
+    {
+        "id_kode": "04.25.01.",
+        "program": "Standar Tenaga Kependidikan",
+        "sub_program": "Kegiatan pembelajaran koding dan kecerdasan artifisial",
+        "uraian_kode": "Pelatihan pembelajaran koding dan kecerdasan artifisial untuk pendidik"
+    },
+    {
+        "id_kode": "04.27.01.",
+        "program": "Standar Tenaga Kependidikan",
+        "sub_program": "Penguatan literasi dan numerasi",
+        "uraian_kode": "Pelatihan (Bimbingan Teknis)"
+    },
+    {
+        "id_kode": "04.28.01.",
+        "program": "Standar Tenaga Kependidikan",
+        "sub_program": "Penguatan implementasi digitalisasi pembelajaran",
+        "uraian_kode": "Pelatihan (Bimbingan Teknis)"
+    },
+    {
+        "id_kode": "04.29.04.",
+        "program": "Standar Tenaga Kependidikan",
+        "sub_program": "Penguatan tata kelola Satuan Pendidikan",
+        "uraian_kode": "Pelatihan (Bimbingan Teknis)"
+    },
+    {
+        "id_kode": "05.02.01.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Pengembangan perpustakaan dan\/atau layanan pojok baca",
+        "uraian_kode": "Penyediaan atau pembuatan media pembelajaran \/ modul pembelajaran"
+    },
+    {
+        "id_kode": "05.02.02.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Pengembangan perpustakaan dan\/atau layanan pojok baca",
+        "uraian_kode": "Pengadaan buku\/koleksi perpustakaan (selain buku teks, pengayaan, dan referensi)"
+    },
+    {
+        "id_kode": "05.02.03.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Pengembangan perpustakaan dan\/atau layanan pojok baca",
+        "uraian_kode": "Pengadaan Buku Teks Utama\/Pendamping Peserta Didik"
+    },
+    {
+        "id_kode": "05.02.04.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Pengembangan perpustakaan dan\/atau layanan pojok baca",
+        "uraian_kode": "Pengadaan Buku Teks Utama\/Pendamping Guru"
+    },
+    {
+        "id_kode": "05.02.05.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Pengembangan perpustakaan dan\/atau layanan pojok baca",
+        "uraian_kode": "Pengadaan buku pengayaan dan referensi"
+    },
+    {
+        "id_kode": "05.02.06.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Pengembangan perpustakaan dan\/atau layanan pojok baca",
+        "uraian_kode": "Penyediaan buku teks pendamping sesuai dengan kurikulum"
+    },
+    {
+        "id_kode": "05.02.07.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Pengembangan perpustakaan dan\/atau layanan pojok baca",
+        "uraian_kode": "Penyediaan buku nonteks"
+    },
+    {
+        "id_kode": "05.03.01.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Pelaksanaan Kegiatan Pembelajaran dan Ekstrakurikuler",
+        "uraian_kode": "Penyediaan dan\/atau perbaikan alat multimedia pembelajaran"
+    },
+    {
+        "id_kode": "05.03.02.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Pelaksanaan Kegiatan Pembelajaran dan Ekstrakurikuler",
+        "uraian_kode": "Penyediaan media pembelajaran koding dan kecerdasan artifisial"
+    },
+    {
+        "id_kode": "05.03.03.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Pelaksanaan Kegiatan Pembelajaran dan Ekstrakurikuler",
+        "uraian_kode": "Pengadaan platform pembelajaran digital (Learning Management System\/LMS)"
+    },
+    {
+        "id_kode": "05.03.04.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Pelaksanaan Kegiatan Pembelajaran dan Ekstrakurikuler",
+        "uraian_kode": "Penyediaan aplikasi atau perangkat lunak yang digunakan dalam proses pembelajaran"
+    },
+    {
+        "id_kode": "05.03.05.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Pelaksanaan Kegiatan Pembelajaran dan Ekstrakurikuler",
+        "uraian_kode": "Pengadaan alat keterampilan dan bahan praktik keterampilan"
+    },
+    {
+        "id_kode": "05.05.01.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Pelaksanaan administrasi kegiatan sekolah",
+        "uraian_kode": "Penyediaan atau pembuatan media pembelajaran selain APE"
+    },
+    {
+        "id_kode": "05.05.02.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Pelaksanaan administrasi kegiatan sekolah",
+        "uraian_kode": "Pengembangan satuan pendidikan sehat\/aman\/ramah anak\/inklusi\/adiwiyata dan sejenisnya"
+    },
+    {
+        "id_kode": "05.08.01.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Pemeliharaan sarana dan prasarana Satuan Pendidikan",
+        "uraian_kode": "Pemeliharaan Prasarana Lahan, Bangunan dan Ruang"
+    },
+    {
+        "id_kode": "05.08.02.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Pemeliharaan sarana dan prasarana Satuan Pendidikan",
+        "uraian_kode": "Pengadaan Peralatan Satuan Pendidikan diluar komponen penyediaan alat multimedia pembelajaran"
+    },
+    {
+        "id_kode": "05.08.03.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Pemeliharaan sarana dan prasarana Satuan Pendidikan",
+        "uraian_kode": "Pemeliharaan Peralatan Satuan Pendidikan"
+    },
+    {
+        "id_kode": "05.08.04.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Pemeliharaan sarana dan prasarana Satuan Pendidikan",
+        "uraian_kode": "Pengadaan Perlengkapan Satuan Pendidikan selain alat multimedia pembelajaran"
+    },
+    {
+        "id_kode": "05.08.05.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Pemeliharaan sarana dan prasarana Satuan Pendidikan",
+        "uraian_kode": "Pemeliharaan Perlengkapan Satuan Pendidikan"
+    },
+    {
+        "id_kode": "05.08.06.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Pemeliharaan sarana dan prasarana Satuan Pendidikan",
+        "uraian_kode": "Penyediaan prasarana akses\/fasilitas bagi Peserta Didik\/warga belajar Penyandang Disabilitas"
+    },
+    {
+        "id_kode": "05.08.07.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Pemeliharaan sarana dan prasarana Satuan Pendidikan",
+        "uraian_kode": "Pengadaan peralatan untuk menunjang pembelajaran peserta didik penyandang disabilitas"
+    },
+    {
+        "id_kode": "05.08.08.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Pemeliharaan sarana dan prasarana Satuan Pendidikan",
+        "uraian_kode": "Pengadaan sarana perlengkapan untuk mendukung peserta didik disabilitas"
+    },
+    {
+        "id_kode": "05.08.09.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Pemeliharaan sarana dan prasarana Satuan Pendidikan",
+        "uraian_kode": "Pengadaan Perlengkapan Daya dan Jasa Satuan Pendidikan (instalasi air, listrik, telepon, internet, termasuk genset\/panel surya)"
+    },
+    {
+        "id_kode": "05.08.10.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Pemeliharaan sarana dan prasarana Satuan Pendidikan",
+        "uraian_kode": "Pemeliharaan Perlengkapan Daya dan Jasa Satuan Pendidikan (instalasi air, listrik, internet, termasuk genset\/panel surya)"
+    },
+    {
+        "id_kode": "05.08.11.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Pemeliharaan sarana dan prasarana Satuan Pendidikan",
+        "uraian_kode": "Pengadaan alat permainan edukatif (APE)"
+    },
+    {
+        "id_kode": "05.08.12.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Pemeliharaan sarana dan prasarana Satuan Pendidikan",
+        "uraian_kode": "pemeliharaan\/perbaikan  Alat Permainan Edukatif (APE)"
+    },
+    {
+        "id_kode": "05.08.13.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Pemeliharaan sarana dan prasarana Satuan Pendidikan",
+        "uraian_kode": "Penyediaan sumber air bersih termasuk pompa dan instalasinya"
+    },
+    {
+        "id_kode": "05.08.14.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Pemeliharaan sarana dan prasarana Satuan Pendidikan",
+        "uraian_kode": "Pemeliharaan taman dan fasilitas sekolah lainnya"
+    },
+    {
+        "id_kode": "05.08.15.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Pemeliharaan sarana dan prasarana Satuan Pendidikan",
+        "uraian_kode": "Penyediaan dan\/atau pemeliharaan sarana\/peralatan\/fasilitas\/aksesibilitas bagi Murid berkebutuhan khusus"
+    },
+    {
+        "id_kode": "05.08.16.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Pemeliharaan sarana dan prasarana Satuan Pendidikan",
+        "uraian_kode": "Pemeliharaan dan\/atau perbaikan komputer, printer, laptop, proyektor, dan\/atau pendingin ruangan"
+    },
+    {
+        "id_kode": "05.09.01.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Penyelenggaraan kegiatan kesehatan, gizi, dan kebersihan",
+        "uraian_kode": "Pengadaan Komputer Desktop\/Work-station untuk Pembelajaran, Administrasi dan Perpustakaan"
+    },
+    {
+        "id_kode": "05.09.02.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Penyelenggaraan kegiatan kesehatan, gizi, dan kebersihan",
+        "uraian_kode": "Penyediaan alat-alat deteksi dini tumbuh kembang"
+    },
+    {
+        "id_kode": "05.09.04.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Penyelenggaraan kegiatan kesehatan, gizi, dan kebersihan",
+        "uraian_kode": "Pengadaan Printer, Printer+Scanner, dan Scanner"
+    },
+    {
+        "id_kode": "05.09.05.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Penyelenggaraan kegiatan kesehatan, gizi, dan kebersihan",
+        "uraian_kode": "Pengadaan Proyektor, Layar Proyektor, dan Layar LCD\/LED >= 32\""
+    },
+    {
+        "id_kode": "05.09.06.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Penyelenggaraan kegiatan kesehatan, gizi, dan kebersihan",
+        "uraian_kode": "Perangkat praktik pembelajaran tiga Dimensi"
+    },
+    {
+        "id_kode": "05.100.01.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Sarana Laboratorium IPA",
+        "uraian_kode": "Pengadaan Sarana Laboratorium Kimia"
+    },
+    {
+        "id_kode": "05.100.02.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Sarana Laboratorium IPA",
+        "uraian_kode": "Pengadaan Sarana Laboratorium Fisika"
+    },
+    {
+        "id_kode": "05.100.03.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Sarana Laboratorium IPA",
+        "uraian_kode": "Pengadaan Sarana Laboratorium Biologi"
+    },
+    {
+        "id_kode": "05.100.04.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Sarana Laboratorium IPA",
+        "uraian_kode": "Pengadaan Sarana Pembelajaran STEM"
+    },
+    {
+        "id_kode": "05.105.01.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Sarana dan Peralatan Pembelajaran SMK",
+        "uraian_kode": "Pengadaan Peralatan Praktik Kejuruan"
+    },
+    {
+        "id_kode": "05.105.02.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Sarana dan Peralatan Pembelajaran SMK",
+        "uraian_kode": "Pengadaan Sarana Pembelajaran Laboratorium"
+    },
+    {
+        "id_kode": "05.105.03.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Sarana dan Peralatan Pembelajaran SMK",
+        "uraian_kode": "Pengadaan Sarana Pembelajaran Perpustakaan"
+    },
+    {
+        "id_kode": "05.105.04.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Sarana dan Peralatan Pembelajaran SMK",
+        "uraian_kode": "Pengadaan Sarana Teknologi Informasi dan Komunikasi (TIK)"
+    },
+    {
+        "id_kode": "05.110.01.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Sarana dan Peralatan Pembelajaran SPNF",
+        "uraian_kode": "Pengadaan Peralatan dan\/atau barang untuk kebutuhan Pemberdayaan"
+    },
+    {
+        "id_kode": "05.110.02.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Sarana dan Peralatan Pembelajaran SPNF",
+        "uraian_kode": "Pengadaan Peralatan dan\/atau barang untuk keterampilan Barista"
+    },
+    {
+        "id_kode": "05.110.03.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Sarana dan Peralatan Pembelajaran SPNF",
+        "uraian_kode": "Pengadaan Peralatan dan\/atau barang untuk keterampilan Batik"
+    },
+    {
+        "id_kode": "05.110.04.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Sarana dan Peralatan Pembelajaran SPNF",
+        "uraian_kode": "Pengadaan Peralatan dan\/atau barang untuk keterampilan Cetak Sablon (Manual \/ Digital)"
+    },
+    {
+        "id_kode": "05.110.05.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Sarana dan Peralatan Pembelajaran SPNF",
+        "uraian_kode": "Pengadaan Peralatan dan\/atau barang untuk keterampilan Desain Grafis"
+    },
+    {
+        "id_kode": "05.110.06.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Sarana dan Peralatan Pembelajaran SPNF",
+        "uraian_kode": "Pengadaan Peralatan dan\/atau barang untuk keterampilan Koding dan Kecerdasan Artifisial"
+    },
+    {
+        "id_kode": "05.110.07.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Sarana dan Peralatan Pembelajaran SPNF",
+        "uraian_kode": "Pengadaan Peralatan dan\/atau barang untuk keterampilan Komputer Aplikasi Perkantoran"
+    },
+    {
+        "id_kode": "05.110.08.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Sarana dan Peralatan Pembelajaran SPNF",
+        "uraian_kode": "Pengadaan Peralatan dan\/atau barang untuk keterampilan Kreator Konten"
+    },
+    {
+        "id_kode": "05.110.09.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Sarana dan Peralatan Pembelajaran SPNF",
+        "uraian_kode": "Pengadaan Peralatan dan\/atau barang untuk keterampilan Otomotif ringan"
+    },
+    {
+        "id_kode": "05.110.10.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Sarana dan Peralatan Pembelajaran SPNF",
+        "uraian_kode": "Pengadaan Peralatan dan\/atau barang untuk keterampilan Pengelasan"
+    },
+    {
+        "id_kode": "05.110.11.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Sarana dan Peralatan Pembelajaran SPNF",
+        "uraian_kode": "Pengadaan Peralatan dan\/atau barang untuk keterampilan Pengolahan Limbah Kayu"
+    },
+    {
+        "id_kode": "05.110.12.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Sarana dan Peralatan Pembelajaran SPNF",
+        "uraian_kode": "Pengadaan Peralatan dan\/atau barang untuk keterampilan Pengolahan Sampah"
+    },
+    {
+        "id_kode": "05.110.13.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Sarana dan Peralatan Pembelajaran SPNF",
+        "uraian_kode": "Pengadaan Peralatan dan\/atau barang untuk keterampilan Perikanan Tangkap"
+    },
+    {
+        "id_kode": "05.110.14.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Sarana dan Peralatan Pembelajaran SPNF",
+        "uraian_kode": "Pengadaan Peralatan dan\/atau barang untuk keterampilan Pertanian Terpadu"
+    },
+    {
+        "id_kode": "05.110.15.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Sarana dan Peralatan Pembelajaran SPNF",
+        "uraian_kode": "Pengadaan Peralatan dan\/atau barang untuk keterampilan Robotika"
+    },
+    {
+        "id_kode": "05.110.16.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Sarana dan Peralatan Pembelajaran SPNF",
+        "uraian_kode": "Pengadaan Peralatan dan\/atau barang untuk keterampilan Seni Musik (Modern\/ Tradisional)"
+    },
+    {
+        "id_kode": "05.110.17.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Sarana dan Peralatan Pembelajaran SPNF",
+        "uraian_kode": "Pengadaan Peralatan dan\/atau barang untuk keterampilan Seni Tari (Modern\/ Tradisional)"
+    },
+    {
+        "id_kode": "05.110.18.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Sarana dan Peralatan Pembelajaran SPNF",
+        "uraian_kode": "Pengadaan Peralatan dan\/atau barang untuk keterampilan Tata Boga"
+    },
+    {
+        "id_kode": "05.110.19.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Sarana dan Peralatan Pembelajaran SPNF",
+        "uraian_kode": "Pengadaan Peralatan dan\/atau barang untuk keterampilan Tata Busana"
+    },
+    {
+        "id_kode": "05.110.20.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Sarana dan Peralatan Pembelajaran SPNF",
+        "uraian_kode": "Pengadaan Peralatan dan\/atau barang untuk keterampilan Tata Kecantikan"
+    },
+    {
+        "id_kode": "05.110.21.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Sarana dan Peralatan Pembelajaran SPNF",
+        "uraian_kode": "Pengadaan Peralatan dan\/atau barang untuk keterampilan Teknisi Komputer dan Telepon Selular"
+    },
+    {
+        "id_kode": "05.110.22.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Sarana dan Peralatan Pembelajaran SPNF",
+        "uraian_kode": "Pengadaan Peralatan dan\/atau barang untuk keterampilan Fotografi dan Videografi"
+    },
+    {
+        "id_kode": "05.110.23.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Sarana dan Peralatan Pembelajaran SPNF",
+        "uraian_kode": "Pengadaan Peralatan dan\/atau barang untuk keterampilan Teknologi Informasi dan Komunikasi (TIK)"
+    },
+    {
+        "id_kode": "05.110.24.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Sarana dan Peralatan Pembelajaran SPNF",
+        "uraian_kode": "Pengadaan Peralatan dan\/atau barang untuk keterampilan Souvenir"
+    },
+    {
+        "id_kode": "05.120.01.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Peralatan Pendidikan Pengembangan Kekhususan",
+        "uraian_kode": "Pengadaan Peralatan pendukung murid penyandang disabilitas Fisik"
+    },
+    {
+        "id_kode": "05.120.02.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Peralatan Pendidikan Pengembangan Kekhususan",
+        "uraian_kode": "Pengadaan Peralatan pendukung murid penyandang disabilitas Intelektual"
+    },
+    {
+        "id_kode": "05.120.03.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Peralatan Pendidikan Pengembangan Kekhususan",
+        "uraian_kode": "Pengadaan Peralatan pendukung murid penyandang disabilitas Mental"
+    },
+    {
+        "id_kode": "05.120.04.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Peralatan Pendidikan Pengembangan Kekhususan",
+        "uraian_kode": "Pengadaan Peralatan pendukung murid penyandang disabilitas Sensorik"
+    },
+    {
+        "id_kode": "05.121.01.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Peralatan Pendidikan Pengembangan Keterampilan",
+        "uraian_kode": "Pengadaan Peralatan Keterampilan Tata Boga"
+    },
+    {
+        "id_kode": "05.121.02.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Peralatan Pendidikan Pengembangan Keterampilan",
+        "uraian_kode": "Pengadaan Peralatan Keterampilan Tata Busana"
+    },
+    {
+        "id_kode": "05.121.03.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Peralatan Pendidikan Pengembangan Keterampilan",
+        "uraian_kode": "Pengadaan Peralatan Keterampilan Tata Kecantikan"
+    },
+    {
+        "id_kode": "05.121.04.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Peralatan Pendidikan Pengembangan Keterampilan",
+        "uraian_kode": "Pengadaan Peralatan Keterampilan Perbengkelan Sepeda Motor"
+    },
+    {
+        "id_kode": "05.121.05.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Peralatan Pendidikan Pengembangan Keterampilan",
+        "uraian_kode": "Pengadaan Peralatan Keterampilan Tata Gerha"
+    },
+    {
+        "id_kode": "05.121.06.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Peralatan Pendidikan Pengembangan Keterampilan",
+        "uraian_kode": "Pengadaan Peralatan Keterampilan Membatik"
+    },
+    {
+        "id_kode": "05.121.07.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Peralatan Pendidikan Pengembangan Keterampilan",
+        "uraian_kode": "Pengadaan Peralatan Keterampilan Suvenir"
+    },
+    {
+        "id_kode": "05.121.08.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Peralatan Pendidikan Pengembangan Keterampilan",
+        "uraian_kode": "Pengadaan Peralatan Keterampilan Sablon"
+    },
+    {
+        "id_kode": "05.121.09.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Peralatan Pendidikan Pengembangan Keterampilan",
+        "uraian_kode": "Pengadaan Peralatan Keterampilan Budidaya Tanaman Hortikultura"
+    },
+    {
+        "id_kode": "05.121.10.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Peralatan Pendidikan Pengembangan Keterampilan",
+        "uraian_kode": "Pengadaan Peralatan Keterampilan TIK\/Desain Grafis\/Koding dan Kecerdasan Artifisial"
+    },
+    {
+        "id_kode": "05.125.01.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Alat Permainan Edukatif  Satuan PAUD",
+        "uraian_kode": "Pengadaan Alat Permainan Edukatif (APE), Perabot dan Perlengkapan"
+    },
+    {
+        "id_kode": "05.130.01.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Peralatan Pendidikan Pengembangan Kekhususan",
+        "uraian_kode": "Pengadaan Peralatan pendukung murid penyandang disabilitas Fisik"
+    },
+    {
+        "id_kode": "05.130.02.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Peralatan Pendidikan Pengembangan Kekhususan",
+        "uraian_kode": "Pengadaan Peralatan pendukung murid penyandang disabilitas Intelektual"
+    },
+    {
+        "id_kode": "05.130.03.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Peralatan Pendidikan Pengembangan Kekhususan",
+        "uraian_kode": "Pengadaan Peralatan pendukung murid penyandang disabilitas Mental"
+    },
+    {
+        "id_kode": "05.130.04.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Peralatan Pendidikan Pengembangan Kekhususan",
+        "uraian_kode": "Pengadaan Peralatan pendukung murid penyandang disabilitas Sensorik"
+    },
+    {
+        "id_kode": "05.131.01.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Peralatan Pendidikan Pengembangan Keterampilan",
+        "uraian_kode": "Pengadaan Peralatan Keterampilan Tata Boga"
+    },
+    {
+        "id_kode": "05.131.02.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Peralatan Pendidikan Pengembangan Keterampilan",
+        "uraian_kode": "Pengadaan Peralatan Keterampilan Tata Busana"
+    },
+    {
+        "id_kode": "05.131.03.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Peralatan Pendidikan Pengembangan Keterampilan",
+        "uraian_kode": "Pengadaan Peralatan Keterampilan Tata Kecantikan"
+    },
+    {
+        "id_kode": "05.131.04.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Peralatan Pendidikan Pengembangan Keterampilan",
+        "uraian_kode": "Pengadaan Peralatan Keterampilan Perbengkelan Sepeda Motor"
+    },
+    {
+        "id_kode": "05.131.05.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Peralatan Pendidikan Pengembangan Keterampilan",
+        "uraian_kode": "Pengadaan Peralatan Keterampilan Tata Gerha"
+    },
+    {
+        "id_kode": "05.131.06.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Peralatan Pendidikan Pengembangan Keterampilan",
+        "uraian_kode": "Pengadaan Peralatan Keterampilan Membatik"
+    },
+    {
+        "id_kode": "05.131.07.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Peralatan Pendidikan Pengembangan Keterampilan",
+        "uraian_kode": "Pengadaan Peralatan Keterampilan Suvenir"
+    },
+    {
+        "id_kode": "05.131.08.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Peralatan Pendidikan Pengembangan Keterampilan",
+        "uraian_kode": "Pengadaan Peralatan Keterampilan Sablon"
+    },
+    {
+        "id_kode": "05.131.09.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Peralatan Pendidikan Pengembangan Keterampilan",
+        "uraian_kode": "Pengadaan Peralatan Keterampilan Budidaya Tanaman Hortikultura"
+    },
+    {
+        "id_kode": "05.131.10.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Peralatan Pendidikan Pengembangan Keterampilan",
+        "uraian_kode": "Pengadaan Peralatan Keterampilan TIK\/Desain Grafis\/Koding dan Kecerdasan Artifisial"
+    },
+    {
+        "id_kode": "05.140.01.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Alat Permainan Edukatif  Satuan PAUD",
+        "uraian_kode": "Pengadaan Alat Permainan Edukatif (APE), Perabot dan Perlengkapan"
+    },
+    {
+        "id_kode": "05.145.01.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Keterampilan Menulis pada Sekolah Dasar",
+        "uraian_kode": "Penyediaan Perlengkapan Keterampilan Menulis SD"
+    },
+    {
+        "id_kode": "05.150.01.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Peralatan Pembelajaran TIK SMP",
+        "uraian_kode": "Penyediaan Peralatan Pembelajaran TIK SMP"
+    },
+    {
+        "id_kode": "05.160.01.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Satuan Pendidika Aman Bencana",
+        "uraian_kode": "⁠Penyedian Ruang Kelas Darurat\/Tenda Darurat"
+    },
+    {
+        "id_kode": "05.160.02.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Satuan Pendidika Aman Bencana",
+        "uraian_kode": "Penyedia Bantuan Operasional"
+    },
+    {
+        "id_kode": "05.160.03.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Satuan Pendidika Aman Bencana",
+        "uraian_kode": "⁠Penyediaan School Kit"
+    },
+    {
+        "id_kode": "05.160.04.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Satuan Pendidika Aman Bencana",
+        "uraian_kode": "⁠Penyediaan Meubelir"
+    },
+    {
+        "id_kode": "05.160.05.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Satuan Pendidika Aman Bencana",
+        "uraian_kode": "Penyediaan Peralatan Lab IPA"
+    },
+    {
+        "id_kode": "05.160.06.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Satuan Pendidika Aman Bencana",
+        "uraian_kode": "⁠Penyediaan Peralatan Lab Komputer"
+    },
+    {
+        "id_kode": "05.160.07.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Satuan Pendidika Aman Bencana",
+        "uraian_kode": "⁠Penyediaan Peralatan Alat Olahraga"
+    },
+    {
+        "id_kode": "05.18.01.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Pelatihan dan pengembangan talenta",
+        "uraian_kode": "Penyediaan sarana penunjang ketalentaan"
+    },
+    {
+        "id_kode": "05.24.02.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Kegiatan pembelajaran mendalam",
+        "uraian_kode": "Penyediaan perangkat ajar pembelajaran mendalam"
+    },
+    {
+        "id_kode": "05.25.02.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Kegiatan pembelajaran koding dan kecerdasan artifisial",
+        "uraian_kode": "Penyediaan perangkat ajar"
+    },
+    {
+        "id_kode": "05.26.03.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Pengembangan talenta dan aktualisasi prestasi",
+        "uraian_kode": "Penyediaan sarana penunjang ketalentaan, seperti: alat olahraga, alat musik"
+    },
+    {
+        "id_kode": "05.28.05.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Penguatan implementasi digitalisasi pembelajaran",
+        "uraian_kode": "Pengadaan buku digital berbasis sains, teknologi, rekayasa, seni, dan matematika termasuk pembelajaran koding dan kecerdasan artifisial"
+    },
+    {
+        "id_kode": "05.28.06.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Penguatan implementasi digitalisasi pembelajaran",
+        "uraian_kode": "Pengadaan platform pembelajaran digital (Learning Management System\/LMS)"
+    },
+    {
+        "id_kode": "05.33.05.",
+        "program": "Standar Sarana dan Prasarana",
+        "sub_program": "Penguatan akses Satuan Pendidikan",
+        "uraian_kode": "Sanitasi dan penyediaan air bersih"
+    },
+    {
+        "id_kode": "06.05.01.",
+        "program": "Standar Pengelolaan",
+        "sub_program": "Pelaksanaan  Administrasi Kegiatan Sekolah",
+        "uraian_kode": "kegiatan pertemuan orang tua\/wali (termasuk parenting)"
+    },
+    {
+        "id_kode": "06.05.02.",
+        "program": "Standar Pengelolaan",
+        "sub_program": "Pelaksanaan  Administrasi Kegiatan Sekolah",
+        "uraian_kode": "Pengembangan dan Pelaksanaan Program Kerja Kepala Satuan Pendidikan"
+    },
+    {
+        "id_kode": "06.05.03.",
+        "program": "Standar Pengelolaan",
+        "sub_program": "Pelaksanaan  Administrasi Kegiatan Sekolah",
+        "uraian_kode": "Pendataan Dapodik"
+    },
+    {
+        "id_kode": "06.05.04.",
+        "program": "Standar Pengelolaan",
+        "sub_program": "Pelaksanaan  Administrasi Kegiatan Sekolah",
+        "uraian_kode": "Pelaksanaan Monitoring Program\/Kegiatan Satuan Pendidikan"
+    },
+    {
+        "id_kode": "06.05.05.",
+        "program": "Standar Pengelolaan",
+        "sub_program": "Pelaksanaan  Administrasi Kegiatan Sekolah",
+        "uraian_kode": "Pelaksanaan Supervisi Administrasi Tata Usaha"
+    },
+    {
+        "id_kode": "06.05.06.",
+        "program": "Standar Pengelolaan",
+        "sub_program": "Pelaksanaan  Administrasi Kegiatan Sekolah",
+        "uraian_kode": "Konsumsi Rapat Kedinasan dan Tamu Satuan Pendidikan (diluar kegiatan lain)"
+    },
+    {
+        "id_kode": "06.05.07.",
+        "program": "Standar Pengelolaan",
+        "sub_program": "Pelaksanaan  Administrasi Kegiatan Sekolah",
+        "uraian_kode": "Pengadaan Bahan Pembelajaran dan Praktik (termasuk Kejuruan\/Bengkel)"
+    },
+    {
+        "id_kode": "06.05.08.",
+        "program": "Standar Pengelolaan",
+        "sub_program": "Pelaksanaan  Administrasi Kegiatan Sekolah",
+        "uraian_kode": "Pembelian Bahan Habis Pakai untuk mendukung pembelajaran dan administrasi sekolah (termasuk ATK, Tinta Printer, Kabel Ekstension, dsb)"
+    },
+    {
+        "id_kode": "06.05.09.",
+        "program": "Standar Pengelolaan",
+        "sub_program": "Pelaksanaan  Administrasi Kegiatan Sekolah",
+        "uraian_kode": "Pembelian bahan habis pakai\/alat penunjang kebersihan dan sanitasi satuan pendidikan"
+    },
+    {
+        "id_kode": "06.05.10.",
+        "program": "Standar Pengelolaan",
+        "sub_program": "Pelaksanaan  Administrasi Kegiatan Sekolah",
+        "uraian_kode": "Pembelian Bahan Habis Pakai (termasuk Suku Cadang Alat) untuk Kegiatan Rumah Tangga Satuan Pendidikan"
+    },
+    {
+        "id_kode": "06.05.11.",
+        "program": "Standar Pengelolaan",
+        "sub_program": "Pelaksanaan  Administrasi Kegiatan Sekolah",
+        "uraian_kode": "Pengelolaan dan operasional rutin sekolah dalam pembelajaran jarak jauh"
+    },
+    {
+        "id_kode": "06.05.12.",
+        "program": "Standar Pengelolaan",
+        "sub_program": "Pelaksanaan  Administrasi Kegiatan Sekolah",
+        "uraian_kode": "Pengembangan dan pemeliharaan Website satuan pendidikan (termasuk media sosial satuan pendidikan)"
+    },
+    {
+        "id_kode": "06.05.13.",
+        "program": "Standar Pengelolaan",
+        "sub_program": "Pelaksanaan  Administrasi Kegiatan Sekolah",
+        "uraian_kode": "Pengembangan Sistem Informasi untuk menunjang Manajemen Satuan Pendidikan"
+    },
+    {
+        "id_kode": "06.05.14.",
+        "program": "Standar Pengelolaan",
+        "sub_program": "Pelaksanaan  Administrasi Kegiatan Sekolah",
+        "uraian_kode": "Transportasi atau perjalanan dinas dalam rangka koordinasi dan pelaporan ke Dinas Pendidikan"
+    },
+    {
+        "id_kode": "06.05.15.",
+        "program": "Standar Pengelolaan",
+        "sub_program": "Pelaksanaan  Administrasi Kegiatan Sekolah",
+        "uraian_kode": "Pendataan Murid program pendidikan kesetaraan"
+    },
+    {
+        "id_kode": "06.05.16.",
+        "program": "Standar Pengelolaan",
+        "sub_program": "Pelaksanaan  Administrasi Kegiatan Sekolah",
+        "uraian_kode": "Pengelolaan dan operasional rutin sekolah"
+    },
+    {
+        "id_kode": "06.06.01.",
+        "program": "Standar Pengelolaan",
+        "sub_program": "Pengembangan Profesi Pendidik dan Tenaga Kependidikan",
+        "uraian_kode": "Kegiatan kerjasama dengan sekolah bertaraf internasional untuk peningkatan kompetensi guru"
+    },
+    {
+        "id_kode": "06.07.01.",
+        "program": "Standar Pengelolaan",
+        "sub_program": "Pembiayaan langganan daya dan jasa",
+        "uraian_kode": "Pembayaran daya listrik"
+    },
+    {
+        "id_kode": "06.07.02.",
+        "program": "Standar Pengelolaan",
+        "sub_program": "Pembiayaan langganan daya dan jasa",
+        "uraian_kode": "Penambahan daya listrik"
+    },
+    {
+        "id_kode": "06.07.03.",
+        "program": "Standar Pengelolaan",
+        "sub_program": "Pembiayaan langganan daya dan jasa",
+        "uraian_kode": "Pembayaran langganan air"
+    },
+    {
+        "id_kode": "06.07.04.",
+        "program": "Standar Pengelolaan",
+        "sub_program": "Pembiayaan langganan daya dan jasa",
+        "uraian_kode": "Pembayaran biaya telepon"
+    },
+    {
+        "id_kode": "06.07.05.",
+        "program": "Standar Pengelolaan",
+        "sub_program": "Pembiayaan langganan daya dan jasa",
+        "uraian_kode": "Pembayaran jasa internet"
+    },
+    {
+        "id_kode": "06.07.06.",
+        "program": "Standar Pengelolaan",
+        "sub_program": "Pembiayaan langganan daya dan jasa",
+        "uraian_kode": "Penambahan daya internet"
+    },
+    {
+        "id_kode": "06.07.07.",
+        "program": "Standar Pengelolaan",
+        "sub_program": "Pembiayaan langganan daya dan jasa",
+        "uraian_kode": "Pembelian Bahan Bakar Minyak\/Gas untuk keperluan pembelajaran\/Rumah Tangga Satuan Pendidikan"
+    },
+    {
+        "id_kode": "06.07.08.",
+        "program": "Standar Pengelolaan",
+        "sub_program": "Pembiayaan langganan daya dan jasa",
+        "uraian_kode": "Pembayaran Retribusi keamanan dan sampah"
+    },
+    {
+        "id_kode": "06.07.09.",
+        "program": "Standar Pengelolaan",
+        "sub_program": "Pembiayaan langganan daya dan jasa",
+        "uraian_kode": "Pembayaran langganan koran dan majalah"
+    },
+    {
+        "id_kode": "06.07.10.",
+        "program": "Standar Pengelolaan",
+        "sub_program": "Pembiayaan langganan daya dan jasa",
+        "uraian_kode": "Sewa genset"
+    },
+    {
+        "id_kode": "06.07.12.",
+        "program": "Standar Pengelolaan",
+        "sub_program": "Pembiayaan langganan daya dan jasa",
+        "uraian_kode": "Belanja Sewa Rumah\/Gedung\/Gudang\/Parkir\/tanah (diluar bangunan utama sekolah, kecuali untuk Sekolah Swasta)"
+    },
+    {
+        "id_kode": "06.19.02.",
+        "program": "Standar Pengelolaan",
+        "sub_program": "Pengembangan Manajemen dan Ekosistem",
+        "uraian_kode": "Pengembangan kemitraan"
+    },
+    {
+        "id_kode": "06.19.03.",
+        "program": "Standar Pengelolaan",
+        "sub_program": "Pengembangan Manajemen dan Ekosistem",
+        "uraian_kode": "Pengembangan strategi manajemen talenta sekolah"
+    },
+    {
+        "id_kode": "06.19.04.",
+        "program": "Standar Pengelolaan",
+        "sub_program": "Pengembangan Manajemen dan Ekosistem",
+        "uraian_kode": "Perencanaan berbasis potensi ketalentaan sekolah"
+    },
+    {
+        "id_kode": "06.19.05.",
+        "program": "Standar Pengelolaan",
+        "sub_program": "Pengembangan Manajemen dan Ekosistem",
+        "uraian_kode": "Pengelolaan data dan informasi talenta"
+    },
+    {
+        "id_kode": "06.28.03.",
+        "program": "Standar Pengelolaan",
+        "sub_program": "Penguatan implementasi digitalisasi pembelajaran",
+        "uraian_kode": "Langganan konten"
+    },
+    {
+        "id_kode": "06.29.01.",
+        "program": "Standar Pengelolaan",
+        "sub_program": "Penguatan tata kelola Satuan Pendidikan",
+        "uraian_kode": "Perencanaan berbasis data"
+    },
+    {
+        "id_kode": "06.29.02.",
+        "program": "Standar Pengelolaan",
+        "sub_program": "Penguatan tata kelola Satuan Pendidikan",
+        "uraian_kode": "Implementasi sistem penjaminan mutu internal Satuan Pendidikan"
+    },
+    {
+        "id_kode": "06.29.03.",
+        "program": "Standar Pengelolaan",
+        "sub_program": "Penguatan tata kelola Satuan Pendidikan",
+        "uraian_kode": "Kemitraan sekolah"
+    },
+    {
+        "id_kode": "06.33.01.",
+        "program": "Standar Pengelolaan",
+        "sub_program": "Penguatan akses Satuan Pendidikan",
+        "uraian_kode": "Langganan daya dan jasa"
+    },
+    {
+        "id_kode": "06.33.02.",
+        "program": "Standar Pengelolaan",
+        "sub_program": "Penguatan akses Satuan Pendidikan",
+        "uraian_kode": "Pengadaan Perlengkapan Daya dan Jasa Sekolah (instalasi air, listrik, telepon, internet, termasuk genset\/panel surya)"
+    },
+    {
+        "id_kode": "06.33.03.",
+        "program": "Standar Pengelolaan",
+        "sub_program": "Penguatan akses Satuan Pendidikan",
+        "uraian_kode": "Fasilitasi transportasi Murid dan guru"
+    },
+    {
+        "id_kode": "06.33.04.",
+        "program": "Standar Pengelolaan",
+        "sub_program": "Penguatan akses Satuan Pendidikan",
+        "uraian_kode": "Pembelian Bahan Bakar Minyak\/Gas untuk keperluan pembelajaran\/RT Sekolah"
+    },
+    {
+        "id_kode": "07.05.01.",
+        "program": "Standar Pembiayaan",
+        "sub_program": "Pelaksanaan evaluasi\/asesmen pembelajaran dan bermain",
+        "uraian_kode": "Bea materai, administrasi bank"
+    },
+    {
+        "id_kode": "07.05.02.",
+        "program": "Standar Pembiayaan",
+        "sub_program": "Pelaksanaan evaluasi\/asesmen pembelajaran dan bermain",
+        "uraian_kode": "Penggandaan laporan dan\/atau surat-menyurat"
+    },
+    {
+        "id_kode": "07.05.03.",
+        "program": "Standar Pembiayaan",
+        "sub_program": "Pelaksanaan evaluasi\/asesmen pembelajaran dan bermain",
+        "uraian_kode": "Penyelenggaraan sosialisasi dan pelaporan program, kegiatan hasil-hasil, dan pengelolaan keuangan satuan pendidikan"
+    },
+    {
+        "id_kode": "07.05.04.",
+        "program": "Standar Pembiayaan",
+        "sub_program": "Pelaksanaan evaluasi\/asesmen pembelajaran dan bermain",
+        "uraian_kode": "Penyelenggaraan kegiatan inventarisasi dan pendokumentasian nilai aset semua sarpras satuan pendidikan pada tahun berjalan"
+    },
+    {
+        "id_kode": "07.05.05.",
+        "program": "Standar Pembiayaan",
+        "sub_program": "Pelaksanaan evaluasi\/asesmen pembelajaran dan bermain",
+        "uraian_kode": "Penggalangan, pengelolaan dan pelaporan pendanaan dari pihak ketiga (masyarakat umum, dunia industri, dan CSR)"
+    },
+    {
+        "id_kode": "07.05.06.",
+        "program": "Standar Pembiayaan",
+        "sub_program": "Pelaksanaan evaluasi\/asesmen pembelajaran dan bermain",
+        "uraian_kode": "Biaya perjalanan dinas dalam rangka menunjang program prioritas nasional (PIP, BOS, dll)"
+    },
+    {
+        "id_kode": "07.05.07.",
+        "program": "Standar Pembiayaan",
+        "sub_program": "Pelaksanaan evaluasi\/asesmen pembelajaran dan bermain",
+        "uraian_kode": "Pencetakan Ijazah"
+    },
+    {
+        "id_kode": "07.09.01.",
+        "program": "Standar Pembiayaan",
+        "sub_program": "Penyelenggaraan kegiatan kesehatan, gizi, dan kebersihan",
+        "uraian_kode": "Penyediaan Makanan Tambahan Anak"
+    },
+    {
+        "id_kode": "07.10.01.",
+        "program": "Standar Pembiayaan",
+        "sub_program": "Penyelenggaraan Kegiatan Peningkatan Komptetensi Keahlian",
+        "uraian_kode": "Kegiatan pemagangan guru dan\/atau Peserta Didik di industri"
+    },
+    {
+        "id_kode": "07.10.02.",
+        "program": "Standar Pembiayaan",
+        "sub_program": "Penyelenggaraan Kegiatan Peningkatan Komptetensi Keahlian",
+        "uraian_kode": "Penyelenggaraan praktik kerja industri atau lapangan bagi Peserta Didik SMK atau SMALB"
+    },
+    {
+        "id_kode": "07.10.03.",
+        "program": "Standar Pembiayaan",
+        "sub_program": "Penyelenggaraan Kegiatan Peningkatan Komptetensi Keahlian",
+        "uraian_kode": "Penyelenggaraan kegiatan uji kompetensi kemampuan bahasa asing (termasuk bahasa inggris)"
+    },
+    {
+        "id_kode": "07.10.04.",
+        "program": "Standar Pembiayaan",
+        "sub_program": "Penyelenggaraan Kegiatan Peningkatan Komptetensi Keahlian",
+        "uraian_kode": "Penyelenggaraan Lembaga Sertifikasi Profesi Pihak Pertama"
+    },
+    {
+        "id_kode": "07.10.05.",
+        "program": "Standar Pembiayaan",
+        "sub_program": "Penyelenggaraan Kegiatan Peningkatan Komptetensi Keahlian",
+        "uraian_kode": "Penyelenggaraan kegiatan uji kompetensi keahlian, sertifikasi kejuruan Peserta Didik SMK atau SMALB"
+    },
+    {
+        "id_kode": "07.11.02.",
+        "program": "Standar Pembiayaan",
+        "sub_program": "Penyelenggaraan Kegiatan dalam Mendukung Keterserapan Lulusan",
+        "uraian_kode": "Penyelenggaraan Kegiatan Sertifikasi Kompetensi Peserta Didik"
+    },
+    {
+        "id_kode": "07.11.03.",
+        "program": "Standar Pembiayaan",
+        "sub_program": "Penyelenggaraan Kegiatan dalam Mendukung Keterserapan Lulusan",
+        "uraian_kode": "Pengelolaan Assesmen Kebekerjaan Luar Negeri SMK"
+    },
+    {
+        "id_kode": "07.12.01.",
+        "program": "Standar Pembiayaan",
+        "sub_program": "Pembayaran honor",
+        "uraian_kode": "Pembayaran honor Guru\/Pendidik\/Tutor"
+    },
+    {
+        "id_kode": "07.12.02.",
+        "program": "Standar Pembiayaan",
+        "sub_program": "Pembayaran honor",
+        "uraian_kode": "Pembayaran honor Tenaga Kependidikan (selain pendidik)"
+    },
+    {
+        "id_kode": "07.12.03.",
+        "program": "Standar Pembiayaan",
+        "sub_program": "Pembayaran honor",
+        "uraian_kode": "Pembayaran Honor tenaga administrasi"
+    },
+    {
+        "id_kode": "07.12.04.",
+        "program": "Standar Pembiayaan",
+        "sub_program": "Pembayaran honor",
+        "uraian_kode": "Pembayaran honor Tenaga Penunjang atau pelaksana"
+    },
+    {
+        "id_kode": "08.03.01.",
+        "program": "Standar Penilaian",
+        "sub_program": "Pelaksanaan Kegiatan Pembelajaran dan Ekstrakurikuler",
+        "uraian_kode": "Seleksi Siswa Program Bilingual"
+    },
+    {
+        "id_kode": "08.03.02.",
+        "program": "Standar Penilaian",
+        "sub_program": "Pelaksanaan Kegiatan Pembelajaran dan Ekstrakurikuler",
+        "uraian_kode": "Seleksi Peserta Didik Program Kelas Akselerasi"
+    },
+    {
+        "id_kode": "08.04.01.",
+        "program": "Standar Penilaian",
+        "sub_program": "Pelaksanaan Kegiatan Asesmen\/Evaluasi Pembelajaran",
+        "uraian_kode": "Persiapan, uji coba, simulasi, dan pelaksanaan Asesmen Nasional"
+    },
+    {
+        "id_kode": "08.04.02.",
+        "program": "Standar Penilaian",
+        "sub_program": "Pelaksanaan Kegiatan Asesmen\/Evaluasi Pembelajaran",
+        "uraian_kode": "Penyiapan dan pelaksanaan asesmen di awal pembelajaran"
+    },
+    {
+        "id_kode": "08.04.03.",
+        "program": "Standar Penilaian",
+        "sub_program": "Pelaksanaan Kegiatan Asesmen\/Evaluasi Pembelajaran",
+        "uraian_kode": "Penyusunan kisi-kisi dan penyusunan soal penilaian formatif (ulangan harian)"
+    },
+    {
+        "id_kode": "08.04.04.",
+        "program": "Standar Penilaian",
+        "sub_program": "Pelaksanaan Kegiatan Asesmen\/Evaluasi Pembelajaran",
+        "uraian_kode": "Pelaksanaan penilaian formatif (ulangan harian)"
+    },
+    {
+        "id_kode": "08.04.05.",
+        "program": "Standar Penilaian",
+        "sub_program": "Pelaksanaan Kegiatan Asesmen\/Evaluasi Pembelajaran",
+        "uraian_kode": "Penyusunan kisi-kisi dan penyusunan soal penilaian sumatif (ulangan tengah semester\/akhir semester\/kenaikan kelas)"
+    },
+    {
+        "id_kode": "08.04.06.",
+        "program": "Standar Penilaian",
+        "sub_program": "Pelaksanaan Kegiatan Asesmen\/Evaluasi Pembelajaran",
+        "uraian_kode": "Pelaksanaan penilaian sumatif (ujian modul)"
+    },
+    {
+        "id_kode": "08.04.07.",
+        "program": "Standar Penilaian",
+        "sub_program": "Pelaksanaan Kegiatan Asesmen\/Evaluasi Pembelajaran",
+        "uraian_kode": "Penyusunan Kisi-Kisi dan Penyusunan Soal Penilaian\/Asesmen Sekolah (Akhir Sekolah)"
+    },
+    {
+        "id_kode": "08.04.08.",
+        "program": "Standar Penilaian",
+        "sub_program": "Pelaksanaan Kegiatan Asesmen\/Evaluasi Pembelajaran",
+        "uraian_kode": "Penyiapan, Uji Coba, dan Pelaksanaan Penilaian\/Asesmen Satuan Pendidikan (Akhir Satuan Pendidikan) - Termasuk Asesmen Berbasis Komputer"
+    },
+    {
+        "id_kode": "08.04.09.",
+        "program": "Standar Penilaian",
+        "sub_program": "Pelaksanaan Kegiatan Asesmen\/Evaluasi Pembelajaran",
+        "uraian_kode": "Penyusunan Kriteria Kenaikan Kelas"
+    },
+    {
+        "id_kode": "08.04.10.",
+        "program": "Standar Penilaian",
+        "sub_program": "Pelaksanaan Kegiatan Asesmen\/Evaluasi Pembelajaran",
+        "uraian_kode": "Penyusunan Kompetensi Ketuntasan Minimal"
+    },
+    {
+        "id_kode": "08.04.11.",
+        "program": "Standar Penilaian",
+        "sub_program": "Pelaksanaan Kegiatan Asesmen\/Evaluasi Pembelajaran",
+        "uraian_kode": "Pelaksanaan uji kesetaraan"
+    },
+    {
+        "id_kode": "08.04.12.",
+        "program": "Standar Penilaian",
+        "sub_program": "Pelaksanaan Kegiatan Asesmen\/Evaluasi Pembelajaran",
+        "uraian_kode": "Pembelajaran kelas jauh"
+    },
+    {
+        "id_kode": "08.04.13.",
+        "program": "Standar Penilaian",
+        "sub_program": "Pelaksanaan Kegiatan Asesmen\/Evaluasi Pembelajaran",
+        "uraian_kode": "Tes kemampuan akademik peserta didik"
+    },
+    {
+        "id_kode": "08.04.14.",
+        "program": "Standar Penilaian",
+        "sub_program": "Pelaksanaan Kegiatan Asesmen\/Evaluasi Pembelajaran",
+        "uraian_kode": "Dukungan partisipasi dalam pelaksanaan asesmen Satuan Pendidikan dan\/atau asesmen lainnya"
+    },
+    {
+        "id_kode": "08.04.15.",
+        "program": "Standar Penilaian",
+        "sub_program": "Pelaksanaan Kegiatan Asesmen\/Evaluasi Pembelajaran",
+        "uraian_kode": "Pelaksanaan refleksi pembelajaran"
+    },
+    {
+        "id_kode": "08.04.16.",
+        "program": "Standar Penilaian",
+        "sub_program": "Pelaksanaan Kegiatan Asesmen\/Evaluasi Pembelajaran",
+        "uraian_kode": "Penyediaan laporan hasil ujian\/asesmen"
+    },
+    {
+        "id_kode": "08.06.01.",
+        "program": "Standar Penilaian",
+        "sub_program": "Pengembangan profesi pendidik dan tenaga kependidikan",
+        "uraian_kode": "Fasilitasi pengembangan kompetensi guru melalui diseminasi (IHT, Pelatihan, Penugasan, Pengembangan Portofolio, Pelaksanaan P5, dan Workshop)"
+    },
+    {
+        "id_kode": "08.17.02.",
+        "program": "Standar Penilaian",
+        "sub_program": "Asesmen dan pemetaan talenta",
+        "uraian_kode": "Evaluasi dan inovasi sistem asesmen talenta peserta didik"
+    }
+]

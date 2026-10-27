@@ -86,7 +86,8 @@ class ArkasToolController extends Controller
         }
 
         if ($keyword !== '' && $keyword !== '__ALL__') {
-            $query->where('nama_barang', 'ILIKE', "%{$keyword}%");
+            $operator = DB::connection()->getDriverName() === 'pgsql' ? 'ILIKE' : 'LIKE';
+            $query->where('nama_barang', $operator, "%{$keyword}%");
         }
 
         $totalLocal = RefBarang::count();

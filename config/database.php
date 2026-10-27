@@ -98,7 +98,7 @@ return [
             'search_path' => 'public',
             'sslmode' => env('DB_SSLMODE', 'prefer'),
             'dump' => [
-                'dump_binary_path' => env('PG_DUMP_PATH', 'C:\\laragon\\bin\\postgresql\\pgsql\\bin\\'),
+                'dump_binary_path' => env('PG_DUMP_PATH', 'C:\\newSIKAS\\pgsql\\bin\\'),
                 'use_single_transaction' => true,
                 'timeout' => 60 * 5,
             ],

@@ -127,30 +127,34 @@ return new class extends Migration
         });
 
         // Trigger for kinerja_silpa_buku_kas_umum_uraian_details
-        DB::unprepared('
-            CREATE OR REPLACE FUNCTION kinerja_silpa_auto_hitung_jumlah_bku()
-            RETURNS TRIGGER AS $$
-            BEGIN
-                IF (NEW.jumlah IS NULL OR NEW.jumlah = 0) AND NEW.volume > 0 AND NEW.harga_satuan > 0 THEN
-                    NEW.jumlah := NEW.volume * NEW.harga_satuan;
-                END IF;
-                RETURN NEW;
-            END;
-            $$ LANGUAGE plpgsql;
-        ');
+        if (DB::connection()->getDriverName() === 'pgsql') {
+            DB::unprepared('
+                CREATE OR REPLACE FUNCTION kinerja_silpa_auto_hitung_jumlah_bku()
+                RETURNS TRIGGER AS $$
+                BEGIN
+                    IF (NEW.jumlah IS NULL OR NEW.jumlah = 0) AND NEW.volume > 0 AND NEW.harga_satuan > 0 THEN
+                        NEW.jumlah := NEW.volume * NEW.harga_satuan;
+                    END IF;
+                    RETURN NEW;
+                END;
+                $$ LANGUAGE plpgsql;
+            ');
 
-        DB::unprepared('
-            CREATE TRIGGER trg_kinerja_silpa_auto_hitung_jumlah
-            BEFORE INSERT OR UPDATE ON kinerja_silpa_buku_kas_umum_uraian_details
-            FOR EACH ROW
-            EXECUTE FUNCTION kinerja_silpa_auto_hitung_jumlah_bku();
-        ');
+            DB::unprepared('
+                CREATE TRIGGER trg_kinerja_silpa_auto_hitung_jumlah
+                BEFORE INSERT OR UPDATE ON kinerja_silpa_buku_kas_umum_uraian_details
+                FOR EACH ROW
+                EXECUTE FUNCTION kinerja_silpa_auto_hitung_jumlah_bku();
+            ');
+        }
     }
 
     public function down(): void
     {
-        DB::unprepared('DROP TRIGGER IF EXISTS trg_kinerja_silpa_auto_hitung_jumlah ON kinerja_silpa_buku_kas_umum_uraian_details;');
-        DB::unprepared('DROP FUNCTION IF EXISTS kinerja_silpa_auto_hitung_jumlah_bku();');
+        if (DB::connection()->getDriverName() === 'pgsql') {
+            DB::unprepared('DROP TRIGGER IF EXISTS trg_kinerja_silpa_auto_hitung_jumlah ON kinerja_silpa_buku_kas_umum_uraian_details;');
+            DB::unprepared('DROP FUNCTION IF EXISTS kinerja_silpa_auto_hitung_jumlah_bku();');
+        }
 
         Schema::dropIfExists('kinerja_silpa_kwitansis');
         Schema::dropIfExists('kinerja_silpa_buku_kas_umum_uraian_details');

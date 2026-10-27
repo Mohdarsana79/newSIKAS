@@ -1,0 +1,2802 @@
+[
+    {
+        "kode_rekening": "5.1.02.01.01.0001",
+        "rekening": "Belanja Bahan-Bahan Bangunan dan Konstruksi",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.01.01.0002",
+        "rekening": "Belanja Bahan-Bahan Kimia",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.01.01.0004",
+        "rekening": "Belanja Bahan-Bahan Bakar dan Pelumas",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.01.01.0005",
+        "rekening": "Belanja Bahan-Bahan Baku Praktek KBM",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.01.01.0008",
+        "rekening": "Belanja Bahan-Bahan\/Bibit Tanaman",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.01.01.0009",
+        "rekening": "Belanja Bahan-Isi Tabung Pemadam Kebakaran",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.01.01.0010",
+        "rekening": "Belanja Bahan-Isi Tabung Gas",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.01.01.0011",
+        "rekening": "Belanja Bahan-Bahan\/Bibit Ternak\/Bibit Ikan",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.01.01.0012",
+        "rekening": "Belanja Bahan-Bahan Lainnya",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.01.01.0013",
+        "rekening": "Belanja Suku Cadang-Suku Cadang Alat Angkutan",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.01.01.0016",
+        "rekening": "Belanja Suku Cadang-Suku Cadang Alat Laboratorium",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.01.01.0017",
+        "rekening": "Belanja Suku Cadang-Suku Cadang Alat Pemancar",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.01.01.0018",
+        "rekening": "Belanja Suku Cadang-Suku Cadang Alat Studio dan Komunikasi",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.01.01.0019",
+        "rekening": "Belanja Suku Cadang-Suku Cadang Alat Pertanian",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.01.01.0020",
+        "rekening": "Belanja Suku Cadang-Suku Cadang Alat Bengkel",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.01.01.0024",
+        "rekening": "Belanja Alat\/Bahan untuk Kegiatan Kantor-Alat Tulis Kantor",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.01.01.0025",
+        "rekening": "Belanja Alat\/Bahan untuk Kegiatan Kantor- Kertas dan Cover",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.01.01.0026",
+        "rekening": "Belanja Alat\/Bahan untuk Kegiatan Kantor- Bahan Cetak dan Penggandaan",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.01.01.0027",
+        "rekening": "Belanja Alat\/Bahan untuk Kegiatan Kantor-Benda Pos",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.01.01.0029",
+        "rekening": "Belanja Alat\/Bahan untuk Kegiatan Kantor-Bahan Komputer",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.01.01.0030",
+        "rekening": "Belanja Alat\/Bahan untuk Kegiatan Kantor-Perabot Kantor",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.01.01.0031",
+        "rekening": "Belanja Alat\/Bahan untuk Kegiatan Kantor-Alat Listrik",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.01.01.0032",
+        "rekening": "Belanja Alat\/Bahan untuk Kegiatan Kantor-Perlengkapan Dinas",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.01.01.0034",
+        "rekening": "Belanja Alat\/Bahan untuk Kegiatan Kantor- Perlengkapan Pendukung Olahraga",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.01.01.0035",
+        "rekening": "Belanja Alat\/Bahan untuk Kegiatan Kantor- Suvenir\/Cendera Mata",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.01.01.0036",
+        "rekening": "Belanja Alat\/Bahan untuk Kegiatan Kantor-Alat\/Bahan untuk Kegiatan Kantor Lainnya",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.01.01.0037",
+        "rekening": "Belanja Obat-Obat-Obatan",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.01.01.0043",
+        "rekening": "Belanja Natura dan Pakan-Natura",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.01.01.0045",
+        "rekening": "Belanja Natura dan Pakan-Natura dan Pakan Lainnya",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.01.01.0052",
+        "rekening": "Belanja Makanan dan Minuman Rapat",
+        "pajak": "PPh 23",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.01.01.0053",
+        "rekening": "Belanja Makanan dan Minuman Jamuan Tamu",
+        "pajak": "PPh 23",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.01.01.0055",
+        "rekening": "Belanja Makanan dan Minuman pada Fasilitas Pelayanan Urusan Pendidikan",
+        "pajak": "PPh 23",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.01.01.0064",
+        "rekening": "Belanja Pakaian Dinas Lapangan (PDL)",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.01.01.0066",
+        "rekening": "Belanja Pakaian Dinas Upacara (PDU)",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.01.01.0067",
+        "rekening": "Belanja Pakaian Penyelamatan",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.01.01.0069",
+        "rekening": "Belanja Pakaian Teknik",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.01.01.0071",
+        "rekening": "Belanja Pakaian Kerja Laboratorium",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.01.01.0072",
+        "rekening": "Belanja Pakaian Kerja Bengkel",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.01.01.0074",
+        "rekening": "Belanja Pakaian Adat Daerah",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.01.01.0075",
+        "rekening": "Belanja Pakaian Batik Tradisional",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.01.01.0076",
+        "rekening": "Belanja Pakaian Olahraga",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.01.01.0077",
+        "rekening": "Belanja Pakaian Paskibraka",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.01.02.0003",
+        "rekening": "Belanja Komponen-Komponen Peralatan",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.01.0003",
+        "rekening": "Honorarium Narasumber atau Pembahas, Moderator, Pembawa Acara, dan Panitia",
+        "pajak": "PPh 21",
+        "is_ppn": false,
+        "is_pph21": true,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.01.0004",
+        "rekening": "Honorarium Tim Pelaksana Kegiatan dan Sekretariat Tim Pelaksana Kegiatan",
+        "pajak": "PPh 21",
+        "is_ppn": false,
+        "is_pph21": true,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.01.0006",
+        "rekening": "Honorarium Penyuluhan atau Pendampingan",
+        "pajak": "PPh 21",
+        "is_ppn": false,
+        "is_pph21": true,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.01.0007",
+        "rekening": "Honorarium Rohaniwan",
+        "pajak": "PPh 21",
+        "is_ppn": false,
+        "is_pph21": true,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.01.0008",
+        "rekening": "Honorarium Tim Penyusunan Jurnal, Buletin, Majalah, Pengelola Teknologi Informasi dan Pengelola Website",
+        "pajak": "PPh 21",
+        "is_ppn": false,
+        "is_pph21": true,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.01.0009",
+        "rekening": "Honorarium Penyelenggara Ujian",
+        "pajak": "PPh 21",
+        "is_ppn": false,
+        "is_pph21": true,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.01.0011",
+        "rekening": "Honorarium Penyelenggaraan Kegiatan Pendidikan dan Pelatihan",
+        "pajak": "PPh 21",
+        "is_ppn": false,
+        "is_pph21": true,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.01.0013",
+        "rekening": "Belanja Jasa Tenaga Pendidikan \/ Honorarium Guru",
+        "pajak": "-",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.01.0015",
+        "rekening": "Belanja Jasa Tenaga Laboratorium",
+        "pajak": "-",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.01.0016",
+        "rekening": "Belanja Jasa Tenaga Penanganan Prasarana dan Sarana Umum \/ Upah Tukang",
+        "pajak": "PPh 21",
+        "is_ppn": false,
+        "is_pph21": true,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.01.0025",
+        "rekening": "Belanja Jasa Tenaga Kesenian dan Kebudayaan",
+        "pajak": "-",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.01.0026",
+        "rekening": "Belanja Jasa Tenaga Administrasi",
+        "pajak": "-",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.01.0027",
+        "rekening": "Belanja Jasa Tenaga Operator Komputer",
+        "pajak": "-",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.01.0029",
+        "rekening": "Belanja Jasa Tenaga Ahli",
+        "pajak": "PPh 21",
+        "is_ppn": false,
+        "is_pph21": true,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.01.0030",
+        "rekening": "Belanja Jasa Tenaga Kebersihan",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.01.0031",
+        "rekening": "Belanja Jasa Tenaga Keamanan",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.01.0035",
+        "rekening": "Belanja Jasa Tenaga Teknisi Mekanik dan Listrik",
+        "pajak": "-",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.01.0036",
+        "rekening": "Belanja Jasa Audit\/Surveillance ISO",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.01.0037",
+        "rekening": "Belanja Jasa Juri Perlombaan\/Pertandingan",
+        "pajak": "PPh 21",
+        "is_ppn": false,
+        "is_pph21": true,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.01.0038",
+        "rekening": "Belanja Jasa Tata Rias",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.01.0041",
+        "rekening": "Belanja Jasa Pemasangan Instalasi Telepon, Air, dan Listrik",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.01.0042",
+        "rekening": "Belanja Jasa Pelaksanaan Transaksi Keuangan",
+        "pajak": "-",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.01.0049",
+        "rekening": "Belanja Jasa Pencucian Pakaian, Alat Kesenian dan Kebudayaan, serta Alat Rumah Tangga",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.01.0050",
+        "rekening": "Belanja Jasa Kalibrasi",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.01.0051",
+        "rekening": "Belanja Jasa Pengolahan Sampah",
+        "pajak": "-",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.01.0052",
+        "rekening": "Belanja Jasa Pembersihan, Pengendalian Hama, dan Fumigasi",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.01.0057",
+        "rekening": "Belanja Jasa Operator Kapal",
+        "pajak": "PPh 21",
+        "is_ppn": false,
+        "is_pph21": true,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.01.0059",
+        "rekening": "Belanja Tagihan Telepon",
+        "pajak": "-",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.01.0060",
+        "rekening": "Belanja Tagihan Air",
+        "pajak": "-",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.01.0061",
+        "rekening": "Belanja Tagihan Listrik",
+        "pajak": "-",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.01.0062",
+        "rekening": "Belanja Langganan Jurnal\/Surat Kabar\/Majalah",
+        "pajak": "-",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.01.0063",
+        "rekening": "Belanja Kawat\/Faksimili\/Internet\/TV Berlangganan",
+        "pajak": "-",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.01.0064",
+        "rekening": "Belanja Paket\/Pengiriman",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.01.0065",
+        "rekening": "Belanja Penambahan Daya",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.01.0066",
+        "rekening": "Belanja Registrasi\/Keanggotaan",
+        "pajak": "-",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.01.0067",
+        "rekening": "Belanja Pembayaran Bea, dan Perizinan",
+        "pajak": "-",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.01.0071",
+        "rekening": "Belanja Lembur",
+        "pajak": "PPh 21",
+        "is_ppn": false,
+        "is_pph21": true,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.02.0008",
+        "rekening": "Belanja Asuransi Barang Milik Daerah",
+        "pajak": "-",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.03.0002",
+        "rekening": "Belanja Sewa Tanah untuk Bangunan Gedung Perdagangan\/Perusahaan\/Pendidikan",
+        "pajak": "PPh 4(2)",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": true
+    },
+    {
+        "kode_rekening": "5.1.02.02.04.0001",
+        "rekening": "Belanja Sewa Tractor",
+        "pajak": "PPh 23",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.04.0010",
+        "rekening": "Belanja Sewa Alat Pengangkat",
+        "pajak": "PPh 23",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.04.0012",
+        "rekening": "Belanja Sewa Alat Besar Darat Lainnya",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.04.0022",
+        "rekening": "Belanja Sewa Electric Generating Set",
+        "pajak": "PPh 23",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.04.0023",
+        "rekening": "Belanja Sewa Pompa",
+        "pajak": "PPh 23",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.04.0031",
+        "rekening": "Belanja Sewa Peralatan Selam",
+        "pajak": "PPh 23",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.04.0036",
+        "rekening": "Belanja Sewa Kendaraan Bermotor Penumpang",
+        "pajak": "PPh 23",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.04.0037",
+        "rekening": "Belanja Sewa Kendaraan Bermotor Angkutan Barang",
+        "pajak": "PPh 23",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.04.0038",
+        "rekening": "Belanja Sewa Kendaraan Bermotor Beroda Dua",
+        "pajak": "PPh 23",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.04.0039",
+        "rekening": "Belanja Sewa Kendaraan Bermotor Beroda Tiga",
+        "pajak": "PPh 23",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.04.0049",
+        "rekening": "Belanja Sewa Alat Angkutan Apung Bermotor untuk Penumpang",
+        "pajak": "PPh 23",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.04.0117",
+        "rekening": "Belanja Sewa Alat Kantor Lainnya",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.04.0118",
+        "rekening": "Belanja Sewa Mebel",
+        "pajak": "PPh 23",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.04.0123",
+        "rekening": "Belanja Sewa Alat Rumah Tangga Lainnya (Home Use)",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.04.0132",
+        "rekening": "Belanja Sewa Peralatan Studio Audio",
+        "pajak": "PPh 23",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.04.0133",
+        "rekening": "Belanja Sewa Peralatan Studio Video dan Film",
+        "pajak": "PPh 23",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.04.0134",
+        "rekening": "Belanja Sewa Peralatan Studio Gambar",
+        "pajak": "PPh 23",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.04.0137",
+        "rekening": "Belanja Sewa Alat Studio Lainnya",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.04.0140",
+        "rekening": "Belanja Sewa Alat Komunikasi Radio HF\/FM",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.04.0308",
+        "rekening": "Belanja Sewa Alat Peraga Praktik Sekolah Bidang Studi:Bahasa Indonesia",
+        "pajak": "PPh 23",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.04.0309",
+        "rekening": "Belanja Sewa Alat Peraga Praktik Sekolah Bidang Studi:Matematika",
+        "pajak": "PPh 23",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.04.0310",
+        "rekening": "Belanja Sewa Alat Peraga Praktik Sekolah Bidang Studi:IPA Dasar",
+        "pajak": "PPh 23",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.04.0311",
+        "rekening": "Belanja Sewa Alat Peraga Praktik Sekolah Bidang Studi:IPA Lanjutan",
+        "pajak": "PPh 23",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.04.0312",
+        "rekening": "Belanja Sewa Alat Peraga Praktik Sekolah Bidang Studi:IPA Menengah",
+        "pajak": "PPh 23",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.04.0313",
+        "rekening": "Belanja Sewa Alat Peraga Praktik Sekolah Bidang Studi:IPA Atas",
+        "pajak": "PPh 23",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.04.0314",
+        "rekening": "Belanja Sewa Alat Peraga Praktik Sekolah Bidang Studi:IPS",
+        "pajak": "PPh 23",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.04.0315",
+        "rekening": "Belanja Sewa Alat Peraga Praktik Sekolah Bidang Studi:Agama",
+        "pajak": "PPh 23",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.04.0316",
+        "rekening": "Belanja Sewa Alat Peraga Praktik Sekolah Bidang Studi:Keterampilan",
+        "pajak": "PPh 23",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.04.0317",
+        "rekening": "Belanja Sewa Alat Peraga Praktik Sekolah Bidang Studi:Kesenian",
+        "pajak": "PPh 23",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.04.0318",
+        "rekening": "Belanja Sewa Alat Peraga Praktik Sekolah Bidang Studi:Olahraga",
+        "pajak": "PPh 23",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.04.0319",
+        "rekening": "Belanja Sewa Alat Peraga Praktik Sekolah Bidang Studi:PKN",
+        "pajak": "PPh 23",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.04.0320",
+        "rekening": "Belanja Sewa Alat Peraga Luar Biasa (Tuna Netra, Terapi Fisik, Tuna Daksa, dan Tuna Rungu)",
+        "pajak": "PPh 23",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.04.0321",
+        "rekening": "Belanja Sewa Alat Peraga Kejuruan",
+        "pajak": "PPh 23",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.04.0322",
+        "rekening": "Belanja Sewa Alat Peraga PAUD\/TK",
+        "pajak": "PPh 23",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.04.0355",
+        "rekening": "Belanja Sewa Peralatan Umum",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.04.0406",
+        "rekening": "Belanja Sewa Komputer Unit Lainnya",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.04.0411",
+        "rekening": "Belanja Sewa Peralatan Komputer Lainnya",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.05.0009",
+        "rekening": "Belanja Sewa Bangunan Gedung Tempat Pertemuan",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.05.0011",
+        "rekening": "Belanja Sewa Bangunan Gedung Tempat Olahraga",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.05.0030",
+        "rekening": "Belanja Sewa Bangunan Gedung Tempat Kerja Lainnya",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.02.12.0001",
+        "rekening": "Belanja Kursus Singkat\/Pelatihan",
+        "pajak": "PPh 23",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.02.0036",
+        "rekening": "Belanja Pemeliharaan Alat Angkutan-Alat Angkutan Darat Bermotor-Kendaraan Bermotor Penumpang",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.02.0113",
+        "rekening": "Belanja Pemeliharaan Alat Kantor dan Rumah Tangga-Alat Kantor-Mesin Ketik",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.02.0115",
+        "rekening": "Belanja Pemeliharaan Alat Kantor dan Rumah Tangga-Alat Kantor-Alat Reproduksi (Penggandaan) \/ Pemeliaharaan Printer",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.02.0116",
+        "rekening": "Belanja Pemeliharaan Alat Kantor dan Rumah Tangga-Alat Kantor-Alat Penyimpan Perlengkapan Kantor",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.02.0117",
+        "rekening": "Belanja Pemeliharaan Alat Kantor dan Rumah Tangga-Alat Kantor-Alat Kantor Lainnya",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.02.0118",
+        "rekening": "Belanja Pemeliharaan Alat Kantor dan Rumah Tangga-Alat Rumah Tangga-Mebel",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.02.0120",
+        "rekening": "Belanja Pemeliharaan Alat Kantor dan Rumah Tangga-Alat Rumah Tangga-Alat Pembersih",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.02.0121",
+        "rekening": "Belanja Pemeliharaan Alat Kantor dan Rumah Tangga-Alat Rumah Tangga-Alat Pendingin",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.02.0123",
+        "rekening": "Belanja Pemeliharaan Alat Kantor dan Rumah Tangga-Alat Rumah Tangga-Alat Rumah Tangga Lainnya (Home Use)",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.02.0124",
+        "rekening": "Belanja Pemeliharaan Alat Kantor dan Rumah Tangga-Alat Rumah Tangga-Alat Pemadam Kebakaran",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.02.0308",
+        "rekening": "Belanja Pemeliharaan Alat Laboratorium-Alat Peraga Praktik Sekolah-Alat Peraga Praktik Sekolah Bidang Studi:Bahasa Indonesia",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.02.0309",
+        "rekening": "Belanja Pemeliharaan Alat Laboratorium-Alat Peraga Praktik Sekolah-Alat Peraga Praktik Sekolah Bidang Studi:Matematika",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.02.0310",
+        "rekening": "Belanja Pemeliharaan Alat Laboratorium-Alat Peraga Praktik Sekolah-Alat Peraga Praktik Sekolah Bidang Studi:IPA Dasar",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.02.0311",
+        "rekening": "Belanja Pemeliharaan Alat Laboratorium-Alat Peraga Praktik Sekolah-Alat Peraga Praktik Sekolah Bidang Studi:IPA Lanjutan",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.02.0312",
+        "rekening": "Belanja Pemeliharaan Alat Laboratorium-Alat Peraga Praktik Sekolah-Alat Peraga Praktik Sekolah Bidang Studi:IPA Menengah",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.02.0313",
+        "rekening": "Belanja Pemeliharaan Alat Laboratorium-Alat Peraga Praktik Sekolah-Alat Peraga Praktik Sekolah Bidang Studi:IPA Atas",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.02.0314",
+        "rekening": "Belanja Pemeliharaan Alat Laboratorium-Alat Peraga Praktik Sekolah-Alat Peraga Praktik Sekolah Bidang Studi:IPS",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.02.0315",
+        "rekening": "Belanja Pemeliharaan Alat Laboratorium-Alat Peraga Praktik Sekolah-Alat Peraga Praktik Sekolah Bidang Studi:Agama",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.02.0316",
+        "rekening": "Belanja Pemeliharaan Alat Laboratorium-Alat Peraga Praktik Sekolah-Alat Peraga Praktik Sekolah Bidang Studi:Keterampilan",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.02.0317",
+        "rekening": "Belanja Pemeliharaan Alat Laboratorium-Alat Peraga Praktik Sekolah-Alat Peraga Praktik Sekolah Bidang Studi:Kesenian",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.02.0318",
+        "rekening": "Belanja Pemeliharaan Alat Laboratorium-Alat Peraga Praktik Sekolah-Alat Peraga Praktik Sekolah Bidang Studi:Olahraga",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.02.0319",
+        "rekening": "Belanja Pemeliharaan Alat Laboratorium-Alat Peraga Praktik Sekolah-Alat Peraga Praktik Sekolah Bidang Studi:PKN",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.02.0320",
+        "rekening": "Belanja Pemeliharaan Alat Laboratorium-Alat Peraga Praktik Sekolah-Alat Peraga Luar Biasa (Tuna Netra, Terapi Fisik, Tuna Daksa, dan Tuna Rungu)",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.02.0321",
+        "rekening": "Belanja Pemeliharaan Alat Laboratorium-Alat Peraga Praktik Sekolah-Alat Peraga Kejuruan",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.02.0322",
+        "rekening": "Belanja Pemeliharaan Alat Laboratorium-Alat Peraga Praktik Sekolah-Alat Peraga PAUD\/TK",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.02.0404",
+        "rekening": "Belanja Pemeliharaan Komputer-Komputer Unit-Komputer Jaringan",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.02.0405",
+        "rekening": "Belanja Pemeliharaan Komputer-Komputer Unit-Personal Computer",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.02.0407",
+        "rekening": "Belanja Pemeliharaan Komputer-Peralatan Komputer-Peralatan Mainframe",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.02.0408",
+        "rekening": "Belanja Pemeliharaan Komputer-Peralatan Komputer-Peralatan Mini Computer",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.02.0409",
+        "rekening": "Belanja Pemeliharaan Komputer-Peralatan Komputer-Peralatan Personal Computer",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.02.0410",
+        "rekening": "Belanja Pemeliharaan Komputer-Peralatan Komputer-Peralatan Jaringan",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.02.0411",
+        "rekening": "Belanja Pemeliharaan Komputer-Peralatan Komputer-Peralatan Komputer Lainnya",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.02.0463",
+        "rekening": "Belanja Pemeliharaan Alat Peraga-Alat Peraga Pelatihan dan Percontohan-Alat Peraga Pelatihan",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.02.0504",
+        "rekening": "Belanja Pemeliharaan Peralatan Olahraga-Peralatan Olahraga-Peralatan Olahraga Atletik",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.02.0505",
+        "rekening": "Belanja Pemeliharaan Peralatan Olahraga-Peralatan Olahraga-Peralatan Permainan",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.02.0506",
+        "rekening": "Belanja Pemeliharaan Peralatan Olahraga-Peralatan Olahraga-Peralatan Senam",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.02.0507",
+        "rekening": "Belanja Pemeliharaan Peralatan Olahraga-Peralatan Olahraga-Peralatan Olahraga Air",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.02.0508",
+        "rekening": "Belanja Pemeliharaan Peralatan Olahraga-Peralatan Olahraga-Peralatan Olahraga Udara",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.03.0001",
+        "rekening": "Belanja Pemeliharaan Bangunan Gedung-Bangunan Gedung Tempat Kerja-Bangunan Gedung Kantor",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.03.0002",
+        "rekening": "Belanja Pemeliharaan Bangunan Gedung-Bangunan Gedung Tempat Kerja-Bangunan Gudang",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.03.0005",
+        "rekening": "Belanja Pemeliharaan Bangunan Gedung-Bangunan Gedung Tempat Kerja-Bangunan Gedung Laboratorium",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.03.0006",
+        "rekening": "Belanja Pemeliharaan Bangunan Gedung-Bangunan Gedung Tempat Kerja-Bangunan Kesehatan",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.03.0008",
+        "rekening": "Belanja Pemeliharaan Bangunan Gedung-Bangunan Gedung Tempat Kerja-Bangunan Gedung Tempat Ibadah",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.03.0009",
+        "rekening": "Belanja Pemeliharaan Bangunan Gedung-Bangunan Gedung Tempat Kerja-Bangunan Gedung Tempat Pertemuan",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.03.0010",
+        "rekening": "Belanja Pemeliharaan Bangunan Gedung-Bangunan Gedung Tempat Kerja-Bangunan Gedung Tempat Pendidikan",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.03.0011",
+        "rekening": "Belanja Pemeliharaan Bangunan Gedung-Bangunan Gedung Tempat Kerja-Bangunan Gedung Tempat Olahraga",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.03.0013",
+        "rekening": "Belanja Pemeliharaan Bangunan Gedung-Bangunan Gedung Tempat Kerja-Bangunan Gedung untuk Pos Jaga",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.03.0016",
+        "rekening": "Belanja Pemeliharaan Bangunan Gedung-Bangunan Gedung Tempat Kerja-Bangunan Gedung Perpustakaan",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.03.0030",
+        "rekening": "Belanja Pemeliharaan Bangunan Gedung-Bangunan Gedung Tempat Kerja-Bangunan Gedung Tempat Kerja Lainnya",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.03.0033",
+        "rekening": "Belanja Pemeliharaan Bangunan Gedung-Bangunan Gedung Tempat Kerja-Bangunan Parkir",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.03.0036",
+        "rekening": "Belanja Pemeliharaan Bangunan Gedung-Bangunan Gedung Tempat Kerja-Taman",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.04.0075",
+        "rekening": "Belanja Pemeliharaan Instalasi-Instalasi Air Bersih\/Air Baku-Instalasi Air Permukaan",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.04.0076",
+        "rekening": "Belanja Pemeliharaan Instalasi-Instalasi Air Bersih\/Air Baku-Instalasi Air Sumber\/Mata Air",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.05.0001",
+        "rekening": "Belanja Pemeliharaan Bahan Perpustakaan-Bahan Perpustakaan Tercetak-Buku Umum",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.05.0021",
+        "rekening": "Belanja Pemeliharaan Bahan Perpustakaan-Musik-Musik Lainnya",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.05.0028",
+        "rekening": "Belanja Pemeliharaan Barang Bercorak Kesenian\/Kebudayaan\/Olahraga-Barang Bercorak Kesenian-Alat Musik",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.03.05.0030",
+        "rekening": "Belanja Pemeliharaan Barang Bercorak Kesenian\/Kebudayaan\/Olahraga-Barang Bercorak Kesenian-Alat Peraga Kesenian",
+        "pajak": "PPN, PPh 23",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": true,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.04.01.0001",
+        "rekening": "Belanja Perjalanan Dinas Biasa \/ Luar Daerah",
+        "pajak": "-",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.04.01.0003",
+        "rekening": "Belanja Perjalanan Dinas Dalam Kota \/ Dalam Daerah",
+        "pajak": "-",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.04.01.0004",
+        "rekening": "Belanja Perjalanan Dinas Paket Meeting Dalam Kota",
+        "pajak": "-",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.1.02.04.01.0005",
+        "rekening": "Belanja Perjalanan Dinas Paket Meeting Luar Kota",
+        "pajak": "-",
+        "is_ppn": false,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.01.03.0003",
+        "rekening": "Belanja Modal Compressor",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.01.03.0004",
+        "rekening": "Belanja Modal Electric Generating Set",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.01.03.0005",
+        "rekening": "Belanja Modal Pompa",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.03.03.0010",
+        "rekening": "Belanja Modal Alat Timbangan\/Biara",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.05.01.0001",
+        "rekening": "Belanja Modal Mesin Ketik",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.05.01.0002",
+        "rekening": "Belanja Modal Mesin Hitung\/Mesin Jumlah",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.05.01.0003",
+        "rekening": "Belanja Modal Alat Reproduksi (Penggandaan)",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.05.01.0004",
+        "rekening": "Belanja Modal Alat Penyimpan Perlengkapan Kantor",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.05.01.0005",
+        "rekening": "Belanja Modal Alat Kantor Lainnya",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.05.02.0001",
+        "rekening": "Belanja Modal Mebel",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.05.02.0002",
+        "rekening": "Belanja Modal Alat Pengukur Waktu",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.05.02.0003",
+        "rekening": "Belanja Modal Alat Pembersih",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.05.02.0004",
+        "rekening": "Belanja Modal Alat Pendingin",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.05.02.0005",
+        "rekening": "Belanja Modal Alat Dapur",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.05.02.0006",
+        "rekening": "Belanja Modal Alat Rumah Tangga Lainnya (Home Use)",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.05.02.0007",
+        "rekening": "Belanja Modal Alat Pemadam Kebakaran",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.06.01.0001",
+        "rekening": "Belanja Modal Peralatan Studio Audio",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.06.01.0002",
+        "rekening": "Belanja Modal Peralatan Studio Video dan Film",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.06.01.0003",
+        "rekening": "Belanja Modal Peralatan Studio Gambar",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.06.01.0004",
+        "rekening": "Belanja Modal Peralatan Cetak",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.06.02.0001",
+        "rekening": "Belanja Modal Alat Komunikasi Telephone",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.06.02.0002",
+        "rekening": "Belanja Modal Alat Komunikasi Radio SSB",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.06.02.0003",
+        "rekening": "Belanja Modal Alat Komunikasi Radio HF\/FM",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.06.03.0003",
+        "rekening": "Belanja Modal Peralatan Pemancar VHF\/FM",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.06.03.0008",
+        "rekening": "Belanja Modal Peralatan Antena VHF\/FM",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.06.03.0010",
+        "rekening": "Belanja Modal Peralatan Antena SHF\/Parabola",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.06.03.0019",
+        "rekening": "Belanja Modal Switcher Antena",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.08.01.0006",
+        "rekening": "Belanja Modal Alat Laboratorium Bahan Bangunan Konstruksi",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.08.01.0011",
+        "rekening": "Belanja Modal Alat Laboratorium Umum",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.08.01.0012",
+        "rekening": "Belanja Modal Alat Laboratorium Mikrobiologi",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.08.01.0013",
+        "rekening": "Belanja Modal Alat Laboratorium Kimia",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.08.01.0020",
+        "rekening": "Belanja Modal Alat Laboratorium Fisika",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.08.01.0041",
+        "rekening": "Belanja Modal Alat Laboratorium Pertanian",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.08.01.0042",
+        "rekening": "Belanja Modal Alat Laboratorium Elektronika dan Daya",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.08.01.0048",
+        "rekening": "Belanja Modal Alat Laboratorium Biologi",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.08.03.0001",
+        "rekening": "Alat Peraga Praktek Sekolah Bidang Studi:Bahasa Indonesia",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.08.03.0002",
+        "rekening": "Belanja Modal Alat Peraga Praktek Sekolah Bidang Studi:Matematika",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.08.03.0003",
+        "rekening": "Belanja Modal Alat Peraga Praktek Sekolah Bidang Studi:IPA Dasar",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.08.03.0004",
+        "rekening": "Belanja Modal Alat Peraga Praktek Sekolah Bidang Studi:IPA Lanjutan",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.08.03.0005",
+        "rekening": "Belanja Modal Alat Peraga Praktek Sekolah Bidang Studi:IPA Menengah",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.08.03.0006",
+        "rekening": "Belanja Modal Alat Peraga Praktek Sekolah Bidang Studi:IPA Atas",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.08.03.0007",
+        "rekening": "Belanja Modal Alat Peraga Praktek Sekolah Bidang Studi:IPS",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.08.03.0008",
+        "rekening": "Alat Peraga Praktek Sekolah Bidang Studi:Agama",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.08.03.0009",
+        "rekening": "Belanja Modal Alat Peraga Praktek Sekolah Bidang Studi:Keterampilan",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.08.03.0010",
+        "rekening": "Belanja Modal Alat Peraga Praktek Sekolah Bidang Studi:Kesenian",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.08.03.0011",
+        "rekening": "Belanja Modal Alat Peraga Praktek Sekolah Bidang Studi:Olahraga",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.08.03.0012",
+        "rekening": "Belanja Modal Alat Peraga Praktek Sekolah Bidang Studi:PKN",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.08.03.0013",
+        "rekening": "Belanja Modal Alat Peraga Luar Biasa (Tuna Netra, Terapi Fisik, Tuna Daksa, dan Tuna Rungu)",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.08.03.0014",
+        "rekening": "Belanja Modal Alat Peraga Kejuruan",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.08.03.0015",
+        "rekening": "Belanja Modal Alat Peraga PAUD\/TK",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.08.03.0016",
+        "rekening": "Belanja Modal Alat Peraga Praktik Sekolah Lainnya",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.10.01.0001",
+        "rekening": "Belanja Modal Komputer Jaringan",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.10.01.0002",
+        "rekening": "Belanja Modal Personal Computer",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.10.02.0001",
+        "rekening": "Belanja Modal Peralatan Mainframe",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.10.02.0002",
+        "rekening": "Belanja Modal Peralatan Mini Computer",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.10.02.0003",
+        "rekening": "Belanja Modal Peralatan Personal Computer",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.10.02.0004",
+        "rekening": "Belanja Modal Peralatan Jaringan",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.10.02.0005",
+        "rekening": "Belanja Modal Peralatan Komputer Lainnya",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.16.01.0001",
+        "rekening": "Belanja Modal Alat Peraga Pelatihan",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.16.01.0002",
+        "rekening": "Belanja Modal Alat Peraga Percontohan",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.18.01.0001",
+        "rekening": "Belanja Modal Rambu Bersuar",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.18.01.0002",
+        "rekening": "Belanja Modal Rambu Tidak Bersuar",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.19.01.0001",
+        "rekening": "Belanja Modal Peralatan Olahraga Atletik",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.19.01.0002",
+        "rekening": "Belanja Modal Peralatan Permainan",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.19.01.0003",
+        "rekening": "Belanja Modal Peralatan Senam",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.19.01.0004",
+        "rekening": "Belanja Modal Peralatan Olahraga Air",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.02.19.01.0005",
+        "rekening": "Belanja Modal Peralatan Olahraga Udara",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.04.02.06.0005",
+        "rekening": "Belanja Modal Bangunan Pelengkap Air Bersih\/Air Baku",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.04.03.01.0005",
+        "rekening": "Belanja Modal Instalasi Air Bersih\/Air Baku Lainnya",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.04.03.05.0002",
+        "rekening": "Belanja Modal Instalasi Pembangkit Listrik Tenaga Diesel (PLTD)",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.04.04.02.0002",
+        "rekening": "Belanja Modal Jaringan Distribusi",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.04.04.02.0003",
+        "rekening": "Belanja Modal Jaringan Listrik Lainnya",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.04.04.03.0005",
+        "rekening": "Belanja Modal Jaringan Telepon Lainnya",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.05.01.01.0001",
+        "rekening": "Belanja Modal Buku Umum",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.05.01.01.0002",
+        "rekening": "Belanja Modal Buku Filsafat",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.05.01.01.0003",
+        "rekening": "Belanja Modal Buku Agama",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.05.01.01.0004",
+        "rekening": "Belanja Modal Buku Ilmu Sosial",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.05.01.01.0005",
+        "rekening": "Belanja Modal Buku Ilmu Bahasa",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.05.01.01.0006",
+        "rekening": "Belanja Modal Buku Matematika dan Pengetahuan Alam",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.05.01.01.0007",
+        "rekening": "Belanja Modal Buku Ilmu Pengetahuan Praktis",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.05.01.01.0008",
+        "rekening": "Belanja Modal Buku Arsitektur, Kesenian, dan Olahraga",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.05.01.01.0009",
+        "rekening": "Belanja Modal Buku Geografi, Biografi, dan Sejarah",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.05.01.01.0010",
+        "rekening": "Belanja Modal Serial",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.05.01.02.0001",
+        "rekening": "Belanja Modal Audio Visual",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.05.01.02.0002",
+        "rekening": "Belanja Modal Bentuk Mikro (Microform)",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.05.01.03.0001",
+        "rekening": "Belanja Modal Bahan Kartografi",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.05.01.03.0002",
+        "rekening": "Belanja Modal Naskah (Manuskrip)\/Asli",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.05.01.03.0003",
+        "rekening": "Belanja Modal Lukisan dan Ukiran",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.05.01.04.0001",
+        "rekening": "Belanja Modal Karya Musik",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.05.02.01.0001",
+        "rekening": "Belanja Modal Alat Musik",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.05.02.01.0002",
+        "rekening": "Belanja Modal Lukisan",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.05.02.01.0003",
+        "rekening": "Belanja Modal Alat Peraga Kesenian",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.05.02.02.0001",
+        "rekening": "Belanja Modal Pahatan",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.05.02.02.0002",
+        "rekening": "Belanja Modal Maket, Miniatur, Replika, Foto Dokumen, dan Benda Bersejarah",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.05.02.02.0003",
+        "rekening": "Belanja Modal Barang Kerajinan",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    },
+    {
+        "kode_rekening": "5.2.05.08.01.0005",
+        "rekening": "Belanja Modal Software",
+        "pajak": "PPN",
+        "is_ppn": true,
+        "is_pph21": false,
+        "is_pph22": false,
+        "is_pph23": false,
+        "is_pph4": false
+    }
+]
