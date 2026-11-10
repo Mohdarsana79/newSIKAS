@@ -3,6 +3,8 @@
 use App\Config\VariantConfig;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\SkSuratController;
+use App\Http\Controllers\UserManagementController;
 use App\Models\User;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -42,6 +44,30 @@ Route::middleware('auth')->group(function () {
     Route::post('/profile/generate-security-code', [ProfileController::class, 'generateSecurityCode'])->name('profile.generate-security-code');
     Route::post('/profile/deepseek-settings', [ProfileController::class, 'updateDeepSeekSettings'])->name('profile.deepseek-settings');
     Route::post('/profile/deepseek-test', [ProfileController::class, 'testDeepSeekConnection'])->name('profile.deepseek-test');
+
+    Route::middleware(['role:bendahara'])->group(function () {
+        Route::get('/user-management', [UserManagementController::class, 'index'])->name('user-management.index');
+        Route::post('/user-management', [UserManagementController::class, 'store'])->name('user-management.store');
+        Route::put('/user-management/{id}', [UserManagementController::class, 'update'])->name('user-management.update');
+        Route::delete('/user-management/{id}', [UserManagementController::class, 'destroy'])->name('user-management.destroy');
+    });
+
+    Route::prefix('sk-surat')->name('sk-surat.')->group(function () {
+        Route::get('/', [SkSuratController::class, 'index'])->name('index');
+        Route::post('/folder', [SkSuratController::class, 'storeFolder'])->name('folder.store');
+        Route::put('/folder/{folder}', [SkSuratController::class, 'updateFolder'])->name('folder.update');
+        Route::delete('/folder/{folder}', [SkSuratController::class, 'destroyFolder'])->name('folder.destroy');
+        Route::get('/folder/{folder}', [SkSuratController::class, 'show'])->name('show');
+        Route::post('/folder/{folder}/template', [SkSuratController::class, 'storeTemplate'])->name('template.store');
+        Route::delete('/template/{template}', [SkSuratController::class, 'destroyTemplate'])->name('template.destroy');
+        Route::post('/folder/{folder}/dokumen', [SkSuratController::class, 'storeDokumen'])->name('dokumen.store');
+        Route::put('/dokumen/{dokumen}', [SkSuratController::class, 'updateDokumen'])->name('dokumen.update');
+        Route::post('/folder/{folder}/upload-arsip', [SkSuratController::class, 'uploadArsip'])->name('dokumen.upload-arsip');
+        Route::delete('/dokumen/{dokumen}', [SkSuratController::class, 'destroyDokumen'])->name('dokumen.destroy');
+        Route::get('/dokumen/{dokumen}/download-docx', [SkSuratController::class, 'downloadDocx'])->name('dokumen.download-docx');
+        Route::get('/dokumen/{dokumen}/export-pdf', [SkSuratController::class, 'exportPdf'])->name('dokumen.export-pdf');
+        Route::get('/dokumen/{dokumen}/download-archive', [SkSuratController::class, 'downloadArchive'])->name('dokumen.download-archive');
+    });
 
     foreach (VariantConfig::VARIANTS as $variant) {
         if ($variant === 'reguler') {

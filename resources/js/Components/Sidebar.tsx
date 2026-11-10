@@ -36,7 +36,9 @@ const NavLink = ({ href, active, children, icon, isSidebarOpen = true }: NavLink
 );
 
 export default function Sidebar({ className = '', isOpen = true, setIsOpen }: { className?: string; isOpen?: boolean; setIsOpen?: (open: boolean) => void }) {
-    const { url } = usePage();
+    const { url, props } = usePage();
+    const user = (props as any)?.auth?.user;
+    const isKepalaSekolah = user?.is_kepala_sekolah ?? false;
     const [isDataMasterOpen, setIsDataMasterOpen] = useState(true);
     const [isFiturPelengkapOpen, setIsFiturPelengkapOpen] = useState(true);
     const [isIntegrasiOpen, setIsIntegrasiOpen] = useState(true);
@@ -140,6 +142,17 @@ export default function Sidebar({ className = '', isOpen = true, setIsOpen }: { 
                     </button>
                 </div>
 
+                {/* Role Badge if Kepala Sekolah */}
+                {isOpen && isKepalaSekolah && (
+                    <div className="mx-4 mt-3 px-3 py-2 bg-emerald-500/10 border border-emerald-500/25 rounded-xl flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>
+                        <div className="flex flex-col">
+                            <span className="text-[11px] font-bold text-emerald-300 leading-tight">Kepala Sekolah</span>
+                            <span className="text-[9px] text-emerald-400/80">Hak Akses: Read-Only & Telaah</span>
+                        </div>
+                    </div>
+                )}
+
                 {/* Navigation Menu */}
                 <div className="flex-1 overflow-y-auto overflow-x-hidden relative z-10 py-6 custom-scrollbar">
                     <nav className="px-4 space-y-1">
@@ -219,52 +232,52 @@ export default function Sidebar({ className = '', isOpen = true, setIsOpen }: { 
                                 <NavLink href={route('dokumen.index')} active={route().current('dokumen.*')} isSidebarOpen={isOpen} icon={<IconDokumen />}>
                                     Dokumen
                                 </NavLink>
+                                <NavLink href={route('sk-surat.index')} active={route().current('sk-surat.*')} isSidebarOpen={isOpen} icon={<IconSkSurat />}>
+                                    SK & Surat
+                                </NavLink>
                                 <NavLink href={route('laporan.index')} active={route().current('laporan.*')} isSidebarOpen={isOpen} icon={<IconLaporan />}>
                                     Laporan
                                 </NavLink>
                             </div>
                         </div>
 
-                        {/* Integrasi Group */}
-                        <div className="pt-4">
-                            <GroupHeader
-                                label="Integrasi"
-                                isOpen={isIntegrasiOpen}
-                                isSidebarOpen={isOpen}
-                                onClick={() => setIsIntegrasiOpen(!isIntegrasiOpen)}
-                            />
+                        {/* Integrasi Group - Khusus Bendahara */}
+                        {!isKepalaSekolah && (
+                            <div className="pt-4">
+                                <GroupHeader
+                                    label="Integrasi"
+                                    isOpen={isIntegrasiOpen}
+                                    isSidebarOpen={isOpen}
+                                    onClick={() => setIsIntegrasiOpen(!isIntegrasiOpen)}
+                                />
 
-                            <div className={`space-y-1 overflow-hidden transition-all duration-300 ${isIntegrasiOpen || !isOpen ? 'max-h-[500px] opacity-100 mt-1' : 'max-h-0 opacity-0'}`}>
-                                {/* <NavLink href={route('integrasi.api.index')} active={route().current('integrasi.api.*')} isSidebarOpen={isOpen} icon={<IconApi />}>
-                                    API
-                                </NavLink> */}
-                                {/* <NavLink href={route('integrasi.sync.index')} active={route().current('integrasi.sync.*')} isSidebarOpen={isOpen} icon={<IconSync />}>
-                                    Singkron
-                                </NavLink> */}
-                                
-                                {/* Path Arkas Trigger */}
-                                <button
-                                    onClick={openPathModal}
-                                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group overflow-hidden text-slate-400 hover:text-white hover:bg-white/5 ${!isOpen ? 'justify-center px-0 mx-auto w-12' : ''}`}
-                                    title={!isOpen ? "Path Arkas" : undefined}
-                                >
-                                    <div className="shrink-0 z-10 transition-transform duration-300 group-hover:scale-110">
-                                        <IconPath />
-                                    </div>
-                                    <span className={`z-10 font-medium whitespace-nowrap transition-all duration-300 origin-left ${!isOpen ? 'opacity-0 w-0 scale-0' : 'opacity-100 w-auto scale-100'}`}>
-                                        Path Arkas
-                                    </span>
-                                </button>
+                                <div className={`space-y-1 overflow-hidden transition-all duration-300 ${isIntegrasiOpen || !isOpen ? 'max-h-[500px] opacity-100 mt-1' : 'max-h-0 opacity-0'}`}>
+                                    {/* Path Arkas Trigger */}
+                                    <button
+                                        onClick={openPathModal}
+                                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group overflow-hidden text-slate-400 hover:text-white hover:bg-white/5 ${!isOpen ? 'justify-center px-0 mx-auto w-12' : ''}`}
+                                        title={!isOpen ? "Path Arkas" : undefined}
+                                    >
+                                        <div className="shrink-0 z-10 transition-transform duration-300 group-hover:scale-110">
+                                            <IconPath />
+                                        </div>
+                                        <span className={`z-10 font-medium whitespace-nowrap transition-all duration-300 origin-left ${!isOpen ? 'opacity-0 w-0 scale-0' : 'opacity-100 w-auto scale-100'}`}>
+                                            Path Arkas
+                                        </span>
+                                    </button>
+                                </div>
                             </div>
-                        </div>
+                        )}
 
-                        {/* Systems */}
-                        <div className="pt-6">
-                            <SectionTitle isVisible={isOpen}>Systems</SectionTitle>
-                            <NavLink href={route('backup.index')} active={route().current('backup.*')} isSidebarOpen={isOpen} icon={<IconBackup />}>
-                                Backup Database
-                            </NavLink>
-                        </div>
+                        {/* Systems - Khusus Bendahara */}
+                        {!isKepalaSekolah && (
+                            <div className="pt-6">
+                                <SectionTitle isVisible={isOpen}>Systems</SectionTitle>
+                                <NavLink href={route('backup.index')} active={route().current('backup.*')} isSidebarOpen={isOpen} icon={<IconBackup />}>
+                                    Backup Database
+                                </NavLink>
+                            </div>
+                        )}
                     </nav>
                 </div>
 
@@ -485,5 +498,12 @@ const IconBast = () => (
 const IconSuratPesanan = () => (
     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+    </svg>
+);
+
+const IconSkSurat = () => (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h2m-2 4h2" />
     </svg>
 );
