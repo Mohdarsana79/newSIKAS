@@ -5,7 +5,7 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import { router } from '@inertiajs/react';
 import Swal from 'sweetalert2';
-import { UploadCloud, FileCheck } from 'lucide-react';
+import { UploadCloud } from 'lucide-react';
 
 interface Props {
     show: boolean;
@@ -63,14 +63,14 @@ export default function UploadArsipModal({ show, onClose, folderId }: Props) {
 
     return (
         <Modal show={show} onClose={onClose} maxWidth="lg">
-            <form onSubmit={handleSubmit} className="p-6 bg-slate-900 border border-slate-800 text-white rounded-2xl">
+            <form onSubmit={handleSubmit} className="p-6 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 text-gray-900 dark:text-white rounded-2xl">
                 <div className="flex items-center gap-3 mb-4">
-                    <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
-                        <UploadCloud className="w-5 h-5 text-emerald-400" />
+                    <div className="p-2.5 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 rounded-xl">
+                        <UploadCloud className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                     </div>
                     <div>
-                        <h3 className="text-lg font-bold text-slate-100">Upload Arsip / Scan Surat Fisik</h3>
-                        <p className="text-xs text-slate-400">
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-slate-100">Upload Arsip / Scan Surat Fisik</h3>
+                        <p className="text-xs text-gray-500 dark:text-slate-400">
                             Unggah berkas resmi bertanda tangan dan stempel basah (PDF, Word, atau Scan Gambar).
                         </p>
                     </div>
@@ -78,12 +78,12 @@ export default function UploadArsipModal({ show, onClose, folderId }: Props) {
 
                 <div className="space-y-4">
                     <div>
-                        <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
-                            Perihal / Judul Dokumen <span className="text-rose-400">*</span>
+                        <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                            Perihal / Judul Dokumen <span className="text-rose-500">*</span>
                         </label>
                         <TextInput
                             type="text"
-                            className="w-full bg-slate-950 border-slate-800 text-slate-200 text-sm focus:border-emerald-500"
+                            className="w-full bg-gray-50 dark:bg-slate-950 border-gray-300 dark:border-slate-800 text-gray-900 dark:text-slate-200 text-sm focus:border-emerald-500"
                             placeholder="Contoh: Scan SK Tim BOS 2026 Bertanda Tangan"
                             value={perihal}
                             onChange={(e) => setPerihal(e.target.value)}
@@ -93,24 +93,24 @@ export default function UploadArsipModal({ show, onClose, folderId }: Props) {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div>
-                            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
+                            <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 uppercase tracking-wider mb-1">
                                 Nomor Surat
                             </label>
                             <TextInput
                                 type="text"
-                                className="w-full bg-slate-950 border-slate-800 text-slate-200 text-sm font-mono focus:border-emerald-500"
+                                className="w-full bg-gray-50 dark:bg-slate-950 border-gray-300 dark:border-slate-800 text-gray-900 dark:text-slate-200 text-sm font-mono focus:border-emerald-500"
                                 placeholder="Contoh: 421.3/001/2026"
                                 value={nomorSurat}
                                 onChange={(e) => setNomorSurat(e.target.value)}
                             />
                         </div>
                         <div>
-                            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
+                            <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 uppercase tracking-wider mb-1">
                                 Tanggal Surat
                             </label>
                             <TextInput
                                 type="date"
-                                className="w-full bg-slate-950 border-slate-800 text-slate-200 text-sm focus:border-emerald-500"
+                                className="w-full bg-gray-50 dark:bg-slate-950 border-gray-300 dark:border-slate-800 text-gray-900 dark:text-slate-200 text-sm focus:border-emerald-500"
                                 value={tanggalSurat}
                                 onChange={(e) => setTanggalSurat(e.target.value)}
                             />
@@ -118,27 +118,27 @@ export default function UploadArsipModal({ show, onClose, folderId }: Props) {
                     </div>
 
                     <div>
-                        <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
-                            Pilih Berkas Dokumen <span className="text-rose-400">*</span>
+                        <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                            Pilih Berkas Dokumen <span className="text-rose-500">*</span>
                         </label>
                         <input
                             type="file"
                             accept=".pdf,.docx,.jpg,.jpeg,.png"
                             onChange={(e) => setFile(e.target.files?.[0] || null)}
-                            className="block w-full text-xs text-slate-400 file:mr-3 file:py-2.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-600/20 file:text-emerald-300 hover:file:bg-emerald-600/30 file:cursor-pointer border border-slate-800 rounded-lg bg-slate-950"
+                            className="block w-full text-xs text-gray-600 dark:text-slate-400 file:mr-3 file:py-2.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 dark:file:bg-emerald-600/20 file:text-emerald-700 dark:file:text-emerald-300 hover:file:bg-emerald-100 dark:hover:file:bg-emerald-600/30 file:cursor-pointer border border-gray-300 dark:border-slate-800 rounded-lg bg-gray-50 dark:bg-slate-950"
                             required
                         />
-                        <p className="mt-1 text-[11px] text-slate-500 italic">
+                        <p className="mt-1 text-[11px] text-gray-500 dark:text-slate-500 italic">
                             Format didukung: PDF, DOCX, JPG, PNG (Maksimal 15 MB)
                         </p>
                     </div>
 
                     <div>
-                        <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
+                        <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 uppercase tracking-wider mb-1">
                             Keterangan (Opsional)
                         </label>
                         <textarea
-                            className="w-full bg-slate-950 border-slate-800 text-slate-200 text-xs rounded-lg focus:border-emerald-500 placeholder:text-slate-600"
+                            className="w-full bg-gray-50 dark:bg-slate-950 border border-gray-300 dark:border-slate-800 text-gray-900 dark:text-slate-200 text-xs rounded-lg focus:border-emerald-500 placeholder:text-gray-400 dark:placeholder:text-slate-600"
                             rows={2}
                             placeholder="Catatan mengenai berkas fisik..."
                             value={keterangan}
@@ -147,11 +147,11 @@ export default function UploadArsipModal({ show, onClose, folderId }: Props) {
                     </div>
                 </div>
 
-                <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-slate-800">
-                    <SecondaryButton type="button" onClick={onClose} disabled={loading} className="border-slate-800 text-slate-300 hover:bg-slate-800">
+                <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-slate-800">
+                    <SecondaryButton type="button" onClick={onClose} disabled={loading} className="border-gray-300 dark:border-slate-800 text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800">
                         Batal
                     </SecondaryButton>
-                    <PrimaryButton type="submit" disabled={loading} className="bg-emerald-600 hover:bg-emerald-700">
+                    <PrimaryButton type="submit" disabled={loading} className="bg-emerald-600 hover:bg-emerald-700 text-white">
                         {loading ? 'Mengunggah...' : 'Unggah Berkas Arsip'}
                     </PrimaryButton>
                 </div>

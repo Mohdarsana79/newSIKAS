@@ -166,14 +166,14 @@ export default function GenerateDokumenModal({
 
     return (
         <Modal show={show} onClose={onClose} maxWidth="3xl">
-            <form onSubmit={handleSubmit} className="p-6 bg-slate-900 border border-slate-800 text-white rounded-2xl max-h-[90vh] flex flex-col">
-                <div className="flex items-center justify-between pb-4 border-b border-slate-800 shrink-0">
+            <form onSubmit={handleSubmit} className="p-6 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 text-gray-900 dark:text-white rounded-2xl max-h-[90vh] flex flex-col">
+                <div className="flex items-center justify-between pb-4 border-b border-gray-200 dark:border-slate-800 shrink-0">
                     <div>
-                        <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">
-                            <FileEdit className="w-5 h-5 text-indigo-400" />
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-slate-100 flex items-center gap-2">
+                            <FileEdit className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
                             {isEditing ? 'Ubah Isian Surat Dokumen' : 'Buat Surat Baru dari Template Word'}
                         </h3>
-                        <p className="text-xs text-slate-400 mt-0.5">
+                        <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
                             Isi formulir variabel di bawah ini. Sistem PHPWord akan menyuntikkan data ke template dokumen asli secara otomatis.
                         </p>
                     </div>
@@ -183,11 +183,11 @@ export default function GenerateDokumenModal({
                     {/* Pemilihan Template */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
-                                Pilih Master Template <span className="text-rose-400">*</span>
+                            <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                                Pilih Master Template <span className="text-rose-500">*</span>
                             </label>
                             <select
-                                className="w-full bg-slate-950 border-slate-800 text-slate-200 text-sm rounded-lg focus:border-indigo-500"
+                                className="w-full bg-gray-50 dark:bg-slate-950 border-gray-300 dark:border-slate-800 text-gray-900 dark:text-slate-200 text-sm rounded-lg focus:border-indigo-500"
                                 value={selectedTemplateId}
                                 onChange={(e) => handleTemplateChange(Number(e.target.value))}
                                 disabled={isEditing || templates.length === 0}
@@ -203,12 +203,12 @@ export default function GenerateDokumenModal({
                         </div>
 
                         <div>
-                            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
-                                Perihal / Nama Dokumen <span className="text-rose-400">*</span>
+                            <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                                Perihal / Nama Dokumen <span className="text-rose-500">*</span>
                             </label>
                             <TextInput
                                 type="text"
-                                className="w-full bg-slate-950 border-slate-800 text-slate-200 text-sm focus:border-indigo-500"
+                                className="w-full bg-gray-50 dark:bg-slate-950 border-gray-300 dark:border-slate-800 text-gray-900 dark:text-slate-200 text-sm focus:border-indigo-500"
                                 placeholder="Contoh: SK Tim Manajemen BOSP TA 2026"
                                 value={perihal}
                                 onChange={(e) => setPerihal(e.target.value)}
@@ -217,12 +217,12 @@ export default function GenerateDokumenModal({
                         </div>
 
                         <div>
-                            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
+                            <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 uppercase tracking-wider mb-1">
                                 Nomor Surat
                             </label>
                             <TextInput
                                 type="text"
-                                className="w-full bg-slate-950 border-slate-800 text-slate-200 text-sm focus:border-indigo-500 font-mono"
+                                className="w-full bg-gray-50 dark:bg-slate-950 border-gray-300 dark:border-slate-800 text-gray-900 dark:text-slate-200 text-sm focus:border-indigo-500 font-mono"
                                 placeholder="Contoh: 421.3/012/BOSP/2026"
                                 value={nomorSurat}
                                 onChange={(e) => setNomorSurat(e.target.value)}
@@ -230,12 +230,12 @@ export default function GenerateDokumenModal({
                         </div>
 
                         <div>
-                            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
+                            <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 uppercase tracking-wider mb-1">
                                 Tanggal Surat
                             </label>
                             <TextInput
                                 type="date"
-                                className="w-full bg-slate-950 border-slate-800 text-slate-200 text-sm focus:border-indigo-500"
+                                className="w-full bg-gray-50 dark:bg-slate-950 border-gray-300 dark:border-slate-800 text-gray-900 dark:text-slate-200 text-sm focus:border-indigo-500"
                                 value={tanggalSurat}
                                 onChange={(e) => setTanggalSurat(e.target.value)}
                             />
@@ -243,38 +243,38 @@ export default function GenerateDokumenModal({
                     </div>
 
                     {/* Dynamic Variable Inputs */}
-                    <div className="pt-4 border-t border-slate-800/80">
+                    <div className="pt-4 border-t border-gray-200 dark:border-slate-800/80">
                         <div className="flex items-center justify-between mb-3">
-                            <h4 className="text-xs font-semibold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
-                                <Sparkles className="w-4 h-4 text-amber-400" />
+                            <h4 className="text-xs font-semibold text-gray-700 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                                <Sparkles className="w-4 h-4 text-amber-500 dark:text-amber-400" />
                                 Isian Variabel Dinamis Template
                             </h4>
-                            <span className="text-[11px] text-slate-400">
+                            <span className="text-[11px] text-gray-500 dark:text-slate-400">
                                 {activeTemplate?.detected_variables?.length || 0} variabel ditemukan
                             </span>
                         </div>
 
                         {!activeTemplate || !activeTemplate.detected_variables || activeTemplate.detected_variables.length === 0 ? (
-                            <div className="p-4 bg-slate-950/40 border border-slate-800 rounded-xl text-center">
-                                <AlertCircle className="w-6 h-6 text-amber-400 mx-auto mb-1.5" />
-                                <p className="text-xs text-slate-400">
-                                    Template ini belum memiliki tag variabel <code className="text-indigo-300">{'${...}'}</code>.
+                            <div className="p-4 bg-gray-50/50 dark:bg-slate-950/40 border border-gray-200 dark:border-slate-800 rounded-xl text-center">
+                                <AlertCircle className="w-6 h-6 text-amber-500 dark:text-amber-400 mx-auto mb-1.5" />
+                                <p className="text-xs text-gray-600 dark:text-slate-400">
+                                    Template ini belum memiliki tag variabel <code className="text-indigo-600 dark:text-indigo-300">{'${...}'}</code>.
                                 </p>
                             </div>
                         ) : (
-                            <div className="space-y-3 bg-slate-950/50 p-4 border border-slate-800/80 rounded-xl">
+                            <div className="space-y-3 bg-gray-50 dark:bg-slate-950/50 p-4 border border-gray-200 dark:border-slate-800/80 rounded-xl">
                                 {activeTemplate.detected_variables.map((tag) => {
                                     const normalized = tag.toLowerCase().trim();
                                     const isAutoFilled = Boolean(schoolData[normalized]);
 
                                     return (
                                         <div key={tag} className="grid grid-cols-1 md:grid-cols-3 gap-2 items-center">
-                                            <div className="text-xs font-medium text-slate-300 flex items-center gap-1.5">
-                                                <code className="px-1.5 py-0.5 rounded bg-indigo-950/80 border border-indigo-500/30 text-indigo-300 font-mono text-[11px]">
+                                            <div className="text-xs font-medium text-gray-700 dark:text-slate-300 flex items-center gap-1.5">
+                                                <code className="px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200 dark:border-indigo-500/30 text-indigo-700 dark:text-indigo-300 font-mono text-[11px]">
                                                     {`\${${tag}}`}
                                                 </code>
                                                 {isAutoFilled && (
-                                                    <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-950/60 border border-emerald-500/30 text-emerald-400">
+                                                    <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-400">
                                                         Profil SIKAS
                                                     </span>
                                                 )}
@@ -283,7 +283,7 @@ export default function GenerateDokumenModal({
                                             <div className="md:col-span-2">
                                                 <TextInput
                                                     type="text"
-                                                    className="w-full bg-slate-900 border-slate-800 text-slate-200 text-xs focus:border-indigo-500"
+                                                    className="w-full bg-white dark:bg-slate-900 border-gray-300 dark:border-slate-800 text-gray-900 dark:text-slate-200 text-xs focus:border-indigo-500"
                                                     placeholder={`Masukkan isian untuk \${${tag}}`}
                                                     value={dataIsian[tag] ?? ''}
                                                     onChange={(e) => handleFieldChange(tag, e.target.value)}
@@ -298,11 +298,11 @@ export default function GenerateDokumenModal({
 
                     {/* Keterangan Tambahan */}
                     <div>
-                        <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
+                        <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 uppercase tracking-wider mb-1">
                             Keterangan Tambahan (Opsional)
                         </label>
                         <textarea
-                            className="w-full bg-slate-950 border-slate-800 text-slate-200 text-xs rounded-lg focus:border-indigo-500 placeholder:text-slate-600"
+                            className="w-full bg-gray-50 dark:bg-slate-950 border border-gray-300 dark:border-slate-800 text-gray-900 dark:text-slate-200 text-xs rounded-lg focus:border-indigo-500 placeholder:text-gray-400 dark:placeholder:text-slate-600"
                             rows={2}
                             placeholder="Catatan peruntukan atau ringkasan surat ini..."
                             value={keterangan}
@@ -311,11 +311,11 @@ export default function GenerateDokumenModal({
                     </div>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-slate-800 flex justify-end gap-3 shrink-0">
-                    <SecondaryButton type="button" onClick={onClose} disabled={loading} className="border-slate-800 text-slate-300 hover:bg-slate-800">
+                <div className="mt-4 pt-3 border-t border-gray-200 dark:border-slate-800 flex justify-end gap-3 shrink-0">
+                    <SecondaryButton type="button" onClick={onClose} disabled={loading} className="border-gray-300 dark:border-slate-800 text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800">
                         Batal
                     </SecondaryButton>
-                    <PrimaryButton type="submit" disabled={loading} className="bg-indigo-600 hover:bg-indigo-700">
+                    <PrimaryButton type="submit" disabled={loading} className="bg-indigo-600 hover:bg-indigo-700 text-white">
                         {loading ? 'Menyimpan...' : isEditing ? 'Simpan Perubahan' : 'Simpan Surat Dokumen'}
                     </PrimaryButton>
                 </div>

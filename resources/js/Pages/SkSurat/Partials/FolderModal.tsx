@@ -90,22 +90,22 @@ export default function FolderModal({ show, onClose, folder }: Props) {
 
     return (
         <Modal show={show} onClose={onClose} maxWidth="md">
-            <form onSubmit={handleSubmit} className="p-6 bg-slate-900 border border-slate-800 text-white rounded-2xl">
-                <h3 className="text-lg font-bold text-slate-100 mb-1">
+            <form onSubmit={handleSubmit} className="p-6 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 text-gray-900 dark:text-white rounded-2xl">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-slate-100 mb-1">
                     {isEditing ? 'Ubah Informasi Folder' : 'Buat Folder Dokumen Baru'}
                 </h3>
-                <p className="text-xs text-slate-400 mb-5">
+                <p className="text-xs text-gray-500 dark:text-slate-400 mb-5">
                     Folder digunakan untuk mengelompokkan SK dan surat resmi sekolah secara terstruktur.
                 </p>
 
                 <div className="space-y-4">
                     <div>
-                        <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
-                            Nama Folder <span className="text-rose-400">*</span>
+                        <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                            Nama Folder <span className="text-rose-500">*</span>
                         </label>
                         <TextInput
                             type="text"
-                            className="w-full bg-slate-950 border-slate-800 text-slate-200 text-sm focus:border-indigo-500 focus:ring-indigo-500/20"
+                            className="w-full bg-gray-50 dark:bg-slate-950 border-gray-300 dark:border-slate-800 text-gray-900 dark:text-slate-200 text-sm focus:border-indigo-500 focus:ring-indigo-500/20"
                             placeholder="Contoh: SK Tim Manajemen BOSP 2026"
                             value={namaFolder}
                             onChange={(e) => setNamaFolder(e.target.value)}
@@ -114,11 +114,11 @@ export default function FolderModal({ show, onClose, folder }: Props) {
                     </div>
 
                     <div>
-                        <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
+                        <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 uppercase tracking-wider mb-1">
                             Deskripsi / Catatan (Opsional)
                         </label>
                         <textarea
-                            className="w-full bg-slate-950 border-slate-800 text-slate-200 text-sm rounded-lg focus:border-indigo-500 focus:ring-indigo-500/20 placeholder:text-slate-600"
+                            className="w-full bg-gray-50 dark:bg-slate-950 border border-gray-300 dark:border-slate-800 text-gray-900 dark:text-slate-200 text-sm rounded-lg focus:border-indigo-500 focus:ring-indigo-500/20 placeholder:text-gray-400 dark:placeholder:text-slate-600"
                             rows={3}
                             placeholder="Catatan peruntukan folder ini..."
                             value={deskripsi}
@@ -127,7 +127,7 @@ export default function FolderModal({ show, onClose, folder }: Props) {
                     </div>
 
                     <div>
-                        <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+                        <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 uppercase tracking-wider mb-2">
                             Pilihan Warna Folder
                         </label>
                         <div className="flex items-center gap-3">
@@ -138,7 +138,7 @@ export default function FolderModal({ show, onClose, folder }: Props) {
                                     onClick={() => setWarna(c.value)}
                                     className={`w-7 h-7 rounded-full ${c.bg} transition-all duration-200 ${
                                         warna === c.value
-                                            ? 'ring-4 ring-white/20 scale-110 shadow-lg'
+                                            ? 'ring-4 ring-indigo-400/40 dark:ring-white/20 scale-110 shadow-lg'
                                             : 'opacity-60 hover:opacity-100'
                                     }`}
                                     title={c.name}
@@ -148,11 +148,11 @@ export default function FolderModal({ show, onClose, folder }: Props) {
                     </div>
                 </div>
 
-                <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-slate-800">
-                    <SecondaryButton type="button" onClick={onClose} disabled={loading} className="border-slate-800 text-slate-300 hover:bg-slate-800">
+                <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-slate-800">
+                    <SecondaryButton type="button" onClick={onClose} disabled={loading} className="border-gray-300 dark:border-slate-800 text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800">
                         Batal
                     </SecondaryButton>
-                    <PrimaryButton type="submit" disabled={loading} className="bg-indigo-600 hover:bg-indigo-700">
+                    <PrimaryButton type="submit" disabled={loading} className="bg-indigo-600 hover:bg-indigo-700 text-white">
                         {loading ? 'Menyimpan...' : isEditing ? 'Simpan Perubahan' : 'Buat Folder'}
                     </PrimaryButton>
                 </div>
