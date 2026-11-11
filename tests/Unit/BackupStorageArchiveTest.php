@@ -137,6 +137,14 @@ class BackupStorageArchiveTest extends TestCase
         $this->assertEquals(100, $data3['percent']);
         $this->assertEquals('completed', $data3['status']);
 
+        // Test route response without auth/session/license block
+        $responseHttp = $this->get('/backup/restore-progress/'.$testId);
+        $responseHttp->assertStatus(200);
+        $responseHttp->assertJson([
+            'percent' => 100,
+            'status' => 'completed',
+        ]);
+
         // Cleanup
         if (file_exists($progressFile)) {
             @unlink($progressFile);

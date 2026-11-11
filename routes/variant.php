@@ -198,7 +198,6 @@ Route::prefix('backup')->name('backup.')->group(function () {
     Route::get('/', [DatabaseController::class, 'index'])->name('index');
     Route::post('/create', [DatabaseController::class, 'backup'])->name('create');
     Route::post('/restore', [DatabaseController::class, 'restore'])->name('restore');
-    Route::get('/restore-progress/{restoreId}', [DatabaseController::class, 'restoreProgress'])->name('restore-progress');
     Route::get('/download', [DatabaseController::class, 'download'])->name('download');
     Route::delete('/delete', [DatabaseController::class, 'delete'])->name('delete');
     Route::post('/validate-password', [DatabaseController::class, 'validatePassword'])->name('validate-password');

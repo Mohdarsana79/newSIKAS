@@ -388,7 +388,18 @@ class DatabaseController extends Controller
         ]);
 
         $restoreId = $request->input('restore_id');
-        $this->setRestoreProgress($restoreId, 10, 'Memvalidasi berkas & kesiapan sistem...', 'processing');
+
+        // Bersihkan file progress temporer lama (> 30 menit)
+        $tempAppDir = storage_path('app/temp');
+        if (is_dir($tempAppDir)) {
+            foreach (glob($tempAppDir.'/restore_progress_*.json') as $oldProgFile) {
+                if (@filemtime($oldProgFile) < time() - 1800) {
+                    @unlink($oldProgFile);
+                }
+            }
+        }
+
+        $this->setRestoreProgress($restoreId, 18, 'Memvalidasi berkas & kesiapan sistem...', 'processing');
 
         @ini_set('max_execution_time', '600');
         @ini_set('memory_limit', '1024M');
@@ -452,7 +463,7 @@ class DatabaseController extends Controller
                 }
 
                 // Ekstrak berkas storage publik & privat (Merge & Overwrite)
-                $this->setRestoreProgress($restoreId, 38, 'Mengekstrak berkas fisik media...', 'processing');
+                $this->setRestoreProgress($restoreId, 38, 'Mengekstrak berkas fisik media (kop surat & dokumen)...', 'processing');
                 $publicRestored = $this->extractZipSubdir($zip, 'storage/public', storage_path('app/public'));
                 $privateRestored = $this->extractZipSubdir($zip, 'storage/private', storage_path('app/private'));
                 $totalFilesRestored = $publicRestored + $privateRestored;
@@ -507,7 +518,7 @@ class DatabaseController extends Controller
                 Artisan::call('migrate', ['--force' => true]);
 
                 // Pastikan symlink storage terhubung jika belum ada
-                $this->setRestoreProgress($restoreId, 95, 'Memverifikasi tautan berkas fisik...', 'processing');
+                $this->setRestoreProgress($restoreId, 95, 'Memverifikasi tautan berkas fisik media...', 'processing');
                 if (! file_exists(public_path('storage'))) {
                     try {
                         Artisan::call('storage:link');

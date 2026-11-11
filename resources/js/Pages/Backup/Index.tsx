@@ -101,17 +101,26 @@ export default function BackupIndex({ auth, backupFiles, stats, flash, currentNp
     const [restoreStatus, setRestoreStatus] = useState<'idle' | 'uploading' | 'processing' | 'completed' | 'error'>('idle');
     const [restoreMessage, setRestoreMessage] = useState('');
     const [restoreError, setRestoreError] = useState('');
-    const pollingIntervalRef = useRef<any>(null);
 
-    const clearPolling = () => {
+    const pollingIntervalRef = useRef<any>(null);
+    const animationIntervalRef = useRef<any>(null);
+    const displayedProgressRef = useRef<number>(0);
+    const targetProgressRef = useRef<number>(0);
+    const isCompletedRef = useRef<boolean>(false);
+
+    const clearTimers = () => {
         if (pollingIntervalRef.current) {
             clearInterval(pollingIntervalRef.current);
             pollingIntervalRef.current = null;
         }
+        if (animationIntervalRef.current) {
+            clearInterval(animationIntervalRef.current);
+            animationIntervalRef.current = null;
+        }
     };
 
     useEffect(() => {
-        return () => clearPolling();
+        return () => clearTimers();
     }, []);
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -120,6 +129,9 @@ export default function BackupIndex({ auth, backupFiles, stats, flash, currentNp
             setRestoreFile(file);
             setShowRestoreModal(true);
             setRestoreProgress(0);
+            displayedProgressRef.current = 0;
+            targetProgressRef.current = 0;
+            isCompletedRef.current = false;
             setRestoreStatus('idle');
             setRestoreMessage('');
             setRestoreError('');
@@ -130,10 +142,13 @@ export default function BackupIndex({ auth, backupFiles, stats, flash, currentNp
 
     const closeRestoreModal = () => {
         if (restoreStatus === 'uploading' || restoreStatus === 'processing') return; // Prevent closing while processing
-        clearPolling();
+        clearTimers();
         setShowRestoreModal(false);
         setRestoreFile(null);
         setRestoreProgress(0);
+        displayedProgressRef.current = 0;
+        targetProgressRef.current = 0;
+        isCompletedRef.current = false;
         setRestoreStatus('idle');
         setRestoreMessage('');
         setRestoreError('');
@@ -143,16 +158,61 @@ export default function BackupIndex({ auth, backupFiles, stats, flash, currentNp
     const executeRestore = () => {
         if (!restoreFile) return;
 
-        clearPolling();
+        clearTimers();
+        isCompletedRef.current = false;
         setRestoreError('');
         setRestoreStatus('uploading');
-        setRestoreProgress(5);
         setRestoreMessage('Mengunggah berkas cadangan ke server...');
+
+        // Inisialisasi awal animasi smooth: mulai dari 1%
+        displayedProgressRef.current = 1;
+        targetProgressRef.current = 3;
+        setRestoreProgress(1);
 
         const restoreId = 'rst_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8);
 
+        // Mesin animasi smooth progress (1, 2, 3, ... 100%)
+        let lastCreepTime = Date.now();
+        animationIntervalRef.current = setInterval(() => {
+            const current = displayedProgressRef.current;
+            const target = targetProgressRef.current;
+
+            if (current < target) {
+                // Kecepatan langkah disesuaikan dengan selisih jarak
+                const diff = target - current;
+                const step = diff > 25 ? 2 : 1;
+                const next = Math.min(target, current + step);
+                displayedProgressRef.current = next;
+                setRestoreProgress(next);
+
+                if (next >= 100 && isCompletedRef.current) {
+                    clearTimers();
+                    setRestoreStatus('completed');
+                    setRestoreProgress(100);
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                }
+            } else if (current >= target && target < 95 && !isCompletedRef.current) {
+                // Ketika target server belum berganti (misal saat proses psql impor data transaksi):
+                // Lakukan creep halus bertahap (1% setiap 400ms) agar indikator tidak freeze
+                const now = Date.now();
+                if (now - lastCreepTime >= 400) {
+                    lastCreepTime = now;
+                    const maxCreep = Math.min(94, target + 15);
+                    if (current < maxCreep) {
+                        const next = current + 1;
+                        displayedProgressRef.current = next;
+                        setRestoreProgress(next);
+                    }
+                }
+            }
+        }, 40);
+
+        // Polling ke server (bebas middleware database/session)
         const startPolling = () => {
-            clearPolling();
+            if (pollingIntervalRef.current) return;
+
             pollingIntervalRef.current = setInterval(async () => {
                 try {
                     const res = await window.axios.get(route('backup.restore-progress', { restoreId }));
@@ -160,7 +220,7 @@ export default function BackupIndex({ auth, backupFiles, stats, flash, currentNp
                         const { percent, message, status } = res.data;
 
                         if (status === 'error') {
-                            clearPolling();
+                            clearTimers();
                             setRestoreStatus('error');
                             setRestoreError(message || 'Terjadi kesalahan saat memulihkan database.');
                             setRestoreMessage('Proses pemulihan gagal.');
@@ -168,19 +228,17 @@ export default function BackupIndex({ auth, backupFiles, stats, flash, currentNp
                             return;
                         }
 
-                        if (status === 'completed') {
-                            clearPolling();
-                            setRestoreStatus('completed');
-                            setRestoreProgress(100);
-                            setRestoreMessage(message || 'Pemulihan basis data & berkas berhasil!');
-                            setTimeout(() => {
-                                window.location.reload();
-                            }, 1500);
+                        if (status === 'completed' || percent === 100) {
+                            isCompletedRef.current = true;
+                            targetProgressRef.current = 100;
+                            if (message) {
+                                setRestoreMessage(message);
+                            }
                             return;
                         }
 
                         if (typeof percent === 'number') {
-                            setRestoreProgress((prev) => Math.max(prev, percent));
+                            targetProgressRef.current = Math.max(targetProgressRef.current, percent);
                         }
                         if (message) {
                             setRestoreMessage(message);
@@ -188,11 +246,12 @@ export default function BackupIndex({ auth, backupFiles, stats, flash, currentNp
                         setRestoreStatus('processing');
                     }
                 } catch (e) {
-                    // Abaikan kesalahan koneksi sementara saat polling
+                    // Abaikan kesalahan jaringan sesaat saat polling
                 }
-            }, 600);
+            }, 500);
         };
 
+        // Kirim request restore ke backend
         router.post(route('backup.restore'), {
             backup_file: restoreFile,
             restore_id: restoreId,
@@ -200,31 +259,26 @@ export default function BackupIndex({ auth, backupFiles, stats, flash, currentNp
             forceFormData: true,
             onProgress: (progress) => {
                 if (progress && progress.total) {
-                    // Fase 1: 0% - 15% untuk transmisi byte ke server
-                    const uploadPct = Math.round((progress.loaded * 15) / progress.total);
-                    setRestoreProgress(Math.max(5, uploadPct));
-                    if (uploadPct >= 15) {
+                    // Fase upload: mengalir mulus hingga 18%
+                    const uploadPct = Math.max(1, Math.min(18, Math.round((progress.loaded * 18) / progress.total)));
+                    targetProgressRef.current = Math.max(targetProgressRef.current, uploadPct);
+                    if (uploadPct >= 18) {
                         setRestoreStatus('processing');
                         setRestoreMessage('Berkas terunggah, memulai pemrosesan di server...');
                     }
                 }
             },
             onStart: () => {
-                setTimeout(startPolling, 600);
+                startPolling();
             },
             onSuccess: () => {
-                if (restoreStatus !== 'error') {
-                    clearPolling();
-                    setRestoreStatus('completed');
-                    setRestoreProgress(100);
-                    setRestoreMessage('Pemulihan basis data & berkas berhasil! Memuat ulang...');
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 1500);
-                }
+                // Backend telah selesai merestore dan redirect
+                isCompletedRef.current = true;
+                targetProgressRef.current = 100;
+                setRestoreMessage('Pemulihan basis data & berkas berhasil! Memuat ulang...');
             },
             onError: (errors) => {
-                clearPolling();
+                clearTimers();
                 setRestoreStatus('error');
                 const errKey = Object.keys(errors)[0];
                 const msg = errKey ? errors[errKey] : 'Gagal memulihkan database.';
@@ -608,14 +662,14 @@ export default function BackupIndex({ auth, backupFiles, stats, flash, currentNp
                                             {restoreMessage || (restoreStatus === 'uploading' ? 'Mengunggah berkas...' : 'Memproses di server...')}
                                         </span>
                                     </div>
-                                    <span className="font-bold text-sm text-gray-700 dark:text-gray-300 ml-2">
+                                    <span className="font-bold text-sm text-gray-700 dark:text-gray-300 ml-2 tabular-nums">
                                         {restoreProgress}%
                                     </span>
                                 </div>
 
                                 <div className="w-full bg-gray-200 rounded-full h-3 dark:bg-gray-600 overflow-hidden">
                                     <div
-                                        className={`h-3 rounded-full transition-all duration-500 ease-out ${
+                                        className={`h-3 rounded-full transition-all duration-200 ease-out ${
                                             restoreStatus === 'error'
                                                 ? 'bg-red-600'
                                                 : restoreStatus === 'completed'

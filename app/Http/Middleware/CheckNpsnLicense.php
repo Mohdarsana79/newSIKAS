@@ -16,8 +16,8 @@ class CheckNpsnLicense
      */
     public function handle(Request $request, Closure $next): Response
     {
-        // Pengecualian rute agar tidak loop terus-menerus di halaman error
-        if ($request->is('license-invalid') || $request->is('api/*')) {
+        // Pengecualian rute agar tidak loop terus-menerus di halaman error & saat proses pemulihan database
+        if ($request->is('license-invalid') || $request->is('api/*') || $request->is('backup/restore-progress/*')) {
             return $next($request);
         }
 
