@@ -15,6 +15,9 @@ use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
+use ZipArchive;
 
 class DatabaseController extends Controller
 {
@@ -51,8 +54,8 @@ class DatabaseController extends Controller
             $totalBackupSize += filesize($file['path']); // Logic untuk path perlu dicek ulang jika pakai Storage
         }
 
-        // Hitung persentase kapasitas (contoh: asumsikan max 1GB)
-        $maxStorage = 1073741824; // 1GB in bytes
+        // Hitung persentase kapasitas (asumsikan 5GB)
+        $maxStorage = 5368709120; // 5GB in bytes
         $storagePercentage = round(($totalBackupSize / $maxStorage) * 100, 2);
 
         return Inertia::render('Backup/Index', [
@@ -226,7 +229,7 @@ class DatabaseController extends Controller
     }
 
     /**
-     * Melakukan backup database PostgreSQL
+     * Melakukan backup database PostgreSQL dan seluruh berkas fisik unggahan (storage)
      */
     public function backup(Request $request)
     {
@@ -234,21 +237,28 @@ class DatabaseController extends Controller
             'backup_name' => 'nullable|string|max:255|regex:/^[a-zA-Z0-9_-]+$/',
         ]);
 
+        @ini_set('max_execution_time', '600');
+        @ini_set('memory_limit', '1024M');
+
+        $tempDir = storage_path('app/temp/backup_'.uniqid());
+        $sqlTempFile = $tempDir.'/database.sql';
+
         try {
             $dbConfig = Config::get('database.connections.pgsql');
 
             // Membuat nama file backup
             $timestamp = Carbon::now()->format('Y-m-d_H-i-s');
-            // Changed extension to .rsv as requested
-            $backupName = $request->backup_name ? $request->backup_name.'_'.$timestamp : 'backup_'.$timestamp;
-            $fileName = $backupName.'.rsv';
+            $backupBaseName = $request->backup_name ? $request->backup_name.'_'.$timestamp : 'backup_'.$timestamp;
+            $fileName = $backupBaseName.'.rsv';
 
             // Path untuk menyimpan backup
             $backupPath = storage_path('app/backups');
-
-            // Membuat direktori backup jika belum ada
             if (! file_exists($backupPath)) {
                 mkdir($backupPath, 0755, true);
+            }
+
+            if (! file_exists($tempDir)) {
+                mkdir($tempDir, 0755, true);
             }
 
             $fullPath = $backupPath.'/'.$fileName;
@@ -259,7 +269,7 @@ class DatabaseController extends Controller
                 return back()->with('error', "Executable pg_dump tidak ditemukan di server: {$pgDumpPath}. Pastikan path PostgreSQL terkonfigurasi dengan benar.");
             }
 
-            // Added --clean --if-exists to make backup self-contained for replacements
+            // Dump database ke file temporary database.sql
             $command = sprintf(
                 '"%s" -h %s -p %s -U %s -d %s -f %s --no-owner --no-privileges --clean --if-exists',
                 $pgDumpPath,
@@ -267,7 +277,7 @@ class DatabaseController extends Controller
                 escapeshellarg($dbConfig['port']),
                 escapeshellarg($dbConfig['username']),
                 escapeshellarg($dbConfig['database']),
-                escapeshellarg($fullPath)
+                escapeshellarg($sqlTempFile)
             );
 
             // Set environment variable untuk password
@@ -281,11 +291,11 @@ class DatabaseController extends Controller
             // Hapus environment variable setelah digunakan
             putenv('PGPASSWORD');
 
-            // Periksa hasil backup
-            $fileExists = file_exists($fullPath);
-            $fileSize = $fileExists ? filesize($fullPath) : 0;
+            // Periksa hasil dump
+            $sqlExists = file_exists($sqlTempFile);
+            $sqlSize = $sqlExists ? filesize($sqlTempFile) : 0;
 
-            if ($returnVar !== 0 || ! $fileExists || $fileSize == 0) {
+            if ($returnVar !== 0 || ! $sqlExists || $sqlSize == 0) {
                 // If failed, try without --clean --if-exists (in case pg_dump version issues)
                 if ($returnVar !== 0) {
                     Log::warning('Backup with --clean failed, retrying without cleanse options. Error: '.implode("\n", $output));
@@ -296,7 +306,7 @@ class DatabaseController extends Controller
                         escapeshellarg($dbConfig['port']),
                         escapeshellarg($dbConfig['username']),
                         escapeshellarg($dbConfig['database']),
-                        escapeshellarg($fullPath)
+                        escapeshellarg($sqlTempFile)
                     );
                     putenv('PGPASSWORD='.$dbConfig['password']);
                     $output = [];
@@ -307,36 +317,80 @@ class DatabaseController extends Controller
             }
 
             // Re-check after retry
-            $fileExists = file_exists($fullPath);
-            $fileSize = $fileExists ? filesize($fullPath) : 0;
+            $sqlExists = file_exists($sqlTempFile);
+            $sqlSize = $sqlExists ? filesize($sqlTempFile) : 0;
 
-            if ($returnVar !== 0 || ! $fileExists || $fileSize == 0) {
-                $errorMsg = $returnVar !== 0 ? implode("\n", $output) : (! $fileExists ? 'File backup tidak terbuat' : 'File backup kosong');
-                if ($fileExists && $fileSize == 0) {
-                    unlink($fullPath);
-                }
-                Log::error('Backup Failed:', ['error' => $errorMsg]);
+            if ($returnVar !== 0 || ! $sqlExists || $sqlSize == 0) {
+                $errorMsg = $returnVar !== 0 ? implode("\n", $output) : (! $sqlExists ? 'File dump database tidak terbuat' : 'File dump database kosong');
+                Log::error('Backup Failed during pg_dump:', ['error' => $errorMsg]);
 
-                return back()->with('error', 'Backup gagal: '.$errorMsg);
+                return back()->with('error', 'Backup database gagal: '.$errorMsg);
             }
 
-            return back()->with('success', 'Backup database berhasil dibuat: '.$fileName);
+            // Inisialisasi ZipArchive untuk mengemas database.sql dan file storage pengguna
+            $zip = new ZipArchive;
+            if ($zip->open($fullPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+                return back()->with('error', 'Gagal membuat file arsip zip untuk backup: '.$fileName);
+            }
+
+            // 1. Masukkan database.sql
+            $zip->addFile($sqlTempFile, 'database.sql');
+
+            // 2. Masukkan file storage public (kop surat, logo, templates xlsx, dll)
+            $publicFilesCount = $this->addFolderToZip($zip, storage_path('app/public'), 'storage/public');
+
+            // 3. Masukkan file storage private (sk_surat: templates docx, archives doc/pdf, dll)
+            $privateFilesCount = $this->addFolderToZip($zip, storage_path('app/private'), 'storage/private', ['public']);
+
+            $totalFilesCount = $publicFilesCount + $privateFilesCount;
+
+            // 4. Masukkan manifest.json
+            $manifest = [
+                'version' => '1.0',
+                'format' => 'all-in-one',
+                'app' => config('app.name', 'SIKAS'),
+                'app_npsn' => env('APP_NPSN_CODE', ''),
+                'created_at' => Carbon::now()->toIso8601String(),
+                'has_database' => true,
+                'has_storage' => true,
+                'storage_files_count' => $totalFilesCount,
+            ];
+            $zip->addFromString('manifest.json', json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+
+            $zip->close();
+
+            Log::info("Backup successful: {$fileName} (DB + {$totalFilesCount} storage files)");
+
+            return back()->with('success', "Backup database & berkas berhasil dibuat: {$fileName} (Database + {$totalFilesCount} berkas unggahan)");
         } catch (Exception $e) {
             Log::error('Backup Exception:', ['error' => $e->getMessage()]);
 
             return back()->with('error', 'Backup gagal: '.$e->getMessage());
+        } finally {
+            if (file_exists($sqlTempFile)) {
+                @unlink($sqlTempFile);
+            }
+            if (is_dir($tempDir)) {
+                @rmdir($tempDir);
+            }
         }
     }
 
     /**
-     * Melakukan restore database PostgreSQL
+     * Melakukan restore database PostgreSQL dan berkas fisik (storage)
      */
     public function restore(Request $request)
     {
         $request->validate([
-            // Allow .rsv and .btb extensions
-            'backup_file' => 'required|file|extensions:rsv,btb,sql|max:102400',
+            // Izinkan ukuran hingga 2 GB (2097152 KB)
+            'backup_file' => 'required|file|extensions:rsv,btb,sql|max:2097152',
         ]);
+
+        @ini_set('max_execution_time', '600');
+        @ini_set('memory_limit', '1024M');
+
+        $tempDir = storage_path('app/temp/restore_'.uniqid());
+        $extractedSqlPath = null;
 
         try {
             $dbConfig = Config::get('database.connections.pgsql');
@@ -352,9 +406,46 @@ class DatabaseController extends Controller
                 return back()->with('error', 'Upload file backup tidak valid.');
             }
 
-            $tempPath = $file->getRealPath();
-            if (! file_exists($tempPath) || filesize($tempPath) === 0) {
+            $uploadedPath = $file->getRealPath();
+            if (! file_exists($uploadedPath) || filesize($uploadedPath) === 0) {
                 return back()->with('error', 'File backup yang diunggah kosong atau tidak terbaca.');
+            }
+
+            $totalFilesRestored = 0;
+            $isZipPackage = false;
+
+            // Periksa apakah berkas berupa ZIP archive
+            $zip = new ZipArchive;
+            if ($zip->open($uploadedPath) === true) {
+                $isZipPackage = true;
+
+                if (! file_exists($tempDir)) {
+                    mkdir($tempDir, 0755, true);
+                }
+
+                // Cek apakah terdapat database.sql dalam arsip
+                if ($zip->locateName('database.sql') === false) {
+                    $zip->close();
+
+                    return back()->with('error', 'Format arsip backup tidak valid: berkas database.sql tidak ditemukan di dalam paket.');
+                }
+
+                $extractedSqlPath = $tempDir.'/database.sql';
+                if (! $zip->extractTo($tempDir, ['database.sql'])) {
+                    $zip->close();
+                    throw new Exception('Gagal mengekstrak database.sql dari arsip backup.');
+                }
+
+                // Ekstrak berkas storage publik & privat (Merge & Overwrite)
+                $publicRestored = $this->extractZipSubdir($zip, 'storage/public', storage_path('app/public'));
+                $privateRestored = $this->extractZipSubdir($zip, 'storage/private', storage_path('app/private'));
+                $totalFilesRestored = $publicRestored + $privateRestored;
+
+                $zip->close();
+                $sqlPathToRestore = $extractedSqlPath;
+            } else {
+                // File adalah file SQL mentah format lama (backward compatibility)
+                $sqlPathToRestore = $uploadedPath;
             }
 
             // Step 2: Persiapan Database & Restore Data
@@ -374,7 +465,7 @@ class DatabaseController extends Controller
                     escapeshellarg($dbConfig['port']),
                     escapeshellarg($dbConfig['username']),
                     escapeshellarg($dbConfig['database']),
-                    escapeshellarg($tempPath)
+                    escapeshellarg($sqlPathToRestore)
                 );
 
                 $output = [];
@@ -394,7 +485,22 @@ class DatabaseController extends Controller
                 // Run migrations to ensure schema is up to date with code
                 Artisan::call('migrate', ['--force' => true]);
 
-                return back()->with('success', 'Database berhasil di-restore');
+                // Pastikan symlink storage terhubung jika belum ada
+                if (! file_exists(public_path('storage'))) {
+                    try {
+                        Artisan::call('storage:link');
+                    } catch (\Throwable $linkError) {
+                        Log::warning('Storage link error: '.$linkError->getMessage());
+                    }
+                }
+
+                if ($isZipPackage) {
+                    $message = "Database dan {$totalFilesRestored} berkas fisik berhasil dipulihkan (restore).";
+                } else {
+                    $message = 'Database versi legacy berhasil dipulihkan (tanpa berkas fisik).';
+                }
+
+                return back()->with('success', $message);
             } catch (Exception $e) {
                 Log::error('Restore execution failed: '.$e->getMessage());
 
@@ -409,7 +515,115 @@ class DatabaseController extends Controller
             }
         } catch (Exception $e) {
             return back()->with('error', $e->getMessage());
+        } finally {
+            if ($extractedSqlPath && file_exists($extractedSqlPath)) {
+                @unlink($extractedSqlPath);
+            }
+            if (is_dir($tempDir)) {
+                @rmdir($tempDir);
+            }
         }
+    }
+
+    /**
+     * Menambahkan seluruh isi folder ke dalam ZipArchive secara rekursif
+     */
+    protected function addFolderToZip(ZipArchive $zip, string $sourcePath, string $zipPrefix, array $excludeDirs = []): int
+    {
+        if (! is_dir($sourcePath)) {
+            return 0;
+        }
+
+        $sourcePath = rtrim(str_replace('\\', '/', $sourcePath), '/');
+        $filesAdded = 0;
+
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($sourcePath, RecursiveDirectoryIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::SELF_FIRST
+        );
+
+        foreach ($iterator as $item) {
+            $itemPath = str_replace('\\', '/', $item->getPathname());
+            $relativePath = substr($itemPath, strlen($sourcePath) + 1);
+
+            // Periksa apakah berada dalam direktori yang dikecualikan
+            $shouldExclude = false;
+            foreach ($excludeDirs as $exclude) {
+                $exclude = trim(str_replace('\\', '/', $exclude), '/');
+                if ($relativePath === $exclude || str_starts_with($relativePath, $exclude.'/')) {
+                    $shouldExclude = true;
+                    break;
+                }
+            }
+
+            if ($item->getFilename() === '.gitignore' || $item->getFilename() === '.DS_Store') {
+                $shouldExclude = true;
+            }
+
+            if ($shouldExclude) {
+                continue;
+            }
+
+            $zipEntryPath = rtrim($zipPrefix, '/').'/'.$relativePath;
+
+            if ($item->isDir()) {
+                $zip->addEmptyDir($zipEntryPath);
+            } elseif ($item->isFile()) {
+                $zip->addFile($itemPath, $zipEntryPath);
+                $filesAdded++;
+            }
+        }
+
+        return $filesAdded;
+    }
+
+    /**
+     * Mengekstrak subfolder tertentu dari ZipArchive ke direktori tujuan (Merge & Overwrite)
+     */
+    protected function extractZipSubdir(ZipArchive $zip, string $zipPrefix, string $destinationPath): int
+    {
+        $zipPrefix = trim(str_replace('\\', '/', $zipPrefix), '/');
+        $destinationPath = rtrim(str_replace('\\', '/', $destinationPath), '/');
+        $filesExtracted = 0;
+
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $entryName = str_replace('\\', '/', $zip->getNameIndex($i));
+
+            if ($entryName === $zipPrefix || str_starts_with($entryName, $zipPrefix.'/')) {
+                $subPath = substr($entryName, strlen($zipPrefix));
+                $subPath = ltrim($subPath, '/');
+
+                if (empty($subPath)) {
+                    continue;
+                }
+
+                $targetPath = $destinationPath.'/'.$subPath;
+
+                if (str_ends_with($entryName, '/')) {
+                    if (! file_exists($targetPath)) {
+                        @mkdir($targetPath, 0755, true);
+                    }
+                } else {
+                    $parentDir = dirname($targetPath);
+                    if (! file_exists($parentDir)) {
+                        @mkdir($parentDir, 0755, true);
+                    }
+
+                    $stream = $zip->getStream($entryName);
+                    if ($stream) {
+                        $targetHandle = fopen($targetPath, 'wb');
+                        if ($targetHandle) {
+                            stream_copy_to_stream($stream, $targetHandle);
+                            fclose($targetHandle);
+                            $filesExtracted++;
+                        }
+                        fclose($stream);
+                    }
+                }
+            }
+        }
+
+        return $filesExtracted;
     }
 
     /**
@@ -425,6 +639,7 @@ class DatabaseController extends Controller
 
         $candidateDirs = [
             $configuredPath,
+            dirname(base_path()).DIRECTORY_SEPARATOR.'pgsql'.DIRECTORY_SEPARATOR.'bin',
             'C:\\laragon\\bin\\postgresql\\pgsql\\bin\\',
             'C:\\laragon\\www\\newSIKAS2\\pgsql\\bin\\',
             'C:\\Program Files\\PostgreSQL\\18\\bin\\',
