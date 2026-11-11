@@ -171,7 +171,6 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
                     levels: [1, 2, 3],
                 },
             }),
-            Underline,
             TextStyle,
             FontFamily,
             Color,
@@ -238,14 +237,28 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
         }
     };
 
+    // Helper membaca file gambar ke Data URL Base64 (anti-gagal render canvas)
+    const readFileAsDataUrl = (file: File): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    };
+
     // Handler Upload Logo Daerah
-    const handleLogoDaerahChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleLogoDaerahChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
             setLogoDaerahFile(file);
             setRemoveLogoDaerah(false);
-            const objectUrl = URL.createObjectURL(file);
-            setLogoDaerahPreview(objectUrl);
+            try {
+                const dataUrl = await readFileAsDataUrl(file);
+                setLogoDaerahPreview(dataUrl);
+            } catch (err) {
+                console.error('Gagal membaca logo daerah', err);
+            }
         }
     };
 
@@ -256,13 +269,17 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
     };
 
     // Handler Upload Logo Sekolah
-    const handleLogoSekolahChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleLogoSekolahChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
             setLogoSekolahFile(file);
             setRemoveLogoSekolah(false);
-            const objectUrl = URL.createObjectURL(file);
-            setLogoSekolahPreview(objectUrl);
+            try {
+                const dataUrl = await readFileAsDataUrl(file);
+                setLogoSekolahPreview(dataUrl);
+            } catch (err) {
+                console.error('Gagal membaca logo sekolah', err);
+            }
         }
     };
 
@@ -282,8 +299,9 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
         return await toBlob(element, {
             pixelRatio,
             backgroundColor: '#ffffff',
-            cacheBust: true,
+            cacheBust: false,
             quality: 0.98,
+            imagePlaceholder: 'data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"/>',
         });
     };
 
@@ -365,8 +383,9 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
             const dataUrl = await toPng(element, {
                 pixelRatio,
                 backgroundColor: '#ffffff',
-                cacheBust: true,
+                cacheBust: false,
                 quality: 0.98,
+                imagePlaceholder: 'data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"/>',
             });
 
             const link = document.createElement('a');
@@ -401,7 +420,8 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
         try {
             const dataUrl = await toPng(previewRef.current, {
                 backgroundColor: '#ffffff',
-                cacheBust: true,
+                cacheBust: false,
+                imagePlaceholder: 'data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"/>',
             });
             setPreviewModalImgUrl(dataUrl);
             setIsPreviewModalOpen(true);
@@ -505,6 +525,7 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
                                         src={logoDaerahPreview}
                                         alt="Logo Daerah"
                                         className="max-h-24 sm:max-h-28 max-w-full object-contain"
+                                        onError={() => setLogoDaerahPreview(null)}
                                     />
                                 ) : (
                                     <div className="w-20 h-20 sm:w-24 sm:h-24 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 p-2 text-center text-xs">
@@ -555,6 +576,7 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
                                             src={logoSekolahPreview}
                                             alt="Logo Sekolah"
                                             className="max-h-24 sm:max-h-28 max-w-full object-contain"
+                                            onError={() => setLogoSekolahPreview(null)}
                                         />
                                     ) : (
                                         <div className="w-20 h-20 sm:w-24 sm:h-24 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 p-2 text-center text-xs">
@@ -663,6 +685,7 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
                                         src={logoDaerahPreview}
                                         alt="Logo Daerah Preview"
                                         className="max-h-full max-w-full object-contain"
+                                        onError={() => setLogoDaerahPreview(null)}
                                     />
                                 ) : (
                                     <ImageIcon className="w-8 h-8 text-gray-300 dark:text-gray-600" />
@@ -725,6 +748,7 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
                                         src={logoSekolahPreview}
                                         alt="Logo Sekolah Preview"
                                         className="max-h-full max-w-full object-contain"
+                                        onError={() => setLogoSekolahPreview(null)}
                                     />
                                 ) : (
                                     <ImageIcon className="w-8 h-8 text-gray-300 dark:text-gray-600" />

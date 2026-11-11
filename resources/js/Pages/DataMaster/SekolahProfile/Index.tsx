@@ -40,6 +40,11 @@ export default function Index({ auth, sekolah, licensedNpsn }: PageProps<{ sekol
     const [isUploadOpen, setIsUploadOpen] = useState(false);
     const [isDeleteKopOpen, setIsDeleteKopOpen] = useState(false);
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+    const [kopImageError, setKopImageError] = useState(false);
+
+    useEffect(() => {
+        setKopImageError(false);
+    }, [sekolah?.kop_surat]);
 
     // Form for Data Sekolah
     const { data, setData, post, put, processing, errors, reset } = useForm({
@@ -272,13 +277,14 @@ export default function Index({ auth, sekolah, licensedNpsn }: PageProps<{ sekol
                             </div>
 
                             <div className="p-6 flex-1 flex flex-col">
-                                {sekolah?.kop_surat ? (
+                                {sekolah?.kop_surat && !kopImageError ? (
                                     <div className="space-y-6 flex-1 flex flex-col">
                                         <div className="border-2 border-dashed border-gray-200 dark:border-gray-600 rounded-xl p-2 bg-gray-50 dark:bg-gray-700/30 cursor-pointer group relative overflow-hidden flex-1 flex items-center justify-center min-h-[200px]" onClick={() => setIsPreviewOpen(true)}>
                                             <img
                                                 src={`/storage/${sekolah.kop_surat.replace('public/', '')}`}
                                                 alt="Kop Surat"
                                                 className="w-full h-auto rounded-lg shadow-sm transition-transform duration-300 group-hover:scale-105"
+                                                onError={() => setKopImageError(true)}
                                             />
                                             <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg">
                                                 <svg className="w-10 h-10 text-white mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
