@@ -25,6 +25,7 @@ class SekolahProfile extends Model
         'logo_daerah',
         'logo_sekolah',
         'kop_mode',
+        'kop_border',
         'kop_teks_html',
         'kop_jenis',
         'website_sync_url',

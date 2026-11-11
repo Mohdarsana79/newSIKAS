@@ -132,6 +132,7 @@ class SekolahProfileController extends Controller
             'logo_daerah' => 'nullable|file|mimes:png,jpg,jpeg,svg|max:4096',
             'logo_sekolah' => 'nullable|file|mimes:png,jpg,jpeg,svg|max:4096',
             'kop_mode' => 'required|in:1_logo,2_logo',
+            'kop_border' => 'required|in:double,single,none',
             'kop_teks_html' => 'required|string',
         ]);
 
@@ -139,6 +140,7 @@ class SekolahProfileController extends Controller
 
         $updateData = [
             'kop_mode' => $request->kop_mode,
+            'kop_border' => $request->kop_border,
             'kop_teks_html' => $request->kop_teks_html,
             'kop_jenis' => 'builder',
         ];

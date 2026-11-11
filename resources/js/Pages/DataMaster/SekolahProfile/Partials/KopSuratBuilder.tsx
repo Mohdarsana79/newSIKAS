@@ -49,6 +49,7 @@ import {
     ChevronDown,
     Palette,
     Highlighter,
+    Minus,
 } from 'lucide-react';
 
 interface Sekolah {
@@ -66,6 +67,7 @@ interface Sekolah {
     logo_daerah?: string;
     logo_sekolah?: string;
     kop_mode?: string;
+    kop_border?: 'double' | 'single' | 'none';
     kop_teks_html?: string;
     kop_jenis?: string;
 }
@@ -118,6 +120,11 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
     // Mode: 1_logo atau 2_logo
     const [kopMode, setKopMode] = useState<'1_logo' | '2_logo'>(
         (sekolah.kop_mode as '1_logo' | '2_logo') || '2_logo'
+    );
+
+    // Pilihan Garis Pembatas: double, single, atau none
+    const [kopBorder, setKopBorder] = useState<'double' | 'single' | 'none'>(
+        (sekolah.kop_border as 'double' | 'single' | 'none') || 'double'
     );
 
     // Logo Daerah State
@@ -332,6 +339,7 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
 
             formData.append('generated_kop', generatedFile);
             formData.append('kop_mode', kopMode);
+            formData.append('kop_border', kopBorder);
             formData.append('kop_teks_html', editor.getHTML());
 
             if (logoDaerahFile) {
@@ -601,17 +609,27 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
                             </div>
                         </div>
 
-                        {/* 4. Garis Pembatas Resmi Dinas (Garis Ganda Tebal-Tipis) */}
-                        <div className="w-full mt-3.5 pt-1">
-                            <div className="w-full border-t-[3px] border-black"></div>
-                            <div className="w-full border-t-[1px] border-black mt-[2px]"></div>
-                        </div>
+                        {/* 4. Garis Pembatas Kop Surat */}
+                        {kopBorder === 'double' && (
+                            <div className="w-full mt-3.5 pt-1">
+                                <div className="w-full border-t-[3px] border-black"></div>
+                                <div className="w-full border-t-[1px] border-black mt-[2px]"></div>
+                            </div>
+                        )}
+                        {kopBorder === 'single' && (
+                            <div className="w-full mt-3.5 pt-1">
+                                <div className="w-full border-t-[2px] border-black"></div>
+                            </div>
+                        )}
+                        {kopBorder === 'none' && (
+                            <div className="w-full mt-2"></div>
+                        )}
                     </div>
                 </div>
             </div>
 
-            {/* PENGATURAN MODE & UPLOAD LOGO */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* PENGATURAN MODE LOGO & GARIS PEMBATAS (BARIS 1) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* 1. Pengaturan Mode Logo */}
                 <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
                     <h4 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2 mb-4 text-sm">
@@ -672,7 +690,124 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
                     </div>
                 </div>
 
-                {/* 2. Upload Logo Daerah (Kiri) */}
+                {/* 2. Pengaturan Gaya Garis Pembatas */}
+                <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+                    <h4 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2 mb-4 text-sm">
+                        <Minus className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                        Pilihan Garis Pembatas
+                    </h4>
+
+                    <div className="space-y-3">
+                        {/* Opsi Garis 2 (Ganda) */}
+                        <label
+                            className={`flex items-start p-3.5 rounded-xl border-2 cursor-pointer transition-all ${
+                                kopBorder === 'double'
+                                    ? 'border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/20 dark:border-indigo-500'
+                                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
+                            }`}
+                        >
+                            <input
+                                type="radio"
+                                name="kop_border"
+                                value="double"
+                                checked={kopBorder === 'double'}
+                                onChange={() => setKopBorder('double')}
+                                className="mt-1 h-4 w-4 text-indigo-600 focus:ring-indigo-500"
+                            />
+                            <div className="ml-3 flex-1">
+                                <div className="flex items-center justify-between">
+                                    <span className="block text-sm font-semibold text-gray-900 dark:text-gray-100">
+                                        Garis 2 (Ganda)
+                                    </span>
+                                    <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded bg-indigo-100 text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300">
+                                        Resmi Dinas
+                                    </span>
+                                </div>
+                                <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                    Garis tebal-tipis standar resmi tata naskah dinas pemerintah.
+                                </span>
+                                <div className="mt-2.5 pt-1 bg-gray-50 dark:bg-gray-900 px-3 py-2 rounded border border-gray-100 dark:border-gray-700">
+                                    <div className="w-full border-t-[2.5px] border-black dark:border-gray-100"></div>
+                                    <div className="w-full border-t-[1px] border-black dark:border-gray-100 mt-[2px]"></div>
+                                </div>
+                            </div>
+                        </label>
+
+                        {/* Opsi Garis 1 (Tunggal) */}
+                        <label
+                            className={`flex items-start p-3.5 rounded-xl border-2 cursor-pointer transition-all ${
+                                kopBorder === 'single'
+                                    ? 'border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/20 dark:border-indigo-500'
+                                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
+                            }`}
+                        >
+                            <input
+                                type="radio"
+                                name="kop_border"
+                                value="single"
+                                checked={kopBorder === 'single'}
+                                onChange={() => setKopBorder('single')}
+                                className="mt-1 h-4 w-4 text-indigo-600 focus:ring-indigo-500"
+                            />
+                            <div className="ml-3 flex-1">
+                                <div className="flex items-center justify-between">
+                                    <span className="block text-sm font-semibold text-gray-900 dark:text-gray-100">
+                                        Garis 1 (Tunggal)
+                                    </span>
+                                    <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300">
+                                        Standar
+                                    </span>
+                                </div>
+                                <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                    Satu garis solid tegas (2px) yang rapi dan tegas.
+                                </span>
+                                <div className="mt-2.5 pt-1 bg-gray-50 dark:bg-gray-900 px-3 py-2 rounded border border-gray-100 dark:border-gray-700">
+                                    <div className="w-full border-t-[2px] border-black dark:border-gray-100"></div>
+                                </div>
+                            </div>
+                        </label>
+
+                        {/* Opsi Tanpa Garis */}
+                        <label
+                            className={`flex items-start p-3.5 rounded-xl border-2 cursor-pointer transition-all ${
+                                kopBorder === 'none'
+                                    ? 'border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/20 dark:border-indigo-500'
+                                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
+                            }`}
+                        >
+                            <input
+                                type="radio"
+                                name="kop_border"
+                                value="none"
+                                checked={kopBorder === 'none'}
+                                onChange={() => setKopBorder('none')}
+                                className="mt-1 h-4 w-4 text-indigo-600 focus:ring-indigo-500"
+                            />
+                            <div className="ml-3 flex-1">
+                                <div className="flex items-center justify-between">
+                                    <span className="block text-sm font-semibold text-gray-900 dark:text-gray-100">
+                                        Tanpa Garis
+                                    </span>
+                                    <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded bg-amber-50 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+                                        Polos
+                                    </span>
+                                </div>
+                                <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                    Bersih tanpa garis pembatas horizontal di bawah kop.
+                                </span>
+                                <div className="mt-2.5 pt-1 bg-gray-50 dark:bg-gray-900 px-3 py-2 rounded border border-dashed border-gray-300 dark:border-gray-700 text-center">
+                                    <span className="text-[11px] text-gray-400 dark:text-gray-500 italic">Tidak ada garis</span>
+                                </div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            {/* PENGATURAN UPLOAD LOGO (BARIS 2) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                {/* 3. Upload Logo Daerah (Kiri) */}
                 <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col justify-between">
                     <div>
                         <div className="flex items-center justify-between mb-3">
@@ -731,7 +866,7 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
                     </div>
                 </div>
 
-                {/* 3. Upload Logo Sekolah (Kanan) */}
+                {/* 4. Upload Logo Sekolah (Kanan) */}
                 <div
                     className={`bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col justify-between transition-opacity ${
                         kopMode === '1_logo' ? 'opacity-40 pointer-events-none' : ''

@@ -27,6 +27,7 @@ interface Sekolah {
     logo_daerah?: string;
     logo_sekolah?: string;
     kop_mode?: string;
+    kop_border?: 'double' | 'single' | 'none';
     kop_teks_html?: string;
     kop_jenis?: string;
     website_sync_url?: string;
