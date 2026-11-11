@@ -1,26 +1,38 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import TextAlign from '@tiptap/extension-text-align';
 import Underline from '@tiptap/extension-underline';
+import { TextStyle, FontSize, LineHeight } from '@tiptap/extension-text-style';
+import { FontFamily } from '@tiptap/extension-font-family';
+import { Color } from '@tiptap/extension-color';
+import { Highlight } from '@tiptap/extension-highlight';
+import { Subscript } from '@tiptap/extension-subscript';
+import { Superscript } from '@tiptap/extension-superscript';
 import { toBlob, toPng } from 'html-to-image';
 import { router } from '@inertiajs/react';
 import Swal from 'sweetalert2';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
-import DangerButton from '@/Components/DangerButton';
 import Modal from '@/Components/Modal';
+import { applyTextCase } from './KopTiptapExtensions';
 import {
     Bold,
     Italic,
     Underline as UnderlineIcon,
+    Strikethrough,
+    Subscript as SubscriptIcon,
+    Superscript as SuperscriptIcon,
     AlignLeft,
     AlignCenter,
     AlignRight,
-    Heading1,
-    Heading2,
-    Heading3,
-    RotateCcw,
+    AlignJustify,
+    List,
+    ListOrdered,
+    Undo2,
+    Redo2,
+    RemoveFormatting,
+    Type,
     Download,
     Eye,
     Save,
@@ -32,6 +44,10 @@ import {
     Image as ImageIcon,
     Building2,
     School,
+    RotateCcw,
+    ChevronDown,
+    Palette,
+    Highlighter,
 } from 'lucide-react';
 
 interface Sekolah {
@@ -56,6 +72,44 @@ interface Sekolah {
 interface KopSuratBuilderProps {
     sekolah: Sekolah;
 }
+
+const FONT_FAMILIES = [
+    { label: 'Times New Roman', value: "'Times New Roman', Times, serif" },
+    { label: 'Arial', value: 'Arial, Helvetica, sans-serif' },
+    { label: 'Calibri', value: "Calibri, 'Segoe UI', Candara, sans-serif" },
+    { label: 'Arial Black', value: "'Arial Black', Gadget, sans-serif" },
+    { label: 'Georgia', value: 'Georgia, serif' },
+    { label: 'Tahoma', value: 'Tahoma, Verdana, Segoe, sans-serif' },
+    { label: 'Trebuchet MS', value: "'Trebuchet MS', sans-serif" },
+    { label: 'Verdana', value: 'Verdana, Geneva, sans-serif' },
+    { label: 'Courier New', value: "'Courier New', Courier, monospace" },
+    { label: 'Garamond', value: 'Garamond, Baskerville, serif' },
+];
+
+const FONT_SIZES = [
+    '8pt', '9pt', '10pt', '11pt', '12pt', '13pt', '14pt', '15pt',
+    '16pt', '18pt', '20pt', '22pt', '24pt', '26pt', '28pt', '32pt', '36pt', '48pt'
+];
+
+const LINE_HEIGHTS = ['1.0', '1.15', '1.25', '1.5', '2.0'];
+
+const TEXT_COLORS = [
+    { label: 'Hitam (Standar)', value: '#000000' },
+    { label: 'Abu Gelap', value: '#374151' },
+    { label: 'Biru Navy Dinas', value: '#1e3a8a' },
+    { label: 'Biru Royal', value: '#2563eb' },
+    { label: 'Merah Marun', value: '#991b1b' },
+    { label: 'Emas / Coklat', value: '#854d0e' },
+    { label: 'Hijau Tua', value: '#166534' },
+];
+
+const HIGHLIGHT_COLORS = [
+    { label: 'Kuning', value: '#fef08a' },
+    { label: 'Hijau', value: '#bbf7d0' },
+    { label: 'Biru', value: '#bae6fd' },
+    { label: 'Pink', value: '#fbcfe8' },
+    { label: 'Oranye', value: '#fed7aa' },
+];
 
 export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
     const previewRef = useRef<HTMLDivElement>(null);
@@ -85,7 +139,12 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
     const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
     const [previewModalImgUrl, setPreviewModalImgUrl] = useState<string | null>(null);
 
-    // Fungsi pembantu membuat template bawaan dinas
+    // State Dropdown Toolbar
+    const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
+    const [isHighlightPickerOpen, setIsHighlightPickerOpen] = useState(false);
+    const [isCaseMenuOpen, setIsCaseMenuOpen] = useState(false);
+
+    // Template bawaan kedinasan
     const generateDefaultTemplate = () => {
         const prov = (sekolah?.provinsi || 'PROVINSI').toUpperCase();
         const namaSekolah = (sekolah?.nama_sekolah || 'NAMA SATUAN PENDIDIKAN').toUpperCase();
@@ -94,17 +153,17 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
         const kab = sekolah?.kabupaten_kota || 'Kabupaten/Kota';
         const npsn = sekolah?.npsn || '12345678';
 
-        return `<h3 style="text-align: center;">PEMERINTAH DAERAH PROVINSI ${prov}</h3>
-<h2 style="text-align: center;">DINAS PENDIDIKAN DAN KEBUDAYAAN</h2>
-<h1 style="text-align: center;">${namaSekolah}</h1>
-<p style="text-align: center;"><em>${alamat}, Kec. ${kec}, ${kab} - NPSN: ${npsn}</em></p>`;
+        return `<p style="text-align: center; font-family: 'Times New Roman', Times, serif; font-size: 13pt; line-height: 1.15; font-weight: bold;">PEMERINTAH DAERAH PROVINSI ${prov}</p>
+<p style="text-align: center; font-family: 'Times New Roman', Times, serif; font-size: 14pt; line-height: 1.15; font-weight: bold;">DINAS PENDIDIKAN DAN KEBUDAYAAN</p>
+<p style="text-align: center; font-family: 'Times New Roman', Times, serif; font-size: 17pt; line-height: 1.15; font-weight: bold;">${namaSekolah}</p>
+<p style="text-align: center; font-family: 'Times New Roman', Times, serif; font-size: 9.5pt; line-height: 1.25; font-style: italic;">${alamat}, Kec. ${kec}, ${kab} - NPSN: ${npsn}</p>`;
     };
 
     // Initial content
     const initialContent = sekolah.kop_teks_html || generateDefaultTemplate();
     const [editorHtml, setEditorHtml] = useState<string>(initialContent);
 
-    // Konfigurasi Tiptap Editor
+    // Konfigurasi Tiptap Editor dengan Ekstensi MS Word Lengkap
     const editor = useEditor({
         extensions: [
             StarterKit.configure({
@@ -113,8 +172,17 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
                 },
             }),
             Underline,
+            TextStyle,
+            FontFamily,
+            Color,
+            Highlight.configure({ multicolor: true }),
+            Subscript,
+            Superscript,
+            FontSize,
+            LineHeight,
             TextAlign.configure({
                 types: ['heading', 'paragraph'],
+                alignments: ['left', 'center', 'right', 'justify'],
             }),
         ],
         content: initialContent,
@@ -143,7 +211,34 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
         });
     };
 
-    // Handler upload logo daerah
+    // Handlers Font Size Grow & Shrink (A^ / Av)
+    const handleGrowFont = () => {
+        if (!editor) return;
+        const currentSize = editor.getAttributes('textStyle').fontSize || '12pt';
+        const currentIndex = FONT_SIZES.indexOf(currentSize);
+        if (currentIndex !== -1 && currentIndex < FONT_SIZES.length - 1) {
+            editor.commands.setFontSize(FONT_SIZES[currentIndex + 1]);
+        } else {
+            const numeric = parseInt(currentSize, 10) || 12;
+            editor.commands.setFontSize(`${numeric + 2}pt`);
+        }
+    };
+
+    const handleShrinkFont = () => {
+        if (!editor) return;
+        const currentSize = editor.getAttributes('textStyle').fontSize || '12pt';
+        const currentIndex = FONT_SIZES.indexOf(currentSize);
+        if (currentIndex > 0) {
+            editor.commands.setFontSize(FONT_SIZES[currentIndex - 1]);
+        } else {
+            const numeric = parseInt(currentSize, 10) || 12;
+            if (numeric > 6) {
+                editor.commands.setFontSize(`${numeric - 2}pt`);
+            }
+        }
+    };
+
+    // Handler Upload Logo Daerah
     const handleLogoDaerahChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
@@ -160,7 +255,7 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
         setRemoveLogoDaerah(true);
     };
 
-    // Handler upload logo sekolah
+    // Handler Upload Logo Sekolah
     const handleLogoSekolahChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
@@ -177,11 +272,10 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
         setRemoveLogoSekolah(true);
     };
 
-    // Render Canvas ke Blob resolusi tinggi (2480px width)
+    // Render Canvas ke Blob resolusi tinggi (2480px)
     const renderHighResKopBlob = async (): Promise<Blob | null> => {
         if (!previewRef.current) return null;
         const element = previewRef.current;
-        // Skala resolusi tinggi untuk standard cetak (sekitar 2480px)
         const elementWidth = element.offsetWidth || 800;
         const pixelRatio = Math.max(3, Math.min(5, 2480 / elementWidth));
 
@@ -193,7 +287,7 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
         });
     };
 
-    // Handler simpan kop surat
+    // Handler Simpan Kop Surat
     const handleSaveKop = async () => {
         if (!previewRef.current || !editor) return;
 
@@ -258,7 +352,7 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
         }
     };
 
-    // Handler unduh gambar PNG
+    // Handler Unduh PNG
     const handleDownloadPng = async () => {
         if (!previewRef.current) return;
 
@@ -301,7 +395,7 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
         }
     };
 
-    // Handler modal preview perbesar
+    // Handler Zoom Preview
     const handleOpenPreviewModal = async () => {
         if (!previewRef.current) return;
         try {
@@ -324,10 +418,10 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
                     <div>
                         <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
                             <Sparkles className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                            Editor & Pembuat Kop Surat Sekolah
+                            Editor & Pembuat Kop Surat Sekolah (MS Word Style)
                         </h3>
                         <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                            Atur logo daerah, logo sekolah, dan ketik isi kop surat Anda secara mandiri. Sistem otomatis menggabungkan komponen menjadi satu gambar berkualitas tinggi untuk seluruh cetakan laporan.
+                            Atur logo daerah, logo sekolah, dan ketik isi kop surat secara bebas dengan toolbar lengkap Microsoft Word (Font Family, Font Size, Spasi Baris, Gaya, dan Warna).
                         </p>
                     </div>
 
@@ -375,7 +469,7 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
                 </div>
             </div>
 
-            {/* LIVE PREVIEW SECTION (Proporsional & Responsif) */}
+            {/* LIVE PREVIEW SECTION */}
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
                 <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50/70 dark:bg-gray-750 flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -388,7 +482,7 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
                         </h4>
                     </div>
                     <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
-                        Rasio Cetak Dinas Standar (2480 &times; 588 px)
+                        Rasio Cetak Standar (2480 &times; 588 px)
                     </span>
                 </div>
 
@@ -396,7 +490,7 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
                     {/* WADAH YANG AKAN DI-RENDER KE CANVAS/IMAGE */}
                     <div
                         ref={previewRef}
-                        className="bg-white text-gray-900 w-full max-w-4xl p-5 sm:p-7 shadow-md rounded-md flex flex-col justify-between font-serif select-none"
+                        className="bg-white text-gray-900 w-full max-w-4xl p-5 sm:p-7 shadow-md rounded-md flex flex-col justify-between select-none"
                         style={{
                             minHeight: '175px',
                             boxSizing: 'border-box',
@@ -420,43 +514,31 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
                                 )}
                             </div>
 
-                            {/* 2. Sisi Tengah: Teks Kop Sekolah (Tiptap Content) */}
-                            <div className="flex-1 text-center font-serif leading-tight px-3 overflow-hidden">
+                            {/* 2. Sisi Tengah: Teks Kop Sekolah (Mengikuti Styling Akurat MS Word) */}
+                            <div className="flex-1 text-center px-3 overflow-hidden">
                                 <style>{`
                                     .kop-live-content {
-                                        font-family: 'Times New Roman', Times, serif;
                                         color: #000000;
                                     }
                                     .kop-live-content p {
                                         margin: 0 !important;
                                         padding: 0 !important;
-                                        line-height: 1.25 !important;
-                                        font-size: 0.85rem;
                                     }
-                                    .kop-live-content h1 {
-                                        margin: 0 !important;
-                                        padding: 0 !important;
-                                        font-size: 1.25rem !important;
-                                        font-weight: 800 !important;
-                                        line-height: 1.2 !important;
-                                        letter-spacing: 0.03em !important;
-                                        text-transform: uppercase !important;
-                                    }
-                                    .kop-live-content h2 {
-                                        margin: 0 !important;
-                                        padding: 0 !important;
-                                        font-size: 1.05rem !important;
-                                        font-weight: 700 !important;
-                                        line-height: 1.2 !important;
-                                        text-transform: uppercase !important;
-                                    }
+                                    .kop-live-content h1,
+                                    .kop-live-content h2,
                                     .kop-live-content h3 {
                                         margin: 0 !important;
                                         padding: 0 !important;
-                                        font-size: 0.95rem !important;
-                                        font-weight: 700 !important;
-                                        line-height: 1.2 !important;
-                                        text-transform: uppercase !important;
+                                    }
+                                    .kop-live-content ul {
+                                        list-style-type: disc;
+                                        margin: 0 !important;
+                                        padding-left: 1.5rem !important;
+                                    }
+                                    .kop-live-content ol {
+                                        list-style-type: decimal;
+                                        margin: 0 !important;
+                                        padding-left: 1.5rem !important;
                                     }
                                 `}</style>
                                 <div
@@ -555,10 +637,6 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
                                 </span>
                             </div>
                         </label>
-                    </div>
-
-                    <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-xl text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
-                        💡 <strong>Tips:</strong> Disarankan menggunakan file logo format PNG dengan latar belakang transparan agar hasil cetakan dokumen jernih dan rapi.
                     </div>
                 </div>
 
@@ -685,18 +763,18 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
                 </div>
             </div>
 
-            {/* EDITOR TIPTAP KHUSUS TEKS KOP SURAT */}
+            {/* EDITOR TIPTAP DENGAN RIBBON BAR MS WORD LENGKAP */}
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50/70 dark:bg-gray-750 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="px-6 py-3.5 border-b border-gray-200 dark:border-gray-700 bg-gray-50/70 dark:bg-gray-750 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
                         <h4 className="font-semibold text-gray-900 dark:text-gray-100 text-sm flex items-center gap-2">
                             <span className="p-1 rounded bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400">
-                                ✍️
+                                📝
                             </span>
-                            Editor Teks Kop Surat
+                            Pita Menu Format Teks (MS Word Ribbon)
                         </h4>
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                            Ketik nama dinas, nama sekolah, dan detail alamat lengkap di bawah ini.
+                            Gunakan alat formatting lengkap di bawah ini untuk menata huruf, ukuran, perataan, warna, dan spasi.
                         </p>
                     </div>
 
@@ -710,143 +788,437 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
                     </button>
                 </div>
 
-                {/* Toolbar Editor */}
+                {/* MS WORD RIBBON BAR (2 BARIS TERORGANISIR) */}
                 {editor && (
-                    <div className="px-6 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800 flex flex-wrap items-center gap-1.5">
-                        {/* Heading / Ukuran Teks */}
-                        <div className="flex items-center gap-1 bg-white dark:bg-gray-700 p-1 rounded-lg border border-gray-200 dark:border-gray-600">
+                    <div className="border-b border-gray-200 dark:border-gray-700 bg-gray-100/70 dark:bg-gray-800/90 divide-y divide-gray-200 dark:divide-gray-700 text-xs">
+                        {/* BARIS 1: FONT UTAMA, UKURAN, CAPITALIZATION & HISTORY */}
+                        <div className="px-4 py-2 flex flex-wrap items-center gap-2">
+                            {/* 1. Font Family Dropdown */}
+                            <div className="flex items-center bg-white dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600 px-2 py-1 shadow-sm">
+                                <span className="text-gray-400 mr-1 text-[11px] font-mono">Font:</span>
+                                <select
+                                    value={editor.getAttributes('textStyle').fontFamily || "'Times New Roman', Times, serif"}
+                                    onChange={(e) => editor.chain().focus().setFontFamily(e.target.value).run()}
+                                    className="bg-transparent border-0 text-xs text-gray-800 dark:text-gray-100 py-0 pl-1 pr-6 focus:ring-0 cursor-pointer font-medium"
+                                >
+                                    {FONT_FAMILIES.map((font) => (
+                                        <option key={font.value} value={font.value} className="text-gray-900 bg-white">
+                                            {font.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* 2. Font Size Dropdown */}
+                            <div className="flex items-center bg-white dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600 px-2 py-1 shadow-sm">
+                                <span className="text-gray-400 mr-1 text-[11px] font-mono">Size:</span>
+                                <select
+                                    value={editor.getAttributes('textStyle').fontSize || '13pt'}
+                                    onChange={(e) => editor.chain().focus().setFontSize(e.target.value).run()}
+                                    className="bg-transparent border-0 text-xs text-gray-800 dark:text-gray-100 py-0 pl-1 pr-6 focus:ring-0 cursor-pointer font-semibold"
+                                >
+                                    {FONT_SIZES.map((size) => (
+                                        <option key={size} value={size} className="text-gray-900 bg-white">
+                                            {size}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* 3. Grow / Shrink Font Buttons (A^ / Av) */}
+                            <div className="flex items-center bg-white dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600 p-0.5 shadow-sm">
+                                <button
+                                    type="button"
+                                    onClick={handleGrowFont}
+                                    title="Perbesar Ukuran Font (Grow Font)"
+                                    className="px-2 py-1 text-xs font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 rounded flex items-center"
+                                >
+                                    A<span className="text-[10px] ml-0.5">▲</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleShrinkFont}
+                                    title="Perkecil Ukuran Font (Shrink Font)"
+                                    className="px-2 py-1 text-xs font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 rounded flex items-center"
+                                >
+                                    A<span className="text-[10px] ml-0.5">▼</span>
+                                </button>
+                            </div>
+
+                            {/* 4. Ubah Kapitalisasi (Change Case Aa) */}
+                            <div className="relative">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setIsCaseMenuOpen(!isCaseMenuOpen);
+                                        setIsColorPickerOpen(false);
+                                        setIsHighlightPickerOpen(false);
+                                    }}
+                                    title="Ubah Kapitalisasi Huruf (Change Case)"
+                                    className="flex items-center gap-1 bg-white dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600 px-2 py-1 shadow-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 font-medium"
+                                >
+                                    <span className="font-bold">Aa</span>
+                                    <ChevronDown className="w-3 h-3 text-gray-400" />
+                                </button>
+
+                                {isCaseMenuOpen && (
+                                    <div className="absolute left-0 mt-1 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-1.5 z-20 space-y-1">
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                applyTextCase(editor, 'uppercase');
+                                                setIsCaseMenuOpen(false);
+                                            }}
+                                            className="w-full text-left px-2.5 py-1.5 text-xs hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg text-gray-800 dark:text-gray-200 font-semibold"
+                                        >
+                                            HURUF BESAR (UPPERCASE)
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                applyTextCase(editor, 'capitalize');
+                                                setIsCaseMenuOpen(false);
+                                            }}
+                                            className="w-full text-left px-2.5 py-1.5 text-xs hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg text-gray-800 dark:text-gray-200"
+                                        >
+                                            Huruf Besar Tiap Kata
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                applyTextCase(editor, 'lowercase');
+                                                setIsCaseMenuOpen(false);
+                                            }}
+                                            className="w-full text-left px-2.5 py-1.5 text-xs hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg text-gray-800 dark:text-gray-200"
+                                        >
+                                            huruf kecil (lowercase)
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="h-5 w-[1px] bg-gray-300 dark:bg-gray-600 mx-1"></div>
+
+                            {/* 5. Undo & Redo */}
+                            <div className="flex items-center bg-white dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600 p-0.5 shadow-sm">
+                                <button
+                                    type="button"
+                                    onClick={() => editor.chain().focus().undo().run()}
+                                    disabled={!editor.can().undo()}
+                                    title="Undo (Ctrl+Z)"
+                                    className="p-1 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 rounded disabled:opacity-30"
+                                >
+                                    <Undo2 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => editor.chain().focus().redo().run()}
+                                    disabled={!editor.can().redo()}
+                                    title="Redo (Ctrl+Y)"
+                                    className="p-1 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 rounded disabled:opacity-30"
+                                >
+                                    <Redo2 className="w-3.5 h-3.5" />
+                                </button>
+                            </div>
+
+                            {/* 6. Clear Formatting (Penghapus Format) */}
                             <button
                                 type="button"
-                                onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-                                className={`px-2.5 py-1 text-xs font-bold rounded ${
-                                    editor.isActive('heading', { level: 1 })
-                                        ? 'bg-indigo-600 text-white'
-                                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
-                                }`}
-                                title="Nama Sekolah Utama (H1 - Huruf Besar & Tebal)"
+                                onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()}
+                                title="Hapus Semua Format (Clear Formatting)"
+                                className="flex items-center gap-1 bg-white dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600 px-2 py-1 shadow-sm text-gray-700 dark:text-gray-200 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40 transition"
                             >
-                                H1 (Nama Sekolah)
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-                                className={`px-2.5 py-1 text-xs font-semibold rounded ${
-                                    editor.isActive('heading', { level: 2 })
-                                        ? 'bg-indigo-600 text-white'
-                                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
-                                }`}
-                                title="Dinas Pendidikan (H2)"
-                            >
-                                H2 (Dinas)
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
-                                className={`px-2.5 py-1 text-xs font-semibold rounded ${
-                                    editor.isActive('heading', { level: 3 })
-                                        ? 'bg-indigo-600 text-white'
-                                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
-                                }`}
-                                title="Pemerintah Daerah (H3)"
-                            >
-                                H3 (Pemda)
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => editor.chain().focus().setParagraph().run()}
-                                className={`px-2.5 py-1 text-xs rounded ${
-                                    editor.isActive('paragraph')
-                                        ? 'bg-indigo-600 text-white'
-                                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
-                                }`}
-                                title="Alamat / Teks Normal"
-                            >
-                                Normal
+                                <RemoveFormatting className="w-3.5 h-3.5 text-rose-500" />
+                                <span className="hidden sm:inline">Hapus Format</span>
                             </button>
                         </div>
 
-                        <div className="h-5 w-[1px] bg-gray-300 dark:bg-gray-600 mx-1"></div>
+                        {/* BARIS 2: GAYA FONT, WARNA, PARAGRAF, SPASI BARIS & LIST */}
+                        <div className="px-4 py-2 flex flex-wrap items-center gap-2">
+                            {/* 1. Gaya Karakter: Bold, Italic, Underline, Strike, Sub, Super */}
+                            <div className="flex items-center bg-white dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600 p-0.5 shadow-sm">
+                                <button
+                                    type="button"
+                                    onClick={() => editor.chain().focus().toggleBold().run()}
+                                    className={`p-1.5 rounded ${
+                                        editor.isActive('bold')
+                                            ? 'bg-indigo-600 text-white font-bold'
+                                            : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600'
+                                    }`}
+                                    title="Tebal / Bold (Ctrl+B)"
+                                >
+                                    <Bold className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => editor.chain().focus().toggleItalic().run()}
+                                    className={`p-1.5 rounded ${
+                                        editor.isActive('italic')
+                                            ? 'bg-indigo-600 text-white font-bold'
+                                            : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600'
+                                    }`}
+                                    title="Miring / Italic (Ctrl+I)"
+                                >
+                                    <Italic className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => editor.chain().focus().toggleUnderline().run()}
+                                    className={`p-1.5 rounded ${
+                                        editor.isActive('underline')
+                                            ? 'bg-indigo-600 text-white font-bold'
+                                            : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600'
+                                    }`}
+                                    title="Garis Bawah / Underline (Ctrl+U)"
+                                >
+                                    <UnderlineIcon className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => editor.chain().focus().toggleStrike().run()}
+                                    className={`p-1.5 rounded ${
+                                        editor.isActive('strike')
+                                            ? 'bg-indigo-600 text-white font-bold'
+                                            : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600'
+                                    }`}
+                                    title="Coret / Strikethrough"
+                                >
+                                    <Strikethrough className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => editor.chain().focus().toggleSubscript().run()}
+                                    className={`p-1.5 rounded ${
+                                        editor.isActive('subscript')
+                                            ? 'bg-indigo-600 text-white font-bold'
+                                            : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600'
+                                    }`}
+                                    title="Subscript (X₂)"
+                                >
+                                    <SubscriptIcon className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => editor.chain().focus().toggleSuperscript().run()}
+                                    className={`p-1.5 rounded ${
+                                        editor.isActive('superscript')
+                                            ? 'bg-indigo-600 text-white font-bold'
+                                            : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600'
+                                    }`}
+                                    title="Superscript (X²)"
+                                >
+                                    <SuperscriptIcon className="w-3.5 h-3.5" />
+                                </button>
+                            </div>
 
-                        {/* Format Teks: Bold, Italic, Underline */}
-                        <div className="flex items-center gap-1 bg-white dark:bg-gray-700 p-1 rounded-lg border border-gray-200 dark:border-gray-600">
-                            <button
-                                type="button"
-                                onClick={() => editor.chain().focus().toggleBold().run()}
-                                className={`p-1.5 rounded ${
-                                    editor.isActive('bold')
-                                        ? 'bg-indigo-600 text-white'
-                                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
-                                }`}
-                                title="Tebal (Bold)"
-                            >
-                                <Bold className="w-4 h-4" />
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => editor.chain().focus().toggleItalic().run()}
-                                className={`p-1.5 rounded ${
-                                    editor.isActive('italic')
-                                        ? 'bg-indigo-600 text-white'
-                                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
-                                }`}
-                                title="Miring (Italic)"
-                            >
-                                <Italic className="w-4 h-4" />
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => editor.chain().focus().toggleUnderline().run()}
-                                className={`p-1.5 rounded ${
-                                    editor.isActive('underline')
-                                        ? 'bg-indigo-600 text-white'
-                                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
-                                }`}
-                                title="Garis Bawah (Underline)"
-                            >
-                                <UnderlineIcon className="w-4 h-4" />
-                            </button>
-                        </div>
+                            <div className="h-5 w-[1px] bg-gray-300 dark:bg-gray-600 mx-1"></div>
 
-                        <div className="h-5 w-[1px] bg-gray-300 dark:bg-gray-600 mx-1"></div>
+                            {/* 2. Warna Teks (Font Color) */}
+                            <div className="relative">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setIsColorPickerOpen(!isColorPickerOpen);
+                                        setIsHighlightPickerOpen(false);
+                                        setIsCaseMenuOpen(false);
+                                    }}
+                                    title="Warna Teks (Font Color)"
+                                    className="flex items-center gap-1.5 bg-white dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600 px-2 py-1 shadow-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50"
+                                >
+                                    <div className="flex flex-col items-center">
+                                        <span className="font-bold text-xs leading-none">A</span>
+                                        <div
+                                            className="h-1 w-4 mt-0.5 rounded-full"
+                                            style={{
+                                                backgroundColor: editor.getAttributes('textStyle').color || '#000000',
+                                            }}
+                                        />
+                                    </div>
+                                    <ChevronDown className="w-3 h-3 text-gray-400" />
+                                </button>
 
-                        {/* Alignment: Left, Center, Right */}
-                        <div className="flex items-center gap-1 bg-white dark:bg-gray-700 p-1 rounded-lg border border-gray-200 dark:border-gray-600">
-                            <button
-                                type="button"
-                                onClick={() => editor.chain().focus().setTextAlign('center').run()}
-                                className={`p-1.5 rounded ${
-                                    editor.isActive({ textAlign: 'center' })
-                                        ? 'bg-indigo-600 text-white'
-                                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
-                                }`}
-                                title="Rata Tengah (Default Kop)"
-                            >
-                                <AlignCenter className="w-4 h-4" />
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => editor.chain().focus().setTextAlign('left').run()}
-                                className={`p-1.5 rounded ${
-                                    editor.isActive({ textAlign: 'left' })
-                                        ? 'bg-indigo-600 text-white'
-                                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
-                                }`}
-                                title="Rata Kiri"
-                            >
-                                <AlignLeft className="w-4 h-4" />
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => editor.chain().focus().setTextAlign('right').run()}
-                                className={`p-1.5 rounded ${
-                                    editor.isActive({ textAlign: 'right' })
-                                        ? 'bg-indigo-600 text-white'
-                                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
-                                }`}
-                                title="Rata Kanan"
-                            >
-                                <AlignRight className="w-4 h-4" />
-                            </button>
+                                {isColorPickerOpen && (
+                                    <div className="absolute left-0 mt-1 w-52 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-3 z-20">
+                                        <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider block mb-2">
+                                            Warna Huruf Dinas:
+                                        </span>
+                                        <div className="grid grid-cols-4 gap-2 mb-3">
+                                            {TEXT_COLORS.map((c) => (
+                                                <button
+                                                    key={c.value}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        editor.chain().focus().setColor(c.value).run();
+                                                        setIsColorPickerOpen(false);
+                                                    }}
+                                                    title={c.label}
+                                                    className="w-8 h-8 rounded-lg border border-gray-300 hover:scale-110 transition shadow-sm"
+                                                    style={{ backgroundColor: c.value }}
+                                                />
+                                            ))}
+                                        </div>
+                                        <div className="pt-2 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                                            <span className="text-xs text-gray-600 dark:text-gray-300">Warna Bebas:</span>
+                                            <input
+                                                type="color"
+                                                value={editor.getAttributes('textStyle').color || '#000000'}
+                                                onChange={(e) => editor.chain().focus().setColor(e.target.value).run()}
+                                                className="w-7 h-7 rounded border-0 cursor-pointer p-0"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* 3. Warna Stabilo (Text Highlight) */}
+                            <div className="relative">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setIsHighlightPickerOpen(!isHighlightPickerOpen);
+                                        setIsColorPickerOpen(false);
+                                        setIsCaseMenuOpen(false);
+                                    }}
+                                    title="Stabilo / Sorot Teks (Highlight)"
+                                    className="flex items-center gap-1.5 bg-white dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600 px-2 py-1 shadow-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50"
+                                >
+                                    <Highlighter className="w-3.5 h-3.5 text-amber-500" />
+                                    <ChevronDown className="w-3 h-3 text-gray-400" />
+                                </button>
+
+                                {isHighlightPickerOpen && (
+                                    <div className="absolute left-0 mt-1 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-3 z-20">
+                                        <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider block mb-2">
+                                            Warna Stabilo:
+                                        </span>
+                                        <div className="flex gap-2 mb-2">
+                                            {HIGHLIGHT_COLORS.map((h) => (
+                                                <button
+                                                    key={h.value}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        editor.chain().focus().toggleHighlight({ color: h.value }).run();
+                                                        setIsHighlightPickerOpen(false);
+                                                    }}
+                                                    title={h.label}
+                                                    className="w-7 h-7 rounded-lg border border-gray-300 hover:scale-110 transition"
+                                                    style={{ backgroundColor: h.value }}
+                                                />
+                                            ))}
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                editor.chain().focus().unsetHighlight().run();
+                                                setIsHighlightPickerOpen(false);
+                                            }}
+                                            className="w-full text-center text-xs text-rose-600 py-1 hover:bg-rose-50 rounded"
+                                        >
+                                            Hapus Stabilo
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="h-5 w-[1px] bg-gray-300 dark:bg-gray-600 mx-1"></div>
+
+                            {/* 4. Perataan Teks (Alignment: Left, Center, Right, Justify) */}
+                            <div className="flex items-center bg-white dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600 p-0.5 shadow-sm">
+                                <button
+                                    type="button"
+                                    onClick={() => editor.chain().focus().setTextAlign('left').run()}
+                                    className={`p-1.5 rounded ${
+                                        editor.isActive({ textAlign: 'left' })
+                                            ? 'bg-indigo-600 text-white'
+                                            : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600'
+                                    }`}
+                                    title="Rata Kiri"
+                                >
+                                    <AlignLeft className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => editor.chain().focus().setTextAlign('center').run()}
+                                    className={`p-1.5 rounded ${
+                                        editor.isActive({ textAlign: 'center' })
+                                            ? 'bg-indigo-600 text-white'
+                                            : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600'
+                                    }`}
+                                    title="Rata Tengah (Default Kop)"
+                                >
+                                    <AlignCenter className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => editor.chain().focus().setTextAlign('right').run()}
+                                    className={`p-1.5 rounded ${
+                                        editor.isActive({ textAlign: 'right' })
+                                            ? 'bg-indigo-600 text-white'
+                                            : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600'
+                                    }`}
+                                    title="Rata Kanan"
+                                >
+                                    <AlignRight className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => editor.chain().focus().setTextAlign('justify').run()}
+                                    className={`p-1.5 rounded ${
+                                        editor.isActive({ textAlign: 'justify' })
+                                            ? 'bg-indigo-600 text-white'
+                                            : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600'
+                                    }`}
+                                    title="Rata Kiri-Kanan (Justify)"
+                                >
+                                    <AlignJustify className="w-3.5 h-3.5" />
+                                </button>
+                            </div>
+
+                            {/* 5. Jarak Antar Baris (Line Spacing) */}
+                            <div className="flex items-center bg-white dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600 px-2 py-1 shadow-sm">
+                                <span className="text-gray-400 mr-1 text-[11px] font-mono">Spasi:</span>
+                                <select
+                                    onChange={(e) => editor.commands.setLineHeight(e.target.value)}
+                                    defaultValue="1.15"
+                                    className="bg-transparent border-0 text-xs text-gray-800 dark:text-gray-100 py-0 pl-1 pr-6 focus:ring-0 cursor-pointer font-medium"
+                                >
+                                    {LINE_HEIGHTS.map((lh) => (
+                                        <option key={lh} value={lh} className="text-gray-900 bg-white">
+                                            {lh}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="h-5 w-[1px] bg-gray-300 dark:bg-gray-600 mx-1"></div>
+
+                            {/* 6. List: Bullet & Numbered */}
+                            <div className="flex items-center bg-white dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600 p-0.5 shadow-sm">
+                                <button
+                                    type="button"
+                                    onClick={() => editor.chain().focus().toggleBulletList().run()}
+                                    className={`p-1.5 rounded ${
+                                        editor.isActive('bulletList')
+                                            ? 'bg-indigo-600 text-white'
+                                            : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600'
+                                    }`}
+                                    title="Bullet List (Daftar Berbutir)"
+                                >
+                                    <List className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => editor.chain().focus().toggleOrderedList().run()}
+                                    className={`p-1.5 rounded ${
+                                        editor.isActive('orderedList')
+                                            ? 'bg-indigo-600 text-white'
+                                            : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600'
+                                    }`}
+                                    title="Numbered List (Daftar Bernomor)"
+                                >
+                                    <ListOrdered className="w-3.5 h-3.5" />
+                                </button>
+                            </div>
                         </div>
                     </div>
                 )}
@@ -856,30 +1228,13 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
                     <style>{`
                         .tiptap {
                             outline: none !important;
-                            font-family: 'Times New Roman', Times, serif;
                             min-height: 160px;
                         }
                         .tiptap p {
                             margin: 0 !important;
-                            line-height: 1.3 !important;
                         }
-                        .tiptap h1 {
-                            font-size: 1.4rem !important;
-                            font-weight: 800 !important;
+                        .tiptap h1, .tiptap h2, .tiptap h3 {
                             margin: 0 !important;
-                            line-height: 1.2 !important;
-                        }
-                        .tiptap h2 {
-                            font-size: 1.15rem !important;
-                            font-weight: 700 !important;
-                            margin: 0 !important;
-                            line-height: 1.2 !important;
-                        }
-                        .tiptap h3 {
-                            font-size: 1.05rem !important;
-                            font-weight: 700 !important;
-                            margin: 0 !important;
-                            line-height: 1.2 !important;
                         }
                     `}</style>
                     <EditorContent
@@ -891,7 +1246,7 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
                 {/* Footer Aksi Simpan */}
                 <div className="p-6 border-t border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row items-center justify-between gap-4 bg-gray-50 dark:bg-gray-850">
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                        Pastikan isi teks dan logo sudah sesuai sebelum menekan tombol simpan.
+                        Format dan ukuran teks yang Anda atur pada editor di atas akan dicerminkan secara persis pada hasil cetak dokumen.
                     </p>
 
                     <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -964,4 +1319,3 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
         </div>
     );
 }
-
