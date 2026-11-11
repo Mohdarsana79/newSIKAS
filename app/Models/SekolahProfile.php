@@ -22,6 +22,11 @@ class SekolahProfile extends Model
         'provinsi',
         'alamat',
         'kop_surat',
+        'logo_daerah',
+        'logo_sekolah',
+        'kop_mode',
+        'kop_teks_html',
+        'kop_jenis',
         'website_sync_url',
         'website_sync_token',
     ];

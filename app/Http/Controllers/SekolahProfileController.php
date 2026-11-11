@@ -113,10 +113,78 @@ class SekolahProfileController extends Controller
 
             // Store in 'public' disk (storage/app/public/kop_surat)
             $path = $request->file('kop_surat')->store('kop_surat', 'public');
-            $sekolah->update(['kop_surat' => $path]);
+            $sekolah->update([
+                'kop_surat' => $path,
+                'kop_jenis' => 'upload',
+            ]);
         }
 
         return redirect()->back()->with('success', 'Kop Surat berhasil diupload.');
+    }
+
+    /**
+     * Save Kop Surat from Builder (Tiptap + Logos + Generated Image)
+     */
+    public function saveBuilderKop(Request $request, string $id)
+    {
+        $request->validate([
+            'generated_kop' => 'required|file|mimes:png,jpg,jpeg|max:10240',
+            'logo_daerah' => 'nullable|file|mimes:png,jpg,jpeg,svg|max:4096',
+            'logo_sekolah' => 'nullable|file|mimes:png,jpg,jpeg,svg|max:4096',
+            'kop_mode' => 'required|in:1_logo,2_logo',
+            'kop_teks_html' => 'required|string',
+        ]);
+
+        $sekolah = SekolahProfile::findOrFail($id);
+
+        $updateData = [
+            'kop_mode' => $request->kop_mode,
+            'kop_teks_html' => $request->kop_teks_html,
+            'kop_jenis' => 'builder',
+        ];
+
+        // 1. Handle Logo Daerah
+        if ($request->hasFile('logo_daerah')) {
+            if ($sekolah->logo_daerah && Storage::disk('public')->exists($sekolah->logo_daerah)) {
+                Storage::disk('public')->delete($sekolah->logo_daerah);
+            }
+            $updateData['logo_daerah'] = $request->file('logo_daerah')->store('kop_surat', 'public');
+        } elseif ($request->boolean('remove_logo_daerah')) {
+            if ($sekolah->logo_daerah && Storage::disk('public')->exists($sekolah->logo_daerah)) {
+                Storage::disk('public')->delete($sekolah->logo_daerah);
+            }
+            $updateData['logo_daerah'] = null;
+        }
+
+        // 2. Handle Logo Sekolah
+        if ($request->hasFile('logo_sekolah')) {
+            if ($sekolah->logo_sekolah && Storage::disk('public')->exists($sekolah->logo_sekolah)) {
+                Storage::disk('public')->delete($sekolah->logo_sekolah);
+            }
+            $updateData['logo_sekolah'] = $request->file('logo_sekolah')->store('kop_surat', 'public');
+        } elseif ($request->boolean('remove_logo_sekolah')) {
+            if ($sekolah->logo_sekolah && Storage::disk('public')->exists($sekolah->logo_sekolah)) {
+                Storage::disk('public')->delete($sekolah->logo_sekolah);
+            }
+            $updateData['logo_sekolah'] = null;
+        }
+
+        // 3. Handle Generated Kop (High-Res Merged PNG)
+        if ($request->hasFile('generated_kop')) {
+            if ($sekolah->kop_surat) {
+                if (Storage::disk('public')->exists($sekolah->kop_surat)) {
+                    Storage::disk('public')->delete($sekolah->kop_surat);
+                }
+                if (Storage::disk('local')->exists($sekolah->kop_surat)) {
+                    Storage::disk('local')->delete($sekolah->kop_surat);
+                }
+            }
+            $updateData['kop_surat'] = $request->file('generated_kop')->store('kop_surat', 'public');
+        }
+
+        $sekolah->update($updateData);
+
+        return redirect()->back()->with('success', 'Kop Surat berhasil digenerate dan disimpan.');
     }
 
     /**

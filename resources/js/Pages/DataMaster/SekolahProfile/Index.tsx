@@ -9,6 +9,8 @@ import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
 import InputError from '@/Components/InputError';
 import DangerButton from '@/Components/DangerButton';
+import KopSuratBuilder from './Partials/KopSuratBuilder';
+import { Building2, Sparkles, Image as ImageIcon, FileText } from 'lucide-react';
 
 interface Sekolah {
     id: number;
@@ -22,11 +24,17 @@ interface Sekolah {
     provinsi: string;
     alamat: string;
     kop_surat?: string;
+    logo_daerah?: string;
+    logo_sekolah?: string;
+    kop_mode?: string;
+    kop_teks_html?: string;
+    kop_jenis?: string;
     website_sync_url?: string;
     website_sync_token?: string;
 }
 
 export default function Index({ auth, sekolah, licensedNpsn }: PageProps<{ sekolah?: Sekolah; licensedNpsn?: string }>) {
+    const [activeTab, setActiveTab] = useState<'profil' | 'kop'>('profil');
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     const [isUploadOpen, setIsUploadOpen] = useState(false);
@@ -109,10 +117,42 @@ export default function Index({ auth, sekolah, licensedNpsn }: PageProps<{ sekol
         >
             <Head title="Profil Sekolah" />
 
-            <div className="py-6">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* Left Column: School ID Card Style */}
-                    <div className="lg:col-span-2 space-y-6">
+            <div className="py-6 space-y-6">
+                {/* Modern Tabs Navigation */}
+                <div className="flex border-b border-gray-200 dark:border-gray-700 space-x-6">
+                    <button
+                        type="button"
+                        onClick={() => setActiveTab('profil')}
+                        className={`pb-4 px-2 text-sm font-semibold flex items-center gap-2 border-b-2 transition-colors ${
+                            activeTab === 'profil'
+                                ? 'border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400'
+                                : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                        }`}
+                    >
+                        <Building2 className="w-4 h-4" />
+                        Profil & Data Sekolah
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setActiveTab('kop')}
+                        className={`pb-4 px-2 text-sm font-semibold flex items-center gap-2 border-b-2 transition-colors ${
+                            activeTab === 'kop'
+                                ? 'border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400'
+                                : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                        }`}
+                    >
+                        <Sparkles className="w-4 h-4 text-amber-500" />
+                        Pengaturan Kop Surat
+                        <span className="ml-1.5 px-2 py-0.5 text-[11px] font-bold rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300">
+                            Tiptap Builder
+                        </span>
+                    </button>
+                </div>
+
+                {activeTab === 'profil' && (
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        {/* Left Column: School ID Card Style */}
+                        <div className="lg:col-span-2 space-y-6">
                         <div className="bg-white dark:bg-gray-800 shadow-lg sm:rounded-xl overflow-hidden border border-gray-100 dark:border-gray-700">
                             {/* Card Header */}
                             <div className="px-6 py-5 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -247,21 +287,30 @@ export default function Index({ auth, sekolah, licensedNpsn }: PageProps<{ sekol
                                                 <span className="text-white font-medium">Klik untuk Perbesar</span>
                                             </div>
                                         </div>
-                                        <div className="flex gap-3">
-                                            <SecondaryButton
-                                                onClick={() => setIsUploadOpen(true)}
-                                                className="flex-1 justify-center border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                                        <div className="space-y-2">
+                                            <PrimaryButton
+                                                onClick={() => setActiveTab('kop')}
+                                                className="w-full justify-center bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-xs py-2 shadow-sm flex items-center gap-1.5"
                                             >
-                                                <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                                                </svg>
-                                                Ganti
-                                            </SecondaryButton>
-                                            <DangerButton onClick={handleDeleteKop}>
-                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                </svg>
-                                            </DangerButton>
+                                                <Sparkles className="w-4 h-4" />
+                                                Buka Editor Kop (Tiptap)
+                                            </PrimaryButton>
+                                            <div className="flex gap-2">
+                                                <SecondaryButton
+                                                    onClick={() => setIsUploadOpen(true)}
+                                                    className="flex-1 justify-center border-indigo-200 text-indigo-700 hover:bg-indigo-50 text-xs py-1.5"
+                                                >
+                                                    <svg className="w-3.5 h-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                                    </svg>
+                                                    Upload Gambar
+                                                </SecondaryButton>
+                                                <DangerButton onClick={handleDeleteKop} className="px-3">
+                                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                    </svg>
+                                                </DangerButton>
+                                            </div>
                                         </div>
                                     </div>
                                 ) : (
@@ -275,16 +324,27 @@ export default function Index({ auth, sekolah, licensedNpsn }: PageProps<{ sekol
                                         <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Format: .jpg, .jpeg, .png (Maks. 2MB)</p>
                                         <p className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold mb-6">Disarankan: Lebar 2480 px & Tinggi 588 px</p>
 
-                                        <PrimaryButton
-                                            onClick={() => setIsUploadOpen(true)}
-                                            disabled={!sekolah}
-                                            className="bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600"
-                                        >
-                                            <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                                            </svg>
-                                            Upload Kop Baru
-                                        </PrimaryButton>
+                                        <div className="space-y-2 w-full max-w-xs">
+                                            <PrimaryButton
+                                                onClick={() => setActiveTab('kop')}
+                                                disabled={!sekolah}
+                                                className="w-full justify-center bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-xs py-2 shadow-md flex items-center gap-1.5"
+                                            >
+                                                <Sparkles className="w-4 h-4" />
+                                                Desain Kop Sendiri (Tiptap)
+                                            </PrimaryButton>
+
+                                            <SecondaryButton
+                                                onClick={() => setIsUploadOpen(true)}
+                                                disabled={!sekolah}
+                                                className="w-full justify-center text-xs py-2"
+                                            >
+                                                <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                                </svg>
+                                                Upload Gambar Jadi
+                                            </SecondaryButton>
+                                        </div>
 
                                         {!sekolah && <p className="text-xs text-red-500 mt-2 bg-red-50 px-2 py-1 rounded">Input data sekolah dulu!</p>}
                                     </div>
@@ -293,6 +353,35 @@ export default function Index({ auth, sekolah, licensedNpsn }: PageProps<{ sekol
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* TAB 2: PENGATURAN KOP SURAT (TIPTAP BUILDER) */}
+            {activeTab === 'kop' && (
+                <div>
+                    {sekolah ? (
+                        <KopSuratBuilder sekolah={sekolah} />
+                    ) : (
+                        <div className="bg-white dark:bg-gray-800 rounded-2xl p-12 text-center border border-gray-200 dark:border-gray-700 shadow-sm">
+                            <Building2 className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+                                Data Profil Sekolah Belum Lengkap
+                            </h3>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 max-w-md mx-auto">
+                                Silakan lengkapi identitas profil sekolah terlebih dahulu pada tab "Profil & Data Sekolah" sebelum menyusun kop surat resmi.
+                            </p>
+                            <PrimaryButton
+                                onClick={() => {
+                                    setActiveTab('profil');
+                                    setIsModalOpen(true);
+                                }}
+                                className="mt-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                            >
+                                Lengkapi Profil Sekolah
+                            </PrimaryButton>
+                        </div>
+                    )}
+                </div>
+            )}
             </div>
 
             {/* Modal Input Content */}

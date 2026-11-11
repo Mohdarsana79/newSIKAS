@@ -24,14 +24,17 @@ use App\Http\Controllers\LphController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PenatausahaanController;
 use App\Http\Controllers\PenerimaanDanaController;
+use App\Http\Controllers\PenganggaranApprovalController;
 use App\Http\Controllers\PenganggaranController;
 use App\Http\Controllers\ReferensiKodeController;
 use App\Http\Controllers\RegistrasiPenutupanKasController;
 use App\Http\Controllers\RekapitulasiController;
 use App\Http\Controllers\RekapitulasiRealisasiController;
 use App\Http\Controllers\RekeningBelanjaController;
+use App\Http\Controllers\RkasAiReviewController;
 use App\Http\Controllers\RkasController;
 use App\Http\Controllers\RkasPerubahanController;
+use App\Http\Controllers\RkasReviewController;
 use App\Http\Controllers\SekolahProfileController;
 use App\Http\Controllers\Sp2bController;
 use App\Http\Controllers\SpmthController;
@@ -46,6 +49,11 @@ use Inertia\Inertia;
 Route::resource('penganggaran', PenganggaranController::class);
 Route::patch('/penganggaran/{id}/update-tanggal-perubahan', [PenganggaranController::class, 'updateTanggalPerubahan'])->name('penganggaran.update-tanggal-perubahan');
 Route::patch('/penganggaran/{id}/update-tanggal-cetak', [PenganggaranController::class, 'updateTanggalCetak'])->name('penganggaran.update-tanggal-cetak');
+Route::post('/penganggaran/{id}/approve', [PenganggaranApprovalController::class, 'approve'])->name('penganggaran.approve');
+Route::post('/penganggaran/{id}/unapprove', [PenganggaranApprovalController::class, 'unapprove'])->name('penganggaran.unapprove');
+Route::post('/rkas/{id}/ai-executive-review', [RkasAiReviewController::class, 'review'])->name('rkas.ai-executive-review');
+Route::post('/rkas-review/item', [RkasReviewController::class, 'store'])->name('rkas-review.store');
+Route::delete('/rkas-review/item/{id}', [RkasReviewController::class, 'destroy'])->name('rkas-review.destroy');
 // RKAS
 // Place specific routes BEFORE wildcard routes to prevent conflicts
 Route::post('/rkas/update-group', [RkasController::class, 'updateGroup'])->name('rkas.updateGroup');
@@ -145,6 +153,7 @@ Route::resource('sts', StsController::class);
 
 // Data Master
 Route::post('sekolah-profile/{id}/upload-kop', [SekolahProfileController::class, 'uploadKop'])->name('sekolah-profile.upload-kop');
+Route::post('sekolah-profile/{id}/save-builder-kop', [SekolahProfileController::class, 'saveBuilderKop'])->name('sekolah-profile.save-builder-kop');
 Route::delete('sekolah-profile/{id}/delete-kop', [SekolahProfileController::class, 'destroyKop'])->name('sekolah-profile.delete-kop');
 Route::resource('sekolah-profile', SekolahProfileController::class);
 Route::get('kode-kegiatan/download-template', [KodeKegiatanController::class, 'downloadTemplate'])->name('kode-kegiatan.download-template');
