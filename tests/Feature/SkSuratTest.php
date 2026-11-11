@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\SkDokumen;
 use App\Models\SkFolder;
+use App\Models\SkTemplate;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -178,5 +179,40 @@ class SkSuratTest extends TestCase
         // Kepala sekolah can download the archive
         $downloadResponse = $this->actingAs($this->kepsek)->get("/sk-surat/dokumen/{$dokumen->id}/download-archive");
         $downloadResponse->assertOk();
+    }
+
+    public function test_bendahara_can_create_dokumen_with_auto_extracted_variables(): void
+    {
+        $folder = SkFolder::create([
+            'nama_folder' => 'Folder SK Baru',
+            'created_by' => $this->bendahara->id,
+        ]);
+
+        $template = SkTemplate::create([
+            'folder_id' => $folder->id,
+            'judul' => 'Template SK BOS',
+            'file_path' => 'sk_surat/templates/test.docx',
+            'file_name_original' => 'test.docx',
+            'detected_variables' => ['nomor_surat', 'nama_kegiatan', 'tanggal_surat'],
+            'created_by' => $this->bendahara->id,
+        ]);
+
+        $response = $this->actingAs($this->bendahara)->post("/sk-surat/folder/{$folder->id}/dokumen", [
+            'template_id' => $template->id,
+            'perihal' => 'SK Tim BOS 2026',
+            'data_isian' => [
+                'nomor_surat' => '421/005/BOSP/2026',
+                'nama_kegiatan' => 'Pengadaan Buku Pelajaran',
+                'tanggal_surat' => '2026-02-15',
+            ],
+        ]);
+
+        $this->assertDatabaseHas('sk_dokumens', [
+            'folder_id' => $folder->id,
+            'template_id' => $template->id,
+            'perihal' => 'SK Tim BOS 2026',
+            'nomor_surat' => '421/005/BOSP/2026',
+            'tanggal_surat' => '2026-02-15 00:00:00',
+        ]);
     }
 }

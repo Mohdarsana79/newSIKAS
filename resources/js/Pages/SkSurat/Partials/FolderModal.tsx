@@ -4,7 +4,7 @@ import TextInput from '@/Components/TextInput';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import { router } from '@inertiajs/react';
-import Swal from 'sweetalert2';
+import { AlertCircle } from 'lucide-react';
 
 interface Folder {
     id?: number;
@@ -34,8 +34,10 @@ export default function FolderModal({ show, onClose, folder }: Props) {
     const [deskripsi, setDeskripsi] = useState('');
     const [warna, setWarna] = useState('indigo');
     const [loading, setLoading] = useState(false);
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
     useEffect(() => {
+        setErrorMsg(null);
         if (folder) {
             setNamaFolder(folder.nama_folder || '');
             setDeskripsi(folder.deskripsi || '');
@@ -49,8 +51,10 @@ export default function FolderModal({ show, onClose, folder }: Props) {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        setErrorMsg(null);
+
         if (!namaFolder.trim()) {
-            Swal.fire({ icon: 'warning', title: 'Perhatian', text: 'Nama folder wajib diisi' });
+            setErrorMsg('Nama folder wajib diisi.');
             return;
         }
 
@@ -62,10 +66,9 @@ export default function FolderModal({ show, onClose, folder }: Props) {
                 {
                     onSuccess: () => {
                         onClose();
-                        Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Folder berhasil diperbarui', timer: 1500, showConfirmButton: false });
                     },
                     onError: (err) => {
-                        Swal.fire({ icon: 'error', title: 'Gagal', text: Object.values(err).join(', ') });
+                        setErrorMsg(Object.values(err).join(', '));
                     },
                     onFinish: () => setLoading(false),
                 }
@@ -77,10 +80,9 @@ export default function FolderModal({ show, onClose, folder }: Props) {
                 {
                     onSuccess: () => {
                         onClose();
-                        Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Folder berhasil dibuat', timer: 1500, showConfirmButton: false });
                     },
                     onError: (err) => {
-                        Swal.fire({ icon: 'error', title: 'Gagal', text: Object.values(err).join(', ') });
+                        setErrorMsg(Object.values(err).join(', '));
                     },
                     onFinish: () => setLoading(false),
                 }
@@ -94,9 +96,16 @@ export default function FolderModal({ show, onClose, folder }: Props) {
                 <h3 className="text-lg font-bold text-gray-900 dark:text-slate-100 mb-1">
                     {isEditing ? 'Ubah Informasi Folder' : 'Buat Folder Dokumen Baru'}
                 </h3>
-                <p className="text-xs text-gray-500 dark:text-slate-400 mb-5">
+                <p className="text-xs text-gray-500 dark:text-slate-400 mb-4">
                     Folder digunakan untuk mengelompokkan SK dan surat resmi sekolah secara terstruktur.
                 </p>
+
+                {errorMsg && (
+                    <div className="mb-4 p-3 bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 rounded-xl text-rose-700 dark:text-rose-400 text-xs flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 shrink-0" />
+                        <span>{errorMsg}</span>
+                    </div>
+                )}
 
                 <div className="space-y-4">
                     <div>

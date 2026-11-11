@@ -112,7 +112,7 @@ class SkSuratService
     }
 
     /**
-     * Convert compiled DOCX to PDF using DomPDF renderer.
+     * Convert compiled DOCX to PDF using LibreOffice headless (preferred) or DomPDF renderer.
      * Returns full path to generated temporary PDF file.
      */
     public function convertDocxToPdf(string $docxPath): string
@@ -126,16 +126,43 @@ class SkSuratService
             File::makeDirectory($tempDir, 0755, true);
         }
 
-        $tempPdfName = 'surat_'.uniqid().'.pdf';
-        $tempPdfPath = $tempDir.DIRECTORY_SEPARATOR.$tempPdfName;
+        $baseName = pathinfo($docxPath, PATHINFO_FILENAME);
+        $expectedPdfPath = $tempDir.DIRECTORY_SEPARATOR.$baseName.'.pdf';
 
+        // Check for LibreOffice paths
+        $libreOfficeCandidates = [
+            'C:\\Program Files\\LibreOffice\\program\\soffice.exe',
+            'C:\\Program Files (x86)\\LibreOffice\\program\\soffice.exe',
+            'soffice',
+            'libreoffice',
+        ];
+
+        $sofficePath = null;
+        foreach ($libreOfficeCandidates as $candidate) {
+            if (file_exists($candidate)) {
+                $sofficePath = $candidate;
+                break;
+            }
+        }
+
+        // 1. Try LibreOffice headless conversion (Pixel-perfect Word fidelity)
+        if ($sofficePath) {
+            $cmd = '"'.$sofficePath.'" --headless --convert-to pdf '.escapeshellarg($docxPath).' --outdir '.escapeshellarg($tempDir);
+            exec($cmd, $output, $returnCode);
+
+            if ($returnCode === 0 && file_exists($expectedPdfPath)) {
+                return $expectedPdfPath;
+            }
+        }
+
+        // 2. Fallback to PHPWord DomPDF writer if LibreOffice failed or is not available
         Settings::setPdfRendererName(Settings::PDF_RENDERER_DOMPDF);
         Settings::setPdfRendererPath(base_path('vendor/dompdf/dompdf'));
 
         $phpWord = IOFactory::load($docxPath);
         $pdfWriter = IOFactory::createWriter($phpWord, 'PDF');
-        $pdfWriter->save($tempPdfPath);
+        $pdfWriter->save($expectedPdfPath);
 
-        return $tempPdfPath;
+        return $expectedPdfPath;
     }
 }

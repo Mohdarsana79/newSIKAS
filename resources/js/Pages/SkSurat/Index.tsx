@@ -13,8 +13,8 @@ import {
     FolderPlus,
     Sparkles,
 } from 'lucide-react';
-import Swal from 'sweetalert2';
 import FolderModal from './Partials/FolderModal';
+import ConfirmModal from './Partials/ConfirmModal';
 
 interface SkFolderItem {
     id: number;
@@ -97,6 +97,10 @@ export default function Index({
     const [selectedFolder, setSelectedFolder] = useState<SkFolderItem | null>(null);
     const [activeDropdown, setActiveDropdown] = useState<number | null>(null);
 
+    // Delete confirmation state
+    const [folderToDelete, setFolderToDelete] = useState<SkFolderItem | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
         router.get(route('sk-surat.index'), { search }, { preserveState: true });
@@ -113,25 +117,20 @@ export default function Index({
         setActiveDropdown(null);
     };
 
-    const handleDeleteFolder = (folder: SkFolderItem) => {
+    const handleRequestDelete = (folder: SkFolderItem) => {
         setActiveDropdown(null);
-        Swal.fire({
-            title: 'Hapus Folder Ini?',
-            text: `Folder "${folder.nama_folder}" beserta seluruh template dan dokumen di dalamnya akan dihapus permanen.`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#ef4444',
-            cancelButtonColor: '#334155',
-            confirmButtonText: 'Ya, Hapus Folder',
-            cancelButtonText: 'Batal',
-        }).then((res) => {
-            if (res.isConfirmed) {
-                router.delete(route('sk-surat.folder.destroy', folder.id), {
-                    onSuccess: () => {
-                        Swal.fire({ icon: 'success', title: 'Terhapus', text: 'Folder berhasil dihapus', timer: 1500, showConfirmButton: false });
-                    },
-                });
-            }
+        setFolderToDelete(folder);
+    };
+
+    const confirmDeleteFolder = () => {
+        if (!folderToDelete) return;
+
+        setIsDeleting(true);
+        router.delete(route('sk-surat.folder.destroy', folderToDelete.id), {
+            onSuccess: () => {
+                setFolderToDelete(null);
+            },
+            onFinish: () => setIsDeleting(false),
         });
     };
 
@@ -299,7 +298,7 @@ export default function Index({
                                                             </button>
                                                             <button
                                                                 type="button"
-                                                                onClick={() => handleDeleteFolder(folder)}
+                                                                onClick={() => handleRequestDelete(folder)}
                                                                 className="w-full px-3 py-2 text-left text-xs text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 flex items-center gap-2"
                                                             >
                                                                 <Trash2 className="w-3.5 h-3.5 text-rose-500 dark:text-rose-400" />
@@ -341,6 +340,18 @@ export default function Index({
                 show={showFolderModal}
                 onClose={() => setShowFolderModal(false)}
                 folder={selectedFolder}
+            />
+
+            {/* Modal Konfirmasi Hapus Folder */}
+            <ConfirmModal
+                show={Boolean(folderToDelete)}
+                onClose={() => setFolderToDelete(null)}
+                onConfirm={confirmDeleteFolder}
+                title="Hapus Folder Ini?"
+                message={`Folder "${folderToDelete?.nama_folder}" beserta seluruh template dan dokumen di dalamnya akan dihapus permanen. Tindakan ini tidak dapat dibatalkan.`}
+                confirmText="Ya, Hapus Folder"
+                type="danger"
+                loading={isDeleting}
             />
         </AuthenticatedLayout>
     );

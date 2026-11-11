@@ -216,6 +216,18 @@ class SkSuratController extends Controller
             'keterangan' => 'nullable|string|max:1000',
         ]);
 
+        // Auto-extract nomor_surat and tanggal_surat from data_isian if not explicitly passed
+        $dataIsian = $request->input('data_isian', []);
+        if (empty($validated['nomor_surat'])) {
+            $validated['nomor_surat'] = $dataIsian['nomor_surat'] ?? $dataIsian['no_surat'] ?? $dataIsian['nomor'] ?? null;
+        }
+        if (empty($validated['tanggal_surat'])) {
+            $rawDate = $dataIsian['tanggal_surat'] ?? $dataIsian['tanggal'] ?? $dataIsian['tgl_surat'] ?? null;
+            if ($rawDate && strtotime($rawDate)) {
+                $validated['tanggal_surat'] = date('Y-m-d', strtotime($rawDate));
+            }
+        }
+
         $validated['folder_id'] = $folder->id;
         $validated['tipe'] = 'generated';
         $validated['created_by'] = auth()->id();
@@ -241,6 +253,17 @@ class SkSuratController extends Controller
             'data_isian' => 'nullable|array',
             'keterangan' => 'nullable|string|max:1000',
         ]);
+
+        $dataIsian = $request->input('data_isian', []);
+        if (empty($validated['nomor_surat'])) {
+            $validated['nomor_surat'] = $dataIsian['nomor_surat'] ?? $dataIsian['no_surat'] ?? $dataIsian['nomor'] ?? null;
+        }
+        if (empty($validated['tanggal_surat'])) {
+            $rawDate = $dataIsian['tanggal_surat'] ?? $dataIsian['tanggal'] ?? $dataIsian['tgl_surat'] ?? null;
+            if ($rawDate && strtotime($rawDate)) {
+                $validated['tanggal_surat'] = date('Y-m-d', strtotime($rawDate));
+            }
+        }
 
         $dokumen->update($validated);
 

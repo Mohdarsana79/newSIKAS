@@ -4,7 +4,6 @@ import TextInput from '@/Components/TextInput';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import { router } from '@inertiajs/react';
-import Swal from 'sweetalert2';
 import { FileEdit, Sparkles, AlertCircle } from 'lucide-react';
 
 interface SkTemplate {
@@ -19,8 +18,8 @@ interface SkDokumen {
     folder_id: number;
     template_id: number;
     perihal: string;
-    nomor_surat: string | null;
-    tanggal_surat: string | null;
+    nomor_surat?: string | null;
+    tanggal_surat?: string | null;
     data_isian: Record<string, any> | null;
     keterangan: string | null;
 }
@@ -46,21 +45,19 @@ export default function GenerateDokumenModal({
 
     const [selectedTemplateId, setSelectedTemplateId] = useState<number | ''>('');
     const [perihal, setPerihal] = useState('');
-    const [nomorSurat, setNomorSurat] = useState('');
-    const [tanggalSurat, setTanggalSurat] = useState('');
     const [keterangan, setKeterangan] = useState('');
     const [dataIsian, setDataIsian] = useState<Record<string, string>>({});
     const [loading, setLoading] = useState(false);
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
     // Active selected template object
     const activeTemplate = templates.find((t) => t.id === Number(selectedTemplateId));
 
     useEffect(() => {
+        setErrorMsg(null);
         if (dokumen) {
             setSelectedTemplateId(dokumen.template_id || '');
             setPerihal(dokumen.perihal || '');
-            setNomorSurat(dokumen.nomor_surat || '');
-            setTanggalSurat(dokumen.tanggal_surat ? dokumen.tanggal_surat.substring(0, 10) : '');
             setKeterangan(dokumen.keterangan || '');
             setDataIsian((dokumen.data_isian as Record<string, string>) || {});
         } else {
@@ -69,8 +66,6 @@ export default function GenerateDokumenModal({
             const defaultId = defaultTpl ? defaultTpl.id : '';
             setSelectedTemplateId(defaultId);
             setPerihal('');
-            setNomorSurat('');
-            setTanggalSurat(new Date().toISOString().substring(0, 10));
             setKeterangan('');
 
             // Pre-fill variables for default template
@@ -117,14 +112,15 @@ export default function GenerateDokumenModal({
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        setErrorMsg(null);
 
         if (!selectedTemplateId) {
-            Swal.fire({ icon: 'warning', title: 'Perhatian', text: 'Pilih master template terlebih dahulu' });
+            setErrorMsg('Pilih master template terlebih dahulu.');
             return;
         }
 
         if (!perihal.trim()) {
-            Swal.fire({ icon: 'warning', title: 'Perhatian', text: 'Perihal / Judul surat wajib diisi' });
+            setErrorMsg('Perihal / Judul surat wajib diisi.');
             return;
         }
 
@@ -133,8 +129,6 @@ export default function GenerateDokumenModal({
         const payload = {
             template_id: selectedTemplateId,
             perihal,
-            nomor_surat: nomorSurat || null,
-            tanggal_surat: tanggalSurat || null,
             data_isian: dataIsian,
             keterangan: keterangan || null,
         };
@@ -143,10 +137,9 @@ export default function GenerateDokumenModal({
             router.put(route('sk-surat.dokumen.update', dokumen.id), payload, {
                 onSuccess: () => {
                     onClose();
-                    Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Dokumen surat berhasil diperbarui!', timer: 1500, showConfirmButton: false });
                 },
                 onError: (err) => {
-                    Swal.fire({ icon: 'error', title: 'Gagal', text: Object.values(err).join(', ') });
+                    setErrorMsg(Object.values(err).join(', '));
                 },
                 onFinish: () => setLoading(false),
             });
@@ -154,10 +147,9 @@ export default function GenerateDokumenModal({
             router.post(route('sk-surat.dokumen.store', folderId), payload, {
                 onSuccess: () => {
                     onClose();
-                    Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Dokumen surat berhasil dibuat!', timer: 1500, showConfirmButton: false });
                 },
                 onError: (err) => {
-                    Swal.fire({ icon: 'error', title: 'Gagal', text: Object.values(err).join(', ') });
+                    setErrorMsg(Object.values(err).join(', '));
                 },
                 onFinish: () => setLoading(false),
             });
@@ -179,8 +171,16 @@ export default function GenerateDokumenModal({
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto py-4 space-y-6 pr-1 custom-scrollbar">
-                    {/* Pemilihan Template */}
+                <div className="flex-1 overflow-y-auto py-4 space-y-5 pr-1 custom-scrollbar">
+                    {/* Error Banner */}
+                    {errorMsg && (
+                        <div className="p-3 bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 rounded-xl text-rose-700 dark:text-rose-400 text-xs flex items-center gap-2">
+                            <AlertCircle className="w-4 h-4 shrink-0" />
+                            <span>{errorMsg}</span>
+                        </div>
+                    )}
+
+                    {/* Master Template & Perihal Dokumen */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 uppercase tracking-wider mb-1">
@@ -204,7 +204,7 @@ export default function GenerateDokumenModal({
 
                         <div>
                             <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 uppercase tracking-wider mb-1">
-                                Perihal / Nama Dokumen <span className="text-rose-500">*</span>
+                                Perihal / Judul Surat <span className="text-rose-500">*</span>
                             </label>
                             <TextInput
                                 type="text"
@@ -215,42 +215,22 @@ export default function GenerateDokumenModal({
                                 required
                             />
                         </div>
-
-                        <div>
-                            <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 uppercase tracking-wider mb-1">
-                                Nomor Surat
-                            </label>
-                            <TextInput
-                                type="text"
-                                className="w-full bg-gray-50 dark:bg-slate-950 border-gray-300 dark:border-slate-800 text-gray-900 dark:text-slate-200 text-sm focus:border-indigo-500 font-mono"
-                                placeholder="Contoh: 421.3/012/BOSP/2026"
-                                value={nomorSurat}
-                                onChange={(e) => setNomorSurat(e.target.value)}
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 uppercase tracking-wider mb-1">
-                                Tanggal Surat
-                            </label>
-                            <TextInput
-                                type="date"
-                                className="w-full bg-gray-50 dark:bg-slate-950 border-gray-300 dark:border-slate-800 text-gray-900 dark:text-slate-200 text-sm focus:border-indigo-500"
-                                value={tanggalSurat}
-                                onChange={(e) => setTanggalSurat(e.target.value)}
-                            />
-                        </div>
                     </div>
 
                     {/* Dynamic Variable Inputs */}
                     <div className="pt-4 border-t border-gray-200 dark:border-slate-800/80">
                         <div className="flex items-center justify-between mb-3">
-                            <h4 className="text-xs font-semibold text-gray-700 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
-                                <Sparkles className="w-4 h-4 text-amber-500 dark:text-amber-400" />
-                                Isian Variabel Dinamis Template
-                            </h4>
-                            <span className="text-[11px] text-gray-500 dark:text-slate-400">
-                                {activeTemplate?.detected_variables?.length || 0} variabel ditemukan
+                            <div>
+                                <h4 className="text-xs font-semibold text-gray-700 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                                    <Sparkles className="w-4 h-4 text-amber-500 dark:text-amber-400" />
+                                    Isian Variabel Template
+                                </h4>
+                                <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-0.5">
+                                    Semua variabel di bawah ini otomatis dideteksi dari template Word Anda.
+                                </p>
+                            </div>
+                            <span className="text-[11px] text-gray-500 dark:text-slate-400 font-mono">
+                                {activeTemplate?.detected_variables?.length || 0} variabel
                             </span>
                         </div>
 
@@ -262,7 +242,7 @@ export default function GenerateDokumenModal({
                                 </p>
                             </div>
                         ) : (
-                            <div className="space-y-3 bg-gray-50 dark:bg-slate-950/50 p-4 border border-gray-200 dark:border-slate-800/80 rounded-xl">
+                            <div className="space-y-3 bg-gray-50 dark:bg-slate-950/50 p-4 border border-gray-200 dark:border-slate-800/80 rounded-xl max-h-72 overflow-y-auto custom-scrollbar">
                                 {activeTemplate.detected_variables.map((tag) => {
                                     const normalized = tag.toLowerCase().trim();
                                     const isAutoFilled = Boolean(schoolData[normalized]);

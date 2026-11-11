@@ -4,8 +4,7 @@ import TextInput from '@/Components/TextInput';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import { router } from '@inertiajs/react';
-import Swal from 'sweetalert2';
-import { UploadCloud } from 'lucide-react';
+import { UploadCloud, AlertCircle } from 'lucide-react';
 
 interface Props {
     show: boolean;
@@ -20,12 +19,14 @@ export default function UploadArsipModal({ show, onClose, folderId }: Props) {
     const [keterangan, setKeterangan] = useState('');
     const [file, setFile] = useState<File | null>(null);
     const [loading, setLoading] = useState(false);
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        setErrorMsg(null);
 
         if (!perihal.trim() || !file) {
-            Swal.fire({ icon: 'warning', title: 'Perhatian', text: 'Perihal dan berkas fisik wajib diisi' });
+            setErrorMsg('Perihal dan berkas dokumen wajib diisi.');
             return;
         }
 
@@ -46,16 +47,9 @@ export default function UploadArsipModal({ show, onClose, folderId }: Props) {
                 setKeterangan('');
                 setFile(null);
                 onClose();
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Berhasil',
-                    text: 'Berkas arsip fisik berhasil diunggah ke folder!',
-                    timer: 1500,
-                    showConfirmButton: false,
-                });
             },
             onError: (err) => {
-                Swal.fire({ icon: 'error', title: 'Gagal', text: Object.values(err).join(', ') });
+                setErrorMsg(Object.values(err).join(', '));
             },
             onFinish: () => setLoading(false),
         });
@@ -75,6 +69,13 @@ export default function UploadArsipModal({ show, onClose, folderId }: Props) {
                         </p>
                     </div>
                 </div>
+
+                {errorMsg && (
+                    <div className="mb-4 p-3 bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 rounded-xl text-rose-700 dark:text-rose-400 text-xs flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 shrink-0" />
+                        <span>{errorMsg}</span>
+                    </div>
+                )}
 
                 <div className="space-y-4">
                     <div>

@@ -16,10 +16,10 @@ import {
     ArrowLeft,
     FileDown,
 } from 'lucide-react';
-import Swal from 'sweetalert2';
 import ManageTemplatesModal from './Partials/ManageTemplatesModal';
 import GenerateDokumenModal from './Partials/GenerateDokumenModal';
 import UploadArsipModal from './Partials/UploadArsipModal';
+import ConfirmModal from './Partials/ConfirmModal';
 
 interface SkTemplate {
     id: number;
@@ -80,6 +80,13 @@ export default function Show({ folder, schoolData = {}, filters = {} }: Props) {
     const [showUploadArsip, setShowUploadArsip] = useState(false);
     const [editingDokumen, setEditingDokumen] = useState<SkDokumen | null>(null);
 
+    // Delete confirmation state
+    const [docToDelete, setDocToDelete] = useState<SkDokumen | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    // Missing template warning modal
+    const [showNoTemplateModal, setShowNoTemplateModal] = useState(false);
+
     const handleFilter = (newSearch?: string, newTipe?: string) => {
         router.get(
             route('sk-surat.show', folder.id),
@@ -93,19 +100,7 @@ export default function Show({ folder, schoolData = {}, filters = {} }: Props) {
 
     const handleOpenCreateDokumen = () => {
         if (folder.templates.length === 0) {
-            Swal.fire({
-                icon: 'info',
-                title: 'Belum Ada Master Template',
-                text: 'Unggah file master template .docx ke folder ini terlebih dahulu sebelum membuat surat dinamis.',
-                showCancelButton: true,
-                confirmButtonText: 'Unggah Template Sekarang',
-                cancelButtonText: 'Tutup',
-                confirmButtonColor: '#6366f1',
-            }).then((res) => {
-                if (res.isConfirmed) {
-                    setShowManageTemplates(true);
-                }
-            });
+            setShowNoTemplateModal(true);
             return;
         }
         setEditingDokumen(null);
@@ -117,25 +112,42 @@ export default function Show({ folder, schoolData = {}, filters = {} }: Props) {
         setShowGenerateDokumen(true);
     };
 
-    const handleDeleteDokumen = (dokumen: SkDokumen) => {
-        Swal.fire({
-            title: 'Hapus Dokumen?',
-            text: `Yakin ingin menghapus dokumen "${dokumen.perihal}"?`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#ef4444',
-            cancelButtonColor: '#334155',
-            confirmButtonText: 'Ya, Hapus',
-            cancelButtonText: 'Batal',
-        }).then((res) => {
-            if (res.isConfirmed) {
-                router.delete(route('sk-surat.dokumen.destroy', dokumen.id), {
-                    onSuccess: () => {
-                        Swal.fire({ icon: 'success', title: 'Terhapus', text: 'Dokumen berhasil dihapus', timer: 1500, showConfirmButton: false });
-                    },
-                });
-            }
+    const confirmDeleteDokumen = () => {
+        if (!docToDelete) return;
+
+        setIsDeleting(true);
+        router.delete(route('sk-surat.dokumen.destroy', docToDelete.id), {
+            onSuccess: () => {
+                setDocToDelete(null);
+            },
+            onFinish: () => setIsDeleting(false),
         });
+    };
+
+    const resolveNomorSurat = (doc: SkDokumen) => {
+        if (doc.nomor_surat) return doc.nomor_surat;
+        if (doc.data_isian) {
+            return (
+                doc.data_isian.nomor_surat ||
+                doc.data_isian.no_surat ||
+                doc.data_isian.nomor ||
+                null
+            );
+        }
+        return null;
+    };
+
+    const resolveTanggalSurat = (doc: SkDokumen) => {
+        if (doc.tanggal_surat) return doc.tanggal_surat.substring(0, 10);
+        if (doc.data_isian) {
+            return (
+                doc.data_isian.tanggal_surat ||
+                doc.data_isian.tanggal ||
+                doc.data_isian.tgl_surat ||
+                null
+            );
+        }
+        return null;
     };
 
     return (
@@ -312,128 +324,133 @@ export default function Show({ folder, schoolData = {}, filters = {} }: Props) {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100 dark:divide-slate-800/60">
-                                    {folder.dokumens.map((doc) => (
-                                        <tr key={doc.id} className="hover:bg-gray-50/70 dark:hover:bg-slate-800/30 transition-colors">
-                                            {/* Tipe Badge */}
-                                            <td className="py-3.5 px-4 whitespace-nowrap">
-                                                {doc.tipe === 'generated' ? (
-                                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-sky-50 dark:bg-sky-950/80 text-sky-700 dark:text-sky-400 border border-sky-200 dark:border-sky-500/30">
-                                                        <Sparkles className="w-3 h-3" />
-                                                        Generator Word
-                                                    </span>
-                                                ) : (
-                                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30">
-                                                        <UploadCloud className="w-3 h-3" />
-                                                        Arsip Fisik
-                                                    </span>
-                                                )}
-                                            </td>
+                                    {folder.dokumens.map((doc) => {
+                                        const displayNomor = resolveNomorSurat(doc);
+                                        const displayTanggal = resolveTanggalSurat(doc);
 
-                                            {/* Nomor & Tanggal */}
-                                            <td className="py-3.5 px-4 whitespace-nowrap">
-                                                <div className="font-mono font-medium text-gray-900 dark:text-slate-200">
-                                                    {doc.nomor_surat || <span className="text-gray-400 dark:text-slate-600 italic">Tanpa nomor</span>}
-                                                </div>
-                                                <div className="text-[11px] text-gray-500 dark:text-slate-500 mt-0.5">
-                                                    {doc.tanggal_surat ? doc.tanggal_surat.substring(0, 10) : '-'}
-                                                </div>
-                                            </td>
-
-                                            {/* Perihal */}
-                                            <td className="py-3.5 px-4">
-                                                <div className="font-semibold text-gray-900 dark:text-slate-100 text-sm">
-                                                    {doc.perihal}
-                                                </div>
-                                                {doc.keterangan && (
-                                                    <div className="text-[11px] text-gray-500 dark:text-slate-400 mt-0.5 line-clamp-1">
-                                                        {doc.keterangan}
-                                                    </div>
-                                                )}
-                                            </td>
-
-                                            {/* Template / File */}
-                                            <td className="py-3.5 px-4 whitespace-nowrap text-gray-600 dark:text-slate-400">
-                                                {doc.tipe === 'generated' ? (
-                                                    <div className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-300">
-                                                        <FileText className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" />
-                                                        {doc.template?.judul || 'Template'}
-                                                    </div>
-                                                ) : (
-                                                    <div className="font-mono text-[11px] text-gray-500 dark:text-slate-400 truncate max-w-[180px]">
-                                                        {doc.file_name_original || 'Berkas arsip'}
-                                                    </div>
-                                                )}
-                                            </td>
-
-                                            {/* Dibuat Oleh */}
-                                            <td className="py-3.5 px-4 whitespace-nowrap text-gray-500 dark:text-slate-400 text-xs">
-                                                {doc.user?.name || 'Sistem'}
-                                            </td>
-
-                                            {/* Aksi */}
-                                            <td className="py-3.5 px-4 whitespace-nowrap text-right">
-                                                <div className="flex items-center justify-end gap-2">
+                                        return (
+                                            <tr key={doc.id} className="hover:bg-gray-50/70 dark:hover:bg-slate-800/30 transition-colors">
+                                                {/* Tipe Badge */}
+                                                <td className="py-3.5 px-4 whitespace-nowrap">
                                                     {doc.tipe === 'generated' ? (
-                                                        <>
-                                                            {/* Download DOCX */}
-                                                            <a
-                                                                href={route('sk-surat.dokumen.download-docx', doc.id)}
-                                                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-indigo-50 dark:bg-indigo-600/20 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-600/30 border border-indigo-200 dark:border-indigo-500/30 transition-colors shadow-sm"
-                                                                title="Unduh File Asli Word (.docx)"
-                                                            >
-                                                                <FileDown className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                                                                DOCX
-                                                            </a>
-
-                                                            {/* Export PDF */}
-                                                            <a
-                                                                href={route('sk-surat.dokumen.export-pdf', doc.id)}
-                                                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-rose-50 dark:bg-rose-600/20 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-600/30 border border-rose-200 dark:border-rose-500/30 transition-colors shadow-sm"
-                                                                title="Ekspor Siap Cetak (.pdf)"
-                                                            >
-                                                                <Download className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
-                                                                PDF
-                                                            </a>
-
-                                                            {/* Edit Form - Khusus Bendahara */}
-                                                            {!isKepalaSekolah && (
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => handleEditDokumen(doc)}
-                                                                    className="p-1.5 rounded-lg text-gray-500 dark:text-slate-400 hover:text-gray-800 dark:hover:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
-                                                                    title="Ubah Isian Variabel"
-                                                                >
-                                                                    <Edit2 className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" />
-                                                                </button>
-                                                            )}
-                                                        </>
+                                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-sky-50 dark:bg-sky-950/80 text-sky-700 dark:text-sky-400 border border-sky-200 dark:border-sky-500/30">
+                                                            <Sparkles className="w-3 h-3" />
+                                                            Generator Word
+                                                        </span>
                                                     ) : (
-                                                        /* Download Arsip Fisik */
-                                                        <a
-                                                            href={route('sk-surat.dokumen.download-archive', doc.id)}
-                                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-50 dark:bg-emerald-600/20 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-600/30 border border-emerald-200 dark:border-emerald-500/30 transition-colors shadow-sm"
-                                                            title="Unduh Berkas Fisik"
-                                                        >
-                                                            <Download className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                                                            Unduh Berkas
-                                                        </a>
+                                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30">
+                                                            <UploadCloud className="w-3 h-3" />
+                                                            Arsip Fisik
+                                                        </span>
                                                     )}
+                                                </td>
 
-                                                    {/* Hapus Dokumen - Khusus Bendahara */}
-                                                    {!isKepalaSekolah && (
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleDeleteDokumen(doc)}
-                                                            className="p-1.5 rounded-lg text-gray-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors"
-                                                            title="Hapus Dokumen"
-                                                        >
-                                                            <Trash2 className="w-3.5 h-3.5" />
-                                                        </button>
+                                                {/* Nomor & Tanggal */}
+                                                <td className="py-3.5 px-4 whitespace-nowrap">
+                                                    <div className="font-mono font-medium text-gray-900 dark:text-slate-200">
+                                                        {displayNomor || <span className="text-gray-400 dark:text-slate-600 italic">Tanpa nomor</span>}
+                                                    </div>
+                                                    <div className="text-[11px] text-gray-500 dark:text-slate-500 mt-0.5">
+                                                        {displayTanggal || '-'}
+                                                    </div>
+                                                </td>
+
+                                                {/* Perihal */}
+                                                <td className="py-3.5 px-4">
+                                                    <div className="font-semibold text-gray-900 dark:text-slate-100 text-sm">
+                                                        {doc.perihal}
+                                                    </div>
+                                                    {doc.keterangan && (
+                                                        <div className="text-[11px] text-gray-500 dark:text-slate-400 mt-0.5 line-clamp-1">
+                                                            {doc.keterangan}
+                                                        </div>
                                                     )}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
+                                                </td>
+
+                                                {/* Template / File */}
+                                                <td className="py-3.5 px-4 whitespace-nowrap text-gray-600 dark:text-slate-400">
+                                                    {doc.tipe === 'generated' ? (
+                                                        <div className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-300">
+                                                            <FileText className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" />
+                                                            {doc.template?.judul || 'Template'}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="font-mono text-[11px] text-gray-500 dark:text-slate-400 truncate max-w-[180px]">
+                                                            {doc.file_name_original || 'Berkas arsip'}
+                                                        </div>
+                                                    )}
+                                                </td>
+
+                                                {/* Dibuat Oleh */}
+                                                <td className="py-3.5 px-4 whitespace-nowrap text-gray-500 dark:text-slate-400 text-xs">
+                                                    {doc.user?.name || 'Sistem'}
+                                                </td>
+
+                                                {/* Aksi */}
+                                                <td className="py-3.5 px-4 whitespace-nowrap text-right">
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        {doc.tipe === 'generated' ? (
+                                                            <>
+                                                                {/* Download DOCX */}
+                                                                <a
+                                                                    href={route('sk-surat.dokumen.download-docx', doc.id)}
+                                                                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-indigo-50 dark:bg-indigo-600/20 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-600/30 border border-indigo-200 dark:border-indigo-500/30 transition-colors shadow-sm"
+                                                                    title="Unduh File Asli Word (.docx)"
+                                                                >
+                                                                    <FileDown className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                                                                    DOCX
+                                                                </a>
+
+                                                                {/* Export PDF */}
+                                                                <a
+                                                                    href={route('sk-surat.dokumen.export-pdf', doc.id)}
+                                                                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-rose-50 dark:bg-rose-600/20 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-600/30 border border-rose-200 dark:border-rose-500/30 transition-colors shadow-sm"
+                                                                    title="Ekspor Siap Cetak (.pdf)"
+                                                                >
+                                                                    <Download className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
+                                                                    PDF
+                                                                </a>
+
+                                                                {/* Edit Form - Khusus Bendahara */}
+                                                                {!isKepalaSekolah && (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => handleEditDokumen(doc)}
+                                                                        className="p-1.5 rounded-lg text-gray-500 dark:text-slate-400 hover:text-gray-800 dark:hover:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
+                                                                        title="Ubah Isian Variabel"
+                                                                    >
+                                                                        <Edit2 className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" />
+                                                                    </button>
+                                                                )}
+                                                            </>
+                                                        ) : (
+                                                            /* Download Arsip Fisik */
+                                                            <a
+                                                                href={route('sk-surat.dokumen.download-archive', doc.id)}
+                                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-50 dark:bg-emerald-600/20 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-600/30 border border-emerald-200 dark:border-emerald-500/30 transition-colors shadow-sm"
+                                                                title="Unduh Berkas Fisik"
+                                                            >
+                                                                <Download className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                                                                Unduh Berkas
+                                                            </a>
+                                                        )}
+
+                                                        {/* Hapus Dokumen - Khusus Bendahara */}
+                                                        {!isKepalaSekolah && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setDocToDelete(doc)}
+                                                                className="p-1.5 rounded-lg text-gray-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors"
+                                                                title="Hapus Dokumen"
+                                                            >
+                                                                <Trash2 className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                         </div>
@@ -468,6 +485,33 @@ export default function Show({ folder, schoolData = {}, filters = {} }: Props) {
                 show={showUploadArsip}
                 onClose={() => setShowUploadArsip(false)}
                 folderId={folder.id}
+            />
+
+            {/* Modal Konfirmasi Hapus Dokumen */}
+            <ConfirmModal
+                show={Boolean(docToDelete)}
+                onClose={() => setDocToDelete(null)}
+                onConfirm={confirmDeleteDokumen}
+                title="Hapus Dokumen Ini?"
+                message={`Apakah Anda yakin ingin menghapus dokumen "${docToDelete?.perihal}"? Tindakan ini tidak dapat dibatalkan.`}
+                confirmText="Ya, Hapus Dokumen"
+                type="danger"
+                loading={isDeleting}
+            />
+
+            {/* Modal Peringatan Template Belum Ada */}
+            <ConfirmModal
+                show={showNoTemplateModal}
+                onClose={() => setShowNoTemplateModal(false)}
+                onConfirm={() => {
+                    setShowNoTemplateModal(false);
+                    setShowManageTemplates(true);
+                }}
+                title="Belum Ada Master Template"
+                message="Unggah file master template Word (.docx) ke folder ini terlebih dahulu sebelum membuat surat dinamis."
+                confirmText="Unggah Template Sekarang"
+                cancelText="Tutup"
+                type="info"
             />
         </AuthenticatedLayout>
     );
