@@ -33,6 +33,64 @@ interface Props {
     dokumen?: SkDokumen | null;
 }
 
+/**
+ * Format raw variable keys into user-friendly form labels.
+ * E.g.:
+ * - "nomor" / "${nomor}" -> "Nomor"
+ * - "nomor_surat" -> "Nomor Surat"
+ * - "tgl_surat" -> "Tanggal Surat"
+ * - "nip_kepala_sekolah" -> "NIP Kepala Sekolah"
+ * - "npsn" -> "NPSN"
+ */
+function formatVariableLabel(tag: string): string {
+    if (!tag) return '';
+
+    // Strip leading ${ and trailing }
+    let cleaned = tag.replace(/^\$\{?|\}?$/g, '').trim();
+
+    // Insert space before camelCase capitals
+    cleaned = cleaned.replace(/([a-z])([A-Z])/g, '$1 $2');
+
+    // Replace underscores, hyphens, and dots with spaces
+    cleaned = cleaned.replace(/[_\-.]+/g, ' ').trim();
+
+    // Dictionary of common school / admin abbreviations
+    const dictionary: Record<string, string> = {
+        no: 'Nomor',
+        nomor: 'Nomor',
+        tgl: 'Tanggal',
+        tanggal: 'Tanggal',
+        thn: 'Tahun',
+        tahun: 'Tahun',
+        bln: 'Bulan',
+        bulan: 'Bulan',
+        nip: 'NIP',
+        npsn: 'NPSN',
+        sk: 'SK',
+        bosp: 'BOSP',
+        bos: 'BOS',
+        rkas: 'RKAS',
+        bku: 'BKU',
+        ta: 'TA',
+        ttd: 'TTD',
+        rt: 'RT',
+        rw: 'RW',
+        nik: 'NIK',
+        kepsek: 'Kepala Sekolah',
+    };
+
+    return cleaned
+        .split(/\s+/)
+        .map((word) => {
+            const lower = word.toLowerCase();
+            if (dictionary[lower]) {
+                return dictionary[lower];
+            }
+            return lower.charAt(0).toUpperCase() + lower.slice(1);
+        })
+        .join(' ');
+}
+
 export default function GenerateDokumenModal({
     show,
     onClose,
@@ -166,7 +224,7 @@ export default function GenerateDokumenModal({
                             {isEditing ? 'Ubah Isian Surat Dokumen' : 'Buat Surat Baru dari Template Word'}
                         </h3>
                         <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
-                            Isi formulir variabel di bawah ini. Sistem PHPWord akan menyuntikkan data ke template dokumen asli secara otomatis.
+                            Isi formulir data di bawah ini. Dokumen Word akan dibuat otomatis sesuai data yang Anda masukkan.
                         </p>
                     </div>
                 </div>
@@ -218,60 +276,79 @@ export default function GenerateDokumenModal({
                     </div>
 
                     {/* Dynamic Variable Inputs */}
-                    <div className="pt-4 border-t border-gray-200 dark:border-slate-800/80">
+                    <div className="pt-2">
                         <div className="flex items-center justify-between mb-3">
                             <div>
-                                <h4 className="text-xs font-semibold text-gray-700 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
-                                    <Sparkles className="w-4 h-4 text-amber-500 dark:text-amber-400" />
-                                    Isian Variabel Template
+                                <h4 className="text-xs font-bold text-gray-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                                    <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                                    Formulir Isian Surat
                                 </h4>
                                 <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-0.5">
-                                    Semua variabel di bawah ini otomatis dideteksi dari template Word Anda.
+                                    Lengkapi kolom di bawah ini untuk mengisi bagian dinamis pada template surat.
                                 </p>
                             </div>
-                            <span className="text-[11px] text-gray-500 dark:text-slate-400 font-mono">
-                                {activeTemplate?.detected_variables?.length || 0} variabel
-                            </span>
+                            {activeTemplate?.detected_variables && activeTemplate.detected_variables.length > 0 && (
+                                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-500/30 text-indigo-700 dark:text-indigo-300">
+                                    {activeTemplate.detected_variables.length} Kolom Isian
+                                </span>
+                            )}
                         </div>
 
                         {!activeTemplate || !activeTemplate.detected_variables || activeTemplate.detected_variables.length === 0 ? (
                             <div className="p-4 bg-gray-50/50 dark:bg-slate-950/40 border border-gray-200 dark:border-slate-800 rounded-xl text-center">
                                 <AlertCircle className="w-6 h-6 text-amber-500 dark:text-amber-400 mx-auto mb-1.5" />
                                 <p className="text-xs text-gray-600 dark:text-slate-400">
-                                    Template ini belum memiliki tag variabel <code className="text-indigo-600 dark:text-indigo-300">{'${...}'}</code>.
+                                    Template ini belum memiliki variabel isian dinamis.
                                 </p>
                             </div>
                         ) : (
-                            <div className="space-y-3 bg-gray-50 dark:bg-slate-950/50 p-4 border border-gray-200 dark:border-slate-800/80 rounded-xl max-h-72 overflow-y-auto custom-scrollbar">
-                                {activeTemplate.detected_variables.map((tag) => {
-                                    const normalized = tag.toLowerCase().trim();
-                                    const isAutoFilled = Boolean(schoolData[normalized]);
+                            <div className="bg-gray-50/70 dark:bg-slate-950/50 p-4 border border-gray-200 dark:border-slate-800/80 rounded-xl max-h-80 overflow-y-auto custom-scrollbar">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {activeTemplate.detected_variables.map((tag) => {
+                                        const normalized = tag.toLowerCase().trim();
+                                        const isAutoFilled = Boolean(schoolData[normalized]);
+                                        const labelText = formatVariableLabel(tag);
+                                        const isLongField =
+                                            tag.toLowerCase().includes('alamat') ||
+                                            tag.toLowerCase().includes('uraian') ||
+                                            tag.toLowerCase().includes('catatan') ||
+                                            tag.toLowerCase().includes('deskripsi');
 
-                                    return (
-                                        <div key={tag} className="grid grid-cols-1 md:grid-cols-3 gap-2 items-center">
-                                            <div className="text-xs font-medium text-gray-700 dark:text-slate-300 flex items-center gap-1.5">
-                                                <code className="px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200 dark:border-indigo-500/30 text-indigo-700 dark:text-indigo-300 font-mono text-[11px]">
-                                                    {`\${${tag}}`}
-                                                </code>
-                                                {isAutoFilled && (
-                                                    <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-400">
-                                                        Profil SIKAS
-                                                    </span>
+                                        return (
+                                            <div key={tag} className={isLongField ? 'md:col-span-2' : ''}>
+                                                <div className="flex items-center justify-between mb-1.5">
+                                                    <label className="text-xs font-semibold text-gray-700 dark:text-slate-300">
+                                                        {labelText}
+                                                    </label>
+                                                    {isAutoFilled && (
+                                                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-400">
+                                                            <Sparkles className="w-2.5 h-2.5" />
+                                                            Profil SIKAS
+                                                        </span>
+                                                    )}
+                                                </div>
+
+                                                {isLongField ? (
+                                                    <textarea
+                                                        className="w-full bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-800 text-gray-900 dark:text-slate-200 text-sm rounded-lg focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 placeholder:text-gray-400 dark:placeholder:text-slate-600"
+                                                        rows={2}
+                                                        placeholder={`Masukkan ${labelText.toLowerCase()}...`}
+                                                        value={dataIsian[tag] ?? ''}
+                                                        onChange={(e) => handleFieldChange(tag, e.target.value)}
+                                                    />
+                                                ) : (
+                                                    <TextInput
+                                                        type="text"
+                                                        className="w-full bg-white dark:bg-slate-900 border-gray-300 dark:border-slate-800 text-gray-900 dark:text-slate-200 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg"
+                                                        placeholder={`Masukkan ${labelText.toLowerCase()}...`}
+                                                        value={dataIsian[tag] ?? ''}
+                                                        onChange={(e) => handleFieldChange(tag, e.target.value)}
+                                                    />
                                                 )}
                                             </div>
-
-                                            <div className="md:col-span-2">
-                                                <TextInput
-                                                    type="text"
-                                                    className="w-full bg-white dark:bg-slate-900 border-gray-300 dark:border-slate-800 text-gray-900 dark:text-slate-200 text-xs focus:border-indigo-500"
-                                                    placeholder={`Masukkan isian untuk \${${tag}}`}
-                                                    value={dataIsian[tag] ?? ''}
-                                                    onChange={(e) => handleFieldChange(tag, e.target.value)}
-                                                />
-                                            </div>
-                                        </div>
-                                    );
-                                })}
+                                        );
+                                    })}
+                                </div>
                             </div>
                         )}
                     </div>
