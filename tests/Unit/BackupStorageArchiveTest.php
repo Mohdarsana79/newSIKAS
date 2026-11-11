@@ -99,4 +99,47 @@ class BackupStorageArchiveTest extends TestCase
         File::deleteDirectory($destPublic);
         File::deleteDirectory($destPrivate);
     }
+
+    public function test_restore_progress_endpoint_and_state()
+    {
+        $controller = new class extends DatabaseController
+        {
+            public function test_set_progress(?string $id, int $pct, string $msg, string $status = 'processing'): void
+            {
+                $this->setRestoreProgress($id, $pct, $msg, $status);
+            }
+        };
+
+        $testId = 'test_id_'.uniqid();
+        $progressFile = storage_path('app/temp/restore_progress_'.$testId.'.json');
+
+        // Test default when file does not exist
+        $response = $controller->restoreProgress('non_existent_id');
+        $this->assertEquals(200, $response->getStatusCode());
+        $data = json_decode($response->getContent(), true);
+        $this->assertEquals(5, $data['percent']);
+        $this->assertEquals('processing', $data['status']);
+
+        // Test updating progress
+        $controller->test_set_progress($testId, 45, 'Menyiapkan skema database baru...', 'processing');
+        $this->assertFileExists($progressFile);
+
+        $response2 = $controller->restoreProgress($testId);
+        $data2 = json_decode($response2->getContent(), true);
+        $this->assertEquals(45, $data2['percent']);
+        $this->assertEquals('Menyiapkan skema database baru...', $data2['message']);
+        $this->assertEquals('processing', $data2['status']);
+
+        // Test completed status
+        $controller->test_set_progress($testId, 100, 'Pemulihan selesai!', 'completed');
+        $response3 = $controller->restoreProgress($testId);
+        $data3 = json_decode($response3->getContent(), true);
+        $this->assertEquals(100, $data3['percent']);
+        $this->assertEquals('completed', $data3['status']);
+
+        // Cleanup
+        if (file_exists($progressFile)) {
+            @unlink($progressFile);
+        }
+    }
 }

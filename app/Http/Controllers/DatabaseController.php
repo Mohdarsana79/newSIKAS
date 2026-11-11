@@ -384,7 +384,11 @@ class DatabaseController extends Controller
         $request->validate([
             // Izinkan ukuran hingga 2 GB (2097152 KB)
             'backup_file' => 'required|file|extensions:rsv,btb,sql|max:2097152',
+            'restore_id' => 'nullable|string|max:100',
         ]);
+
+        $restoreId = $request->input('restore_id');
+        $this->setRestoreProgress($restoreId, 10, 'Memvalidasi berkas & kesiapan sistem...', 'processing');
 
         @ini_set('max_execution_time', '600');
         @ini_set('memory_limit', '1024M');
@@ -398,21 +402,29 @@ class DatabaseController extends Controller
             // Step 1: Validasi File Backup & Path psql SEBELUM memodifikasi database
             $psqlPath = $this->getPostgresBinaryPath('psql');
             if (! file_exists($psqlPath)) {
+                $this->setRestoreProgress($restoreId, 100, "Executable psql tidak ditemukan di server: {$psqlPath}", 'error');
+
                 return back()->with('error', "Executable psql tidak ditemukan di server: {$psqlPath}. Pastikan path PostgreSQL terkonfigurasi dengan benar.");
             }
 
             $file = $request->file('backup_file');
             if (! $file || ! $file->isValid()) {
+                $this->setRestoreProgress($restoreId, 100, 'Upload file backup tidak valid.', 'error');
+
                 return back()->with('error', 'Upload file backup tidak valid.');
             }
 
             $uploadedPath = $file->getRealPath();
             if (! file_exists($uploadedPath) || filesize($uploadedPath) === 0) {
+                $this->setRestoreProgress($restoreId, 100, 'File backup yang diunggah kosong atau tidak terbaca.', 'error');
+
                 return back()->with('error', 'File backup yang diunggah kosong atau tidak terbaca.');
             }
 
             $totalFilesRestored = 0;
             $isZipPackage = false;
+
+            $this->setRestoreProgress($restoreId, 20, 'Memeriksa format paket cadangan (.rsv)...', 'processing');
 
             // Periksa apakah berkas berupa ZIP archive
             $zip = new ZipArchive;
@@ -426,9 +438,12 @@ class DatabaseController extends Controller
                 // Cek apakah terdapat database.sql dalam arsip
                 if ($zip->locateName('database.sql') === false) {
                     $zip->close();
+                    $this->setRestoreProgress($restoreId, 100, 'Format arsip backup tidak valid: berkas database.sql tidak ditemukan di dalam paket.', 'error');
 
                     return back()->with('error', 'Format arsip backup tidak valid: berkas database.sql tidak ditemukan di dalam paket.');
                 }
+
+                $this->setRestoreProgress($restoreId, 30, 'Mengekstrak paket arsip & data basis data...', 'processing');
 
                 $extractedSqlPath = $tempDir.'/database.sql';
                 if (! $zip->extractTo($tempDir, ['database.sql'])) {
@@ -437,6 +452,7 @@ class DatabaseController extends Controller
                 }
 
                 // Ekstrak berkas storage publik & privat (Merge & Overwrite)
+                $this->setRestoreProgress($restoreId, 38, 'Mengekstrak berkas fisik media...', 'processing');
                 $publicRestored = $this->extractZipSubdir($zip, 'storage/public', storage_path('app/public'));
                 $privateRestored = $this->extractZipSubdir($zip, 'storage/private', storage_path('app/private'));
                 $totalFilesRestored = $publicRestored + $privateRestored;
@@ -450,12 +466,15 @@ class DatabaseController extends Controller
 
             // Step 2: Persiapan Database & Restore Data
             try {
+                $this->setRestoreProgress($restoreId, 45, 'Membersihkan & menyiapkan skema database baru...', 'processing');
+
                 // Bersihkan schema public untuk restore fresh
                 DB::statement('DROP SCHEMA public CASCADE');
                 DB::statement('CREATE SCHEMA public');
                 DB::statement('GRANT ALL ON SCHEMA public TO public');
 
                 // Step 3: Jalankan psql restore
+                $this->setRestoreProgress($restoreId, 55, 'Mengimpor tabel & data transaksi ke PostgreSQL...', 'processing');
                 putenv('PGPASSWORD='.$dbConfig['password']);
 
                 $command = sprintf(
@@ -480,12 +499,15 @@ class DatabaseController extends Controller
                 }
 
                 // Reset sequences (Penting setelah restore)
+                $this->setRestoreProgress($restoreId, 80, 'Menyinkronkan urutan ID (sequence)...', 'processing');
                 $this->resetSequences();
 
                 // Run migrations to ensure schema is up to date with code
+                $this->setRestoreProgress($restoreId, 88, 'Memvalidasi migrasi skema database...', 'processing');
                 Artisan::call('migrate', ['--force' => true]);
 
                 // Pastikan symlink storage terhubung jika belum ada
+                $this->setRestoreProgress($restoreId, 95, 'Memverifikasi tautan berkas fisik...', 'processing');
                 if (! file_exists(public_path('storage'))) {
                     try {
                         Artisan::call('storage:link');
@@ -500,6 +522,8 @@ class DatabaseController extends Controller
                     $message = 'Database versi legacy berhasil dipulihkan (tanpa berkas fisik).';
                 }
 
+                $this->setRestoreProgress($restoreId, 100, $message, 'completed');
+
                 return back()->with('success', $message);
             } catch (Exception $e) {
                 Log::error('Restore execution failed: '.$e->getMessage());
@@ -511,9 +535,13 @@ class DatabaseController extends Controller
                     Log::error('Emergency migration failed: '.$migError->getMessage());
                 }
 
+                $this->setRestoreProgress($restoreId, 100, 'Restore gagal: '.$e->getMessage(), 'error');
+
                 return back()->with('error', 'Restore gagal: '.$e->getMessage());
             }
         } catch (Exception $e) {
+            $this->setRestoreProgress($restoreId, 100, 'Restore gagal: '.$e->getMessage(), 'error');
+
             return back()->with('error', $e->getMessage());
         } finally {
             if ($extractedSqlPath && file_exists($extractedSqlPath)) {
@@ -523,6 +551,56 @@ class DatabaseController extends Controller
                 @rmdir($tempDir);
             }
         }
+    }
+
+    /**
+     * Mengambil status progres nyata dari proses restore
+     */
+    public function restoreProgress(string $restoreId)
+    {
+        $safeId = preg_replace('/[^a-zA-Z0-9_-]/', '', $restoreId);
+        $progressFile = storage_path('app/temp/restore_progress_'.$safeId.'.json');
+
+        if (file_exists($progressFile)) {
+            $content = @file_get_contents($progressFile);
+            $data = json_decode($content, true);
+
+            if (is_array($data)) {
+                return response()->json($data);
+            }
+        }
+
+        return response()->json([
+            'percent' => 5,
+            'message' => 'Menghubungkan ke server...',
+            'status' => 'processing',
+        ]);
+    }
+
+    /**
+     * Memperbarui status progres restore ke file temporer
+     */
+    protected function setRestoreProgress(?string $restoreId, int $percent, string $message, string $status = 'processing'): void
+    {
+        if (empty($restoreId)) {
+            return;
+        }
+
+        $safeId = preg_replace('/[^a-zA-Z0-9_-]/', '', $restoreId);
+        $tempDir = storage_path('app/temp');
+        if (! file_exists($tempDir)) {
+            @mkdir($tempDir, 0755, true);
+        }
+
+        $progressFile = $tempDir.'/restore_progress_'.$safeId.'.json';
+        $payload = [
+            'percent' => $percent,
+            'message' => $message,
+            'status' => $status,
+            'updated_at' => microtime(true),
+        ];
+
+        @file_put_contents($progressFile, json_encode($payload));
     }
 
     /**

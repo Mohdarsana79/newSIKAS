@@ -98,54 +98,138 @@ export default function BackupIndex({ auth, backupFiles, stats, flash, currentNp
     const [restoreFile, setRestoreFile] = useState<File | null>(null);
     const [showRestoreModal, setShowRestoreModal] = useState(false);
     const [restoreProgress, setRestoreProgress] = useState(0);
+    const [restoreStatus, setRestoreStatus] = useState<'idle' | 'uploading' | 'processing' | 'completed' | 'error'>('idle');
+    const [restoreMessage, setRestoreMessage] = useState('');
+    const [restoreError, setRestoreError] = useState('');
+    const pollingIntervalRef = useRef<any>(null);
+
+    const clearPolling = () => {
+        if (pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current);
+            pollingIntervalRef.current = null;
+        }
+    };
+
+    useEffect(() => {
+        return () => clearPolling();
+    }, []);
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
             setRestoreFile(file);
             setShowRestoreModal(true);
+            setRestoreProgress(0);
+            setRestoreStatus('idle');
+            setRestoreMessage('');
+            setRestoreError('');
             // Reset input value to allow selecting same file again if passed
             e.target.value = '';
         }
     };
 
     const closeRestoreModal = () => {
-        if (processingRestore) return; // Prevent closing while processing
+        if (restoreStatus === 'uploading' || restoreStatus === 'processing') return; // Prevent closing while processing
+        clearPolling();
         setShowRestoreModal(false);
         setRestoreFile(null);
         setRestoreProgress(0);
+        setRestoreStatus('idle');
+        setRestoreMessage('');
+        setRestoreError('');
         resetRestoreForm();
     };
 
     const executeRestore = () => {
         if (!restoreFile) return;
 
-        // Manually set data just before submit or use setData in effect?
-        // useForm setData is sync.
-        setRestoreData('backup_file', restoreFile);
+        clearPolling();
+        setRestoreError('');
+        setRestoreStatus('uploading');
+        setRestoreProgress(5);
+        setRestoreMessage('Mengunggah berkas cadangan ke server...');
 
-        // We need to wait for state update? No, setData updates the form data object.
-        // However, post reads from current 'data'.
-        // Better trigger post directly with data options is not possible in v0.
-        // Workaround: We can't easily hook into useForm's 'post' with new data in same tick without effects.
-        // So we will use router.post directly to have full control for this specific file upload case, 
-        // OR we trust UseForm. Let's use router manually to keep progress simple or stick to useForm but set data first.
+        const restoreId = 'rst_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8);
 
-        // Actually, let's use router.post directly here for cleaner "event" handling
+        const startPolling = () => {
+            clearPolling();
+            pollingIntervalRef.current = setInterval(async () => {
+                try {
+                    const res = await window.axios.get(route('backup.restore-progress', { restoreId }));
+                    if (res && res.data) {
+                        const { percent, message, status } = res.data;
+
+                        if (status === 'error') {
+                            clearPolling();
+                            setRestoreStatus('error');
+                            setRestoreError(message || 'Terjadi kesalahan saat memulihkan database.');
+                            setRestoreMessage('Proses pemulihan gagal.');
+                            setRestoreProgress(100);
+                            return;
+                        }
+
+                        if (status === 'completed') {
+                            clearPolling();
+                            setRestoreStatus('completed');
+                            setRestoreProgress(100);
+                            setRestoreMessage(message || 'Pemulihan basis data & berkas berhasil!');
+                            setTimeout(() => {
+                                window.location.reload();
+                            }, 1500);
+                            return;
+                        }
+
+                        if (typeof percent === 'number') {
+                            setRestoreProgress((prev) => Math.max(prev, percent));
+                        }
+                        if (message) {
+                            setRestoreMessage(message);
+                        }
+                        setRestoreStatus('processing');
+                    }
+                } catch (e) {
+                    // Abaikan kesalahan koneksi sementara saat polling
+                }
+            }, 600);
+        };
+
         router.post(route('backup.restore'), {
-            backup_file: restoreFile
+            backup_file: restoreFile,
+            restore_id: restoreId,
         }, {
             forceFormData: true,
             onProgress: (progress) => {
-                const percentage = progress && progress.total ? Math.round((progress.loaded * 100) / progress.total) : 0;
-                setRestoreProgress(percentage);
+                if (progress && progress.total) {
+                    // Fase 1: 0% - 15% untuk transmisi byte ke server
+                    const uploadPct = Math.round((progress.loaded * 15) / progress.total);
+                    setRestoreProgress(Math.max(5, uploadPct));
+                    if (uploadPct >= 15) {
+                        setRestoreStatus('processing');
+                        setRestoreMessage('Berkas terunggah, memulai pemrosesan di server...');
+                    }
+                }
+            },
+            onStart: () => {
+                setTimeout(startPolling, 600);
             },
             onSuccess: () => {
-                closeRestoreModal();
+                if (restoreStatus !== 'error') {
+                    clearPolling();
+                    setRestoreStatus('completed');
+                    setRestoreProgress(100);
+                    setRestoreMessage('Pemulihan basis data & berkas berhasil! Memuat ulang...');
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                }
             },
-            onError: () => {
-                setRestoreProgress(0);
-                // Keep modal open to show error
+            onError: (errors) => {
+                clearPolling();
+                setRestoreStatus('error');
+                const errKey = Object.keys(errors)[0];
+                const msg = errKey ? errors[errKey] : 'Gagal memulihkan database.';
+                setRestoreError(msg);
+                setRestoreMessage('Proses pemulihan gagal.');
             },
             preserveScroll: true
         });
@@ -495,36 +579,90 @@ export default function BackupIndex({ auth, backupFiles, stats, flash, currentNp
                             </div>
                         )}
 
-                        {/* Progress Bar */}
-                        {restoreProgress > 0 && (
-                            <div className="mb-4">
-                                <div className="flex justify-between mb-1">
-                                    <span className="text-sm font-medium text-indigo-700 dark:text-indigo-400">
-                                        {restoreProgress < 100 ? 'Mengupload...' : 'Memproses Database & Berkas...'}
+                        {/* Progress Bar & Status */}
+                        {restoreStatus !== 'idle' && (
+                            <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-700/60 rounded-lg border border-gray-200 dark:border-gray-600 space-y-3">
+                                <div className="flex items-center justify-between text-sm">
+                                    <div className="flex items-center font-medium">
+                                        {restoreStatus === 'processing' || restoreStatus === 'uploading' ? (
+                                            <svg className="animate-spin -ml-0.5 mr-2.5 h-4 w-4 text-indigo-600 dark:text-indigo-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                            </svg>
+                                        ) : restoreStatus === 'completed' ? (
+                                            <svg className="w-5 h-5 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                        ) : (
+                                            <svg className="w-5 h-5 text-red-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                        )}
+                                        <span className={
+                                            restoreStatus === 'error'
+                                                ? 'text-red-700 dark:text-red-400 font-semibold'
+                                                : restoreStatus === 'completed'
+                                                    ? 'text-green-700 dark:text-green-400 font-semibold'
+                                                    : 'text-indigo-700 dark:text-indigo-300 font-medium'
+                                        }>
+                                            {restoreMessage || (restoreStatus === 'uploading' ? 'Mengunggah berkas...' : 'Memproses di server...')}
+                                        </span>
+                                    </div>
+                                    <span className="font-bold text-sm text-gray-700 dark:text-gray-300 ml-2">
+                                        {restoreProgress}%
                                     </span>
-                                    <span className="text-sm font-medium text-indigo-700 dark:text-indigo-400">{restoreProgress}%</span>
                                 </div>
-                                <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+
+                                <div className="w-full bg-gray-200 rounded-full h-3 dark:bg-gray-600 overflow-hidden">
                                     <div
-                                        className="bg-indigo-600 h-2.5 rounded-full transition-all duration-300"
+                                        className={`h-3 rounded-full transition-all duration-500 ease-out ${
+                                            restoreStatus === 'error'
+                                                ? 'bg-red-600'
+                                                : restoreStatus === 'completed'
+                                                    ? 'bg-green-600'
+                                                    : 'bg-indigo-600'
+                                        }`}
                                         style={{ width: `${restoreProgress}%` }}
                                     ></div>
                                 </div>
-                                {restoreProgress === 100 && (
-                                    <p className="text-xs text-center text-gray-500 mt-2 animate-pulse">Sedang melakukan restore data, mohon tunggu jangan tutup halaman ini...</p>
+
+                                {restoreError && (
+                                    <div className="p-3 bg-red-100 border border-red-300 rounded text-red-700 text-xs dark:bg-red-900/40 dark:border-red-700 dark:text-red-300">
+                                        <strong>Kendala:</strong> {restoreError}
+                                    </div>
+                                )}
+
+                                {restoreStatus === 'completed' && (
+                                    <p className="text-xs text-center text-green-600 dark:text-green-400 font-medium">
+                                        Sistem sedang memuat ulang halaman secara otomatis...
+                                    </p>
+                                )}
+
+                                {(restoreStatus === 'uploading' || restoreStatus === 'processing') && (
+                                    <p className="text-xs text-center text-gray-500 dark:text-gray-400">
+                                        Proses restore sedang berjalan, mohon jangan menutup jendela ini...
+                                    </p>
                                 )}
                             </div>
                         )}
                     </div>
 
                     <div className="mt-6 flex justify-end">
-                        <SecondaryButton onClick={closeRestoreModal} disabled={restoreProgress > 0 && restoreProgress < 100}>
-                            Batal
-                        </SecondaryButton>
+                        {restoreStatus === 'error' ? (
+                            <SecondaryButton onClick={closeRestoreModal}>
+                                Tutup
+                            </SecondaryButton>
+                        ) : (
+                            <>
+                                <SecondaryButton onClick={closeRestoreModal} disabled={restoreStatus === 'uploading' || restoreStatus === 'processing'}>
+                                    Batal
+                                </SecondaryButton>
 
-                        <PrimaryButton className="ml-3" disabled={restoreProgress > 0} onClick={executeRestore}>
-                            {restoreProgress > 0 ? 'Sedang Memproses...' : 'Mulai Restore'}
-                        </PrimaryButton>
+                                <PrimaryButton className="ml-3" disabled={restoreStatus !== 'idle'} onClick={executeRestore}>
+                                    {restoreStatus === 'idle' ? 'Mulai Restore' : 'Sedang Memproses...'}
+                                </PrimaryButton>
+                            </>
+                        )}
                     </div>
                 </div>
             </Modal>
