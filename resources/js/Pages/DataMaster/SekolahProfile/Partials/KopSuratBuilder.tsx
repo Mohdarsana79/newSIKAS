@@ -11,7 +11,6 @@ import { Subscript } from '@tiptap/extension-subscript';
 import { Superscript } from '@tiptap/extension-superscript';
 import { toBlob, toPng } from 'html-to-image';
 import { router } from '@inertiajs/react';
-import Swal from 'sweetalert2';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import Modal from '@/Components/Modal';
@@ -39,6 +38,8 @@ import {
     Upload,
     Trash2,
     Check,
+    CheckCircle2,
+    AlertTriangle,
     Layers,
     Sparkles,
     Image as ImageIcon,
@@ -139,6 +140,21 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
     const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
     const [previewModalImgUrl, setPreviewModalImgUrl] = useState<string | null>(null);
 
+    // State Modal Konfirmasi & Notifikasi (Pengganti SweetAlert)
+    const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+    const [isConfirmSaveModalOpen, setIsConfirmSaveModalOpen] = useState(false);
+    const [statusModal, setStatusModal] = useState<{
+        isOpen: boolean;
+        type: 'success' | 'error' | 'info';
+        title: string;
+        message: string;
+    }>({
+        isOpen: false,
+        type: 'success',
+        title: '',
+        message: '',
+    });
+
     // State Dropdown Toolbar
     const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
     const [isHighlightPickerOpen, setIsHighlightPickerOpen] = useState(false);
@@ -190,24 +206,18 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
         },
     });
 
-    // Reset template
+    // Reset template modal open & confirm
     const handleResetTemplate = () => {
-        Swal.fire({
-            title: 'Kembalikan ke Template Baku?',
-            text: 'Teks kop surat saat ini akan diganti dengan susunan baku dinas.',
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonColor: '#4f46e5',
-            cancelButtonColor: '#6b7280',
-            confirmButtonText: 'Ya, Terapkan Template',
-            cancelButtonText: 'Batal',
-        }).then((result) => {
-            if (result.isConfirmed && editor) {
-                const defaultTpl = generateDefaultTemplate();
-                editor.commands.setContent(defaultTpl);
-                setEditorHtml(defaultTpl);
-            }
-        });
+        setIsResetModalOpen(true);
+    };
+
+    const confirmResetTemplate = () => {
+        if (editor) {
+            const defaultTpl = generateDefaultTemplate();
+            editor.commands.setContent(defaultTpl);
+            setEditorHtml(defaultTpl);
+        }
+        setIsResetModalOpen(false);
     };
 
     // Handlers Font Size Grow & Shrink (A^ / Av)
@@ -305,8 +315,9 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
         });
     };
 
-    // Handler Simpan Kop Surat
-    const handleSaveKop = async () => {
+    // Eksekusi Simpan Kop Surat setelah konfirmasi modal
+    const executeSaveKop = async () => {
+        setIsConfirmSaveModalOpen(false);
         if (!previewRef.current || !editor) return;
 
         setIsSaving(true);
@@ -338,20 +349,20 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
             router.post(route('sekolah-profile.save-builder-kop', sekolah.id), formData, {
                 forceFormData: true,
                 onSuccess: () => {
-                    Swal.fire({
-                        title: 'Berhasil!',
-                        text: 'Kop surat sekolah berhasil digenerate dan disimpan ke profil sekolah. Seluruh dokumen PDF laporan kini otomatis menggunakan kop baru ini.',
-                        icon: 'success',
-                        confirmButtonColor: '#4f46e5',
+                    setStatusModal({
+                        isOpen: true,
+                        type: 'success',
+                        title: 'Kop Surat Berhasil Disimpan',
+                        message: 'Kop surat sekolah berhasil digenerate dan disimpan ke profil sekolah. Seluruh dokumen PDF laporan kini otomatis menggunakan kop baru ini.',
                     });
                 },
                 onError: (errors) => {
                     const firstError = Object.values(errors)[0] || 'Terjadi kesalahan saat menyimpan data.';
-                    Swal.fire({
-                        title: 'Gagal Menyimpan',
-                        text: String(firstError),
-                        icon: 'error',
-                        confirmButtonColor: '#ef4444',
+                    setStatusModal({
+                        isOpen: true,
+                        type: 'error',
+                        title: 'Gagal Menyimpan Kop Surat',
+                        message: String(firstError),
                     });
                 },
                 onFinish: () => {
@@ -361,11 +372,11 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
         } catch (error: any) {
             console.error('Error generating kop:', error);
             setIsSaving(false);
-            Swal.fire({
+            setStatusModal({
+                isOpen: true,
+                type: 'error',
                 title: 'Kesalahan Sistem',
-                text: error?.message || 'Gagal memproses gambar kop surat.',
-                icon: 'error',
-                confirmButtonColor: '#ef4444',
+                message: error?.message || 'Gagal memproses gambar kop surat.',
             });
         }
     };
@@ -394,20 +405,19 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
             link.href = dataUrl;
             link.click();
 
-            Swal.fire({
-                toast: true,
-                position: 'top-end',
-                showConfirmButton: false,
-                timer: 3000,
-                icon: 'success',
-                title: 'File Kop Surat (PNG) berhasil diunduh.',
+            setStatusModal({
+                isOpen: true,
+                type: 'success',
+                title: 'File Gambar Berhasil Diunduh',
+                message: 'File gambar kop surat resolusi tinggi telah berhasil diunduh ke komputer Anda.',
             });
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error downloading PNG:', error);
-            Swal.fire({
-                title: 'Gagal Mengunduh',
-                text: 'Terjadi kendala saat menghasilkan file gambar.',
-                icon: 'error',
+            setStatusModal({
+                isOpen: true,
+                type: 'error',
+                title: 'Gagal Mengunduh Gambar',
+                message: error?.message || 'Terjadi kendala saat menghasilkan file gambar.',
             });
         } finally {
             setIsDownloading(false);
@@ -466,7 +476,7 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
                             Unduh Kop (PNG)
                         </SecondaryButton>
                         <PrimaryButton
-                            onClick={handleSaveKop}
+                            onClick={() => setIsConfirmSaveModalOpen(true)}
                             disabled={isSaving}
                             className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-xs py-2 shadow-md flex items-center gap-1.5"
                         >
@@ -1283,7 +1293,7 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
                             Unduh Gambar (PNG)
                         </SecondaryButton>
                         <PrimaryButton
-                            onClick={handleSaveKop}
+                            onClick={() => setIsConfirmSaveModalOpen(true)}
                             disabled={isSaving}
                             className="flex-1 sm:flex-initial justify-center bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
                         >
@@ -1337,6 +1347,133 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
                         <SecondaryButton onClick={() => setIsPreviewModalOpen(false)}>
                             Tutup
                         </SecondaryButton>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Modal Konfirmasi Reset Template */}
+            <Modal show={isResetModalOpen} onClose={() => setIsResetModalOpen(false)} maxWidth="md">
+                <div className="p-6">
+                    <div className="flex items-center gap-4 mb-4">
+                        <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center text-amber-600 dark:text-amber-400 flex-shrink-0">
+                            <RotateCcw className="w-6 h-6" />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">
+                                Kembalikan ke Template Baku?
+                            </h3>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                                Konfirmasi pengaturan ulang isi teks kop surat
+                            </p>
+                        </div>
+                    </div>
+
+                    <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-6">
+                        Teks kop surat saat ini akan diganti dengan susunan baku dinas berdasarkan data profil sekolah Anda. Perubahan teks atau kustomisasi yang sedang Anda buat akan ditimpa.
+                    </p>
+
+                    <div className="flex items-center justify-end gap-3">
+                        <SecondaryButton onClick={() => setIsResetModalOpen(false)}>
+                            Batal
+                        </SecondaryButton>
+                        <PrimaryButton
+                            onClick={confirmResetTemplate}
+                            className="bg-amber-600 hover:bg-amber-700 text-white"
+                        >
+                            <RotateCcw className="w-4 h-4 mr-1.5" />
+                            Ya, Terapkan Template
+                        </PrimaryButton>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Modal Konfirmasi Simpan Kop Surat */}
+            <Modal show={isConfirmSaveModalOpen} onClose={() => setIsConfirmSaveModalOpen(false)} maxWidth="md">
+                <div className="p-6">
+                    <div className="flex items-center gap-4 mb-4">
+                        <div className="w-12 h-12 rounded-full bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center text-indigo-600 dark:text-indigo-400 flex-shrink-0">
+                            <Save className="w-6 h-6" />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">
+                                Simpan & Terapkan Kop Surat?
+                            </h3>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                                Pembuatan gambar resolusi tinggi untuk seluruh PDF
+                            </p>
+                        </div>
+                    </div>
+
+                    <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-6">
+                        Sistem akan menggabungkan logo daerah, teks kop surat, dan logo sekolah menjadi satu file gambar berkualitas tinggi (2480 &times; 588 px). Gambar ini akan otomatis diterapkan ke seluruh dokumen PDF laporan sekolah (SPJ, Kwitansi, SPTJ, BKU, dll).
+                    </p>
+
+                    <div className="flex items-center justify-end gap-3">
+                        <SecondaryButton onClick={() => setIsConfirmSaveModalOpen(false)}>
+                            Batal
+                        </SecondaryButton>
+                        <PrimaryButton
+                            onClick={executeSaveKop}
+                            className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+                        >
+                            <Check className="w-4 h-4 mr-1.5" />
+                            Ya, Simpan Kop Sekarang
+                        </PrimaryButton>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Modal Status (Sukses / Gagal) */}
+            <Modal
+                show={statusModal.isOpen}
+                onClose={() => setStatusModal((prev) => ({ ...prev, isOpen: false }))}
+                maxWidth="md"
+            >
+                <div className="p-6">
+                    <div className="flex items-center gap-4 mb-4">
+                        <div
+                            className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${
+                                statusModal.type === 'success'
+                                    ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400'
+                                    : 'bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400'
+                            }`}
+                        >
+                            {statusModal.type === 'success' ? (
+                                <CheckCircle2 className="w-6 h-6" />
+                            ) : (
+                                <AlertTriangle className="w-6 h-6" />
+                            )}
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">
+                                {statusModal.title}
+                            </h3>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                                {statusModal.type === 'success' ? 'Informasi Berhasil' : 'Pemberitahuan Kendala'}
+                            </p>
+                        </div>
+                    </div>
+
+                    <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-6 whitespace-pre-line">
+                        {statusModal.message}
+                    </p>
+
+                    <div className="flex items-center justify-end">
+                        {statusModal.type === 'success' ? (
+                            <PrimaryButton
+                                onClick={() => setStatusModal((prev) => ({ ...prev, isOpen: false }))}
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                            >
+                                <Check className="w-4 h-4 mr-1.5" />
+                                Mengerti
+                            </PrimaryButton>
+                        ) : (
+                            <SecondaryButton
+                                onClick={() => setStatusModal((prev) => ({ ...prev, isOpen: false }))}
+                            >
+                                Tutup
+                            </SecondaryButton>
+                        )}
                     </div>
                 </div>
             </Modal>
