@@ -17,20 +17,20 @@ interface NavLinkProps {
 const NavLink = ({ href, active, children, icon, isSidebarOpen = true }: NavLinkProps) => (
     <Link
         href={href}
-        className={`relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group overflow-hidden ${active
-            ? 'bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-lg shadow-indigo-500/20'
-            : 'text-slate-400 hover:text-white hover:bg-white/5'
-            } ${!isSidebarOpen ? 'justify-center px-0 mx-auto w-12' : ''}`}
-        title={!isSidebarOpen ? (children as string) : undefined}
+        className={`relative flex items-center gap-3.5 px-4 py-3 rounded-2xl transition-all duration-300 group overflow-hidden ${active
+            ? 'bg-gradient-to-r from-brand-500 to-brand-600 text-white shadow-glow-violet font-semibold'
+            : 'text-slate-400 hover:text-white hover:bg-white/[0.06] font-medium'
+            } ${!isSidebarOpen ? 'justify-center px-0 mx-auto w-11 h-11' : ''}`}
+        title={!isSidebarOpen ? (typeof children === 'string' ? children : undefined) : undefined}
     >
-        <div className={`shrink-0 z-10 transition-transform duration-300 ${active ? 'scale-110' : 'group-hover:scale-110'}`}>
+        <div className={`shrink-0 z-10 transition-transform duration-300 ${active ? 'scale-110 text-white' : 'text-slate-400 group-hover:text-white group-hover:scale-105'}`}>
             {icon}
         </div>
-        <span className={`z-10 font-medium whitespace-nowrap transition-all duration-300 origin-left ${!isSidebarOpen ? 'opacity-0 w-0 scale-0' : 'opacity-100 w-auto scale-100'}`}>
+        <span className={`z-10 text-sm whitespace-nowrap transition-all duration-300 origin-left ${!isSidebarOpen ? 'opacity-0 w-0 scale-0 pointer-events-none' : 'opacity-100 w-auto scale-100'}`}>
             {children}
         </span>
         {active && (
-            <div className="absolute inset-0 bg-white/5 rounded-xl pointer-events-none"></div>
+            <span className="absolute right-3.5 h-1.5 w-1.5 rounded-full bg-gold-400 animate-glow-pulse" />
         )}
     </Link>
 );
@@ -97,34 +97,34 @@ export default function Sidebar({ className = '', isOpen = true, setIsOpen }: { 
 
             {/* Main Sidebar Component */}
             <aside
-                className={`flex flex-col h-screen bg-[#020617] text-white fixed left-0 top-0 transition-all duration-300 ease-in-out z-50 border-r border-slate-800 shadow-2xl
+                className={`flex flex-col h-screen bg-[#0D0F17] text-white fixed left-0 top-0 transition-all duration-300 ease-in-out z-50 border-r border-white/5 shadow-2xl
                 ${isOpen ? 'translate-x-0 w-64' : '-translate-x-full md:translate-x-0 md:w-20'} 
                 ${className}`}
             >
                 {/* Visual Accent - Top Glow */}
-                <div className="absolute top-0 left-0 w-full h-40 bg-gradient-to-b from-indigo-500/10 to-transparent pointer-events-none"></div>
+                <div className="absolute top-0 left-0 w-full h-40 bg-gradient-to-b from-brand-500/15 via-brand-500/5 to-transparent pointer-events-none"></div>
 
                 {/* Branding Section */}
-                <div className={`relative z-10 flex items-center justify-between px-6 h-24 shrink-0 border-b border-slate-800/50 ${!isOpen ? 'px-0 justify-center' : ''}`}>
+                <div className={`relative z-10 flex items-center justify-between px-6 h-24 shrink-0 border-b border-white/5 ${!isOpen ? 'px-0 justify-center' : ''}`}>
                     <div className="flex items-center gap-3">
                         <div className="relative flex-shrink-0 group">
-                            <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl blur opacity-25 group-hover:opacity-50 transition duration-1000"></div>
-                            <div className="relative p-2.5 bg-slate-900 border border-slate-700/50 rounded-xl">
-                                <svg className="w-6 h-6 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <div className="absolute -inset-1 bg-gradient-to-r from-brand-500 to-gold-400 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000"></div>
+                            <div className="relative p-2.5 bg-slate-900/90 border border-white/10 rounded-2xl">
+                                <svg className="w-6 h-6 text-brand-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                                 </svg>
                             </div>
                         </div>
                         <div className={`flex flex-col transition-all duration-300 ${!isOpen ? 'hidden scale-0 opacity-0' : 'block scale-100 opacity-100'}`}>
-                            <span className="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-br from-white to-slate-400">SIKAS</span>
-                            <span className="text-[9px] font-bold text-indigo-500 uppercase tracking-[0.2em] leading-none">Management</span>
+                            <span className="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-br from-white to-slate-300">SIKAS</span>
+                            <span className="text-[9px] font-bold text-gold-400 uppercase tracking-[0.22em] leading-none">Management</span>
                         </div>
                     </div>
 
                     {/* Integrated Toggle Button (Visible in Sidebar when open or on desktop) */}
                     <button
                         onClick={() => setIsOpen?.(!isOpen)}
-                        className={`p-1.5 rounded-lg border border-slate-700 bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 transition-all focus:outline-none md:flex hidden ${!isOpen ? 'absolute -right-4 top-9 translate-x-0' : ''}`}
+                        className={`p-1.5 rounded-xl border border-white/10 bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-all focus:outline-none md:flex hidden ${!isOpen ? 'absolute -right-4 top-9 translate-x-0' : ''}`}
                     >
                         <svg className={`w-4 h-4 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
@@ -281,18 +281,53 @@ export default function Sidebar({ className = '', isOpen = true, setIsOpen }: { 
                     </nav>
                 </div>
 
+                {/* Bottom Mini Card - Eduplex style */}
+                <div className="p-3 shrink-0 border-t border-white/5">
+                    {isOpen ? (
+                        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-white/[0.07] to-white/[0.02] border border-white/10 p-3.5 shadow-sm">
+                            <div className="flex items-center gap-2.5">
+                                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-500/20 text-brand-300 border border-brand-500/30">
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+                                    </svg>
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <p className="text-xs font-semibold text-white truncate">ARKAS 4 Desktop</p>
+                                    <p className="text-[10px] text-slate-400 truncate">SQLite Sync Ready</p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={openPathModal}
+                                className="mt-3 w-full rounded-xl bg-white/10 hover:bg-white/20 text-[11px] font-semibold text-white py-1.5 transition-colors text-center"
+                            >
+                                Kelola Jalur Database
+                            </button>
+                        </div>
+                    ) : (
+                        <button
+                            type="button"
+                            onClick={openPathModal}
+                            title="Kelola Path Database ARKAS"
+                            className="flex h-11 w-11 mx-auto items-center justify-center rounded-2xl bg-white/[0.06] hover:bg-brand-500/30 text-slate-300 hover:text-white transition-colors"
+                        >
+                            <IconPath />
+                        </button>
+                    )}
+                </div>
+
                 {/* Sidebar Footer */}
-                <div className="p-4 border-t border-slate-800/50 bg-[#020617]/80 backdrop-blur-md sticky bottom-0 z-20">
+                <div className="p-3 border-t border-white/5 bg-[#0D0F17]/90 backdrop-blur-md sticky bottom-0 z-20">
                     <Link
                         href={route('logout')}
                         method="post"
                         as="button"
-                        className={`flex items-center gap-3 w-full px-4 py-3 text-slate-400 hover:text-rose-400 hover:bg-rose-500/5 rounded-xl transition-all duration-300 group ${!isOpen ? 'justify-center px-0' : ''}`}
+                        className={`flex items-center gap-3 w-full px-4 py-2.5 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-2xl transition-all duration-300 group ${!isOpen ? 'justify-center px-0' : ''}`}
                     >
                         <svg className="w-5 h-5 shrink-0 transition-transform group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                         </svg>
-                        {isOpen && <span className="font-medium">Keluar Sistem</span>}
+                        {isOpen && <span className="text-sm font-medium">Keluar Sistem</span>}
                     </Link>
                 </div>
             </aside>

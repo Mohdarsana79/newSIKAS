@@ -2,7 +2,6 @@ import Sidebar from '@/Components/Sidebar';
 import Navbar from '@/Components/Navbar';
 import { PropsWithChildren, ReactNode, useState } from 'react';
 import ChangelogModal from '@/Components/ChangelogModal';
-
 import Toast from '@/Components/Toast';
 import CopilotDrawer from '@/Components/Ai/CopilotDrawer';
 
@@ -23,7 +22,7 @@ export default function Authenticated({
     });
 
     return (
-        <div className="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 flex">
+        <div className="min-h-screen bg-[#F6F8FC] dark:bg-[#0B0A12] text-slate-900 dark:text-slate-100 flex antialiased selection:bg-brand-500/20 selection:text-brand-900 dark:selection:text-brand-200">
             <Toast />
             <ChangelogModal />
             <CopilotDrawer 
@@ -38,7 +37,7 @@ export default function Authenticated({
             />
 
             {/* Main Content Wrapper */}
-            <div className={`flex-1 flex flex-col transition-all duration-300 ${sidebarOpen ? 'md:ml-64' : 'md:ml-20'} ml-0`}>
+            <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${sidebarOpen ? 'md:ml-64' : 'md:ml-20'} ml-0`}>
                 {/* Navbar */}
                 <Navbar
                     header={header}
@@ -48,8 +47,8 @@ export default function Authenticated({
                     setCopilotState={setCopilotState}
                 />
 
-                {/* Page Content */}
-                <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 dark:bg-gray-900">
+                {/* Page Content Canvas */}
+                <main className="flex-1 overflow-x-hidden overflow-y-auto bg-[#F6F8FC] dark:bg-[#0B0A12]">
                     {children}
                 </main>
             </div>

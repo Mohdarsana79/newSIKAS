@@ -3,7 +3,7 @@ import DarkModeSwitcher from '@/Components/DarkModeSwitcher';
 import FullscreenSwitcher from '@/Components/FullscreenSwitcher';
 import NotificationDropdown from '@/Components/NotificationDropdown';
 import { usePage } from '@inertiajs/react';
-import { MessageSquare } from 'lucide-react';
+import { MessageSquare, Search } from 'lucide-react';
 import type { CopilotWindowState } from '@/Layouts/AuthenticatedLayout';
 
 interface NavbarProps {
@@ -14,6 +14,11 @@ interface NavbarProps {
     setCopilotState?: (state: CopilotWindowState) => void;
 }
 
+/**
+ * Navbar Neo-Bento bergaya Eduplex:
+ * Sapaan personal "Selamat Datang, [Nama] 👋", bar pencarian pil kapsul,
+ * trigger Copilot, dan user avatar modern dengan efek transisi halus.
+ */
 export default function Navbar({ 
     header, 
     sidebarOpen, 
@@ -22,31 +27,59 @@ export default function Navbar({
     setCopilotState
 }: NavbarProps) {
     const user = usePage().props.auth.user;
+    const firstName = user?.name ? user.name.split(' ')[0] : 'Bendahara';
 
     return (
-        <header className="sticky top-0 z-20 flex w-full flex-col bg-white drop-shadow-sm dark:bg-gray-800">
-            <div className="flex flex-grow items-center justify-between px-4 py-4 shadow-sm md:px-6 2xl:px-11">
+        <header className="sticky top-0 z-20 flex w-full flex-col border-b border-slate-200/70 bg-white/80 backdrop-blur-xl transition-all duration-300 dark:border-white/5 dark:bg-[#0D0F17]/80">
+            <div className="flex flex-grow items-center justify-between px-4 py-3 md:px-8">
 
-                {/* Header Title & Toggle */}
-                <div className="flex items-center gap-2 sm:gap-4">
+                {/* Left Side: Mobile Toggle & Warm Personal Greeting */}
+                <div className="flex items-center gap-3">
                     <button
                         onClick={() => setSidebarOpen(!sidebarOpen)}
-                        className="p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-500 transition-all focus:outline-none lg:hidden"
+                        className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-500 hover:border-brand-500/40 hover:text-brand-600 focus:outline-none dark:border-white/10 dark:bg-white/5 dark:text-slate-400 dark:hover:text-white lg:hidden"
+                        aria-label="Toggle Sidebar"
                     >
-                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                         </svg>
                     </button>
                     
-                    {!sidebarOpen && (
-                        <h1 className="text-xl font-bold tracking-tight text-gray-800 dark:text-white lg:hidden">
-                            SIKAS
+                    <div className="flex flex-col">
+                        <h1 className="font-display text-lg font-bold tracking-tight text-slate-900 dark:text-white sm:text-xl">
+                            Selamat Datang, {firstName} 👋
                         </h1>
-                    )}
+                        <p className="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">
+                            Sistem Pengelolaan Keuangan & Anggaran Sekolah (SIKAS)
+                        </p>
+                    </div>
+                </div>
+
+                {/* Center / Right: Pill Search Bar */}
+                <div className="hidden lg:flex items-center flex-1 max-w-xs mx-8">
+                    <div className="relative w-full">
+                        <span className="absolute inset-y-0 left-3.5 flex items-center pointer-events-none text-slate-400">
+                            <Search className="w-4 h-4" />
+                        </span>
+                        <input
+                            type="text"
+                            placeholder="Cari modul atau data..."
+                            readOnly
+                            onClick={() => {
+                                if (setCopilotState) setCopilotState('normal');
+                            }}
+                            className="w-full pl-10 pr-12 py-2 text-xs rounded-full border border-slate-200/80 bg-slate-50/70 hover:bg-slate-100/80 focus:bg-white text-slate-700 placeholder:text-slate-400 cursor-pointer transition-all dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10"
+                        />
+                        <span className="absolute inset-y-0 right-2.5 flex items-center pointer-events-none">
+                            <kbd className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold text-slate-400 border border-slate-200 dark:border-white/10 bg-white dark:bg-white/10">
+                                ⌘K
+                            </kbd>
+                        </span>
+                    </div>
                 </div>
 
                 {/* Right Side Actions */}
-                <div className="flex items-center gap-3 2xsm:gap-7">
+                <div className="flex items-center gap-2.5 sm:gap-3">
                     {/* SIKAS AI Copilot Trigger */}
                     <button
                         type="button"
@@ -59,21 +92,21 @@ export default function Navbar({
                                 }
                             }
                         }}
-                        className={`relative flex h-9 w-9 items-center justify-center rounded-full transition-all duration-300 focus:outline-none ${
+                        className={`relative flex h-10 w-10 items-center justify-center rounded-2xl transition-all duration-300 focus:outline-none ${
                             copilotState !== 'closed'
-                                ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-500/40 ring-2 ring-purple-400/50 scale-105'
-                                : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-gray-600 shadow-inner'
+                                ? 'bg-gradient-to-r from-brand-500 to-brand-600 text-white shadow-glow-violet ring-2 ring-brand-400/50 scale-105'
+                                : 'bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-300 hover:text-brand-600 dark:hover:text-brand-400 hover:bg-brand-50 dark:hover:bg-white/10'
                         }`}
                         title={copilotState !== 'closed' ? 'Tutup SIKAS AI Copilot' : 'Buka SIKAS AI Copilot'}
                     >
-                        <MessageSquare className={`w-4.5 h-4.5 ${copilotState !== 'closed' ? 'text-purple-100' : 'text-purple-600 dark:text-purple-400'}`} />
+                        <MessageSquare className={`w-4 h-4 ${copilotState !== 'closed' ? 'text-white' : 'text-slate-600 dark:text-slate-300'}`} />
                         {copilotState !== 'closed' ? (
                             <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
                             </span>
                         ) : (
-                            <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-purple-500"></span>
+                            <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-brand-500"></span>
                         )}
                     </button>
 
@@ -86,58 +119,45 @@ export default function Navbar({
                     {/* Dark Mode Toggler */}
                     <DarkModeSwitcher />
 
-                    {/* User Area */}
+                    {/* User Profile Dropdown */}
                     <Dropdown>
                         <Dropdown.Trigger>
-                            <span className="inline-flex rounded-md">
+                            <span className="inline-flex rounded-2xl">
                                 <button
                                     type="button"
-                                    className="flex items-center gap-4 text-sm font-medium text-gray-500 transition duration-150 ease-in-out hover:text-gray-700 focus:outline-none dark:text-gray-400 dark:hover:text-gray-300"
+                                    className="flex items-center gap-3 text-sm font-medium transition duration-150 ease-in-out focus:outline-none pl-1"
                                 >
-                                    <span className="hidden text-right lg:block">
-                                        <span className="block text-sm font-medium text-black dark:text-white">
-                                            {user.name}
-                                        </span>
-                                        <span className="block text-xs text-gray-500 font-normal">
-                                            Administrator
-                                        </span>
-                                    </span>
-
-                                    <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-lg">
-                                        {user.name.charAt(0).toUpperCase()}
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 via-brand-600 to-gold-500 font-display font-bold text-white shadow-glow-violet ring-2 ring-white/20">
+                                        {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
                                     </div>
 
-                                    <svg
-                                        className="hidden h-4 w-4 sm:block"
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        viewBox="0 0 20 20"
-                                        fill="currentColor"
-                                    >
-                                        <path
-                                            fillRule="evenodd"
-                                            d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                                            clipRule="evenodd"
-                                        />
-                                    </svg>
+                                    <div className="hidden text-left xl:block">
+                                        <span className="block text-xs font-bold text-slate-900 dark:text-white leading-tight">
+                                            {user.name}
+                                        </span>
+                                        <span className="block text-[10px] text-slate-500 dark:text-slate-400">
+                                            Bendahara Sekolah
+                                        </span>
+                                    </div>
                                 </button>
                             </span>
                         </Dropdown.Trigger>
 
                         <Dropdown.Content>
                             <Dropdown.Link href={route('profile.edit')}>
-                                Profile
+                                Profil Saya
                             </Dropdown.Link>
                             <Dropdown.Link href={route('logout')} method="post" as="button">
-                                Log Out
+                                Keluar Sistem
                             </Dropdown.Link>
                         </Dropdown.Content>
                     </Dropdown>
                 </div>
             </div>
 
-            {/* Page Header (if provided) */}
+            {/* Page Header (if provided by specific page) */}
             {header && (
-                <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+                <div className="px-4 py-3 border-t border-slate-100 dark:border-white/5 bg-slate-50/60 dark:bg-white/[0.02] md:px-8">
                     {header}
                 </div>
             )}

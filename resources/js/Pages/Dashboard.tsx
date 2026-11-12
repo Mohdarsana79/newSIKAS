@@ -1,10 +1,27 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import StatCard from '@/Components/StatCard';
-import { Head, usePage, router } from '@inertiajs/react';
-import { useState, useEffect } from 'react';
+import BentoCard from '@/Components/Bento/BentoCard';
+import ArkasQuickSyncCard from '@/Components/Bento/ArkasQuickSyncCard';
+import CalendarWidget from '@/Components/Bento/CalendarWidget';
+import { Head } from '@inertiajs/react';
+import { useState, useEffect, useMemo } from 'react';
 import Chart from 'react-apexcharts';
 import { ApexOptions } from 'apexcharts';
 import axios from 'axios';
+import { 
+    Wallet, 
+    TrendingUp, 
+    Coins, 
+    Building2, 
+    Layers, 
+    CheckCircle2, 
+    Clock, 
+    Sparkles, 
+    RefreshCw,
+    PieChart,
+    BarChart3,
+    ArrowUpRight
+} from 'lucide-react';
 
 interface DashboardProps {
     statistik: any;
@@ -19,6 +36,12 @@ interface DashboardProps {
     auth: any;
 }
 
+/**
+ * Dashboard Utama SIKAS — Neo-Bento Executive Design (Eduplex Style):
+ * Struktur Bento Grid 12-kolom, 4 StatCard dengan fisika 3D tilt,
+ * grafik batang rounded modern, kartu promo integrasi ARKAS,
+ * widget kalender keuangan, dan daftar status tahapan penatausahaan.
+ */
 export default function Dashboard({
     statistik: initialStatistik,
     grafikRealisasiTahunan: initialGrafikTahunan,
@@ -35,7 +58,7 @@ export default function Dashboard({
     const [loading, setLoading] = useState(false);
     const [isSyncing, setIsSyncing] = useState(false);
 
-    // State for dashboard data
+    // State data dashboard
     const [statistik, setStatistik] = useState(initialStatistik);
     const [grafikTahunan, setGrafikTahunan] = useState(initialGrafikTahunan);
     const [chartProgram, setChartProgram] = useState(initialChartProgram);
@@ -51,13 +74,15 @@ export default function Dashboard({
         return () => observer.disconnect();
     }, []);
 
-    // Fetch data when year changes
+    // Ambil data dashboard via AJAX saat tahun / varian berganti
     const fetchDashboardData = async (selectedYear: string, selectedVariant: string) => {
         if (loading) return;
 
         try {
             setLoading(true);
-            const response = await axios.get(route('dashboard.data'), { params: { tahun: selectedYear, variant: selectedVariant } });
+            const response = await axios.get(route('dashboard.data'), { 
+                params: { tahun: selectedYear, variant: selectedVariant } 
+            });
             if (response.data.success) {
                 setStatistik(response.data.statistik);
                 setGrafikTahunan(response.data.grafik_realisasi_tahunan);
@@ -90,23 +115,20 @@ export default function Dashboard({
         fetchDashboardData(year, newVariant);
     };
 
-    const chartTheme = { mode: isDarkMode ? 'dark' : 'light' } as const;
-    
-    // Helper format currency singkat (T / M / JT)
+    // Format mata uang singkat (T / M / JT)
     const formatShortCurrency = (value: any) => {
-        if (value === undefined || value === null) return 'Rp. 0';
-        
+        if (value === undefined || value === null) return 'Rp 0';
         const numValue = Number(value);
-        if (isNaN(numValue)) return 'Rp. 0';
+        if (isNaN(numValue)) return 'Rp 0';
         
         if (numValue >= 1000000000000) {
-            return 'Rp. ' + (numValue / 1000000000000).toLocaleString('id-ID', { maximumFractionDigits: 1 }) + ' T';
+            return 'Rp ' + (numValue / 1000000000000).toLocaleString('id-ID', { maximumFractionDigits: 1 }) + ' T';
         } else if (numValue >= 1000000000) {
-            return 'Rp. ' + (numValue / 1000000000).toLocaleString('id-ID', { maximumFractionDigits: 1 }) + ' M';
+            return 'Rp ' + (numValue / 1000000000).toLocaleString('id-ID', { maximumFractionDigits: 1 }) + ' M';
         } else if (numValue >= 1000000) {
-            return 'Rp. ' + (numValue / 1000000).toLocaleString('id-ID', { maximumFractionDigits: 1 }) + ' JT';
+            return 'Rp ' + (numValue / 1000000).toLocaleString('id-ID', { maximumFractionDigits: 1 }) + ' JT';
         }
-        return 'Rp. ' + numValue.toLocaleString('id-ID');
+        return 'Rp ' + numValue.toLocaleString('id-ID');
     };
 
     const formatFullCurrency = (value: any) => {
@@ -114,223 +136,429 @@ export default function Dashboard({
         return 'Rp ' + numValue.toLocaleString('id-ID');
     };
 
-    // 1. Chart Realisasi Bulanan
-    const monthlyRealizationSeries = [{
+    const chartTheme = { mode: isDarkMode ? 'dark' : 'light' } as const;
+
+    // 1. Grafik Realisasi Bulanan (Hours Activity Style)
+    const monthlyRealizationSeries = useMemo(() => [{
         name: 'Realisasi',
         data: grafikTahunan?.realisasi_data || []
-    }];
-    const monthlyRealizationOptions: ApexOptions = {
-        chart: { type: 'bar', height: 350, background: 'transparent', toolbar: { show: false } },
-        theme: chartTheme,
-        colors: ['#3b82f6'],
-        plotOptions: { bar: { borderRadius: 4, columnWidth: '60%' } },
-        dataLabels: { enabled: false },
-        xaxis: { categories: grafikTahunan?.categories || [] },
-        yaxis: {
-            labels: { formatter: (val: number) => formatShortCurrency(val) }
+    }], [grafikTahunan]);
+
+    const monthlyRealizationOptions: ApexOptions = useMemo(() => ({
+        chart: { 
+            type: 'bar', 
+            height: 320, 
+            background: 'transparent', 
+            toolbar: { show: false },
+            fontFamily: 'inherit',
         },
-        title: { text: `Realisasi Perbulan Tahun ${year}`, align: 'left', style: { fontSize: '16px', fontWeight: 600 } },
-        tooltip: { y: { formatter: (val) => formatFullCurrency(val) } }
-    };
-
-    // 2. Chart Perbandingan 5 Tahun
-    const yearlyRealizationSeries = [{
-        name: 'Realisasi',
-        data: perbandingan?.map((item: any) => item.realisasi_rupiah) || []
-    }];
-    const yearlyRealizationOptions: ApexOptions = {
-        chart: { type: 'area', height: 350, background: 'transparent', toolbar: { show: false } },
         theme: chartTheme,
-        colors: ['#10b981'],
-        fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.7, opacityTo: 0.9, stops: [0, 90, 100] } },
+        colors: ['#7C5CFF'],
+        plotOptions: { 
+            bar: { 
+                borderRadius: 8, 
+                borderRadiusApplication: 'end',
+                columnWidth: '40%',
+            } 
+        },
+        grid: {
+            borderColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(226,232,240,0.7)',
+            strokeDashArray: 4,
+            padding: { top: 0, right: 0, bottom: 0, left: 10 }
+        },
         dataLabels: { enabled: false },
-        stroke: { curve: 'smooth', width: 2 },
-        xaxis: { categories: perbandingan?.map((item: any) => item.tahun) || [] },
-        yaxis: { labels: { formatter: (val: number) => formatShortCurrency(val) } },
-        title: { text: 'Realisasi 5 Tahun Terakhir', align: 'left', style: { fontSize: '16px', fontWeight: 600 } },
-        tooltip: { y: { formatter: (val) => formatFullCurrency(val) } }
-    };
+        xaxis: { 
+            categories: grafikTahunan?.categories || [],
+            labels: {
+                style: {
+                    colors: isDarkMode ? '#94A3B8' : '#64748B',
+                    fontSize: '11px',
+                    fontWeight: 500,
+                }
+            },
+            axisBorder: { show: false },
+            axisTicks: { show: false },
+        },
+        yaxis: {
+            labels: { 
+                formatter: (val: number) => formatShortCurrency(val),
+                style: {
+                    colors: isDarkMode ? '#94A3B8' : '#64748B',
+                    fontSize: '11px',
+                }
+            }
+        },
+        tooltip: { 
+            theme: isDarkMode ? 'dark' : 'light',
+            y: { formatter: (val) => formatFullCurrency(val) } 
+        }
+    }), [isDarkMode, grafikTahunan]);
 
-    // 3. Chart Pie Pemanfaatan Anggaran
-    const budgetPieSeries = pemanfaatan?.map((item: any) => item.realisasi) || [];
-    const budgetPieOptions: ApexOptions = {
-        chart: { type: 'pie', width: 380, background: 'transparent' },
+    // 2. Grafik Perbandingan 5 Tahun (Area Smooth)
+    const yearlyRealizationSeries = useMemo(() => [{
+        name: 'Realisasi BOSP',
+        data: perbandingan?.map((item: any) => item.realisasi_rupiah) || []
+    }], [perbandingan]);
+
+    const yearlyRealizationOptions: ApexOptions = useMemo(() => ({
+        chart: { 
+            type: 'area', 
+            height: 280, 
+            background: 'transparent', 
+            toolbar: { show: false },
+            fontFamily: 'inherit',
+        },
+        theme: chartTheme,
+        colors: ['#10B981'],
+        fill: { 
+            type: 'gradient', 
+            gradient: { 
+                shadeIntensity: 1, 
+                opacityFrom: 0.45, 
+                opacityTo: 0.05, 
+                stops: [0, 95, 100] 
+            } 
+        },
+        dataLabels: { enabled: false },
+        stroke: { curve: 'smooth', width: 3 },
+        grid: {
+            borderColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(226,232,240,0.7)',
+            strokeDashArray: 4,
+        },
+        xaxis: { 
+            categories: perbandingan?.map((item: any) => item.tahun) || [],
+            labels: {
+                style: {
+                    colors: isDarkMode ? '#94A3B8' : '#64748B',
+                    fontSize: '11px',
+                }
+            },
+            axisBorder: { show: false },
+            axisTicks: { show: false },
+        },
+        yaxis: { 
+            labels: { 
+                formatter: (val: number) => formatShortCurrency(val),
+                style: {
+                    colors: isDarkMode ? '#94A3B8' : '#64748B',
+                    fontSize: '11px',
+                }
+            } 
+        },
+        tooltip: { 
+            theme: isDarkMode ? 'dark' : 'light',
+            y: { formatter: (val) => formatFullCurrency(val) } 
+        }
+    }), [isDarkMode, perbandingan]);
+
+    // 3. Pemanfaatan SNP Pie Chart
+    const budgetPieSeries = useMemo(() => pemanfaatan?.map((item: any) => item.realisasi) || [], [pemanfaatan]);
+    const budgetPieOptions: ApexOptions = useMemo(() => ({
+        chart: { type: 'donut', background: 'transparent' },
         theme: chartTheme,
         labels: pemanfaatan?.map((item: any) => item.program) || [],
-        title: { text: 'Pemanfaatan Anggaran (8 SNP)', align: 'left', style: { fontSize: '16px', fontWeight: 600 } },
-        colors: ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#6366f1', '#ec4899', '#8b5cf6', '#64748b'],
+        colors: ['#7C5CFF', '#10B981', '#F59E0B', '#EF4444', '#3B82F6', '#EC4899', '#8B5CF6', '#64748B'],
         stroke: { show: false },
-        legend: { position: 'bottom' },
+        plotOptions: {
+            pie: {
+                donut: {
+                    size: '72%',
+                    labels: {
+                        show: true,
+                        total: {
+                            show: true,
+                            label: 'Total SNP',
+                            color: isDarkMode ? '#F8FAFC' : '#0F172A',
+                            formatter: () => `${statistik?.persentase_realisasi ? statistik.persentase_realisasi.toFixed(1) : '0'}%`
+                        }
+                    }
+                }
+            }
+        },
+        legend: { 
+            position: 'bottom',
+            fontSize: '11px',
+            labels: { colors: isDarkMode ? '#94A3B8' : '#64748B' }
+        },
         tooltip: {
-            y: { formatter: (val) => `Rp ${val.toLocaleString('id-ID')}` }
+            theme: isDarkMode ? 'dark' : 'light',
+            y: { formatter: (val) => formatFullCurrency(val) }
         }
-    };
+    }), [isDarkMode, pemanfaatan, statistik]);
 
-    // 4. Progres Bar Data (Ambil top 5 program untuk display list)
-    const topPrograms = chartProgram?.slice(0, 5) || [];
+    const topPrograms = chartProgram?.slice(0, 4) || [];
+    const persentaseRealisasi = Number(statistik?.persentase_realisasi || 0);
 
     return (
         <AuthenticatedLayout
             header={
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <h2 className="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
-                        Dashboard SIKAS
-                    </h2>
-                    <div className="flex flex-wrap items-center gap-3">
-                        {loading && <span className="text-sm text-gray-500 animate-pulse">Memuat data...</span>}
-                        
-                        <select
-                            value={variant}
-                            onChange={handleVariantChange}
-                            className="rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 h-10 px-4 py-1 font-bold"
-                        >
-                            <option value="reguler">BOSP Reguler</option>
-                            <option value="kinerja">BOSP Kinerja</option>
-                            <option value="silpa">SiLPA BOSP Reguler</option>
-                            <option value="kinerja_silpa">SiLPA BOSP Kinerja</option>
-                        </select>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-2">
+                        <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                            Ringkasan Keuangan Sekolah
+                        </span>
+                        {loading && (
+                            <span className="inline-flex items-center gap-1.5 text-xs text-brand-500 animate-pulse font-medium ml-2">
+                                <RefreshCw className="h-3 w-3 animate-spin" />
+                                <span>Menyinkronkan data...</span>
+                            </span>
+                        )}
+                    </div>
 
-                        <select
-                            value={year}
-                            onChange={handleYearChange}
-                            className="rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 h-10 px-4 py-1 font-bold"
-                        >
-                            {availableYearsList && availableYearsList.length > 0 ? (
-                                availableYearsList.map((y: any) => (
-                                    <option key={y} value={y}>{y}</option>
-                                ))
-                            ) : (
-                                <option value={year}>{year}</option>
-                            )}
-                        </select>
+                    {/* Filter Pills Container */}
+                    <div className="flex flex-wrap items-center gap-2.5">
+                        <div className="inline-flex items-center gap-1.5 rounded-2xl border border-slate-200/80 bg-white p-1 shadow-sm dark:border-white/10 dark:bg-[#151324]">
+                            <select
+                                value={variant}
+                                onChange={handleVariantChange}
+                                className="h-8 rounded-xl border-none bg-transparent px-3 py-0 text-xs font-bold text-slate-800 focus:outline-none focus:ring-0 dark:text-slate-200 cursor-pointer"
+                            >
+                                <option value="reguler">BOSP Reguler</option>
+                                <option value="kinerja">BOSP Kinerja</option>
+                                <option value="silpa">SiLPA Reguler</option>
+                                <option value="kinerja_silpa">SiLPA Kinerja</option>
+                            </select>
+
+                            <div className="h-4 w-px bg-slate-200 dark:bg-white/10" />
+
+                            <select
+                                value={year}
+                                onChange={handleYearChange}
+                                className="h-8 rounded-xl border-none bg-transparent px-3 py-0 text-xs font-bold text-slate-800 focus:outline-none focus:ring-0 dark:text-slate-200 cursor-pointer"
+                            >
+                                {availableYearsList && availableYearsList.length > 0 ? (
+                                    availableYearsList.map((y: any) => (
+                                        <option key={y} value={y}>Tahun {y}</option>
+                                    ))
+                                ) : (
+                                    <option value={year}>Tahun {year}</option>
+                                )}
+                            </select>
+                        </div>
                     </div>
                 </div>
             }
         >
-            <Head title="Dashboard" />
+            <Head title="Dashboard SIKAS" />
 
-            <div className="py-8">
-                <div className="mx-auto w-full px-4 sm:px-6 lg:px-8">
+            <div className="p-4 sm:p-6 lg:p-8 space-y-8">
+                {/* 1. Baris 4 StatCard Utama (Eduplex Top Cards dengan 3D Tilt) */}
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                    <StatCard
+                        title="Pagu Anggaran"
+                        value={formatShortCurrency(statistik?.pagu_anggaran)}
+                        tooltip={formatFullCurrency(statistik?.pagu_anggaran)}
+                        description={`Pagu Resmi ${variant.toUpperCase()}`}
+                        trend={{ value: 'Target RKAS', isPositive: true }}
+                        icon={<Wallet className="h-6 w-6 text-brand-500" />}
+                    />
+                    <StatCard
+                        title="Total Realisasi"
+                        value={formatShortCurrency(statistik?.total_realisasi)}
+                        tooltip={formatFullCurrency(statistik?.total_realisasi)}
+                        description={`${persentaseRealisasi.toFixed(1)}% dari total pagu`}
+                        trend={{ value: `${persentaseRealisasi.toFixed(1)}%`, isPositive: persentaseRealisasi >= 50 }}
+                        icon={<TrendingUp className="h-6 w-6 text-emerald-500" />}
+                    />
+                    <StatCard
+                        title="Sisa Saldo Kas"
+                        value={formatShortCurrency(statistik?.sisa_anggaran)}
+                        tooltip={formatFullCurrency(statistik?.sisa_anggaran)}
+                        description="Sisa Alokasi Anggaran"
+                        trend={{ value: 'Kas Tersedia', isPositive: true }}
+                        icon={<Coins className="h-6 w-6 text-amber-500" />}
+                    />
+                    <StatCard
+                        title="Penerimaan BOSP"
+                        value={formatShortCurrency(statistik?.total_penerimaan)}
+                        tooltip={formatFullCurrency(statistik?.total_penerimaan)}
+                        description={`Efisiensi: ${statistik?.efisiensi_anggaran ? statistik.efisiensi_anggaran.toFixed(1) : '0'}%`}
+                        trend={{ value: 'Tervalidasi', isPositive: true }}
+                        icon={<Building2 className="h-6 w-6 text-blue-500" />}
+                    />
+                </div>
 
-                    {/* Stats Grid */}
-                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-                        <StatCard
-                            title="Pagu Anggaran"
-                            value={formatShortCurrency(statistik?.pagu_anggaran)}
-                            tooltip={formatFullCurrency(statistik?.pagu_anggaran)}
-                            color="bg-blue-50"
-                            icon={<svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>}
-                        />
-                        <StatCard
-                            title="Total Realisasi"
-                            value={formatShortCurrency(statistik?.total_realisasi)}
-                            tooltip={formatFullCurrency(statistik?.total_realisasi)}
-                            color="bg-green-50"
-                            icon={<svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>}
-                        />
-                        <StatCard
-                            title="Perssentase Realisasi"
-                            value={`${statistik?.persentase_realisasi ? statistik.persentase_realisasi.toFixed(1) : '0'}%`}
-                            color="bg-indigo-50"
-                            icon={<svg className="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"></path></svg>}
-                        />
-                        <StatCard
-                            title="Sisa Anggaran"
-                            value={formatShortCurrency(statistik?.sisa_anggaran)}
-                            tooltip={formatFullCurrency(statistik?.sisa_anggaran)}
-                            color="bg-red-50"
-                            icon={<svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>}
-                        />
+                {/* 2. Bento Grid Utama: 8 Kolom Kiri + 4 Kolom Kanan */}
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+                    {/* Kolom Kiri (8 Kolom) */}
+                    <div className="space-y-6 lg:col-span-8">
+                        {/* Realisasi Bulanan (Hours Activity Style) */}
+                        <BentoCard
+                            title={`Realisasi Bulanan Tahun ${year}`}
+                            subtitle="Alur penyerapan kas bendahara sepanjang tahun berjalan"
+                            icon={<BarChart3 className="h-5 w-5 text-brand-500" />}
+                            badge={
+                                <span className="inline-flex items-center gap-1 rounded-full bg-brand-500/10 px-2.5 py-1 text-[11px] font-semibold text-brand-600 dark:text-brand-400">
+                                    <Sparkles className="h-3 w-3" />
+                                    <span>Aktif</span>
+                                </span>
+                            }
+                        >
+                            <div className="mt-2">
+                                <Chart 
+                                    options={monthlyRealizationOptions} 
+                                    series={monthlyRealizationSeries} 
+                                    type="bar" 
+                                    height={320} 
+                                />
+                            </div>
+                        </BentoCard>
 
-                        {/* Additional Stats Row */}
-                        <StatCard
-                            title="Total Penerimaan"
-                            value={formatShortCurrency(statistik?.total_penerimaan)}
-                            tooltip={formatFullCurrency(statistik?.total_penerimaan)}
-                        />
-                        <StatCard
-                            title="Total Belanja"
-                            value={formatShortCurrency(statistik?.total_belanja)}
-                            tooltip={formatFullCurrency(statistik?.total_belanja)}
-                        />
-                        <StatCard
-                            title="Surplus/Defisit"
-                            value={formatShortCurrency(Math.abs(statistik?.defisit || 0))}
-                            tooltip={formatFullCurrency(statistik?.defisit)}
-                            description="Pagu - Realisasi"
-                        />
-                        <StatCard
-                            title="Efisiensi Anggaran"
-                            value={`${statistik?.efisiensi_anggaran ? statistik.efisiensi_anggaran.toFixed(1) : '0'}%`}
-                        />
-                    </div>
+                        {/* Program Belanja SNP & Pemanfaatan (Course You're Taking Style) */}
+                        <BentoCard
+                            title="Program Terbesar & SNP"
+                            subtitle="Realisasi kegiatan belanja sekolah berdasarkan Standar Nasional Pendidikan"
+                            icon={<Layers className="h-5 w-5 text-emerald-500" />}
+                            action={
+                                <span className="text-xs font-semibold text-brand-600 dark:text-brand-400 hover:underline cursor-pointer">
+                                    Lihat Semua
+                                </span>
+                            }
+                        >
+                            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 pt-2">
+                                {/* Donut Chart SNP */}
+                                <div className="flex flex-col items-center justify-center p-2 rounded-2xl bg-slate-50/50 dark:bg-white/[0.02] border border-slate-100 dark:border-white/5">
+                                    <Chart 
+                                        options={budgetPieOptions} 
+                                        series={budgetPieSeries} 
+                                        type="donut" 
+                                        width="100%" 
+                                    />
+                                </div>
 
-                    {/* Charts Grid - Top Row */}
-                    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 mb-8">
-                        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
-                            <Chart options={monthlyRealizationOptions} series={monthlyRealizationSeries} type="bar" height={350} />
-                        </div>
-                        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
-                            <Chart options={yearlyRealizationOptions} series={yearlyRealizationSeries} type="area" height={350} />
-                        </div>
-                    </div>
+                                {/* List Program Teratas (Course style) */}
+                                <div className="space-y-3.5 flex flex-col justify-center">
+                                    {topPrograms.length > 0 ? (
+                                        topPrograms.map((program: any, idx: number) => {
+                                            const totalReal = statistik?.total_realisasi || 1;
+                                            const percent = Math.min(Math.round((program.total / totalReal) * 100), 100);
+                                            return (
+                                                <div 
+                                                    key={idx}
+                                                    className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-slate-50/70 hover:bg-slate-100/70 dark:bg-white/[0.03] dark:hover:bg-white/[0.06] transition-colors border border-slate-100 dark:border-white/5"
+                                                >
+                                                    <div className="min-w-0 flex-1 space-y-1">
+                                                        <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                                                            {program.nama_program}
+                                                        </p>
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-24 bg-slate-200 dark:bg-white/10 rounded-full h-1.5 overflow-hidden">
+                                                                <div 
+                                                                    className="h-1.5 rounded-full bg-brand-500"
+                                                                    style={{ width: `${percent}%` }}
+                                                                />
+                                                            </div>
+                                                            <span className="text-[10px] text-slate-500 font-medium">
+                                                                {percent}%
+                                                            </span>
+                                                        </div>
+                                                    </div>
 
-                    {/* Charts Grid - Bottom Row */}
-                    <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 mb-8">
-                        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md col-span-1 lg:col-span-1">
-                            <Chart options={budgetPieOptions} series={budgetPieSeries} type="pie" width="100%" />
-                        </div>
-                        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md col-span-1 lg:col-span-2">
-                            <h3 className="text-lg font-medium text-gray-700 dark:text-gray-200 mb-4">Progres Program Terbesar</h3>
-
-                            {topPrograms.length > 0 ? (
-                                <div className="space-y-4">
-                                    {topPrograms.map((program: any, idx: number) => {
-                                        // Calculate percentage relative to total realization for visual bar
-                                        const totalReal = statistik?.total_realisasi || 1;
-                                        const percent = (program.total / totalReal) * 100;
-                                        return (
-                                            <div key={idx}>
-                                                <div className="flex justify-between text-sm text-gray-600 dark:text-gray-300 mb-1">
-                                                    <span className="truncate pr-2">{program.nama_program}</span>
-                                                    <span className="font-semibold whitespace-nowrap" title={formatFullCurrency(program.total)}>
+                                                    <span className="font-display text-xs font-bold text-slate-800 dark:text-slate-200 whitespace-nowrap">
                                                         {formatShortCurrency(program.total)}
                                                     </span>
                                                 </div>
-                                                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                                                    <div
-                                                        className="h-2 rounded-full"
-                                                        style={{ width: `${Math.min(percent, 100)}%`, backgroundColor: program.warna || '#3b82f6' }}
-                                                    ></div>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
+                                            );
+                                        })
+                                    ) : (
+                                        <div className="text-center py-8 text-xs text-slate-400">
+                                            Belum ada transaksi realisasi program tercatat
+                                        </div>
+                                    )}
                                 </div>
-                            ) : (
-                                <div className="text-center py-10 text-gray-500">Belum ada data realisasi program</div>
-                            )}
-
-                            <div className="mt-6 pt-4 border-t border-gray-100 dark:border-gray-700">
-                                <h4 className="text-sm font-medium text-gray-500 mb-2">Target Penyerapan</h4>
-                                <div className="flex items-center gap-4">
-                                    <div className="flex-1 w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4">
-                                        <div
-                                            className={`h-4 rounded-full ${(statistik?.persentase_realisasi || 0) > 90 ? 'bg-green-500' :
-                                                (statistik?.persentase_realisasi || 0) > 50 ? 'bg-blue-500' : 'bg-yellow-500'
-                                                }`}
-                                            style={{ width: `${Math.min(statistik?.persentase_realisasi || 0, 100)}%` }}
-                                        ></div>
-                                    </div>
-                                    <span className="text-sm font-bold text-gray-700 dark:text-gray-300">
-                                        {statistik?.persentase_realisasi ? statistik.persentase_realisasi.toFixed(1) : '0'}%
-                                    </span>
-                                </div>
-                                <p className="text-xs text-gray-400 mt-1">Target terserap 100% pada akhir tahun anggaran.</p>
                             </div>
-                        </div>
+                        </BentoCard>
+
+                        {/* Perbandingan 5 Tahun */}
+                        <BentoCard
+                            title="Tren Realisasi 5 Tahun Terakhir"
+                            subtitle="Komparasi penyerapan dana dari tahun ke tahun"
+                            icon={<TrendingUp className="h-5 w-5 text-emerald-500" />}
+                        >
+                            <div className="mt-2">
+                                <Chart 
+                                    options={yearlyRealizationOptions} 
+                                    series={yearlyRealizationSeries} 
+                                    type="area" 
+                                    height={260} 
+                                />
+                            </div>
+                        </BentoCard>
                     </div>
 
+                    {/* Kolom Kanan (4 Kolom) */}
+                    <div className="space-y-6 lg:col-span-4">
+                        {/* 1. Kartu Promo-Style Integrasi ARKAS (Go Premium style) */}
+                        <ArkasQuickSyncCard 
+                            isSyncing={isSyncing}
+                            onSyncClick={async () => {
+                                setIsSyncing(true);
+                                try {
+                                    await fetchDashboardData(year, variant);
+                                } finally {
+                                    setTimeout(() => setIsSyncing(false), 800);
+                                }
+                            }}
+                        />
+
+                        {/* 2. Mini Kalender Keuangan */}
+                        <CalendarWidget />
+
+                        {/* 3. Status Tahapan Penyaluran (Assignments style) */}
+                        <BentoCard
+                            title="Agenda Tahapan BOSP"
+                            subtitle="Status pelaporan & penatausahaan"
+                            icon={<Clock className="h-5 w-5 text-amber-500" />}
+                        >
+                            <div className="space-y-3 pt-1">
+                                <div className="flex items-center justify-between p-3 rounded-2xl border border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.02]">
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400">
+                                            <CheckCircle2 className="h-4 w-4" />
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-bold text-slate-900 dark:text-white">Tahap 1 BOSP</p>
+                                            <p className="text-[10px] text-slate-500">Januari - Juni</p>
+                                        </div>
+                                    </div>
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400">
+                                        Tersalur
+                                    </span>
+                                </div>
+
+                                <div className="flex items-center justify-between p-3 rounded-2xl border border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.02]">
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-brand-100 text-brand-600 dark:bg-brand-500/20 dark:text-brand-400">
+                                            <Clock className="h-4 w-4" />
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-bold text-slate-900 dark:text-white">Tahap 2 BOSP</p>
+                                            <p className="text-[10px] text-slate-500">Juli - Desember</p>
+                                        </div>
+                                    </div>
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-brand-100 text-brand-700 dark:bg-brand-500/20 dark:text-brand-400">
+                                        Aktif
+                                    </span>
+                                </div>
+
+                                <div className="flex items-center justify-between p-3 rounded-2xl border border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.02]">
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400">
+                                            <Sparkles className="h-4 w-4" />
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-bold text-slate-900 dark:text-white">Laporan SPTJ & SP2B</p>
+                                            <p className="text-[10px] text-slate-500">Penutupan BKU Bulanan</p>
+                                        </div>
+                                    </div>
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400">
+                                        Terjadwal
+                                    </span>
+                                </div>
+                            </div>
+                        </BentoCard>
+                    </div>
                 </div>
             </div>
         </AuthenticatedLayout>
