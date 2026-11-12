@@ -30,3 +30,4 @@
 ### Tahap 3: Verifikasi Build & Tampilan
 - Jalankan `npm run build` (`tsc && vite build`).
 - Pastikan tidak ada error kompilasi dan kalender tidak lagi terpotong.
+

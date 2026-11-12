@@ -14,6 +14,12 @@ import { format } from 'date-fns';
 import axios from 'axios';
 import ArkasDiagnosticModal from '@/Components/Ai/ArkasDiagnosticModal';
 import { Brain } from 'lucide-react';
+import PillTabs from '@/Components/ui/PillTabs';
+import PageHeader from '@/Components/ui/PageHeader';
+import Surface from '@/Components/ui/Surface';
+import IconTile from '@/Components/ui/IconTile';
+import StatusBadge from '@/Components/ui/StatusBadge';
+import EmptyState from '@/Components/ui/EmptyState';
 
 export default function Index({ tahunList, penganggaranList, statusPerTahun, tahun }: any) {
     const vroute = useVariantRoute();
@@ -236,198 +242,336 @@ export default function Index({ tahunList, penganggaranList, statusPerTahun, tah
     ];
 
     return (
-        <AuthenticatedLayout
-            header={
-                <h2 className="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
-                    Penatausahaan
-                </h2>
-            }
-        >
+        <AuthenticatedLayout>
             <Head title="Penatausahaan" />
 
-            <div className="py-8">
-                <div className="mx-auto w-full px-4 sm:px-6 lg:px-8">
-                    {/* Tabs */}
-                    {/* Modern Tabs */}
-                    <div className="flex flex-wrap items-center gap-2 mb-8 p-1.5 bg-gray-100/50 dark:bg-gray-800/50 rounded-xl backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50">
-                        {tabs.map((tab: any) => (
-                            <button
-                                key={tab}
-                                onClick={() => {
-                                    if (tab === 'BOSP Reguler') {
-                                        router.visit(route('penatausahaan.index'));
-                                    } else if (tab === 'BOSP Kinerja') {
-                                        router.visit(route('kinerja-penatausahaan.index'));
-                                    } else if (tab === 'SiLPA BOSP Reguler') {
-                                        router.visit(route('silpa-penatausahaan.index'));
-                                    } else if (tab === 'SiLPA BOSP Kinerja') {
-                                        router.visit(route('kinerja-silpa-penatausahaan.index'));
-                                    }
-                                }}
-                                className={`
-                                    relative px-6 py-2.5 rounded-lg text-sm font-bold transition-all duration-300 ease-in-out
-                                    ${activeTab === tab
-                                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30 ring-1 ring-white/20'
-                                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-white dark:hover:bg-gray-700/50'
-                                    }
-                                `}
-                            >
-                                {tab}
-                            </button>
-                        ))}
-                    </div>
+            <div className="space-y-4">
+                <PageHeader
+                    className="animate-rise"
+                    breadcrumb={[
+                        { label: 'Dashboard' },
+                        { label: 'Penatausahaan' },
+                    ]}
+                    title="Penatausahaan"
+                    badge={<StatusBadge tone="violet" dot={false}>{activeTab}</StatusBadge>}
+                    subtitle="Buku Kas Umum (BKU) dan penerimaan dana per tahun anggaran."
+                />
 
-                    {/* Main Content Card - Gray Container */}
-                    <div className="bg-gray-100 dark:bg-gray-900 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-800">
+                {/* Tab varian BOSP */}
+                <div className="animate-rise" style={{ animationDelay: '60ms' }}>
+                    <Surface padding="sm">
+                        <PillTabs
+                            ariaLabel="Varian BOSP Penatausahaan"
+                            variant="solid"
+                            value={activeTab}
+                            items={tabs.map((tab: any) => ({ key: tab, label: tab }))}
+                            onChange={(tab) => {
+                                if (tab === 'BOSP Reguler') {
+                                    router.visit(route('penatausahaan.index'));
+                                } else if (tab === 'BOSP Kinerja') {
+                                    router.visit(route('kinerja-penatausahaan.index'));
+                                } else if (tab === 'SiLPA BOSP Reguler') {
+                                    router.visit(route('silpa-penatausahaan.index'));
+                                } else if (tab === 'SiLPA BOSP Kinerja') {
+                                    router.visit(route('kinerja-silpa-penatausahaan.index'));
+                                }
+                            }}
+                        />
+                    </Surface>
+                </div>
 
-                        <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">
-                            BKU {activeTab}
-                        </h3>
-
-                        {/* Info Alert */}
-                        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg p-4 mb-6 flex items-start gap-3">
-                            <svg className="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            <p className="text-sm text-blue-700 dark:text-blue-300">
-                                Laporkan minimal 50% belanja dana tahap 1 paling lambat 31 Agustus setiap tahun
-                            </p>
-                        </div>
-
-                        {/* Content for BOSP Reguler: Accordion List */}
-                            <div className="space-y-3">
-                                {penganggaranList && penganggaranList.length > 0 ? (
-                                    penganggaranList.map((item: any) => (
-                                        <YearAccordionItem
-                                            key={item.id}
-                                            item={item}
-                                            months={months}
-                                            statusPerTahun={statusPerTahun}
-                                            activeTab={activeTab}
-                                            onValidation={() => setIsValidationOpen(true)}
-                                            onOpenArkasBkuModal={handleOpenArkasBkuModal}
-                                            onOpenModal={(id: any) => {
-                                                setCurrentPenganggaranId(id);
-                                                setIsModalOpen(true);
-                                                setShowCreateForm(false);
-                                                reset();
-                                                clearErrors();
-                                                setData((data) => ({ ...data, penganggaran_id: id }));
-                                                fetchPenerimaanData(id);
-                                            }}
-                                        />
-                                    ))
-                                ) : (
-                                    <div className="text-center py-10 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800">
-                                        <p className="text-gray-500 dark:text-gray-400">Belum ada data penganggaran.</p>
-                                    </div>
-                                )}
+                {/* Kartu ringkas */}
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    <div className="sikas-card sikas-card-hover animate-rise p-4" style={{ animationDelay: '110ms' }}>
+                        <div className="flex items-center gap-2.5">
+                            <IconTile tone="mint" size="md">
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                            </IconTile>
+                            <div className="min-w-0">
+                                <p className="text-[11.5px] font-extrabold tracking-tight text-slate-900 dark:text-white">Tahun Anggaran</p>
+                                <p className="text-[9.5px] font-medium text-slate-400 dark:text-slate-500">Tahun tersedia</p>
                             </div>
+                        </div>
+                        <p className="mt-3 text-sikas-num text-[19px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                            {penganggaranList?.length ?? 0}
+                        </p>
                     </div>
+
+                    <div className="sikas-card sikas-card-hover animate-rise p-4" style={{ animationDelay: '150ms' }}>
+                        <div className="flex items-center gap-2.5">
+                            <IconTile tone="sky" size="md">
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </IconTile>
+                            <div className="min-w-0">
+                                <p className="text-[11.5px] font-extrabold tracking-tight text-slate-900 dark:text-white">Tahun Aktif</p>
+                                <p className="text-[9.5px] font-medium text-slate-400 dark:text-slate-500">Periode berjalan</p>
+                            </div>
+                        </div>
+                        <p className="mt-3 text-sikas-num text-[19px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                            {tahun}
+                        </p>
+                    </div>
+
+                    <div className="sikas-card sikas-card-hover animate-rise p-4" style={{ animationDelay: '190ms' }}>
+                        <div className="flex items-center gap-2.5">
+                            <IconTile tone="violet" size="md">
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M4 6h16M4 12h16M4 18h10" />
+                                </svg>
+                            </IconTile>
+                            <div className="min-w-0">
+                                <p className="text-[11.5px] font-extrabold tracking-tight text-slate-900 dark:text-white">Varian BOSP</p>
+                                <p className="text-[9.5px] font-medium text-slate-400 dark:text-slate-500">Varian aktif</p>
+                            </div>
+                        </div>
+                        <p className="mt-3 truncate text-[15px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                            {activeTab}
+                        </p>
+                    </div>
+
+                    <div className="sikas-card sikas-card-hover animate-rise p-4" style={{ animationDelay: '230ms' }}>
+                        <div className="flex items-center gap-2.5">
+                            <IconTile tone="peach" size="md">
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8V6m0 12v-2" />
+                                    <circle cx="12" cy="12" r="9" />
+                                </svg>
+                            </IconTile>
+                            <div className="min-w-0">
+                                <p className="text-[11.5px] font-extrabold tracking-tight text-slate-900 dark:text-white">Penerimaan Dana</p>
+                                <p className="text-[9.5px] font-medium text-slate-400 dark:text-slate-500">Tercatat tahun aktif</p>
+                            </div>
+                        </div>
+                        <p className="mt-3 text-sikas-num text-[19px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                            {penerimaanData.length}
+                        </p>
+                    </div>
+                </div>
+
+                {/* Info alert */}
+                <div className="animate-rise" style={{ animationDelay: '270ms' }}>
+                    <div className="flex items-start gap-3 rounded-[22px] border border-sky-200/70 bg-pastel-sky/70 p-4 dark:border-sky-400/20 dark:bg-sky/10">
+                        <IconTile tone="sky" size="sm">
+                            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </IconTile>
+                        <p className="text-[11.5px] font-semibold leading-relaxed text-slate-700 dark:text-slate-200">
+                            Laporkan minimal 50% belanja dana tahap 1 paling lambat 31 Agustus setiap tahun
+                        </p>
+                    </div>
+                </div>
+
+                {/* Daftar BKU per tahun (accordion) */}
+                <div className="animate-rise" style={{ animationDelay: '310ms' }}>
+                    <Surface
+                        title={`BKU ${activeTab}`}
+                        subtitle="Buka tahun anggaran untuk melihat Buku Kas Umum per bulan."
+                        icon={
+                            <IconTile tone="ink" size="sm">
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
+                                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
+                                </svg>
+                            </IconTile>
+                        }
+                        actions={<StatusBadge tone="info" dot={false} className="text-sikas-num">{penganggaranList?.length ?? 0}</StatusBadge>}
+                    >
+                        <div className="space-y-3">
+                            {penganggaranList && penganggaranList.length > 0 ? (
+                                penganggaranList.map((item: any) => (
+                                    <YearAccordionItem
+                                        key={item.id}
+                                        item={item}
+                                        months={months}
+                                        statusPerTahun={statusPerTahun}
+                                        activeTab={activeTab}
+                                        onValidation={() => setIsValidationOpen(true)}
+                                        onOpenArkasBkuModal={handleOpenArkasBkuModal}
+                                        onOpenModal={(id: any) => {
+                                            setCurrentPenganggaranId(id);
+                                            setIsModalOpen(true);
+                                            setShowCreateForm(false);
+                                            reset();
+                                            clearErrors();
+                                            setData((data) => ({ ...data, penganggaran_id: id }));
+                                            fetchPenerimaanData(id);
+                                        }}
+                                    />
+                                ))
+                            ) : (
+                                <EmptyState
+                                    className="border-0 bg-transparent py-10 dark:bg-transparent"
+                                    icon={
+                                        <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                        </svg>
+                                    }
+                                    title="Belum ada data penganggaran."
+                                    description="Tambahkan data penganggaran terlebih dahulu untuk mulai mencatat BKU."
+                                />
+                            )}
+                        </div>
+                    </Surface>
                 </div>
             </div>
 
             {/* Modal Penerimaan Dana */}
             <Modal show={isModalOpen} onClose={closeModal} maxWidth="2xl">
-                <div className="p-6">
-                    <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                        {showCreateForm ? 'Catat Penerimaan Dana' : 'Tambah Penerimaan Dana'}
-                    </h2>
-                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                        {showCreateForm
-                            ? 'Silakan isi form berikut untuk mencatat penerimaan dana.'
-                            : 'Anda bisa melihat histori dan mencatat penerimaan dana terbaru jika ada.'
-                        }
-                    </p>
+                <div className="relative overflow-visible rounded-[26px] bg-white dark:bg-[#15131F]">
+                    {/* Layer efek blur dekoratif yang di-clip terpisah */}
+                    <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[26px]">
+                        <div className="absolute -right-10 -top-16 h-40 w-40 rounded-full bg-brand-500/10 blur-3xl" />
+                    </div>
 
-                    <div className="mt-6">
+                    <div className="relative flex items-start justify-between gap-3 border-b border-slate-100 px-6 py-4.5 dark:border-white/5">
+                        <div className="flex items-center gap-3">
+                            <IconTile tone="violet" size="lg">
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                                </svg>
+                            </IconTile>
+                            <div className="min-w-0">
+                                <div className="flex items-center gap-2">
+                                    <h2 className="text-[15px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                                        {showCreateForm ? 'Catat Penerimaan Dana' : 'Daftar Penerimaan Dana'}
+                                    </h2>
+                                    <span className="rounded-md bg-brand-50 px-2 py-0.5 text-[9.5px] font-extrabold text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
+                                        Buku Kas Umum
+                                    </span>
+                                </div>
+                                <p className="mt-0.5 text-[11px] font-medium leading-relaxed text-slate-400 dark:text-slate-500">
+                                    {showCreateForm
+                                        ? 'Silakan lengkapi formulir di bawah ini untuk mencatat penerimaan dana BOSP.'
+                                        : 'Histori dan pencatatan penerimaan dana BOSP pada tahun anggaran aktif.'}
+                                </p>
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={closeModal}
+                            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-500 dark:hover:bg-white/5 dark:hover:text-white"
+                            aria-label="Tutup"
+                        >
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div className="px-6 py-5">
                         {!showCreateForm ? (
                             <>
                                 {/* History List */}
-                                <div className="space-y-4 mb-6">
+                                <div className="mb-5 space-y-3">
                                     {penerimaanData.length > 0 ? (
                                         penerimaanData.map((item: any) => (
-                                            <div key={item.id} className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-100 dark:border-gray-700">
-                                                <div className="flex justify-between items-start">
-                                                    <div>
-                                                        <h4 className="font-semibold text-gray-800 dark:text-gray-200">
-                                                            {item.sumber_dana} {new Date(item.tanggal_terima).getFullYear()}
-                                                        </h4>
-                                                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                                            {formatDate(item.tanggal_terima)}
+                                            <div key={item.id} className="rounded-2xl border border-slate-100 bg-slate-50/70 p-4 transition hover:border-slate-200 dark:border-white/5 dark:bg-white/[0.02] dark:hover:border-white/10">
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div className="min-w-0">
+                                                        <div className="flex items-center gap-2">
+                                                            <h4 className="text-[13px] font-extrabold text-slate-900 dark:text-white">
+                                                                {item.sumber_dana} {new Date(item.tanggal_terima).getFullYear()}
+                                                            </h4>
+                                                            <span className="rounded-md bg-emerald-50 px-2 py-0.5 text-[9px] font-extrabold text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/20">
+                                                                Tercatat
+                                                            </span>
+                                                        </div>
+                                                        <p className="mt-1 flex items-center gap-1.5 text-[11px] font-medium text-slate-400 dark:text-slate-500">
+                                                            <span>Diterima: {formatDate(item.tanggal_terima)}</span>
                                                         </p>
                                                     </div>
-                                                    <div className="flex flex-col items-end gap-2">
-                                                        <div className="text-blue-600 dark:text-blue-400">
-                                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                            </svg>
-                                                        </div>
-                                                        <span className="font-bold text-gray-900 dark:text-gray-100">
+                                                    <div className="flex flex-col items-end">
+                                                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Jumlah Diterima</span>
+                                                        <span className="text-sikas-num text-[14px] font-extrabold text-slate-900 dark:text-white">
                                                             {formatCurrency(item.jumlah_dana)}
                                                         </span>
                                                     </div>
                                                 </div>
                                                 {item.saldo_awal && (
-                                                    <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-600 text-sm">
-                                                        <div className="flex justify-between text-gray-600 dark:text-gray-400">
-                                                            <span>Saldo Awal ({formatDate(item.tanggal_saldo_awal)})</span>
-                                                            <span>{formatCurrency(item.saldo_awal)}</span>
-                                                        </div>
+                                                    <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2.5 text-[11px] dark:border-white/5">
+                                                        <span className="font-semibold text-slate-500 dark:text-slate-400">
+                                                            Saldo Awal ({formatDate(item.tanggal_saldo_awal)})
+                                                        </span>
+                                                        <span className="text-sikas-num font-bold text-slate-700 dark:text-slate-200">
+                                                            {formatCurrency(item.saldo_awal)}
+                                                        </span>
                                                     </div>
                                                 )}
                                             </div>
                                         ))
                                     ) : (
-                                        <p className="text-center text-gray-500 italic py-4">Belum ada data penerimaan dana.</p>
+                                        <div className="rounded-2xl border border-dashed border-slate-200 p-8 text-center dark:border-white/10">
+                                            <p className="text-[12px] font-semibold text-slate-400 dark:text-slate-500">
+                                                Belum ada data penerimaan dana yang tercatat.
+                                            </p>
+                                        </div>
                                     )}
                                 </div>
 
                                 {/* Add Button Box */}
-                                <div
+                                <button
+                                    type="button"
                                     onClick={handleCreateClick}
-                                    className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors flex items-center gap-3 group"
+                                    className="group flex w-full items-center gap-3.5 rounded-2xl border-2 border-dashed border-slate-200 p-4 text-left transition-all hover:border-brand-400 hover:bg-brand-50/40 dark:border-white/10 dark:hover:border-brand-500/30 dark:hover:bg-brand-500/5"
                                 >
-                                    <div className="p-2 bg-gray-100 dark:bg-gray-700 rounded-full group-hover:bg-white dark:group-hover:bg-gray-600 transition-colors">
-                                        <svg className="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600 transition group-hover:bg-brand-500 group-hover:text-white dark:bg-white/5 dark:text-slate-300 dark:group-hover:bg-brand-500 dark:group-hover:text-white">
+                                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
                                         </svg>
                                     </div>
-                                    <div>
-                                        <h4 className="font-medium text-gray-900 dark:text-gray-100">Tambah Penerimaan Tahap Berikutnya</h4>
-                                        <p className="text-xs text-blue-500 mt-1">"Tambah Penerimaan"</p>
+                                    <div className="min-w-0 flex-1">
+                                        <h4 className="text-[12.5px] font-extrabold text-slate-900 transition group-hover:text-brand-600 dark:text-white dark:group-hover:text-brand-300">
+                                            Tambah Penerimaan Tahap Berikutnya
+                                        </h4>
+                                        <p className="mt-0.5 text-[10.5px] font-medium text-slate-400 dark:text-slate-500">
+                                            Klik untuk membuka formulir pencatatan dana masuk BKU.
+                                        </p>
                                     </div>
-                                </div>
+                                </button>
 
-                                <div className="mt-6 flex justify-end gap-3">
+                                <div className="mt-6 flex justify-end gap-2 border-t border-slate-100 pt-4 dark:border-white/5">
                                     <SecondaryButton onClick={closeModal}>Tutup</SecondaryButton>
-                                    <PrimaryButton className="bg-gray-400 cursor-not-allowed opacity-50" disabled>Simpan</PrimaryButton>
                                 </div>
                             </>
                         ) : (
-                            /* Form View */
-                            <form onSubmit={submitPenerimaan}>
-                                <div className="space-y-4">
-                                    <div>
-                                        <InputLabel htmlFor="sumber_dana" value="Sumber Dana" />
-                                        <select
-                                            id="sumber_dana"
-                                            className="mt-1 block w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm"
-                                            value={data.sumber_dana}
-                                            onChange={(e: any) => setData('sumber_dana', e.target.value)}
-                                            required
-                                        >
-                                            <option value="">Pilih Sumber Dana</option>
-                                            {sumberDanaOptions.map((opt: string) => (
-                                                <option key={opt} value={opt}>{opt}</option>
-                                            ))}
-                                        </select>
-                                        <InputError message={errors.sumber_dana} className="mt-2" />
+                            /* Form View - Grouped Neo-Bento Panels */
+                            <form onSubmit={submitPenerimaan} className="space-y-4">
+                                {/* Panel 1: Sumber & Waktu Penerimaan */}
+                                <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4 dark:border-white/5 dark:bg-white/[0.02]">
+                                    <div className="mb-3.5 flex items-center gap-2">
+                                        <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-pastel-lavender text-[10.5px] font-extrabold text-brand-600 dark:bg-brand-500/20 dark:text-brand-300">
+                                            1
+                                        </span>
+                                        <h3 className="text-[12px] font-extrabold text-slate-900 dark:text-white">
+                                            Sumber & Waktu Penerimaan
+                                        </h3>
                                     </div>
 
-                                    {data.sumber_dana && (
-                                        <>
-                                            <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-3.5">
+                                        <div>
+                                            <InputLabel htmlFor="sumber_dana" value="Sumber Dana" />
+                                            <select
+                                                id="sumber_dana"
+                                                className="mt-1 block w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-[12px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
+                                                value={data.sumber_dana}
+                                                onChange={(e: any) => setData('sumber_dana', e.target.value)}
+                                                required
+                                            >
+                                                <option value="">Pilih Sumber Dana</option>
+                                                {sumberDanaOptions.map((opt: string) => (
+                                                    <option key={opt} value={opt}>{opt}</option>
+                                                ))}
+                                            </select>
+                                            <InputError message={errors.sumber_dana} className="mt-1.5" />
+                                        </div>
+
+                                        {data.sumber_dana && (
+                                            <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
                                                 <div>
                                                     <InputLabel htmlFor="tanggal_terima" value="Tanggal Terima" />
                                                     <DatePicker
@@ -440,61 +584,85 @@ export default function Index({ tahunList, penganggaranList, statusPerTahun, tah
                                                         startMonth={penganggaranList?.find((p: any) => p.id === currentPenganggaranId)?.tahun_anggaran ? new Date(parseInt(penganggaranList.find((p: any) => p.id === currentPenganggaranId).tahun_anggaran), 0) : undefined}
                                                         endMonth={penganggaranList?.find((p: any) => p.id === currentPenganggaranId)?.tahun_anggaran ? new Date(parseInt(penganggaranList.find((p: any) => p.id === currentPenganggaranId).tahun_anggaran), 11) : undefined}
                                                     />
-                                                    <InputError message={errors.tanggal_terima} className="mt-2" />
+                                                    <InputError message={errors.tanggal_terima} className="mt-1.5" />
                                                 </div>
+
                                                 <div>
-                                                    <InputLabel htmlFor="jumlah_dana" value="Jumlah Dana" />
+                                                    <InputLabel htmlFor="jumlah_dana" value="Jumlah Dana Diterima" />
                                                     <TextInput
                                                         id="jumlah_dana"
                                                         type="text"
-                                                        className="mt-1 block w-full text-gray-900"
+                                                        className="mt-1 block w-full text-sikas-num text-[13px] font-bold"
                                                         value={data.jumlah_dana}
                                                         onChange={(e: any) => handleCurrencyChange(e, 'jumlah_dana')}
                                                         placeholder="Rp 0"
                                                         required
                                                     />
-                                                    <InputError message={errors.jumlah_dana} className="mt-2" />
+                                                    <InputError message={errors.jumlah_dana} className="mt-1.5" />
                                                 </div>
                                             </div>
-
-                                            {sumberDanaTahap1 && data.sumber_dana === sumberDanaTahap1 && (
-                                                <div className="grid grid-cols-2 gap-4 border-t border-gray-200 dark:border-gray-700 pt-4">
-                                                    <div>
-                                                        <InputLabel htmlFor="tanggal_saldo_awal" value="Tanggal Saldo Awal" />
-                                                        <DatePicker
-                                                            value={data.tanggal_saldo_awal}
-                                                            onChange={(date) => setData('tanggal_saldo_awal', date ? format(date, 'yyyy-MM-dd') : '')}
-                                                            className="mt-1"
-                                                            placeholder="Pilih Tanggal Saldo Awal"
-                                                            minDate={penganggaranList?.find((p: any) => p.id === currentPenganggaranId)?.tahun_anggaran ? new Date(parseInt(penganggaranList.find((p: any) => p.id === currentPenganggaranId).tahun_anggaran), 0, 1) : undefined}
-                                                            maxDate={penganggaranList?.find((p: any) => p.id === currentPenganggaranId)?.tahun_anggaran ? new Date(parseInt(penganggaranList.find((p: any) => p.id === currentPenganggaranId).tahun_anggaran), 11, 31) : undefined}
-                                                            startMonth={penganggaranList?.find((p: any) => p.id === currentPenganggaranId)?.tahun_anggaran ? new Date(parseInt(penganggaranList.find((p: any) => p.id === currentPenganggaranId).tahun_anggaran), 0) : undefined}
-                                                            endMonth={penganggaranList?.find((p: any) => p.id === currentPenganggaranId)?.tahun_anggaran ? new Date(parseInt(penganggaranList.find((p: any) => p.id === currentPenganggaranId).tahun_anggaran), 11) : undefined}
-                                                        />
-                                                        <InputError message={errors.tanggal_saldo_awal} className="mt-2" />
-                                                    </div>
-                                                    <div>
-                                                        <InputLabel htmlFor="saldo_awal" value="Jumlah Saldo Awal" />
-                                                        <TextInput
-                                                            id="saldo_awal"
-                                                            type="text"
-                                                            className="mt-1 block w-full text-gray-900"
-                                                            value={data.saldo_awal}
-                                                            onChange={(e: any) => handleCurrencyChange(e, 'saldo_awal')}
-                                                            placeholder="Rp 0"
-                                                        />
-                                                        <InputError message={errors.saldo_awal} className="mt-2" />
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </>
-                                    )}
+                                        )}
+                                    </div>
                                 </div>
 
-                                <div className="mt-6 flex justify-end gap-3">
-                                    <SecondaryButton onClick={handleBackToList} disabled={processing}>Kembali</SecondaryButton>
-                                    <PrimaryButton disabled={processing} className={processing ? 'opacity-25' : ''}>
-                                        {processing ? 'Menyimpan...' : 'Simpan'}
+                                {/* Panel 2: Saldo Awal / SiLPA (Khusus jika Tahap 1) */}
+                                {data.sumber_dana && sumberDanaTahap1 && data.sumber_dana === sumberDanaTahap1 && (
+                                    <div className="rounded-2xl border border-amber-200/70 bg-amber-50/50 p-4 dark:border-amber-500/20 dark:bg-amber-500/5">
+                                        <div className="mb-3 flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-100 text-[10.5px] font-extrabold text-amber-700 dark:bg-amber-400/20 dark:text-amber-300">
+                                                    2
+                                                </span>
+                                                <div>
+                                                    <h3 className="text-[12px] font-extrabold text-slate-900 dark:text-white">
+                                                        Saldo Awal / SiLPA (Khusus Tahap 1)
+                                                    </h3>
+                                                    <p className="text-[10px] font-medium text-slate-500 dark:text-slate-400">
+                                                        Pencatatan sisa saldo kas dari tahun anggaran sebelumnya jika ada.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+                                            <div>
+                                                <InputLabel htmlFor="tanggal_saldo_awal" value="Tanggal Saldo Awal" />
+                                                <DatePicker
+                                                    value={data.tanggal_saldo_awal}
+                                                    onChange={(date) => setData('tanggal_saldo_awal', date ? format(date, 'yyyy-MM-dd') : '')}
+                                                    className="mt-1"
+                                                    placeholder="Pilih Tanggal Saldo Awal"
+                                                    minDate={penganggaranList?.find((p: any) => p.id === currentPenganggaranId)?.tahun_anggaran ? new Date(parseInt(penganggaranList.find((p: any) => p.id === currentPenganggaranId).tahun_anggaran), 0, 1) : undefined}
+                                                    maxDate={penganggaranList?.find((p: any) => p.id === currentPenganggaranId)?.tahun_anggaran ? new Date(parseInt(penganggaranList.find((p: any) => p.id === currentPenganggaranId).tahun_anggaran), 11, 31) : undefined}
+                                                    startMonth={penganggaranList?.find((p: any) => p.id === currentPenganggaranId)?.tahun_anggaran ? new Date(parseInt(penganggaranList.find((p: any) => p.id === currentPenganggaranId).tahun_anggaran), 0) : undefined}
+                                                    endMonth={penganggaranList?.find((p: any) => p.id === currentPenganggaranId)?.tahun_anggaran ? new Date(parseInt(penganggaranList.find((p: any) => p.id === currentPenganggaranId).tahun_anggaran), 11) : undefined}
+                                                />
+                                                <InputError message={errors.tanggal_saldo_awal} className="mt-1.5" />
+                                            </div>
+
+                                            <div>
+                                                <InputLabel htmlFor="saldo_awal" value="Jumlah Saldo Awal" />
+                                                <TextInput
+                                                    id="saldo_awal"
+                                                    type="text"
+                                                    className="mt-1 block w-full text-sikas-num text-[13px] font-bold"
+                                                    value={data.saldo_awal}
+                                                    onChange={(e: any) => handleCurrencyChange(e, 'saldo_awal')}
+                                                    placeholder="Rp 0"
+                                                />
+                                                <InputError message={errors.saldo_awal} className="mt-1.5" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Footer Form */}
+                                <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4 dark:border-white/5">
+                                    <SecondaryButton type="button" onClick={handleBackToList} disabled={processing}>
+                                        Kembali
+                                    </SecondaryButton>
+                                    <PrimaryButton type="submit" disabled={processing} className={processing ? 'opacity-25' : ''}>
+                                        {processing ? 'Menyimpan...' : 'Simpan Penerimaan'}
                                     </PrimaryButton>
                                 </div>
                             </form>
@@ -505,17 +673,37 @@ export default function Index({ tahunList, penganggaranList, statusPerTahun, tah
 
             {/* Modal Validasi Tahap 2 */}
             <Modal show={isValidationOpen} onClose={() => setIsValidationOpen(false)} maxWidth="md">
-                <div className="p-6 text-center">
-                    <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/20 mb-4">
-                        <svg className="h-6 w-6 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
+                <div className="relative overflow-hidden bg-white dark:bg-[#15131F]">
+                    <div className="pointer-events-none absolute -right-10 -top-16 h-44 w-44 rounded-full bg-rose-500/15 blur-3xl" />
+                    <div className="relative flex items-start justify-between gap-3 border-b border-slate-100 px-6 py-4 dark:border-white/5">
+                        <div className="flex items-center gap-3">
+                            <IconTile tone="rose" size="lg">
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                            </IconTile>
+                            <div className="min-w-0">
+                                <h2 className="text-[14px] font-extrabold tracking-tight text-slate-900 dark:text-white">Penerimaan Dana Tahap 2 Belum Ada</h2>
+                                <p className="mt-0.5 text-[10px] font-medium text-slate-400 dark:text-slate-500">Validasi BKU bulan Juli</p>
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setIsValidationOpen(false)}
+                            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-500 dark:hover:bg-white/5 dark:hover:text-white"
+                            aria-label="Tutup"
+                        >
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
                     </div>
-                    <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Penerimaan Dana Tahap 2 Belum Ada</h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-                        Silahkan Isi Penerimaan Dana Tahap 2 Terlebih Dahulu Untuk Masuk Pada Bku Bulan Juli
-                    </p>
-                    <div className="flex justify-center">
+                    <div className="space-y-4 px-6 py-5">
+                        <p className="text-[11.5px] font-medium leading-relaxed text-slate-500 dark:text-slate-400">
+                            Silahkan Isi Penerimaan Dana Tahap 2 Terlebih Dahulu Untuk Masuk Pada Bku Bulan Juli
+                        </p>
+                    </div>
+                    <div className="flex justify-end border-t border-slate-100 px-6 py-4 dark:border-white/5">
                         <PrimaryButton onClick={() => setIsValidationOpen(false)}>
                             Mengerti
                         </PrimaryButton>
@@ -525,73 +713,86 @@ export default function Index({ tahunList, penganggaranList, statusPerTahun, tah
 
             {/* Modal Tarik BKU dari ARKAS (Tahunan) */}
             <Modal show={isArkasBkuModalOpen} onClose={() => !pullingBku && setIsArkasBkuModalOpen(false)} maxWidth="2xl">
-                <div className="p-6">
-                    <div className="flex items-center gap-3 border-b border-gray-100 dark:border-gray-700 pb-4">
-                        <div className="p-2.5 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl text-emerald-600 dark:text-emerald-400">
-                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                <div className="relative overflow-hidden bg-white dark:bg-[#15131F]">
+                    <div className="pointer-events-none absolute -right-10 -top-16 h-40 w-40 rounded-full bg-mint/10 blur-3xl" />
+                    <div className="relative flex items-start justify-between gap-3 border-b border-slate-100 px-6 py-4 dark:border-white/5">
+                        <div className="flex items-center gap-3">
+                            <IconTile tone="mint" size="lg">
+                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg>
+                            </IconTile>
+                            <div className="min-w-0">
+                                <h2 className="text-[14px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                                    Tarik Buku Kas Umum (BKU) dari ARKAS
+                                </h2>
+                                <p className="mt-0.5 text-[10px] font-medium text-slate-400 dark:text-slate-500">
+                                    Tahun Anggaran {arkasBkuYear} • {activeTab}
+                                </p>
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => !pullingBku && setIsArkasBkuModalOpen(false)}
+                            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-500 dark:hover:bg-white/5 dark:hover:text-white"
+                            aria-label="Tutup"
+                        >
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                             </svg>
-                        </div>
-                        <div>
-                            <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">
-                                Tarik Buku Kas Umum (BKU) dari ARKAS
-                            </h2>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">
-                                Tahun Anggaran {arkasBkuYear} • {activeTab}
-                            </p>
-                        </div>
+                        </button>
                     </div>
 
-                    <div className="mt-5">
+                    <div className="px-6 py-5">
                         {arkasBkuLoading ? (
-                            <div className="py-12 flex flex-col items-center justify-center gap-3">
-                                <div className="w-9 h-9 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
-                                <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                            <div className="flex flex-col items-center justify-center gap-3 py-12">
+                                <div className="h-9 w-9 animate-spin rounded-full border-4 border-mint border-t-transparent"></div>
+                                <p className="text-[11.5px] font-medium text-slate-500 dark:text-slate-400">
                                     Memeriksa data BKU di database ARKAS...
                                 </p>
                             </div>
                         ) : arkasBkuData?.status === 'error' || !arkasBkuData?.exists ? (
                             <div className="py-8 text-center">
-                                <div className="mx-auto w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-amber-600 dark:text-amber-400 mb-3">
-                                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-pastel-amber text-amber-600 dark:bg-amber-400/10 dark:text-amber-300">
+                                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                                     </svg>
                                 </div>
-                                <h4 className="text-base font-semibold text-gray-800 dark:text-gray-200 mb-1">
+                                <h4 className="mb-1 text-[13px] font-extrabold text-slate-900 dark:text-white">
                                     Data BKU ARKAS Tidak Ditemukan
                                 </h4>
-                                <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md mx-auto">
+                                <p className="mx-auto max-w-md text-[11px] font-medium text-slate-500 dark:text-slate-400">
                                     {arkasBkuData?.message || `Tidak ditemukan catatan transaksi BKU untuk Tahun ${arkasBkuYear} pada database ARKAS.`}
                                 </p>
                             </div>
                         ) : (
-                            <div className="space-y-5">
+                            <div className="space-y-4">
                                 {/* Ringkasan Data ARKAS */}
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                    <div className="bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200/60 dark:border-emerald-800/40 rounded-xl p-3.5">
-                                        <span className="text-[10pt] text-emerald-700 dark:text-emerald-300 font-medium">Penerimaan Dana</span>
-                                        <div className="text-base font-bold text-emerald-800 dark:text-emerald-200 mt-1">
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                                    <div className="rounded-2xl border border-mint/20 bg-pastel-mint/60 p-3.5 dark:border-mint/20 dark:bg-mint/10">
+                                        <span className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-mint">Penerimaan Dana</span>
+                                        <div className="mt-1 text-sikas-num text-[13px] font-extrabold text-slate-900 dark:text-white">
                                             {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(arkasBkuData.arkas_data.nominal_penerimaan || 0)}
                                         </div>
-                                        <div className="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5">
+                                        <div className="mt-0.5 text-[9.5px] font-semibold text-mint dark:text-mint">
                                             {arkasBkuData.arkas_data.total_penerimaan || 0} kali penerimaan
                                         </div>
                                     </div>
-                                    <div className="bg-blue-50/60 dark:bg-blue-950/20 border border-blue-200/60 dark:border-blue-800/40 rounded-xl p-3.5">
-                                        <span className="text-[10pt] text-blue-700 dark:text-blue-300 font-medium">Tarik Tunai</span>
-                                        <div className="text-base font-bold text-blue-800 dark:text-blue-200 mt-1">
+                                    <div className="rounded-2xl border border-sky/20 bg-pastel-sky/60 p-3.5 dark:border-sky/20 dark:bg-sky/10">
+                                        <span className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-sky">Tarik Tunai</span>
+                                        <div className="mt-1 text-sikas-num text-[13px] font-extrabold text-slate-900 dark:text-white">
                                             {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(arkasBkuData.arkas_data.nominal_penarikan || 0)}
                                         </div>
-                                        <div className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">
+                                        <div className="mt-0.5 text-[9.5px] font-semibold text-sky dark:text-sky">
                                             {arkasBkuData.arkas_data.total_penarikan || 0} transaksi tarik
                                         </div>
                                     </div>
-                                    <div className="bg-purple-50/60 dark:bg-purple-950/20 border border-purple-200/60 dark:border-purple-800/40 rounded-xl p-3.5">
-                                        <span className="text-[10pt] text-purple-700 dark:text-purple-300 font-medium">Belanja Kas</span>
-                                        <div className="text-base font-bold text-purple-800 dark:text-purple-200 mt-1">
+                                    <div className="rounded-2xl border border-brand-500/20 bg-pastel-lavender/60 p-3.5 dark:border-brand-400/20 dark:bg-brand-500/10">
+                                        <span className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-brand-600 dark:text-brand-300">Belanja Kas</span>
+                                        <div className="mt-1 text-sikas-num text-[13px] font-extrabold text-slate-900 dark:text-white">
                                             {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(arkasBkuData.arkas_data.nominal_belanja || 0)}
                                         </div>
-                                        <div className="text-xs text-purple-600 dark:text-purple-400 mt-0.5">
+                                        <div className="mt-0.5 text-[9.5px] font-semibold text-brand-600 dark:text-brand-300">
                                             {arkasBkuData.arkas_data.total_nota_belanja || 0} nota ({arkasBkuData.arkas_data.total_item_belanja || 0} item)
                                         </div>
                                     </div>
@@ -599,13 +800,13 @@ export default function Index({ tahunList, penganggaranList, statusPerTahun, tah
 
                                 {/* Status Tutup Buku Bulan */}
                                 {arkasBkuData.arkas_data.closed_months && arkasBkuData.arkas_data.closed_months.length > 0 && (
-                                    <div className="bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 rounded-xl p-3.5">
-                                        <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 block mb-2">
+                                    <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-3.5 dark:border-white/5 dark:bg-white/[0.02]">
+                                        <span className="mb-2 block text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
                                             Status Tutup Buku di ARKAS:
                                         </span>
                                         <div className="flex flex-wrap gap-1.5">
                                             {arkasBkuData.arkas_data.closed_months.map((m: string) => (
-                                                <span key={m} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
+                                                <span key={m} className="inline-flex items-center rounded-full bg-pastel-mint px-2.5 py-1 text-[9.5px] font-extrabold text-mint dark:bg-mint/10 dark:text-mint">
                                                     ✓ {m} Ditutup
                                                 </span>
                                             ))}
@@ -615,12 +816,14 @@ export default function Index({ tahunList, penganggaranList, statusPerTahun, tah
 
                                 {/* Warning jika RKAS belum ada */}
                                 {!arkasBkuData.has_rkas && (
-                                    <div className="p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl flex items-start gap-3">
-                                        <svg className="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                        </svg>
-                                        <div className="text-sm text-red-800 dark:text-red-300">
-                                            <span className="font-bold block mb-0.5">Data RKAS Belum Tersedia di newSIKAS</span>
+                                    <div className="flex items-start gap-3 rounded-2xl border border-rose-200 bg-pastel-rose/70 p-4 dark:border-rose-400/20 dark:bg-rose-500/10">
+                                        <div className="mt-0.5 shrink-0 text-rose-600 dark:text-rose-400">
+                                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                            </svg>
+                                        </div>
+                                        <div className="text-[11px] font-medium text-rose-700 dark:text-rose-300">
+                                            <span className="mb-0.5 block font-extrabold">Data RKAS Belum Tersedia di newSIKAS</span>
                                             Penarikan BKU mewajibkan RKAS di newSIKAS sudah terisi untuk mencocokkan rincian belanja. Silakan lakukan penarikan RKAS terlebih dahulu pada menu Penganggaran.
                                         </div>
                                     </div>
@@ -628,24 +831,26 @@ export default function Index({ tahunList, penganggaranList, statusPerTahun, tah
 
                                 {/* Warning & Konfirmasi Overwrite jika sudah ada data BKU */}
                                 {arkasBkuData.has_existing_data && (
-                                    <div className="p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl space-y-3">
+                                    <div className="space-y-3 rounded-2xl border border-amber-300/60 bg-pastel-amber/70 p-4 dark:border-amber-400/20 dark:bg-amber-400/10">
                                         <div className="flex items-start gap-3">
-                                            <svg className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                            </svg>
-                                            <div className="text-sm text-amber-800 dark:text-amber-300">
-                                                <span className="font-bold block mb-0.5">Konfirmasi Timpa Ulang (Overwrite)</span>
+                                            <div className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-400">
+                                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                                </svg>
+                                            </div>
+                                            <div className="text-[11px] font-medium text-amber-800 dark:text-amber-200">
+                                                <span className="mb-0.5 block font-extrabold">Konfirmasi Timpa Ulang (Overwrite)</span>
                                                 Di newSIKAS saat ini sudah tercatat <strong>{arkasBkuData.existing_counts.total} transaksi BKU</strong> pada tahun {arkasBkuYear} (termasuk {arkasBkuData.existing_counts.belanja} belanja, {arkasBkuData.existing_counts.penerimaan} penerimaan). Melanjutkan penarikan akan <strong>menghapus data BKU tahun {arkasBkuYear}</strong> dan menggantikannya dengan data resmi dari ARKAS.
                                             </div>
                                         </div>
-                                        <label className="flex items-center gap-2.5 pt-2 border-t border-amber-200/80 dark:border-amber-800/80 cursor-pointer">
+                                        <label className="flex cursor-pointer items-center gap-2.5 border-t border-amber-300/60 pt-2 dark:border-amber-400/20">
                                             <input
                                                 type="checkbox"
                                                 checked={isOverwriteChecked}
                                                 onChange={(e) => setIsOverwriteChecked(e.target.checked)}
-                                                className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500"
+                                                className="h-4 w-4 rounded border-slate-300 text-lime-500 focus:ring-lime-500 dark:border-white/20 dark:bg-white/5"
                                             />
-                                            <span className="text-xs font-semibold text-amber-900 dark:text-amber-200">
+                                            <span className="text-[10.5px] font-semibold text-amber-900 dark:text-amber-100">
                                                 Saya memahami dan menyetujui untuk menimpa ulang seluruh data BKU Tahun {arkasBkuYear}.
                                             </span>
                                         </label>
@@ -655,19 +860,19 @@ export default function Index({ tahunList, penganggaranList, statusPerTahun, tah
                         )}
                     </div>
 
-                    <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-gray-100 dark:border-gray-700 pt-4">
+                    <div className="flex flex-col items-center justify-between gap-3 border-t border-slate-100 px-6 py-4 sm:flex-row dark:border-white/5">
                         <button
                             type="button"
                             onClick={() => {
                                 setIsArkasBkuModalOpen(false);
                                 setIsArkasAiModalOpen(true);
                             }}
-                            className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/50 dark:text-indigo-300 dark:hover:bg-indigo-900/50 rounded-lg border border-indigo-200 dark:border-indigo-800 transition"
+                            className="inline-flex w-full items-center justify-center gap-1.5 rounded-2xl border border-brand-500/20 bg-pastel-lavender px-3.5 py-2.5 text-[10.5px] font-extrabold text-brand-600 transition hover:bg-brand-200/60 sm:w-auto dark:border-brand-400/20 dark:bg-brand-500/10 dark:text-brand-300 dark:hover:bg-brand-500/15"
                         >
-                            <Brain className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                            <Brain className="h-4 w-4 text-brand-600 dark:text-brand-300" />
                             Analisis Selisih AI (DeepSeek)
                         </button>
-                        <div className="w-full sm:w-auto flex items-center justify-end gap-3">
+                        <div className="flex w-full items-center justify-end gap-2 sm:w-auto">
                             <SecondaryButton onClick={() => setIsArkasBkuModalOpen(false)} disabled={pullingBku}>
                                 Batal
                             </SecondaryButton>
@@ -675,20 +880,20 @@ export default function Index({ tahunList, penganggaranList, statusPerTahun, tah
                                 <button
                                     onClick={handleExecutePullArkasBku}
                                     disabled={pullingBku || (arkasBkuData.has_existing_data && !isOverwriteChecked)}
-                                    className={`inline-flex items-center px-5 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider text-white shadow-sm transition-all duration-150 ${
+                                    className={`inline-flex items-center justify-center rounded-2xl px-5 py-2.5 text-[11px] font-extrabold uppercase tracking-wider shadow-sm transition-all duration-150 ${
                                         pullingBku || (arkasBkuData.has_existing_data && !isOverwriteChecked)
-                                            ? 'bg-gray-400 dark:bg-gray-600 cursor-not-allowed opacity-60'
-                                            : 'bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2'
+                                            ? 'cursor-not-allowed bg-slate-100 text-slate-400 opacity-70 dark:bg-white/5 dark:text-slate-500'
+                                            : 'bg-lime-400 text-slate-950 shadow-lime hover:-translate-y-0.5 hover:bg-lime-300 focus:outline-none focus:ring-2 focus:ring-lime-500 focus:ring-offset-2'
                                     }`}
                                 >
                                     {pullingBku ? (
                                         <>
-                                            <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                            <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
                                             Menarik BKU...
                                         </>
                                     ) : (
                                         <>
-                                            <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <svg className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                                             </svg>
                                             {arkasBkuData.has_existing_data ? 'Tarik & Timpa Ulang BKU' : 'Tarik BKU Sekarang'}
@@ -720,6 +925,7 @@ export default function Index({ tahunList, penganggaranList, statusPerTahun, tah
     );
 }
 
+
 const YearAccordionItem = ({ item, months, statusPerTahun, activeTab, onOpenModal, onValidation, onOpenArkasBkuModal }: any) => {
     const vroute = useVariantRoute();
     const [isOpen, setIsOpen] = useState(false);
@@ -734,58 +940,60 @@ const YearAccordionItem = ({ item, months, statusPerTahun, activeTab, onOpenModa
     const tahap2Months = ['Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 
     return (
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden shadow-sm hover:shadow dark:shadow-gray-900/10 transition-all duration-200">
+        <div className="sikas-card overflow-hidden">
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left transition-colors hover:bg-slate-50/70 dark:hover:bg-white/[0.03]"
                 aria-expanded={isOpen}
             >
                 <div className="flex items-center gap-3">
-                    <svg className="w-5 h-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    <span className="font-semibold text-gray-700 dark:text-gray-200">
+                    <IconTile tone="sky" size="sm">
+                        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                    </IconTile>
+                    <span className="text-[12.5px] font-extrabold tracking-tight text-slate-800 dark:text-slate-100">
                         BKU Tahun Anggaran {item.tahun_anggaran}
                     </span>
                 </div>
-                <div className={`text-gray-400 transform transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}>
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className={`text-slate-400 transition-transform duration-200 dark:text-slate-500 ${isOpen ? 'rotate-180' : ''}`}>
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
                 </div>
             </button>
 
-            <div className={`transition-all duration-300 ease-in-out ${isOpen ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}>
-                <div className="p-6 border-t border-gray-100 dark:border-gray-700">
+            <div className={`transition-all duration-300 ease-in-out ${isOpen ? 'max-h-[2000px] opacity-100' : 'max-h-0 overflow-hidden opacity-0'}`}>
+                <div className="border-t border-slate-100 p-4 dark:border-white/5">
 
                     {/* Header with Buttons INSIDE Accordion */}
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                        <h4 className="text-lg font-bold text-gray-800 dark:text-gray-100 hidden md:block">
+                    <div className="mb-4 flex flex-col items-start justify-between gap-3 md:flex-row md:items-center">
+                        <h4 className="hidden text-lg font-bold text-slate-800 dark:text-slate-100 md:block">
                         </h4>
-                        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                        <div className="flex w-full flex-wrap items-center gap-2 md:w-auto">
                             <button
                                 onClick={() => onOpenArkasBkuModal(item.id, item.tahun_anggaran)}
-                                className="flex-1 md:flex-none inline-flex justify-center items-center px-4 py-2 bg-emerald-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-emerald-700 focus:bg-emerald-700 active:bg-emerald-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition ease-in-out duration-150 shadow-sm"
+                                className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border border-emerald-200 bg-pastel-mint px-4 py-2.5 text-[11px] font-extrabold text-emerald-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-100 md:flex-none dark:border-emerald-400/20 dark:bg-mint/10 dark:text-emerald-300 dark:hover:bg-mint/15"
                             >
-                                <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                                 </svg>
                                 Tarik BKU dari ARKAS
                             </button>
                             <Link
                                 href={vroute('penatausahaan.rekapitulasi', { tahun: item.tahun_anggaran, bulan: 'januari' })}
-                                className="flex-1 md:flex-none inline-flex justify-center items-center px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md font-semibold text-xs text-gray-700 dark:text-gray-300 uppercase tracking-widest shadow-sm hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150"
+                                className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-[11px] font-extrabold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 md:flex-none dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10"
                             >
-                                <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                                 </svg>
                                 Cetak
                             </Link>
                             <button
                                 onClick={() => onOpenModal(item.id)}
-                                className="flex-1 md:flex-none inline-flex justify-center items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 focus:bg-blue-700 active:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150 shadow-sm"
+                                className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-lime-400 px-4 py-2.5 text-[11px] font-extrabold text-slate-950 shadow-lime transition hover:-translate-y-0.5 hover:bg-lime-300 md:flex-none"
                             >
-                                <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                                 </svg>
                                 Tambah Penerimaan Dana
@@ -793,7 +1001,7 @@ const YearAccordionItem = ({ item, months, statusPerTahun, activeTab, onOpenModa
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                         {months.map((month: any, monthIndex: number) => {
                             const status = statusPerTahun?.[item.tahun_anggaran]?.[month] || 'disabled'; // Default to disabled if unknown
                             const isDisabled = status === 'disabled';
@@ -815,56 +1023,46 @@ const YearAccordionItem = ({ item, months, statusPerTahun, activeTab, onOpenModa
                                 <Link
                                     key={month}
                                     href={isDisabled ? '#' : vroute('penatausahaan.bku', { tahun: item.tahun_anggaran, bulan: month })}
-                                    className={`group relative bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 flex flex-col items-center justify-center shadow-sm hover:shadow-md transition-all duration-200 
-                                            ${isDisabled
-                                            ? 'opacity-50 cursor-not-allowed grayscale'
-                                            : 'hover:border-blue-300 dark:hover:border-blue-700'
-                                        }`}
+                                    className={`group relative flex flex-col items-center justify-center rounded-2xl border p-4 transition-all duration-200 ${
+                                        isDisabled
+                                            ? 'cursor-not-allowed border-slate-100 bg-slate-50/60 opacity-60 grayscale dark:border-white/5 dark:bg-white/[0.02]'
+                                            : 'border-slate-100 bg-white shadow-sm hover:-translate-y-0.5 hover:border-lime-300 hover:shadow-card-hover dark:border-white/10 dark:bg-white/5 dark:hover:border-lime-400/30'
+                                    }`}
                                     onClick={handleClick}
                                 >
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <div className={`p-1.5 rounded-full text-gray-500 transition-colors
-                                            ${isDisabled
-                                                ? 'bg-gray-100 dark:bg-gray-700'
-                                                : 'bg-gray-100 dark:bg-gray-700 group-hover:text-blue-600'
-                                            }`}>
-                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <div className="mb-2 flex items-center gap-2">
+                                        <div className={`rounded-xl p-1.5 transition-colors ${
+                                            isDisabled
+                                                ? 'bg-slate-100 text-slate-400 dark:bg-white/5 dark:text-slate-500'
+                                                : 'bg-slate-50 text-slate-500 group-hover:text-lime-600 dark:bg-white/5 dark:text-slate-400 dark:group-hover:text-lime-300'
+                                        }`}>
+                                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                             </svg>
                                         </div>
-                                        <span className={`font-medium transition-colors
-                                            ${isDisabled
-                                                ? 'text-gray-400 dark:text-gray-500'
-                                                : 'text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white'
-                                            }`}>
+                                        <span className={`text-[11.5px] font-bold transition-colors ${
+                                            isDisabled
+                                                ? 'text-slate-400 dark:text-slate-500'
+                                                : 'text-slate-700 group-hover:text-slate-900 dark:text-slate-200 dark:group-hover:text-white'
+                                        }`}>
                                             {month}
                                         </span>
                                     </div>
 
                                     {status === 'closed' && (
-                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
-                                            Selesai
-                                        </span>
+                                        <StatusBadge tone="success" dot={false}>Selesai</StatusBadge>
                                     )}
                                     {status === 'lapor_pajak' && (
-                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
-                                            Belum Lapor Pajak
-                                        </span>
+                                        <StatusBadge tone="danger" dot={false}>Belum Lapor Pajak</StatusBadge>
                                     )}
                                     {status === 'draft' && (
-                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">
-                                            Draft
-                                        </span>
+                                        <StatusBadge tone="warning" dot={false}>Draft</StatusBadge>
                                     )}
                                     {status === 'empty' && (
-                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
-                                            Belum di isi
-                                        </span>
+                                        <StatusBadge tone="info" dot={false}>Belum di isi</StatusBadge>
                                     )}
                                     {status === 'disabled' && (
-                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400">
-                                            Terkunci
-                                        </span>
+                                        <StatusBadge tone="neutral" dot={false}>Terkunci</StatusBadge>
                                     )}
                                 </Link>
                             );
@@ -875,3 +1073,4 @@ const YearAccordionItem = ({ item, months, statusPerTahun, activeTab, onOpenModa
         </div>
     );
 };
+
