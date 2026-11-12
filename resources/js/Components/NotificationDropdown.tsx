@@ -2,6 +2,16 @@ import React, { useState, useEffect, useRef } from 'react';
 import NotificationModal from './NotificationModal';
 import PajakReminderModal from './PajakReminderModal';
 import { usePage } from '@inertiajs/react';
+import { Transition } from '@headlessui/react';
+import { 
+    Bell, 
+    AlertTriangle, 
+    CheckCircle2, 
+    CheckCheck,
+    Calendar,
+    Clock,
+    Receipt
+} from 'lucide-react';
 
 interface NotificationItem {
     type: 'terima_pajak' | 'setor_pajak';
@@ -11,10 +21,13 @@ interface NotificationItem {
     month_name: string;
 }
 
+type TabType = 'all' | 'terima' | 'setor';
+
 export default function NotificationDropdown() {
     const { flash } = usePage<any>().props;
     const [notifications, setNotifications] = useState<NotificationItem[]>([]);
     const [isOpen, setIsOpen] = useState(false);
+    const [activeTab, setActiveTab] = useState<TabType>('all');
     const [selectedNotification, setSelectedNotification] = useState<NotificationItem | null>(null);
     const [showReminder, setShowReminder] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
@@ -24,7 +37,7 @@ export default function NotificationDropdown() {
             .then(res => res.json())
             .then(data => {
                 if (data.success) {
-                    // Filter Setor Pajak notifications that have been read
+                    // Filter Setor Pajak notifications that have been read in localStorage
                     const filtered = data.data.filter((item: NotificationItem) => {
                         if (item.type === 'setor_pajak') {
                             const isRead = localStorage.getItem(`read_setor_${item.year}_${item.month}`);
@@ -58,7 +71,7 @@ export default function NotificationDropdown() {
     useEffect(() => {
         fetchNotifications();
 
-        // Optional: Poll every few minutes
+        // Poll every 5 minutes
         const interval = setInterval(fetchNotifications, 5 * 60 * 1000);
         return () => clearInterval(interval);
     }, []);
@@ -82,106 +95,247 @@ export default function NotificationDropdown() {
             // Remove from current list visually
             setNotifications(prev => prev.filter(n => !(n.type === 'setor_pajak' && n.month === item.month && n.year === item.year)));
         }
-        
+
         setSelectedNotification(item);
         setIsOpen(false);
     };
 
+    // Tandai semua setor pajak sebagai dibaca
+    const handleMarkAllSetorAsRead = () => {
+        notifications.forEach(item => {
+            if (item.type === 'setor_pajak') {
+                localStorage.setItem(`read_setor_${item.year}_${item.month}`, 'true');
+            }
+        });
+        setNotifications(prev => prev.filter(n => n.type !== 'setor_pajak'));
+    };
+
     const unreadCount = notifications.length;
+    const terimaCount = notifications.filter(n => n.type === 'terima_pajak').length;
+    const setorCount = notifications.filter(n => n.type === 'setor_pajak').length;
+    const hasUnreadSetor = setorCount > 0;
+
+    // Filter berdasarkan tab aktif
+    const displayedNotifications = notifications.filter(item => {
+        if (activeTab === 'terima') return item.type === 'terima_pajak';
+        if (activeTab === 'setor') return item.type === 'setor_pajak';
+        return true;
+    });
 
     return (
         <div className="relative" ref={dropdownRef}>
+            {/* Trigger Button */}
             <button
+                type="button"
                 onClick={() => setIsOpen(!isOpen)}
-                className="relative flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-500 hover:text-indigo-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:text-indigo-400 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
+                className={`relative flex h-9 w-9 items-center justify-center rounded-xl border transition-all duration-200 focus:outline-none focus-visible:ring-4 focus-visible:ring-lime-200/60 ${
+                    isOpen
+                        ? 'border-brand-300 bg-brand-50 text-brand-600 dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-brand-300'
+                        : 'border-slate-100 bg-white text-slate-500 shadow-sm hover:-translate-y-0.5 hover:text-slate-900 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:text-white'
+                }`}
+                aria-label="Buka notifikasi"
+                aria-expanded={isOpen}
             >
-                <span className="sr-only">View notifications</span>
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                </svg>
+                <span className="sr-only">Lihat notifikasi</span>
+                <Bell className="h-4 w-4" />
                 {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white ring-2 ring-white dark:ring-gray-800">
+                    <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-peach px-1 text-[8.5px] font-extrabold text-slate-950 shadow-sm ring-2 ring-white dark:ring-[#0D0F17]">
                         {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
                 )}
             </button>
 
-            {/* Dropdown menu */}
-            {isOpen && (
-                <div className="absolute right-0 mt-2 w-80 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none dark:bg-gray-800 dark:ring-gray-700 z-50">
-                    <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
-                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Notifikasi</p>
-                        <span className="bg-indigo-100 text-indigo-800 text-xs font-semibold px-2.5 py-0.5 rounded-full dark:bg-indigo-900 dark:text-indigo-300">
-                            {unreadCount} Baru
-                        </span>
+            {/* Dropdown Menu dengan Animasi Headless UI Transition */}
+            <Transition
+                show={isOpen}
+                enter="transition ease-out duration-200"
+                enterFrom="opacity-0 scale-95 -translate-y-1"
+                enterTo="opacity-100 scale-100 translate-y-0"
+                leave="transition ease-in duration-150"
+                leaveFrom="opacity-100 scale-100 translate-y-0"
+                leaveTo="opacity-0 scale-95 -translate-y-1"
+            >
+                <div className="absolute right-0 z-50 mt-2 w-[330px] sm:w-[380px] origin-top-right overflow-hidden rounded-2xl border border-white/80 bg-white/95 shadow-float backdrop-blur-xl dark:border-white/10 dark:bg-[#15131F]/95">
+                    {/* Header Popover */}
+                    <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-white/5">
+                        <div className="flex items-center gap-2">
+                            <p className="text-[13px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                                Notifikasi
+                            </p>
+                            {unreadCount > 0 && (
+                                <span className="rounded-full bg-pastel-lavender px-2 py-0.5 text-[9.5px] font-extrabold text-brand-600 dark:bg-brand-500/15 dark:text-brand-300">
+                                    {unreadCount} Baru
+                                </span>
+                            )}
+                        </div>
+
+                        {hasUnreadSetor && (
+                            <button
+                                type="button"
+                                onClick={handleMarkAllSetorAsRead}
+                                className="flex items-center gap-1 text-[10px] font-bold text-slate-500 transition hover:text-brand-600 dark:text-slate-400 dark:hover:text-brand-300"
+                                title="Tandai semua riwayat setor sebagai dibaca"
+                            >
+                                <CheckCheck className="h-3 w-3" />
+                                <span>Tandai dibaca</span>
+                            </button>
+                        )}
                     </div>
-                    <div className="max-h-96 overflow-y-auto">
-                        {notifications.length > 0 ? (
-                            notifications.map((item, index) => (
-                                <button
-                                    key={index}
-                                    onClick={() => handleNotificationClick(item)}
-                                    className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition duration-150 ease-in-out border-b border-gray-100 dark:border-gray-700/50 last:border-0 flex items-start"
-                                >
-                                    <div className="flex-shrink-0 mt-1 mr-3">
-                                        {item.type === 'terima_pajak' ? (
-                                            <div className="h-8 w-8 rounded-full bg-amber-100 flex items-center justify-center">
-                                                <svg className="h-4 w-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                </svg>
+
+                    {/* Filter Tabs Mini */}
+                    <div className="flex items-center gap-1 border-b border-slate-100 bg-slate-50/50 p-1.5 dark:border-white/5 dark:bg-white/[0.02]">
+                        <button
+                            type="button"
+                            onClick={() => setActiveTab('all')}
+                            className={`flex flex-1 items-center justify-center gap-1 rounded-lg py-1 text-[10.5px] font-bold transition ${
+                                activeTab === 'all'
+                                    ? 'bg-white text-slate-900 shadow-sm dark:bg-white/10 dark:text-white'
+                                    : 'text-slate-400 hover:text-slate-700 dark:text-slate-500 dark:hover:text-slate-300'
+                            }`}
+                        >
+                            <span>Semua</span>
+                            <span className="rounded-full bg-slate-100 px-1.5 py-0.2 text-[9px] dark:bg-white/10">
+                                {notifications.length}
+                            </span>
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => setActiveTab('terima')}
+                            className={`flex flex-1 items-center justify-center gap-1 rounded-lg py-1 text-[10.5px] font-bold transition ${
+                                activeTab === 'terima'
+                                    ? 'bg-white text-amber-700 shadow-sm dark:bg-white/10 dark:text-amber-400'
+                                    : 'text-slate-400 hover:text-slate-700 dark:text-slate-500 dark:hover:text-slate-300'
+                            }`}
+                        >
+                            <span>Perlu Disetor</span>
+                            {terimaCount > 0 && (
+                                <span className="rounded-full bg-amber-100 px-1.5 py-0.2 text-[9px] font-extrabold text-amber-700 dark:bg-amber-400/20 dark:text-amber-300">
+                                    {terimaCount}
+                                </span>
+                            )}
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => setActiveTab('setor')}
+                            className={`flex flex-1 items-center justify-center gap-1 rounded-lg py-1 text-[10.5px] font-bold transition ${
+                                activeTab === 'setor'
+                                    ? 'bg-white text-emerald-700 shadow-sm dark:bg-white/10 dark:text-emerald-400'
+                                    : 'text-slate-400 hover:text-slate-700 dark:text-slate-500 dark:hover:text-slate-300'
+                            }`}
+                        >
+                            <span>Sudah Disetor</span>
+                            {setorCount > 0 && (
+                                <span className="rounded-full bg-emerald-100 px-1.5 py-0.2 text-[9px] font-extrabold text-emerald-700 dark:bg-emerald-400/20 dark:text-emerald-300">
+                                    {setorCount}
+                                </span>
+                            )}
+                        </button>
+                    </div>
+
+                    {/* Daftar Item Notifikasi */}
+                    <div className="sikas-scroll max-h-[360px] overflow-y-auto divide-y divide-slate-100 dark:divide-white/5">
+                        {displayedNotifications.length > 0 ? (
+                            displayedNotifications.map((item, index) => {
+                                const isTerima = item.type === 'terima_pajak';
+                                return (
+                                    <button
+                                        key={`${item.type}-${item.year}-${item.month}-${index}`}
+                                        type="button"
+                                        onClick={() => handleNotificationClick(item)}
+                                        className="group relative flex w-full items-start gap-3 p-3.5 text-left transition hover:bg-slate-50/80 dark:hover:bg-white/[0.04]"
+                                    >
+                                        {/* Avatar Icon Pastel */}
+                                        <span
+                                            className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition duration-200 group-hover:scale-105 ${
+                                                isTerima
+                                                    ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300'
+                                                    : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300'
+                                            }`}
+                                        >
+                                            {isTerima ? (
+                                                <AlertTriangle className="h-4.5 w-4.5" />
+                                            ) : (
+                                                <CheckCircle2 className="h-4.5 w-4.5" />
+                                            )}
+                                        </span>
+
+                                        {/* Informasi Notifikasi */}
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex items-center justify-between gap-1">
+                                                <p className="truncate text-[11.5px] font-extrabold text-slate-900 dark:text-white">
+                                                    {isTerima ? 'Pajak Belum Disetor' : 'Pajak Sudah Disetor'}
+                                                </p>
+                                                <span
+                                                    className={`shrink-0 rounded-md px-1.5 py-0.5 text-[8.5px] font-extrabold uppercase tracking-wide ${
+                                                        isTerima
+                                                            ? 'bg-amber-50 text-amber-700 ring-1 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/20'
+                                                            : 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/20'
+                                                    }`}
+                                                >
+                                                    {isTerima ? 'Perlu Disetor' : 'Lunas'}
+                                                </span>
                                             </div>
-                                        ) : (
-                                            <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
-                                                <svg className="h-4 w-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                                </svg>
+
+                                            <p className="mt-1 text-[10.5px] font-medium leading-relaxed text-slate-500 dark:text-slate-400">
+                                                {isTerima
+                                                    ? `Terdapat transaksi pungut pajak periode ${item.month_name} ${item.year} yang belum memiliki NTPN.`
+                                                    : `Pajak periode ${item.month_name} ${item.year} telah disetor dan tersimpan.`}
+                                            </p>
+
+                                            <div className="mt-2 flex items-center justify-between text-[9px] font-bold text-slate-400 dark:text-slate-500">
+                                                <span className="flex items-center gap-1">
+                                                    <Receipt className="h-3 w-3" />
+                                                    {item.count} transaksi
+                                                </span>
+                                                <span className="flex items-center gap-1 text-brand-600 dark:text-brand-300 group-hover:underline">
+                                                    Lihat rincian →
+                                                </span>
                                             </div>
-                                        )}
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                            {item.type === 'terima_pajak' ? 'Terima Pajak' : 'Setor Pajak'}
-                                        </p>
-                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                            {item.type === 'terima_pajak' 
-                                                ? `Terdapat pajak belum dibayar untuk bulan ${item.month_name} ${item.year}.`
-                                                : `Pajak bulan ${item.month_name} ${item.year} telah disetor.`}
-                                        </p>
-                                        <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1 font-medium">
-                                            {item.count} TRANSAKSI
-                                        </p>
-                                    </div>
-                                </button>
-                            ))
+                                        </div>
+                                    </button>
+                                );
+                            })
                         ) : (
-                            <div className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
-                                <svg className="mx-auto h-8 w-8 text-gray-400 dark:text-gray-600 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                                </svg>
-                                Tidak ada notifikasi baru
+                            /* Empty State */
+                            <div className="px-4 py-10 text-center">
+                                <div className="mx-auto mb-2.5 flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-white/5 dark:text-slate-500">
+                                    <Bell className="h-5 w-5" />
+                                </div>
+                                <p className="text-[11px] font-extrabold text-slate-700 dark:text-slate-200">
+                                    Tidak ada notifikasi
+                                </p>
+                                <p className="mt-1 text-[10px] text-slate-400 dark:text-slate-500">
+                                    {activeTab === 'all'
+                                        ? 'Semua kewajiban pajak telah terselesaikan dengan baik.'
+                                        : activeTab === 'terima'
+                                        ? 'Tidak ada pajak tertunggak yang perlu disetor.'
+                                        : 'Belum ada riwayat setor pajak baru.'}
+                                </p>
                             </div>
                         )}
                     </div>
                 </div>
-            )}
+            </Transition>
 
-            {/* Modal for Details */}
-            <NotificationModal 
-                show={!!selectedNotification} 
+            {/* Modal Detail Notifikasi */}
+            <NotificationModal
+                show={!!selectedNotification}
                 onClose={() => {
                     setSelectedNotification(null);
-                    fetchNotifications(); // Refresh to ensure correct state after close
+                    fetchNotifications();
                 }}
                 notification={selectedNotification}
             />
 
-            {/* Login Reminder Modal */}
-            <PajakReminderModal 
-                show={showReminder} 
+            {/* Modal Pengingat Login */}
+            <PajakReminderModal
+                show={showReminder}
                 onClose={() => {
                     setShowReminder(false);
                     sessionStorage.setItem('pajak_reminder_shown', 'true');
-                }} 
+                }}
             />
         </div>
     );
