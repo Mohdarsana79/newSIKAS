@@ -1,5 +1,3 @@
-import { Link } from '@inertiajs/react';
-
 import { MagneticButton } from '@/Components/Landing/ui/MagneticButton';
 
 export type AccountActionsProps = {
@@ -108,15 +106,6 @@ export function PanduanLink({ className }: { className?: string }) {
         >
             Panduan
         </a>
-    );
-}
-
-/** Tautan Inertia "Masuk/Lihat" kecil untuk navbar versi teks. */
-export function PlainLoginLink({ className }: { className?: string }) {
-    return (
-        <Link href={route('login')} className={className}>
-            Masuk
-        </Link>
     );
 }
 

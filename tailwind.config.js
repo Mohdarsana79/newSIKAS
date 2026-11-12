@@ -147,7 +147,7 @@ export default {
                 'aurora-slow': 'aurora 30s ease-in-out infinite',
                 float: 'float 7s ease-in-out infinite',
                 'float-slow': 'float-slow 11s ease-in-out infinite',
-                marquee: 'marquee 36s linear infinite',
+                marquee: 'marquee 32s linear infinite',
                 shimmer: 'shimmer 1.1s ease-in-out',
                 'glow-pulse': 'glow-pulse 5s ease-in-out infinite',
                 'spin-slow': 'spin-slow 28s linear infinite',
@@ -157,8 +157,6 @@ export default {
             backgroundImage: {
                 'grid-faint':
                     'linear-gradient(to right, rgba(255,255,255,0.045) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.045) 1px, transparent 1px)',
-                'grid-faint-light':
-                    'linear-gradient(to right, rgba(20,18,26,0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(20,18,26,0.05) 1px, transparent 1px)',
             },
             backgroundSize: {
                 'grid-32': '32px 32px',

@@ -29,7 +29,7 @@ export function GlassCard({ children, className, glow = false, padding = 'md' }:
             className={cn(
                 'landing-glass relative overflow-hidden transition-all duration-500 ease-luxe',
                 'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-gold-400/40 before:to-transparent',
-                glow && 'shadow-glow-violet/40 dark:shadow-glow-violet/40',
+                glow && 'shadow-glow-violet',
                 PADDING[padding],
                 className,
             )}

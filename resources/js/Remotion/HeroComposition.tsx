@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react';
-import { Easing, Sequence, interpolate, random, useCurrentFrame } from 'remotion';
+import type { SpringConfig } from 'remotion';
+import { Easing, Sequence, interpolate, random, spring, useCurrentFrame } from 'remotion';
 
 import {
     BRAND,
@@ -34,15 +35,49 @@ export const HERO_CONFIG = {
 } as const;
 
 const DURATION = HERO_CONFIG.durationInFrames;
+const FPS = HERO_CONFIG.fps;
 
 /** Kartu dashboard: 1000×780 di tengah kanvas 1200×900. */
 const DASHBOARD_WIDTH = 1000;
 const DASHBOARD_HEIGHT = 780;
 const DASHBOARD_PADDING = 38;
 
+/**
+ * "Merakit diri" tanpa fase kosong:
+ * - bar tumbuh dari 15% tinggi (sudah terlihat) lalu penuh dengan stagger,
+ * - arc donut tumbuh 0°→281° pada 60 frame pertama,
+ * - keduanya kembali ke nilai awal menjelang akhir loop agar frame 0 ≡ 300.
+ */
+const BAR_BASELINE = 0.15;
+const BAR_STAGGER = 3;
+const BAR_SHRINK_START = 252;
+const BAR_SHRINK_STAGGER = 2;
+const BAR_SHRINK_DURATION = 34;
+const DONUT_GROW_END = 58;
+const DONUT_SHRINK_START = 200;
+const DONUT_SHRINK_END = 298;
+
 /* ============================================================= helpers === */
 
 const clamp01 = (value: number): number => Math.min(1, Math.max(0, value));
+
+const SPRING_BAR: Partial<SpringConfig> = { damping: 13, mass: 0.72, stiffness: 132 };
+
+/** Ramp 0→1 dengan easing cubic-out yang halus. */
+const rampOut = (frame: number, from: number, to: number): number =>
+    interpolate(frame, [from, to], [0, 1], {
+        extrapolateLeft: 'clamp',
+        extrapolateRight: 'clamp',
+        easing: Easing.out(Easing.cubic),
+    });
+
+/** Ramp 0→1 dua arah (in-out) untuk fase mengecil di akhir loop. */
+const rampInOut = (frame: number, from: number, to: number): number =>
+    interpolate(frame, [from, to], [0, 1], {
+        extrapolateLeft: 'clamp',
+        extrapolateRight: 'clamp',
+        easing: Easing.inOut(Easing.cubic),
+    });
 
 /** Sudut loop: 0 di frame 0 dan 2π lagi di frame 300 (loop mulus). */
 const loopAngle = (frame: number): number => (frame / DURATION) * Math.PI * 2;
@@ -89,7 +124,6 @@ const LEDGER_ROWS = [
 const DONUT_RADIUS = 70;
 const DONUT_STROKE = 13;
 const DONUT_CIRCUMFERENCE = 2 * Math.PI * DONUT_RADIUS;
-const DONUT_FRACTION = 281 / 360;
 
 type Particle = {
     left: number;
@@ -171,7 +205,12 @@ export function HeroComposition(): ReactElement {
                         willChange: 'transform',
                     }}
                 >
-                    <DashboardFrame theta={theta} sweepProgress={sweepProgress} sweepOpacity={sweepOpacity} />
+                    <DashboardFrame
+                        frame={frame}
+                        theta={theta}
+                        sweepProgress={sweepProgress}
+                        sweepOpacity={sweepOpacity}
+                    />
                     <ArkasChip theta={theta} />
                 </div>
             </div>
@@ -284,10 +323,12 @@ function Vignette(): ReactElement {
 /* =========================================================== dashboard === */
 
 function DashboardFrame({
+    frame,
     theta,
     sweepProgress,
     sweepOpacity,
 }: {
+    frame: number;
     theta: number;
     sweepProgress: number;
     sweepOpacity: number;
@@ -336,8 +377,8 @@ function DashboardFrame({
                 <DashboardHeader theta={theta} />
                 <KpiRow />
                 <div style={{ display: 'flex', gap: 20, height: 256, flex: '0 0 auto' }}>
-                    <BarChartPanel theta={theta} />
-                    <DonutPanel theta={theta} />
+                    <BarChartPanel frame={frame} theta={theta} />
+                    <DonutPanel frame={frame} />
                 </div>
                 <LedgerPanel theta={theta} />
             </div>
@@ -520,7 +561,7 @@ function KpiIcon({ accent, bars }: { accent: string; bars: readonly number[] }):
     );
 }
 
-function BarChartPanel({ theta }: { theta: number }): ReactElement {
+function BarChartPanel({ frame, theta }: { frame: number; theta: number }): ReactElement {
     return (
         <div
             style={{
@@ -550,8 +591,20 @@ function BarChartPanel({ theta }: { theta: number }): ReactElement {
                 />
 
                 {BARS.map((bar, index) => {
-                    // Gelombang periodik penuh → chart selalu terisi & loop mulus.
-                    const wave = 0.5 + 0.5 * Math.sin(theta * 2 - index * 0.55);
+                    // Fase rakitan: spring stagger dari baseline 15% (frame 0
+                    // sudah terlihat sebagai kolom pendek, bukan kosong).
+                    const grow = spring({
+                        frame: Math.max(0, frame - index * BAR_STAGGER),
+                        fps: FPS,
+                        config: SPRING_BAR,
+                    });
+                    // Fase kembali ke baseline menjelang akhir loop →
+                    // frame 0 ≡ frame 300.
+                    const shrinkStart = BAR_SHRINK_START + index * BAR_SHRINK_STAGGER;
+                    const shrink = rampInOut(frame, shrinkStart, shrinkStart + BAR_SHRINK_DURATION);
+                    // Gelombang periodik kecil agar chart tetap "hidup".
+                    const wave = 0.95 + 0.05 * (0.5 + 0.5 * Math.sin(theta * 2 - index * 0.55));
+                    const barScale = BAR_BASELINE + (1 - BAR_BASELINE) * grow * (1 - shrink) * wave;
                     const highlight = index === HIGHLIGHT_BAR;
 
                     return (
@@ -583,7 +636,7 @@ function BarChartPanel({ theta }: { theta: number }): ReactElement {
                                         width: '100%',
                                         height: `${bar.value * 100}%`,
                                         transformOrigin: 'bottom center',
-                                        transform: `scaleY(${0.92 + 0.08 * wave})`,
+                                        transform: `scaleY(${barScale})`,
                                         borderRadius: '10px 10px 6px 6px',
                                         background: highlight
                                             ? `linear-gradient(180deg, ${GOLD_SOFT} 0%, ${GOLD} 55%, rgba(232,200,125,0.6) 100%)`
@@ -614,11 +667,17 @@ function BarChartPanel({ theta }: { theta: number }): ReactElement {
     );
 }
 
-function DonutPanel({ theta }: { theta: number }): ReactElement {
-    // Arc bernapas tipis di sekitar 281° — tidak pernah kosong.
-    const arcDegrees = 281 + 3 * Math.sin(theta * 2);
+function DonutPanel({ frame }: { frame: number }): ReactElement {
+    // Fase rakitan: arc tumbuh 0°→281° (angka tengah ikut 0→78) pada 60 frame
+    // pertama, lalu mengecil kembali secara halus di akhir loop agar
+    // frame 0 ≡ frame 300.
+    const grow = rampOut(frame, 0, DONUT_GROW_END);
+    const shrink = rampInOut(frame, DONUT_SHRINK_START, DONUT_SHRINK_END);
+    const arcFactor = grow * (1 - shrink);
+    const arcDegrees = 281 * arcFactor;
     const fraction = clamp01(arcDegrees / 360);
-    const glow = 0.5 + 0.25 * (0.5 + 0.5 * Math.sin(theta * 2));
+    const percent = Math.round(78 * arcFactor);
+    const glow = 0.22 + 0.55 * arcFactor;
 
     return (
         <div
@@ -709,7 +768,7 @@ function DonutPanel({ theta }: { theta: number }): ReactElement {
                             color: TEXT,
                         }}
                     >
-                        78%
+                        {percent}%
                     </span>
                     <span
                         style={{

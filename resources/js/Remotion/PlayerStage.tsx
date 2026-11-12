@@ -1,7 +1,5 @@
 import { Component, Suspense, lazy, useEffect, useRef, useState } from 'react';
 import type { ComponentType, CSSProperties, ReactElement, ReactNode, RefObject } from 'react';
-import { Player } from '@remotion/player';
-import type { PlayerRef } from '@remotion/player';
 
 import { useReducedMotion } from '@/Hooks/useReducedMotion';
 
@@ -20,10 +18,12 @@ import {
 /**
  * Wrapper publik animasi SIKAS.
  *
- * - Komposisi di-load lazy (React.lazy + dynamic import) sehingga bundle
- *   Remotion tidak ikut termuat sampai Player benar-benar dibutuhkan.
+ * - Runtime Remotion (`@remotion/player`) di-load lewat
+ *   `lazy(() => import('./PlayerRuntime'))`; komposisi juga lazy. Jadi chunk
+ *   halaman Welcome tidak memuat library Player sama sekali.
  * - Player baru dipasang saat wrapper mendekati viewport (IntersectionObserver,
- *   rootMargin 400px) dan dilepas lagi saat jauh dari viewport.
+ *   rootMargin 400px). Setelah itu komponennya tetap terpasang, tetapi playback
+ *   di-pause saat jauh dari viewport.
  * - Saat masih memuat / gagal memuat / prefers-reduced-motion, tampilannya
  *   diganti placeholder gradient statis yang setara sehingga tidak ada
  *   layout shift dan halaman tetap utuh.
@@ -32,6 +32,9 @@ import {
  * CTA_CONFIG di file komposisi; sengaja tidak diimpor dari sana agar import-nya
  * tetap dinamis (kalau diimpor statis, chunk Remotion ikut ke bundle awal).
  */
+
+/** Di-load terpisah: baru diunduh saat Player dibutuhkan. */
+const PlayerRuntime = lazy(() => import('./PlayerRuntime'));
 
 export type PlayerStageComposition = 'hero' | 'cta';
 
@@ -62,7 +65,8 @@ const STAGE: Record<PlayerStageComposition, StageMeta> = {
         fps: 30,
         compositionWidth: 1200,
         compositionHeight: 900,
-        settledFrame: 240,
+        // Frame tenang: bar & arc donut sudah penuh (78%), sebelum fase mengecil.
+        settledFrame: 100,
     },
     cta: {
         component: lazy(() => import('./CtaComposition')),
@@ -92,27 +96,10 @@ export function PlayerStage({
     // hanya playback yang di-pause saat jauh, supaya screenshot penuh /
     // cetak halaman tetap menampilkan frame animasi (bukan placeholder).
     const [activated, setActivated] = useState(false);
-    const playerRef = useRef<PlayerRef>(null);
 
     useEffect(() => {
         if (near) setActivated(true);
     }, [near]);
-
-    useEffect(() => {
-        const player = playerRef.current;
-        if (!player) return;
-
-        if (reducedMotion) {
-            player.pause();
-            return;
-        }
-
-        if (near) {
-            player.play();
-        } else {
-            player.pause();
-        }
-    }, [near, reducedMotion, activated]);
 
     const wrapperStyle: CSSProperties = {
         position: 'relative',
@@ -138,28 +125,15 @@ export function PlayerStage({
                 <RemotionErrorBoundary fallback={<StagePlaceholder variant={composition} />}>
                     <Suspense fallback={<StagePlaceholder variant={composition} />}>
                         <div aria-hidden="true" style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
-                            <Player
-                                ref={playerRef}
+                            <PlayerRuntime
                                 component={stage.component}
                                 durationInFrames={stage.durationInFrames}
                                 fps={stage.fps}
                                 compositionWidth={stage.compositionWidth}
                                 compositionHeight={stage.compositionHeight}
-                                loop
-                                autoPlay={!reducedMotion}
                                 initialFrame={reducedMotion ? stage.settledFrame : 0}
-                                controls={false}
-                                clickToPlay={false}
-                                doubleClickToFullscreen={false}
-                                allowFullscreen={false}
-                                showVolumeControls={false}
-                                // Komposisi tanpa audio: mulai dalam keadaan mute agar
-                                // autoplay diizinkan browser dan console tetap bersih.
-                                initiallyMuted
-                                acknowledgeRemotionLicense
-                                errorFallback={() => <StagePlaceholder variant={composition} />}
-                                renderLoading={() => <StagePlaceholder variant={composition} />}
-                                style={{ width: '100%', height: '100%' }}
+                                paused={reducedMotion || !near}
+                                fallback={<StagePlaceholder variant={composition} />}
                             />
                         </div>
                     </Suspense>

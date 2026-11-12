@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import { ReactNode, useCallback } from 'react';
+import { ReactNode, useCallback, useRef } from 'react';
 
 import { useReducedMotion } from '@/Hooks/useReducedMotion';
 import { cn } from '@/lib/utils';
@@ -11,9 +11,9 @@ const BASE =
 
 const VARIANTS: Record<Variant, string> = {
     primary:
-        'bg-gradient-to-r from-brand-500 to-brand-600 px-7 py-3.5 text-[15px] text-white shadow-glow-violet hover:from-brand-400 hover:to-brand-500 hover:shadow-glow-gold/60',
+        'bg-gradient-to-r from-brand-500 to-brand-600 px-7 py-3.5 text-[15px] text-white shadow-glow-violet hover:from-brand-400 hover:to-brand-500 hover:shadow-glow-gold',
     secondary:
-        'border border-ink-900/12 bg-white/80 px-6 py-3.5 text-[15px] text-ink-900 backdrop-blur hover:border-gold-600/40 hover:bg-white dark:border-white/15 dark:bg-white/[0.06] dark:text-white dark:hover:border-gold-400/50 dark:hover:bg-white/[0.1]',
+        'border border-ink-900/[0.12] bg-white/80 px-6 py-3.5 text-[15px] text-ink-900 backdrop-blur hover:border-gold-600/40 hover:bg-white dark:border-white/15 dark:bg-white/[0.06] dark:text-white dark:hover:border-gold-400/50 dark:hover:bg-white/[0.1]',
     ghost:
         'px-4 py-2.5 text-[14px] text-ink-700 hover:text-brand-600 dark:text-white/70 dark:hover:text-gold-300',
 };
@@ -37,8 +37,9 @@ export type MagneticButtonProps = {
  * Tombol/tautan dengan efek magnetis halus (maks 6px) plus shimmer sweep
  * saat hover. Efek dimatikan saat reduce-motion atau perangkat sentuh.
  *
- * Transform diterapkan langsung ke elemen lewat `currentTarget`, jadi tidak
- * perlu ref maupun cast tipe.
+ * Transform magnetis dipasang pada pembungkus `<span>`, bukan pada tombol,
+ * supaya `active:scale-[0.98]` milik tombol tidak tertimpa style inline
+ * (inline transform akan selalu menang atas class Tailwind).
  */
 export function MagneticButton({
     children,
@@ -54,24 +55,28 @@ export function MagneticButton({
     type = 'button',
 }: MagneticButtonProps) {
     const reducedMotion = useReducedMotion();
+    const wrapperRef = useRef<HTMLSpanElement | null>(null);
 
     const handlePointerMove = useCallback(
         (event: React.PointerEvent<HTMLElement>) => {
             if (reducedMotion || event.pointerType === 'touch') return;
-            const node = event.currentTarget;
-            const rect = node.getBoundingClientRect();
+            const wrapper = wrapperRef.current;
+            if (!wrapper) return;
+
+            const rect = wrapper.getBoundingClientRect();
             const relX = event.clientX - (rect.left + rect.width / 2);
             const relY = event.clientY - (rect.top + rect.height / 2);
             const x = Math.max(-6, Math.min(6, relX * 0.12));
             const y = Math.max(-6, Math.min(6, relY * 0.18));
 
-            node.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+            wrapper.style.transform = `translate3d(${x}px, ${y}px, 0)`;
         },
         [reducedMotion],
     );
 
-    const handlePointerLeave = useCallback((event: React.PointerEvent<HTMLElement>) => {
-        event.currentTarget.style.transform = 'translate3d(0, 0, 0)';
+    const handlePointerLeave = useCallback(() => {
+        const wrapper = wrapperRef.current;
+        if (wrapper) wrapper.style.transform = 'translate3d(0, 0, 0)';
     }, []);
 
     const content = (
@@ -94,9 +99,9 @@ export function MagneticButton({
         onPointerLeave: handlePointerLeave,
     };
 
-    if (as === 'a') {
-        if (inertia && href) {
-            return (
+    const inner =
+        as === 'a' ? (
+            inertia && href ? (
                 <Link
                     href={href}
                     className={classNames}
@@ -104,38 +109,41 @@ export function MagneticButton({
                     target={target}
                     rel={rel}
                     aria-label={ariaLabel}
-                    {...interaction}
                 >
                     {content}
                 </Link>
-            );
-        }
-
-        return (
-            <a
-                href={href}
+            ) : (
+                <a
+                    href={href}
+                    className={classNames}
+                    onClick={onClick}
+                    target={target}
+                    rel={rel}
+                    aria-label={ariaLabel}
+                >
+                    {content}
+                </a>
+            )
+        ) : (
+            <button
+                type={type}
                 className={classNames}
                 onClick={onClick}
-                target={target}
-                rel={rel}
                 aria-label={ariaLabel}
-                {...interaction}
             >
                 {content}
-            </a>
+            </button>
         );
-    }
 
     return (
-        <button
-            type={type}
-            className={classNames}
-            onClick={onClick}
-            aria-label={ariaLabel}
+        <span
+            ref={wrapperRef}
+            className="inline-flex will-change-transform"
+            style={{ transition: 'transform 300ms cubic-bezier(0.22, 1, 0.36, 1)' }}
             {...interaction}
         >
-            {content}
-        </button>
+            {inner}
+        </span>
     );
 }
 

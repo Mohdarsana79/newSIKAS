@@ -15,7 +15,7 @@ export function CtaSection({ authenticated, hasUsers }: CtaSectionProps) {
         <section aria-label="Mulai menggunakan SIKAS" className="relative py-20 sm:py-28">
             <div className="mx-auto max-w-7xl px-6 lg:px-8">
                 <Reveal>
-                    <div className="relative isolate overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-brand-700 via-brand-600 to-ink-950 px-7 py-12 shadow-card-light ring-1 ring-inset ring-gold-400/25 sm:px-12 sm:py-16 lg:px-16 lg:py-20 dark:shadow-card-dark dark:ring-gold-400/20">
+                    <div className="relative isolate overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-brand-800 via-brand-600 to-gold-600 px-7 py-12 shadow-card-light ring-1 ring-inset ring-gold-400/25 sm:px-12 sm:py-16 lg:px-16 lg:py-20 dark:shadow-card-dark dark:ring-gold-400/20">
                         <AuroraBackground variant="cta" />
 
                         {/* Hairline emas di tepi atas/bawah kartu */}

@@ -30,7 +30,7 @@ export function AuroraBackground({ variant = 'section', className }: AuroraBackg
 
             {variant === 'section' ? (
                 <>
-                    <div className="absolute -left-40 top-1/4 h-[26rem] w-[26rem] animate-aurora-slow rounded-full bg-brand-500/10 blur-[120px] dark:bg-brand-500/14" />
+                    <div className="absolute -left-40 top-1/4 h-[26rem] w-[26rem] animate-aurora-slow rounded-full bg-brand-500/10 blur-[120px] dark:bg-brand-500/[0.14]" />
                     <div className="absolute -right-32 bottom-0 h-[24rem] w-[24rem] animate-aurora rounded-full bg-gold-400/10 blur-[110px] dark:bg-gold-400/10" />
                 </>
             ) : null}

@@ -7,10 +7,10 @@ import { cn } from '@/lib/utils';
 type Direction = 'up' | 'down' | 'left' | 'right' | 'none';
 
 const OFFSET: Record<Direction, string> = {
-    up: 'translate3d(0, 28px, 0)',
-    down: 'translate3d(0, -28px, 0)',
-    left: 'translate3d(28px, 0, 0)',
-    right: 'translate3d(-28px, 0, 0)',
+    up: 'translate3d(0, 24px, 0)',
+    down: 'translate3d(0, -24px, 0)',
+    left: 'translate3d(24px, 0, 0)',
+    right: 'translate3d(-24px, 0, 0)',
     none: 'translate3d(0, 0, 0)',
 };
 
@@ -40,7 +40,7 @@ export function Reveal({
 
     const style: CSSProperties = {
         transitionProperty: 'opacity, transform, filter',
-        transitionDuration: '780ms',
+        transitionDuration: '700ms',
         transitionTimingFunction: 'cubic-bezier(0.22, 1, 0.36, 1)',
         transitionDelay: `${delay}ms`,
         opacity: shown ? 1 : 0,

@@ -1,7 +1,7 @@
 # SIKAS Welcome Page — Luxury Modern Landing Redesign
 
 - Tanggal: 2026-11-12
-- Status: Disetujui (menunggu review spec)
+- Status: **Diimplementasikan** (commit `cede454b`) — lihat §13 untuk hasil & deviasi
 - File utama: `resources/js/Pages/Welcome.tsx`
 - Referensi visual: `Modern Luxury Real Estate Landing Page.jpg` (struktur alur diadaptasi, bukan asetnya)
 
@@ -351,3 +351,51 @@ useCountUp(to: number, opts?: { duration?: number; start?: boolean; decimals?: n
 | Tailwind 3 tidak punya varian baru | Semua keyframes/animation/color dideklarasikan eksplisit di config |
 | Struktur `<html class="dark">` membuat light mode jarang dipakai | Light mode tetap diuji lewat switcher |
 | Kebingungan visual antar section karena ditulis paralel | Kontrak primitive §7.1 + token warna/tipografi tunggal |
+
+## 13. Hasil implementasi & deviasi
+
+Commit: `cede454b` — `feat(landing): redesign halaman welcome dengan animasi Remotion` (35 file, +5316/−179).
+
+### 13.1 Yang direalisasikan
+
+| Area | Status |
+|---|---|
+| Modular sections (`Components/Landing/*`) | ✅ 9 section + 9 primitive UI + 3 hook |
+| Remotion Player live (hero + CTA) | ✅ `remotion` + `@remotion/player@4.0.543`, lazy + error boundary + placeholder setara |
+| Font self-host | ✅ 4 file woff2 (Fraunces & Plus Jakarta Sans, latin + latin-ext) di `public/fonts` |
+| Token Tailwind aditif | ✅ `ink`, `gold`, `brand`, keyframes, shadow, `font-display`/`font-landing`, grid background |
+| Logika halaman lama | ✅ props, conditional auth, route, `Head`, switcher, kredit penulis tidak berubah |
+| Testimoni | ✅ diganti band angka/kapabilitas (keputusan pengguna; tanpa klaim pengguna fiktif) |
+
+### 13.2 Deviasi dari desain awal (disengaja)
+
+1. **PlayerStage tidak di-unmount** saat jauh dari viewport (spesifikasi awal: unmount). Player hanya di-pause lewat PlayerRef. Alasan: pemanggilan full-page/print sebelumnya menampilkan placeholder gelap; dengan pause, frame asli tetap terlihat. Mount tetap lazy (IntersectionObserver `rootMargin: 400px`).
+2. **Chip mengambang di hero dihapus.** Chip "Realisasi 78%" / "BKU seimbang" / "4 varian anggaran" menutupi isi dashboard. Diganti label di luar bingkai: "Pratinjau modul · RKAS 2025" + "Data ilustrasi" (sekaligus menandai angka sebagai ilustrasi).
+3. **`useCountUp` tanpa guard "sudah pernah jalan"** agar counter tidak macet di 0 bila effect ter-cancel (StrictMode/remount).
+4. **`MagneticButton` memakai `event.currentTarget`**, bukan ref + cast tipe.
+5. **`PageBackdrop`** ditaruh di `Welcome.tsx` (satu kanvas: gradient + glow + grid) supaya halaman tidak terasa datar; section tetap transparan.
+
+### 13.3 Verifikasi yang sudah dijalankan
+
+- `npx tsc --noEmit` → 0 error; `npm run build` → sukses.
+- Bundle: `Welcome-*.js` 428 KB (gzip 131 KB) — `@remotion/player` ikut di chunk halaman ini saja, dashboard tidak terpengaruh. Komposisi tetap chunk terpisah (`HeroComposition` 15 KB, `CtaComposition` 5 KB).
+- Screenshot headless (Chrome + puppeteer-core, skrip di `C:\laragon\www\newSIKAS2\sikas-verify`):
+  - dark & light × desktop 1440 × mobile 390 × tablet 834 → `hasHorizontalOverflow: false` di semua kombinasi.
+  - Console bersih: 0 warning / 0 error / 0 pageerror (setelah `AbsoluteFill` diganti `div` dan `initiallyMuted`).
+  - `prefers-reduced-motion: reduce` → reveal tampil langsung, Player berhenti di frame tenang (dashboard utuh terlihat).
+- Regresi halaman lain: `/login` masih tampil normal.
+- A11y cepat: 1 `<h1>`, skip-link sebagai target Tab pertama, semua anchor section benar, tidak ada `<img>` tanpa alt.
+
+### 13.4 Catatan lanjutan (di luar scope ini)
+
+- `/login` dan halaman guest lain masih memakai gaya lama — bisa diselaraskan dengan bahasa visual baru pada iterasi terpisah.
+- Remotion license: gratis untuk individu / perusahaan ≤3 karyawan; organisasi lebih besar butuh lisensi komersial.
+- `node_modules` repo ini ikut ter-track git; setelah `npm install` Remotion ada paket extraneous yang dipangkas lalu dipulihkan kembali (`git checkout -- node_modules`), jadi tidak ada perubahan tak sengaja di sana.
+
+### 13.5 Deviasi yang diterima (tidak diubah)
+
+- `<section aria-label="...">` dipakai, bukan `aria-labelledby` (§9). Keduanya memberi nama aksesibel yang setara; heading sudah hierarkis (1 `<h1>`, 4 `<h2>`).
+- Hero composition memakai 2 KPI dan 3 baris ledger (bukan 3 KPI / 4 baris) demi legibilitas saat Player dirender ~537 px pada desktop; permintaan "tidak ada fase kosong" juga mengubah timing chip ARKAS (tampil sejak frame 0). Skala & kepadatan final disetujui lewat review visual.
+- Player di-pause (bukan di-unmount) saat jauh dari viewport (§6) agar screenshot/print tidak menampilkan placeholder.
+- `AuroraBackground` tidak melakukan parallax sendiri; parallax kursor diimplementasikan di `Hero.tsx` lewat wrapper (maks 12px) agar komponen latar tetap murni.
+- Duplikasi definisi modul (QUICK_ITEMS / MODULES / FLOW_STEPS) dan ikon monogram Navbar–Footer dicatat sebagai kandidat refactor lanjutan (bukan bagian scope redesign ini); `HeroComposition.tsx` (900+ baris) juga kandidat pemecahan per-panel.

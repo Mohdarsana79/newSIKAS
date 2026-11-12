@@ -1,8 +1,11 @@
+import { useCallback, useRef } from 'react';
+
 import { MagneticButton } from '@/Components/Landing/ui/MagneticButton';
 import { AccountActions } from '@/Components/Landing/ui/AccountActions';
 import { AuroraBackground } from '@/Components/Landing/ui/AuroraBackground';
 import { GradientText } from '@/Components/Landing/ui/GradientText';
 import { Reveal } from '@/Components/Landing/ui/Reveal';
+import { useReducedMotion } from '@/Hooks/useReducedMotion';
 import { PlayerStage } from '@/Remotion/PlayerStage';
 
 export type HeroProps = {
@@ -43,16 +46,47 @@ const QUICK_ITEMS = [
  * state akun, bingkai Remotion Player di kanan, dan quick-bar navigasi modul.
  */
 export default function Hero({ authenticated, hasUsers }: HeroProps) {
+    const reducedMotion = useReducedMotion();
+    const auroraRef = useRef<HTMLDivElement | null>(null);
+
+    // Parallax ambient: aurora bergeser maks 12px mengikuti kursor.
+    const handlePointerMove = useCallback(
+        (event: React.PointerEvent<HTMLElement>) => {
+            if (reducedMotion || event.pointerType === 'touch') return;
+            const node = auroraRef.current;
+            if (!node) return;
+
+            const rect = event.currentTarget.getBoundingClientRect();
+            const x = ((event.clientX - rect.left) / rect.width - 0.5) * 24;
+            const y = ((event.clientY - rect.top) / rect.height - 0.5) * 24;
+            node.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0)`;
+        },
+        [reducedMotion],
+    );
+
+    const resetParallax = useCallback(() => {
+        const node = auroraRef.current;
+        if (node) node.style.transform = 'translate3d(0, 0, 0)';
+    }, []);
+
     return (
         <section
             id="top"
             aria-labelledby="hero-heading"
+            onPointerMove={handlePointerMove}
+            onPointerLeave={resetParallax}
             className="relative isolate scroll-mt-28 overflow-hidden pb-14 pt-28 sm:pb-16 sm:pt-32 lg:pt-36"
         >
             <div className="mx-auto max-w-7xl px-6 lg:px-8">
                 <Reveal>
                     <div className="relative isolate overflow-hidden rounded-[2.5rem] border border-gold-600/20 bg-gradient-to-b from-white via-white to-gold-200/25 shadow-card-light dark:border-gold-400/20 dark:from-ink-850 dark:via-ink-900 dark:to-ink-950 dark:shadow-card-dark">
-                        <AuroraBackground variant="hero" />
+                        <div
+                            ref={auroraRef}
+                            aria-hidden
+                            className="absolute inset-0 -z-10 transition-transform duration-300 ease-out will-change-transform"
+                        >
+                            <AuroraBackground variant="hero" />
+                        </div>
 
                         <div className="relative px-5 py-10 sm:px-8 sm:py-12 lg:px-12 lg:py-14 xl:px-14">
                             <div className="grid items-center gap-10 lg:grid-cols-[1fr_1.08fr] lg:gap-10 xl:gap-12">
