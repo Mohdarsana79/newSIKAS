@@ -26,7 +26,7 @@ export default function Navbar({
     setCopilotState,
 }: NavbarProps) {
     const user = usePage().props.auth.user;
-    const firstName = user?.name ? user.name.split(' ')[0] : 'Bendahara';
+    const fullName = user?.name || 'Bendahara';
     const copilotActive = copilotState !== 'closed';
 
     return (
@@ -51,7 +51,7 @@ export default function Navbar({
                         Selamat datang,
                     </p>
                     <p className="truncate text-[15px] font-extrabold tracking-tight text-slate-900 dark:text-white">
-                        {firstName} 👋
+                        {fullName} 👋
                     </p>
                 </div>
 
