@@ -1,12 +1,18 @@
 import Sidebar from '@/Components/Sidebar';
 import Navbar from '@/Components/Navbar';
-import { PropsWithChildren, ReactNode, useState } from 'react';
+import { PropsWithChildren, ReactNode, useEffect, useState } from 'react';
 import ChangelogModal from '@/Components/ChangelogModal';
 import Toast from '@/Components/Toast';
 import CopilotDrawer from '@/Components/Ai/CopilotDrawer';
 
 export type CopilotWindowState = 'closed' | 'normal' | 'minimized' | 'maximized';
 
+/**
+ * App shell SIKAS Neo-Bento:
+ * - Kanvas aurora lembut dengan sidebar mengambang (12px dari tepi browser).
+ * - Konten utama berjarak dari sidebar, transisi halus saat rail diciutkan.
+ * - Navbar kaca melayang (sticky) dengan padanan dark mode.
+ */
 export default function Authenticated({
     header,
     children,
@@ -14,31 +20,32 @@ export default function Authenticated({
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [copilotState, setCopilotState] = useState<CopilotWindowState>('closed');
 
-    // Close sidebar on mobile on initial load
-    useState(() => {
-        if (typeof window !== 'undefined' && window.innerWidth < 768) {
+    // Tutup sidebar otomatis pada layar kecil saat pertama dimuat.
+    useEffect(() => {
+        if (typeof window !== 'undefined' && window.innerWidth < 1024) {
             setSidebarOpen(false);
         }
-    });
+    }, []);
 
     return (
-        <div className="min-h-screen bg-[#F6F8FC] dark:bg-[#0B0A12] text-slate-900 dark:text-slate-100 flex antialiased selection:bg-brand-500/20 selection:text-brand-900 dark:selection:text-brand-200">
+        <div className="sikas-canvas min-h-screen font-sans text-slate-900 antialiased selection:bg-lime-200 selection:text-slate-950 dark:text-slate-100 dark:selection:bg-lime-400/30 dark:selection:text-white">
             <Toast />
             <ChangelogModal />
-            <CopilotDrawer 
+            <CopilotDrawer
                 copilotState={copilotState}
                 setCopilotState={setCopilotState}
                 sidebarOpen={sidebarOpen}
             />
-            {/* Sidebar */}
-            <Sidebar
-                isOpen={sidebarOpen}
-                setIsOpen={setSidebarOpen}
-            />
 
-            {/* Main Content Wrapper */}
-            <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${sidebarOpen ? 'md:ml-64' : 'md:ml-20'} ml-0`}>
-                {/* Navbar */}
+            {/* Sidebar mengambang */}
+            <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
+
+            {/* Kolom konten */}
+            <div
+                className={`flex min-h-screen flex-col transition-[padding] duration-300 ease-out ${
+                    sidebarOpen ? 'lg:pl-[286px]' : 'lg:pl-[102px]'
+                }`}
+            >
                 <Navbar
                     header={header}
                     sidebarOpen={sidebarOpen}
@@ -47,9 +54,8 @@ export default function Authenticated({
                     setCopilotState={setCopilotState}
                 />
 
-                {/* Page Content Canvas */}
-                <main className="flex-1 overflow-x-hidden overflow-y-auto bg-[#F6F8FC] dark:bg-[#0B0A12]">
-                    {children}
+                <main className="flex-1 overflow-x-hidden">
+                    <div className="px-3 pb-6 pt-5 sm:pt-6 lg:pr-4">{children}</div>
                 </main>
             </div>
         </div>

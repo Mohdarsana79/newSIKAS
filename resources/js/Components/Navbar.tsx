@@ -151,7 +151,7 @@ export default function Navbar({
 
             {/* Header tambahan dari halaman (opsional) */}
             {header && (
-                <div className="relative z-10 mt-3 rounded-[22px] border border-white/70 bg-white/70 px-3 py-2.5 shadow-nav backdrop-blur-xl dark:border-white/10 dark:bg-[#0D0F17]/70">
+                <div className="relative z-10 mt-3 rounded-[22px] border border-white/70 bg-white/70 px-4 py-3.5 shadow-nav backdrop-blur-xl sm:px-5 sm:py-4 dark:border-white/10 dark:bg-[#0D0F17]/70">
                     {header}
                 </div>
             )}
