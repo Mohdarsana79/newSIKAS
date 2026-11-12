@@ -12,16 +12,12 @@ import {
     CreditCard, 
     Sparkles 
 } from 'lucide-react';
+import type { NotificationItem } from './NotificationDropdown';
 
 interface NotificationModalProps {
     show: boolean;
     onClose: () => void;
-    notification: {
-        type: string;
-        month: number;
-        year: number;
-        month_name: string;
-    } | null;
+    notification: NotificationItem | null;
 }
 
 interface DetailPajak {
