@@ -2829,14 +2829,14 @@ export default function Bku({
 
             {/* Modal Tambah Pembelanjaan */}
             <Modal show={isModalOpen} onClose={closeModal} closeable={false} maxWidth="4xl">
-                <div className="relative overflow-visible rounded-[26px] bg-white dark:bg-[#15131F]">
+                <div className="relative flex max-h-[88vh] flex-col overflow-visible rounded-[26px] bg-white dark:bg-[#15131F]">
                     {/* Layer efek blur dekoratif terpisah agar popover DatePicker tidak terpotong */}
                     <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[26px]">
                         <div className="absolute -right-10 -top-16 h-40 w-40 rounded-full bg-brand-500/10 blur-3xl" />
                     </div>
 
                     {/* Header Neo-Bento */}
-                    <div className="relative flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5 dark:border-white/5">
+                    <div className="relative flex shrink-0 items-start justify-between gap-4 border-b border-slate-100 px-6 py-4 dark:border-white/5">
                         <div className="flex items-center gap-3.5">
                             <IconTile tone="violet" size="lg">
                                 <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -2869,9 +2869,9 @@ export default function Bku({
                         </button>
                     </div>
 
-                    <div className="px-6 py-5">
+                    <div className="flex min-h-0 flex-1 flex-col px-6 py-4">
                         {/* Stepper Header - Neo-Bento Pill-Bar (tetap 3 step) */}
-                        <div className="relative flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3 dark:border-white/5 dark:bg-white/[0.03]">
+                        <div className="relative flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-2.5 dark:border-white/5 dark:bg-white/[0.03]">
                             <div className="pointer-events-none absolute left-10 right-10 top-1/2 hidden h-0.5 -translate-y-1/2 bg-slate-200/80 sm:block dark:bg-white/10" />
                             {steps.map((step) => {
                                 const isDone = currentStep > step.number;
@@ -2913,14 +2913,14 @@ export default function Bku({
                         </div>
 
                         {/* Dynamic Form Content */}
-                        <div className={`mt-4 ${currentStep === 1 ? 'overflow-visible' : 'max-h-[62vh] overflow-y-auto pr-1'}`}>
+                        <div className="sikas-scroll mt-3.5 min-h-0 flex-1 overflow-y-auto pb-2 pr-1">
                             {currentStep === 1 && renderStep1()}
                             {currentStep === 2 && renderStep2()}
                             {currentStep === 3 && renderStep3()}
                         </div>
 
                         {/* Footer Actions */}
-                        <div className="mt-6 flex items-center justify-end gap-2 border-t border-slate-100 pt-4 dark:border-white/5">
+                        <div className="mt-4 flex shrink-0 items-center justify-end gap-2 border-t border-slate-100 pt-3.5 dark:border-white/5">
                             {currentStep === 1 ? (
                                 <SecondaryButton onClick={closeModal}>Batal</SecondaryButton>
                             ) : (

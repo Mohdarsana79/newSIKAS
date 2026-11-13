@@ -5,6 +5,7 @@ import {
     TransitionChild,
 } from '@headlessui/react';
 import { PropsWithChildren } from 'react';
+import { cn } from '@/lib/utils';
 
 export default function Modal({
     children,
@@ -12,11 +13,23 @@ export default function Modal({
     maxWidth = '2xl',
     closeable = true,
     onClose = () => { },
+    panelClassName,
+    overlayClassName,
+    ariaLabelledBy,
+    ariaDescribedBy,
 }: PropsWithChildren<{
     show: boolean;
     maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl' | '6xl' | '7xl';
     closeable?: boolean;
     onClose: CallableFunction;
+    /** Kelas tambahan untuk panel dialog (mis. sudut/aksen halaman auth). */
+    panelClassName?: string;
+    /** Kelas tambahan untuk lapisan latar dialog. */
+    overlayClassName?: string;
+    /** id elemen judul dialog, untuk pembaca layar. */
+    ariaLabelledBy?: string;
+    /** id elemen deskripsi dialog, untuk pembaca layar. */
+    ariaDescribedBy?: string;
 }>) {
     const close = () => {
         if (closeable) {
@@ -42,7 +55,9 @@ export default function Modal({
             <Dialog
                 as="div"
                 id="modal"
-                className="fixed inset-0 z-50 flex transform items-center justify-center overflow-y-auto px-4 py-6 transition-all sm:px-0"
+                aria-labelledby={ariaLabelledBy}
+                aria-describedby={ariaDescribedBy}
+                className="fixed inset-0 z-50 overflow-y-auto transition-all"
                 onClose={close}
             >
                 <TransitionChild
@@ -53,23 +68,31 @@ export default function Modal({
                     leaveFrom="opacity-100"
                     leaveTo="opacity-0"
                 >
-                    <div className="absolute inset-0 bg-gray-500/75" />
+                    <div className={cn('fixed inset-0 backdrop-blur-sm', overlayClassName ?? 'bg-slate-950/50')} />
                 </TransitionChild>
 
-                <TransitionChild
-                    enter="ease-out duration-300"
-                    enterFrom="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-                    enterTo="opacity-100 translate-y-0 sm:scale-100"
-                    leave="ease-in duration-200"
-                    leaveFrom="opacity-100 translate-y-0 sm:scale-100"
-                    leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-                >
-                    <DialogPanel
-                        className={`mb-6 transform overflow-visible rounded-lg bg-white dark:bg-gray-800 shadow-xl transition-all sm:mx-auto sm:w-full ${maxWidthClass}`}
+                <div className="flex min-h-full items-center justify-center p-4 sm:p-6">
+                    <TransitionChild
+                        as="div"
+                        className="w-full"
+                        enter="ease-out duration-300"
+                        enterFrom="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-[0.97]"
+                        enterTo="opacity-100 translate-y-0 sm:scale-100"
+                        leave="ease-in duration-200"
+                        leaveFrom="opacity-100 translate-y-0 sm:scale-100"
+                        leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-[0.97]"
                     >
-                        {children}
-                    </DialogPanel>
-                </TransitionChild>
+                        <DialogPanel
+                            className={cn(
+                                'mx-auto transform overflow-visible rounded-[26px] border border-white/70 bg-white shadow-float transition-all dark:border-white/10 dark:bg-[#15131F] sm:w-full',
+                                maxWidthClass,
+                                panelClassName,
+                            )}
+                        >
+                            {children}
+                        </DialogPanel>
+                    </TransitionChild>
+                </div>
             </Dialog>
         </Transition>
     );
