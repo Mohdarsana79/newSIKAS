@@ -16,7 +16,13 @@ import Dropdown from '@/Components/Dropdown';
 import SearchableSelect from '@/Components/SearchableSelect';
 import axios from 'axios';
 import ArkasDiagnosticModal from '@/Components/Ai/ArkasDiagnosticModal';
-import { Brain } from 'lucide-react';
+import { Brain, ArrowDownToLine, ArrowUpFromLine } from 'lucide-react';
+import PageHeader from '@/Components/ui/PageHeader';
+import DataTable from '@/Components/ui/DataTable';
+import IconTile from '@/Components/ui/IconTile';
+import StatusBadge from '@/Components/ui/StatusBadge';
+import EmptyState from '@/Components/ui/EmptyState';
+import KasBankTransferModal from './Partials/KasBankTransferModal';
 
 /**
  * Helper: Parse string tanggal dari server (format YYYY-MM-DD atau ISO UTC)
@@ -929,12 +935,17 @@ export default function Bku({
 
 
 
+    // Helper format nominal tanpa prefix "Rp" untuk input & tombol Isi Maksimal
+    const formatNominalInput = (numberValue: number) => {
+        return formatCurrency(numberValue).replace('Rp', '').trim();
+    };
+
     // Handle Currency Format for Tarik/Setor
     const handleCurrencyChange = (e: React.ChangeEvent<HTMLInputElement>, formHandler: any, field: string) => {
         let value = e.target.value.replace(/[^0-9]/g, '');
         const numberValue = parseInt(value, 10);
         if (!isNaN(numberValue)) {
-            formHandler.setData(field, formatCurrency(numberValue).replace('Rp', '').trim());
+            formHandler.setData(field, formatNominalInput(numberValue));
         } else {
             formHandler.setData(field, '');
         }
@@ -1447,17 +1458,17 @@ export default function Bku({
 
     const renderStep1 = () => (
         <div className="space-y-2">
-            {/* <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg flex items-start gap-3">
+            {/* <div className="p-2 bg-pastel-sky/50 dark:bg-sky/[0.06] rounded-lg flex items-start gap-3">
                 <input
                     type="checkbox"
                     checked={data.is_siplah}
                     onChange={(e) => setData('is_siplah', e.target.checked)}
-                    className="mt-1 rounded border-gray-300 text-blue-600 shadow-sm focus:ring-blue-500"
+                    className="mt-1 rounded border-slate-200/90 dark:border-white/10 text-brand-600 shadow-sm focus:ring-lime-200/60"
                 />
                 <div>
-                    <span className="text-gray-900 dark:text-gray-100 font-medium text-[10pt]">Centang</span>
-                    <span className="text-gray-600 dark:text-gray-400 text-[10pt]"> jika belanja dari SIPLah untuk ambil data pembelanjaan secara otomatis</span>
-                    <p className="text-[10pt] text-blue-500 mt-1">"Ambil Data" membutuhkan koneksi internet</p>
+                    <span className="text-slate-800 dark:text-white font-medium text-[10pt]">Centang</span>
+                    <span className="text-slate-500 dark:text-slate-400 text-[10pt]"> jika belanja dari SIPLah untuk ambil data pembelanjaan secara otomatis</span>
+                    <p className="text-[10pt] text-sky-500 dark:text-sky-300 mt-1">"Ambil Data" membutuhkan koneksi internet</p>
                 </div>
             </div> */}
 
@@ -1475,7 +1486,7 @@ export default function Bku({
                             }));
                             if (formattedDate) setTanggalTransaksiError('');
                         }}
-                        className="mt-1 block w-full text-gray-900 !text-[10pt]"
+                        className="mt-1 block w-full text-slate-800 dark:text-white !text-[10pt]"
                         placeholder={
                             data.jenis_transaksi === 'Nontunai'
                                 ? "Tanggal Transaksi"
@@ -1498,7 +1509,7 @@ export default function Bku({
                             setData('jenis_transaksi', e.target.value);
                             if (e.target.value) setJenisTransaksiError('');
                         }}
-                        className={`mt-1 block w-full text-gray-900 border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm !text-[10pt] ${jenisTransaksiError ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
+                        className={`mt-1 block w-full text-slate-800 border-slate-200/90 dark:border-white/10 dark:bg-black/30 dark:text-slate-300 focus:border-lime-400 dark:focus:border-lime-400/70 focus:ring-4 focus:ring-lime-200/60 dark:focus:ring-lime-400/10 rounded-md shadow-sm !text-[10pt] ${jenisTransaksiError ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
                     >
                         <option value=''>Pilih Jenis Transaksi</option>
                         <option value="Tunai">Tunai ({formatCurrency(saldoTunai)})</option>
@@ -1513,9 +1524,9 @@ export default function Bku({
                     type="checkbox"
                     checked={data.no_entity}
                     onChange={(e) => setData('no_entity', e.target.checked)}
-                    className="rounded border-gray-300 text-blue-600 shadow-sm focus:ring-blue-500"
+                    className="rounded border-slate-200/90 dark:border-white/10 text-brand-600 shadow-sm focus:ring-lime-200/60"
                 />
-                <span className="text-gray-600 dark:text-gray-400 text-[10pt]">Centang jika pembelanjaan ini tidak memiliki toko/badan usaha</span>
+                <span className="text-slate-500 dark:text-slate-400 text-[10pt]">Centang jika pembelanjaan ini tidak memiliki toko/badan usaha</span>
             </div>
 
             <div className="ms-2 me-2">
@@ -1525,18 +1536,18 @@ export default function Bku({
                         <div className="relative mt-1">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
                                 {isSearchingPenerima ? (
-                                    <svg className="animate-spin h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24">
+                                    <svg className="animate-spin h-4 w-4 text-sky-500 dark:text-sky-300" fill="none" viewBox="0 0 24 24">
                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                                     </svg>
                                 ) : (
-                                    <svg className="h-4 w-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                                    <svg className="h-4 w-4 text-slate-400 dark:text-slate-500" viewBox="0 0 20 20" fill="currentColor">
                                         <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
                                     </svg>
                                 )}
                             </div>
                             <TextInput
-                                className="pl-9 block w-full text-gray-900 !text-[10pt]"
+                                className="pl-9 block w-full text-slate-800 dark:text-white !text-[10pt]"
                                 value={data.nama_penerima_pembayaran}
                                 onChange={(e) => handleSearchPenerima(e.target.value)}
                                 onFocus={() => { if (data.nama_penerima_pembayaran.trim().length >= 2) setShowPenerimaDropdown(true); }}
@@ -1547,9 +1558,9 @@ export default function Bku({
 
                             {/* Dropdown Results */}
                             {showPenerimaDropdown && (
-                                <div className="absolute z-50 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                                <div className="absolute z-50 mt-1 w-full bg-white dark:bg-[#15131F] border border-slate-200 dark:border-white/10 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                                     {isSearchingPenerima ? (
-                                        <div className="p-3 text-center text-[10pt] text-gray-500">Mencari...</div>
+                                        <div className="p-3 text-center text-[10pt] text-slate-400 dark:text-slate-500">Mencari...</div>
                                     ) : penerimaResults.length > 0 ? (
                                         <>
                                             {penerimaResults.map((penerima, idx) => (
@@ -1557,9 +1568,9 @@ export default function Bku({
                                                     key={idx}
                                                     type="button"
                                                     onMouseDown={(e) => { e.preventDefault(); selectPenerima(penerima); }}
-                                                    className="w-full text-left px-3 py-2 hover:bg-blue-50 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700 last:border-b-0 transition-colors"
+                                                    className="w-full text-left px-3 py-2 hover:bg-sky/10 dark:hover:bg-white/10 border-b border-slate-100 dark:border-white/10 last:border-b-0 transition-colors"
                                                 >
-                                                    <div className="font-medium text-gray-900 dark:text-gray-100 text-[10pt]">
+                                                    <div className="font-medium text-slate-800 dark:text-white text-[10pt]">
                                                         {penerima.nama_penerima_pembayaran}
                                                     </div>
                                                 </button>
@@ -1569,20 +1580,20 @@ export default function Bku({
                                         <button
                                             type="button"
                                             onMouseDown={(e) => { e.preventDefault(); addNewPenerima(); }}
-                                            className="w-full text-left px-3 py-2 hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors"
+                                            className="w-full text-left px-3 py-2 hover:bg-sky/10 dark:hover:bg-white/10 transition-colors"
                                         >
-                                            <div className="text-[10pt] text-blue-600 dark:text-blue-400 font-medium flex items-center gap-2">
+                                            <div className="text-[10pt] text-brand-600 dark:text-brand-300 font-medium flex items-center gap-2">
                                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                                                 </svg>
                                                 Gunakan "{data.nama_penerima_pembayaran}"
                                             </div>
-                                            <div className="text-[9pt] text-gray-500 mt-0.5">
+                                            <div className="text-[9pt] text-slate-400 dark:text-slate-500 mt-0.5">
                                                 Penerima baru akan disimpan
                                             </div>
                                         </button>
                                     ) : (
-                                        <div className="p-3 text-center text-[10pt] text-gray-500">
+                                        <div className="p-3 text-center text-[10pt] text-slate-400 dark:text-slate-500">
                                             Ketik minimal 2 huruf untuk mencari
                                         </div>
                                     )}
@@ -1596,18 +1607,18 @@ export default function Bku({
                         <div className="relative mt-1">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
                                 {isSearchingToko ? (
-                                    <svg className="animate-spin h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24">
+                                    <svg className="animate-spin h-4 w-4 text-sky-500 dark:text-sky-300" fill="none" viewBox="0 0 24 24">
                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                                     </svg>
                                 ) : (
-                                    <svg className="h-4 w-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                                    <svg className="h-4 w-4 text-slate-400 dark:text-slate-500" viewBox="0 0 20 20" fill="currentColor">
                                         <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
                                     </svg>
                                 )}
                             </div>
                             <TextInput
-                                className="pl-9 block w-full text-gray-900 !text-[10pt]"
+                                className="pl-9 block w-full text-slate-800 dark:text-white !text-[10pt]"
                                 value={data.nama_toko}
                                 onChange={(e) => handleSearchToko(e.target.value)}
                                 onFocus={() => { if (data.nama_toko.trim().length >= 2) setShowTokoDropdown(true); }}
@@ -1618,9 +1629,9 @@ export default function Bku({
 
                             {/* Dropdown Results */}
                             {showTokoDropdown && (
-                                <div className="absolute z-50 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                                <div className="absolute z-50 mt-1 w-full bg-white dark:bg-[#15131F] border border-slate-200 dark:border-white/10 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                                     {isSearchingToko ? (
-                                        <div className="p-3 text-center text-[10pt] text-gray-500">Mencari...</div>
+                                        <div className="p-3 text-center text-[10pt] text-slate-400 dark:text-slate-500">Mencari...</div>
                                     ) : tokoResults.length > 0 ? (
                                         <>
                                             {tokoResults.map((toko, idx) => (
@@ -1628,11 +1639,11 @@ export default function Bku({
                                                     key={idx}
                                                     type="button"
                                                     onMouseDown={(e) => { e.preventDefault(); selectToko(toko); }}
-                                                    className="w-full text-left px-3 py-2 hover:bg-blue-50 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700 last:border-b-0 transition-colors"
+                                                    className="w-full text-left px-3 py-2 hover:bg-sky/10 dark:hover:bg-white/10 border-b border-slate-100 dark:border-white/10 last:border-b-0 transition-colors"
                                                 >
-                                                    <div className="text-[10pt] font-medium text-gray-900 dark:text-gray-100">{toko.nama_toko}</div>
+                                                    <div className="text-[10pt] font-medium text-slate-800 dark:text-white">{toko.nama_toko}</div>
                                                     {toko.alamat_toko && (
-                                                        <div className="text-[9pt] text-gray-500 dark:text-gray-400 truncate">{toko.alamat_toko}</div>
+                                                        <div className="text-[9pt] text-slate-500 dark:text-slate-400 truncate">{toko.alamat_toko}</div>
                                                     )}
                                                 </button>
                                             ))}
@@ -1640,22 +1651,22 @@ export default function Bku({
                                             <button
                                                 type="button"
                                                 onMouseDown={(e) => { e.preventDefault(); addNewToko(); }}
-                                                className="w-full text-left px-3 py-2 hover:bg-green-50 dark:hover:bg-green-900/20 border-t border-gray-200 dark:border-gray-600 transition-colors"
+                                                className="w-full text-left px-3 py-2 hover:bg-mint/10 dark:hover:bg-mint/10 border-t border-slate-200 dark:border-white/10 transition-colors"
                                             >
-                                                <span className="text-[10pt] text-green-700 dark:text-green-400 font-semibold">+ Tambah "{data.nama_toko}"</span>
+                                                <span className="text-[10pt] text-mint dark:text-mint font-semibold">+ Tambah "{data.nama_toko}"</span>
                                             </button>
                                         </>
                                     ) : (
                                         <div className="p-3">
-                                            <p className="text-[10pt] text-gray-500 dark:text-gray-400 mb-2">
+                                            <p className="text-[10pt] text-slate-500 dark:text-slate-400 mb-2">
                                                 Kata kunci "<span className="font-medium">{data.nama_toko}</span>" tidak ditemukan.
                                             </p>
                                             <button
                                                 type="button"
                                                 onMouseDown={(e) => { e.preventDefault(); addNewToko(); }}
-                                                className="w-full text-left px-3 py-2 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-md transition-colors"
+                                                className="w-full text-left px-3 py-2 hover:bg-mint/10 dark:hover:bg-mint/10 rounded-md transition-colors"
                                             >
-                                                <span className="text-[10pt] text-green-700 dark:text-green-400 font-semibold">+ Tambah "{data.nama_toko}"</span>
+                                                <span className="text-[10pt] text-mint dark:text-mint font-semibold">+ Tambah "{data.nama_toko}"</span>
                                             </button>
                                         </div>
                                     )}
@@ -1669,7 +1680,7 @@ export default function Bku({
             <div className="ms-2 me-2">
                 <InputLabel value="Alamat Toko/Badan Usaha" className="!text-[10pt]" />
                 <TextInput
-                    className="mt-1 block w-full text-gray-900 !text-[10pt]"
+                    className="mt-1 block w-full text-slate-800 dark:text-white !text-[10pt]"
                     value={data.alamat_toko}
                     onChange={(e) => {
                         setData('alamat_toko', e.target.value);
@@ -1685,7 +1696,7 @@ export default function Bku({
                 {/* <div>
                     <InputLabel value="Nomor Telepon" className="!text-[10pt]" />
                     <TextInput
-                        className="mt-1 block w-full text-gray-900 !text-[10pt]"
+                        className="mt-1 block w-full text-slate-800 dark:text-white !text-[10pt]"
                         value={data.nomor_telepon}
                         onChange={(e) => setData('nomor_telepon', e.target.value)}
                         placeholder="Nomor kontak (Opsional)"
@@ -1695,7 +1706,7 @@ export default function Bku({
                 <div>
                     <InputLabel value="NPWP Toko/Badan Usaha" className="!text-[10pt]" />
                     <TextInput
-                        className={`mt-1 block w-full text-gray-900 disabled:bg-gray-100 disabled:text-gray-500 !text-[10pt] ${npwpError ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
+                        className={`mt-1 block w-full text-slate-800 disabled:bg-slate-100 disabled:text-slate-400 dark:text-slate-500 !text-[10pt] ${npwpError ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
                         value={data.npwp}
                         onChange={(e) => {
                             const value = e.target.value.replace(/\D/g, '').slice(0, 16);
@@ -1715,9 +1726,9 @@ export default function Bku({
                                 setData('no_npwp', e.target.checked);
                                 if (e.target.checked) setNpwpError('');
                             }}
-                            className="rounded border-gray-300 text-blue-600 shadow-sm focus:ring-blue-500 h-3 w-3"
+                            className="rounded border-slate-200/90 dark:border-white/10 text-brand-600 shadow-sm focus:ring-lime-200/60 h-3 w-3"
                         />
-                        <span className="text-gray-600 dark:text-gray-400 text-[9pt]">Tidak punya NPWP</span>
+                        <span className="text-slate-500 dark:text-slate-400 text-[9pt]">Tidak punya NPWP</span>
                     </div>
                 </div>
             </div>
@@ -1791,18 +1802,18 @@ export default function Bku({
                     <div>
                         <InputLabel value="Nomor Nota (Opsional)" className="!text-[10pt]" />
                         <TextInput
-                            className="mt-1 block w-full text-gray-900 !text-[10pt]"
+                            className="mt-1 block w-full text-slate-800 dark:text-white !text-[10pt]"
                             value={data.nomor_nota}
                             onChange={(e) => setData('nomor_nota', e.target.value)}
                             placeholder="Kosongkan untuk auto-generate (BPU-XXX)"
                         />
-                        <span className="text-[9pt] text-gray-500 mt-1 flex items-center gap-1">
-                            Nomor Nota Terakhir: <span className="font-semibold text-gray-700 dark:text-gray-300">{lastNoteNumber}</span>
+                        <span className="text-[9pt] text-slate-400 dark:text-slate-500 mt-1 flex items-center gap-1">
+                            Nomor Nota Terakhir: <span className="font-semibold text-slate-700 dark:text-slate-300">{lastNoteNumber}</span>
                             {lastNoteNumber && lastNoteNumber !== '-' && (
                                 <button
                                     type="button"
                                     onClick={() => setData('nomor_nota', lastNoteNumber)}
-                                    className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors text-blue-600 dark:text-blue-400"
+                                    className="p-1 hover:bg-slate-100 dark:hover:bg-white/10 rounded transition-colors text-brand-600 dark:text-brand-300"
                                     title="Salin nomor nota terakhir"
                                 >
                                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1817,7 +1828,7 @@ export default function Bku({
                         <DatePicker
                             value={data.tanggal_nota}
                             onChange={(date) => setData('tanggal_nota', date ? format(date, 'yyyy-MM-dd') : '')}
-                            className="mt-1 block w-full text-gray-900 !text-[10pt]"
+                            className="mt-1 block w-full text-slate-800 dark:text-white !text-[10pt]"
                             placeholder={(!penarikanTunais || penarikanTunais.length === 0) ? "Belum ada penarikan tunai" : "Pilih Tanggal"}
                             startMonth={startOfActiveMonth}
                             endMonth={endOfActiveMonth}
@@ -1828,7 +1839,7 @@ export default function Bku({
                 </div>
 
                 {/* Main Card */}
-                <div className="border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 shadow-sm">
+                <div className="border border-slate-200 dark:border-white/10 rounded-lg bg-white dark:bg-[#15131F] shadow-sm">
                     {/* Cyan Header */}
                     <div className="bg-cyan-400 p-4 rounded-t-lg">
                         <h3 className="text-white font-bold text-lg">Kegiatan 1</h3>
@@ -1882,7 +1893,7 @@ export default function Bku({
                                         type="button"
                                         onClick={() => handleGenerateAiUraian(false)}
                                         disabled={isGeneratingAiUraian}
-                                        className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[8.5pt] font-semibold text-white bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-600 hover:from-purple-700 hover:via-indigo-700 hover:to-cyan-700 rounded-md shadow-sm transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+                                        className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[8.5pt] font-semibold text-white bg-gradient-to-r from-brand-500 via-brand-600 to-brand-700 hover:from-brand-600 hover:via-brand-700 hover:to-brand-800 rounded-md shadow-sm transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
                                         title="Buat uraian belanja otomatis menggunakan Asisten AI"
                                     >
                                         {isGeneratingAiUraian ? (
@@ -1907,7 +1918,7 @@ export default function Bku({
                                             type="button"
                                             onClick={() => handleGenerateAiUraian(true)}
                                             disabled={isGeneratingAiUraian}
-                                            className="inline-flex items-center gap-1 px-2 py-1 text-[8.5pt] font-medium text-gray-700 dark:text-gray-200 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-md border border-gray-300 dark:border-gray-600 transition-colors disabled:opacity-50 cursor-pointer"
+                                            className="inline-flex items-center gap-1 px-2 py-1 text-[8.5pt] font-medium text-slate-700 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 rounded-md border border-slate-200/90 dark:border-white/10 transition-colors disabled:opacity-50 cursor-pointer"
                                             title="Buat variasi redaksi kalimat alternatif"
                                         >
                                             <svg className="w-3 h-3 text-cyan-600 dark:text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1921,7 +1932,7 @@ export default function Bku({
                             <textarea
                                 value={detailUraian}
                                 onChange={(e) => setDetailUraian(e.target.value)}
-                                className="w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-cyan-500 focus:ring-cyan-500 rounded-md shadow-sm text-[10pt]"
+                                className="w-full border-slate-200/90 dark:border-white/10 dark:bg-black/30 dark:text-slate-300 focus:border-lime-400 focus:ring-lime-200/60 rounded-md shadow-sm text-[10pt]"
                                 rows={2}
                                 placeholder="Detail uraian belanja (jika ada)"
                             />
@@ -1935,14 +1946,14 @@ export default function Bku({
 
                         {/* Items Section (Only show if Account selected) */}
                         {selectedAccountId && (
-                            <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+                            <div className="border-t border-slate-200 dark:border-white/10 pt-6">
                                 <div className="flex justify-between items-center mb-4">
-                                    <h4 className="font-bold text-gray-800 dark:text-gray-200">Uraian</h4>
+                                    <h4 className="font-bold text-slate-800 dark:text-white">Uraian</h4>
                                     {/* Select All Checkbox could go here */}
                                     <div className="flex items-center">
                                         <input
                                             type="checkbox"
-                                            className="rounded border-gray-300 text-cyan-500 shadow-sm focus:ring-cyan-500 mr-2"
+                                            className="rounded border-slate-200/90 dark:border-white/10 text-brand-600 shadow-sm focus:ring-lime-200/60 mr-2"
                                             checked={availableRkasItems.length > 0 && availableRkasItems.every(item => data.items.some(i => Number(i.rkas_id) === Number(item.id)))}
                                             onChange={(e) => handleSelectAll(e.target.checked)}
                                         />
@@ -1950,19 +1961,19 @@ export default function Bku({
                                     </div>
                                 </div>
 
-                                <p className="text-[10pt] text-gray-500 mb-4">Total RKAS: {availableRkasItems.length} | Sudah: 0 | Sisa: {availableRkasItems.length}</p>
+                                <p className="text-[10pt] text-slate-400 dark:text-slate-500 mb-4">Total RKAS: {availableRkasItems.length} | Sudah: 0 | Sisa: {availableRkasItems.length}</p>
 
                                 <div className="space-y-4">
                                     {availableRkasItems.map((item: any) => (
-                                        <div key={item.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800">
+                                        <div key={item.id} className="border border-slate-200 dark:border-white/10 rounded-lg p-4 bg-white dark:bg-[#15131F]">
                                             <div className="flex items-start gap-3 mb-4">
                                                 <input
                                                     type="checkbox"
                                                     checked={isSelected(item.id)}
                                                     onChange={(e) => handleItemSelection(item, e.target.checked)}
-                                                    className="mt-1 rounded border-gray-300 text-cyan-500 shadow-sm focus:ring-cyan-500 w-5 h-5"
+                                                    className="mt-1 rounded border-slate-200/90 dark:border-white/10 text-brand-600 shadow-sm focus:ring-lime-200/60 w-5 h-5"
                                                 />
-                                                <span className="text-[10pt] font-bold text-gray-800 dark:text-gray-200 pt-0.5">{item.uraian}</span>
+                                                <span className="text-[10pt] font-bold text-slate-800 dark:text-white pt-0.5">{item.uraian}</span>
                                             </div>
 
                                             {isSelected(item.id) && (
@@ -1972,13 +1983,13 @@ export default function Bku({
                                                         <div className="relative rounded-md shadow-sm">
                                                             <TextInput
                                                                 type="number"
-                                                                className="block w-full pr-24 text-gray-900 dark:text-gray-100 dark:bg-gray-700 !text-[10pt]"
+                                                                className="block w-full pr-24 text-slate-800 dark:text-white dark:bg-white/5 !text-[10pt]"
                                                                 value={getItem(item.id)?.volume}
                                                                 onChange={(e) => updateItemField(item.id, 'volume', parseFloat(e.target.value) || 0)}
                                                                 placeholder="0"
                                                             />
                                                             <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                                                                <span className="text-gray-500 dark:text-gray-400 sm:text-xs bg-gray-100 dark:bg-gray-600 px-2 py-1 rounded">
+                                                                <span className="text-slate-500 dark:text-slate-400 sm:text-xs bg-slate-100 dark:bg-white/10 px-2 py-1 rounded">
                                                                     Maks: {item.sisa_volume}
                                                                 </span>
                                                             </div>
@@ -1988,7 +1999,7 @@ export default function Bku({
                                                                 Jumlah melebihi volume yang tersedia!
                                                             </p>
                                                         )}
-                                                        <p className="text-[9pt] text-gray-500 dark:text-gray-400 mt-1">
+                                                        <p className="text-[9pt] text-slate-500 dark:text-slate-400 mt-1">
                                                             Sisa volume kumulatif: <span className="font-semibold">{item.sisa_volume} {item.satuan}</span>
                                                         </p>
                                                     </div>
@@ -1997,15 +2008,15 @@ export default function Bku({
                                                         <InputLabel value="Harga Satuan" className="!text-[10pt]" />
                                                         <div className="relative mt-1">
                                                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                                <span className="text-gray-500 text-[10pt]">Rp</span>
+                                                                <span className="text-slate-400 dark:text-slate-500 text-[10pt]">Rp</span>
                                                             </div>
                                                             <TextInput
-                                                                className="pl-8 block w-full text-gray-900 !text-[10pt] bg-gray-50"
+                                                                className="pl-8 block w-full text-slate-800 dark:text-white !text-[10pt] bg-slate-50"
                                                                 value={formatCurrency(item.harga_satuan).replace('Rp', '').trim()}
                                                                 readOnly
                                                             />
                                                         </div>
-                                                        <p className="text-[9pt] text-gray-500 mt-1">Harga tetap sesuai RKAS</p>
+                                                        <p className="text-[9pt] text-slate-400 dark:text-slate-500 mt-1">Harga tetap sesuai RKAS</p>
                                                     </div>
                                                 </div>
                                             )}
@@ -2013,7 +2024,7 @@ export default function Bku({
                                     ))}
 
                                     {availableRkasItems.length === 0 && (
-                                        <p className="text-center text-gray-500 py-4 italic">Tidak ada uraian tersedia untuk rekening ini.</p>
+                                        <p className="text-center text-slate-400 dark:text-slate-500 py-4 italic">Tidak ada uraian tersedia untuk rekening ini.</p>
                                     )}
                                 </div>
                             </div>
@@ -2026,14 +2037,14 @@ export default function Bku({
 
     const renderStep3 = () => (
         <div className="space-y-2">
-            {/* <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg flex items-start gap-3">
+            {/* <div className="p-2 bg-pastel-sky/50 dark:bg-sky/[0.06] rounded-lg flex items-start gap-3">
                 <input
                     type="checkbox"
                     checked={data.bebas_pajak}
                     onChange={(e) => setData('bebas_pajak', e.target.checked)}
-                    className="mt-1 rounded border-gray-300 text-blue-600 shadow-sm focus:ring-blue-500"
+                    className="mt-1 rounded border-slate-200/90 dark:border-white/10 text-brand-600 shadow-sm focus:ring-lime-200/60"
                 />
-                <span className="text-gray-900 dark:text-gray-100 font-medium text-[10pt]">Centang jika belanja dari SIPLah untuk bebas lapor pajak secara otomatis</span>
+                <span className="text-slate-800 dark:text-white font-medium text-[10pt]">Centang jika belanja dari SIPLah untuk bebas lapor pajak secara otomatis</span>
             </div> */}
 
             {/* Dynamic Activity Cards */}
@@ -2063,7 +2074,7 @@ export default function Bku({
                 });
 
                 return groups.map((group, idx) => (
-                    <div key={group.key} className="bg-white dark:bg-gray-800 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 shadow-sm mb-4">
+                    <div key={group.key} className="bg-white dark:bg-[#15131F] rounded-lg overflow-hidden border border-slate-200 dark:border-white/10 shadow-sm mb-4">
                         <div className="bg-cyan-100 dark:bg-cyan-900/50 px-4 py-3 border-b border-cyan-200 dark:border-cyan-800">
                             <h4 className="font-bold text-cyan-900 dark:text-cyan-100 text-[10pt]">
                                 Kegiatan {idx + 1}
@@ -2072,29 +2083,29 @@ export default function Bku({
 
                         <div className="p-4 space-y-3">
                             <div>
-                                <div className="text-[10pt] font-bold text-gray-800 dark:text-gray-200">
+                                <div className="text-[10pt] font-bold text-slate-800 dark:text-white">
                                     Kegiatan: <span className="font-normal">{group.activity?.kode} - {group.activity?.uraian}</span>
                                 </div>
-                                <div className="text-[10pt] font-bold text-gray-800 dark:text-gray-200 mt-1">
+                                <div className="text-[10pt] font-bold text-slate-800 dark:text-white mt-1">
                                     Rekening: <span className="font-normal">{group.account?.kode_rekening} - {group.account?.rincian_objek}</span>
                                 </div>
                             </div>
 
                             <div className="pt-2">
-                                <div className="text-[10pt] font-bold text-gray-800 dark:text-gray-100 mb-2">Uraian yang dipilih:</div>
+                                <div className="text-[10pt] font-bold text-slate-800 dark:text-white mb-2">Uraian yang dipilih:</div>
                                 <div className="space-y-3">
                                     {group.items.map((item: any, i: number) => (
-                                        <div key={i} className="pl-4 border-l-4 border-cyan-500 bg-gray-50 dark:bg-gray-700/50 py-2 pr-2 rounded-r">
-                                            <div className="font-bold text-[10pt] text-gray-900 dark:text-gray-100">{item.uraian}</div>
-                                            <div className="text-[9pt] text-gray-600 dark:text-gray-400 mt-1">
+                                        <div key={i} className="pl-4 border-l-4 border-lime-400 bg-slate-50 dark:bg-white/[0.04] py-2 pr-2 rounded-r">
+                                            <div className="font-bold text-[10pt] text-slate-800 dark:text-white">{item.uraian}</div>
+                                            <div className="text-[9pt] text-slate-500 dark:text-slate-400 mt-1">
                                                 Jumlah: {item.volume} | Harga: {formatCurrency(item.harga_satuan)} | Subtotal: {formatCurrency(item.total)}
                                             </div>
                                         </div>
                                     ))}
                                 </div>
-                                <div className="mt-3 pt-2 border-t border-gray-100 dark:border-gray-700 flex justify-end items-center">
-                                    <span className="text-[10pt] font-bold text-gray-700 dark:text-gray-300 mr-2">Total Transaksi Kotor:</span>
-                                    <span className="text-[11pt] font-bold text-blue-600 dark:text-blue-400">
+                                <div className="mt-3 pt-2 border-t border-slate-100 dark:border-white/10 flex justify-end items-center">
+                                    <span className="text-[10pt] font-bold text-slate-700 dark:text-slate-300 mr-2">Total Transaksi Kotor:</span>
+                                    <span className="text-[11pt] font-bold text-brand-600 dark:text-brand-300">
                                         {formatCurrency(group.items.reduce((sum: number, item: any) => sum + (item.total || 0), 0))}
                                     </span>
                                 </div>
@@ -2115,9 +2126,9 @@ export default function Bku({
                             <span className="text-amber-800 dark:text-amber-200 text-[10pt] font-bold">Pajak Terdeteksi dari Rekening Belanja</span>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                            {detectedTaxes.is_ppn && <span className="inline-flex py-0.5 px-2 rounded-full text-[9pt] font-semibold bg-blue-100 text-blue-800 border border-blue-200">PPN</span>}
+                            {detectedTaxes.is_ppn && <span className="inline-flex py-0.5 px-2 rounded-full text-[9pt] font-semibold bg-pastel-sky text-sky-800 dark:text-sky-200 border border-sky/15">PPN</span>}
                             {detectedTaxes.is_pph21 && <span className="inline-flex py-0.5 px-2 rounded-full text-[9pt] font-semibold bg-green-100 text-green-800 border border-green-200">PPh 21</span>}
-                            {detectedTaxes.is_pph22 && <span className="inline-flex py-0.5 px-2 rounded-full text-[9pt] font-semibold bg-purple-100 text-purple-800 border border-purple-200">PPh 22</span>}
+                            {detectedTaxes.is_pph22 && <span className="inline-flex py-0.5 px-2 rounded-full text-[9pt] font-semibold bg-brand-100 text-brand-800 border border-brand-200">PPh 22</span>}
                             {detectedTaxes.is_pph23 && <span className="inline-flex py-0.5 px-2 rounded-full text-[9pt] font-semibold bg-orange-100 text-orange-800 border border-orange-200">PPh 23</span>}
                             {detectedTaxes.is_pph4 && <span className="inline-flex py-0.5 px-2 rounded-full text-[9pt] font-semibold bg-red-100 text-red-800 border border-red-200">PPh 4(2)</span>}
                         </div>
@@ -2130,14 +2141,14 @@ export default function Bku({
                         type="checkbox"
                         checked={data.has_tax}
                         onChange={(e) => setData('has_tax', e.target.checked)}
-                        className="rounded border-gray-300 text-blue-600 shadow-sm focus:ring-blue-500"
+                        className="rounded border-slate-200/90 dark:border-white/10 text-brand-600 shadow-sm focus:ring-lime-200/60"
                     />
-                    <span className="text-gray-700 dark:text-gray-300 text-[10pt] font-medium">Kenakan pajak pada pembelanjaan ini</span>
+                    <span className="text-slate-700 dark:text-slate-300 text-[10pt] font-medium">Kenakan pajak pada pembelanjaan ini</span>
                 </div>
 
                 {/* Tax Card */}
                 {data.has_tax && (
-                    <div className="bg-white dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-700 space-y-4">
+                    <div className="bg-white dark:bg-[#15131F] p-3 rounded-lg border border-slate-200 dark:border-white/10 space-y-4">
                         {/* Row: Jenis Pajak + Persen + Total */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                             <div className="space-y-1">
@@ -2152,7 +2163,7 @@ export default function Bku({
                                             setGolonganASN('');
                                         }
                                     }}
-                                    className="w-full text-gray-900 border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 !text-[10pt]"
+                                    className="w-full text-slate-800 border-slate-200/90 dark:border-white/10 dark:bg-black/30 dark:text-slate-300 rounded-md shadow-sm focus:ring-4 focus:ring-lime-200/60 !text-[10pt]"
                                 >
                                     <option value="PPN">PPN</option>
                                     <option value="PPh 21">PPh 21</option>
@@ -2170,7 +2181,7 @@ export default function Bku({
                                     step="0.01"
                                     value={data.persen_pajak}
                                     onChange={(e) => setData('persen_pajak', e.target.value)}
-                                    className="w-full text-gray-900 !text-[10pt] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                    className="w-full text-slate-800 dark:text-white !text-[10pt] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                     placeholder="Isi persen pajak"
                                 />
                             </div>
@@ -2179,14 +2190,14 @@ export default function Bku({
                                 <TextInput
                                     value={formatCurrency(data.total_pajak)}
                                     disabled
-                                    className="w-full bg-gray-100 text-gray-900 !text-[10pt]"
+                                    className="w-full bg-slate-100 text-slate-800 dark:text-white !text-[10pt]"
                                 />
                             </div>
                         </div>
 
                         {/* PPh 21 Specific: ASN / Non-ASN */}
                         {data.pajak === 'PPh 21' && detectedTaxes.is_pph21 && (
-                            <div className="border-t border-gray-200 dark:border-gray-700 pt-3">
+                            <div className="border-t border-slate-200 dark:border-white/10 pt-3">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
                                     <div className="space-y-1">
                                         <InputLabel value="Status Penerima Honor" className="!text-[10pt]" />
@@ -2196,7 +2207,7 @@ export default function Bku({
                                                 setStatusPegawai(e.target.value as 'ASN' | 'Non-ASN' | '');
                                                 setGolonganASN('');
                                             }}
-                                            className="w-full text-gray-900 border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 !text-[10pt]"
+                                            className="w-full text-slate-800 border-slate-200/90 dark:border-white/10 dark:bg-black/30 dark:text-slate-300 rounded-md shadow-sm focus:ring-4 focus:ring-lime-200/60 !text-[10pt]"
                                         >
                                             <option value="">-- Pilih Status --</option>
                                             <option value="ASN">ASN (PNS)</option>
@@ -2214,7 +2225,7 @@ export default function Bku({
                                                     <button
                                                         type="button"
                                                         onClick={() => setShowTarifModal(true)}
-                                                        className="text-[9pt] font-semibold text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 underline"
+                                                        className="text-[9pt] font-semibold text-brand-600 hover:text-brand-700 dark:text-brand-300 dark:hover:text-brand-200 underline"
                                                     >
                                                         Info Pajak
                                                     </button>
@@ -2225,12 +2236,12 @@ export default function Bku({
 
                                     {/* ASN: Pilih Golongan (Tetap di samping di kolom ke-2) */}
                                     {statusPegawai === 'ASN' && (
-                                        <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-200 dark:border-blue-700">
+                                        <div className="bg-pastel-sky/50 dark:bg-sky/[0.06] p-3 rounded-lg border border-sky/15 dark:border-sky/20">
                                             <InputLabel value="Golongan PNS" className="!text-[10pt] mb-1" />
                                             <select
                                                 value={golonganASN}
                                                 onChange={(e) => setGolonganASN(e.target.value)}
-                                                className="w-full text-gray-900 border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 !text-[10pt]"
+                                                className="w-full text-slate-800 border-slate-200/90 dark:border-white/10 dark:bg-black/30 dark:text-slate-300 rounded-md shadow-sm focus:ring-4 focus:ring-lime-200/60 !text-[10pt]"
                                             >
                                                 <option value="">-- Pilih Golongan --</option>
                                                 <option value="Golongan I">Golongan I (0%)</option>
@@ -2239,7 +2250,7 @@ export default function Bku({
                                                 <option value="Golongan IV">Golongan IV (15%)</option>
                                             </select>
                                             {golonganASN && (
-                                                <p className="text-[9pt] text-blue-700 dark:text-blue-300 mt-2">
+                                                <p className="text-[9pt] text-sky-700 dark:text-sky-300 mt-2">
                                                     Tarif PPh 21 untuk {golonganASN}: <strong>{data.persen_pajak}%</strong>
                                                 </p>
                                             )}
@@ -2257,21 +2268,21 @@ export default function Bku({
                         type="checkbox"
                         checked={data.has_local_tax}
                         onChange={(e) => setData('has_local_tax', e.target.checked)}
-                        className="rounded border-gray-300 text-blue-600 shadow-sm focus:ring-blue-500"
+                        className="rounded border-slate-200/90 dark:border-white/10 text-brand-600 shadow-sm focus:ring-lime-200/60"
                     />
-                    <span className="text-gray-700 dark:text-gray-300 text-[10pt] font-medium">Kenakan pajak daerah pada pembelanjaan ini</span>
+                    <span className="text-slate-700 dark:text-slate-300 text-[10pt] font-medium">Kenakan pajak daerah pada pembelanjaan ini</span>
                 </div>
 
                 {/* Local Tax Card */}
                 {data.has_local_tax && (
-                    <div className="bg-white dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-700 space-y-3">
+                    <div className="bg-white dark:bg-[#15131F] p-3 rounded-lg border border-slate-200 dark:border-white/10 space-y-3">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                             <div className="space-y-1">
                                 <InputLabel value="Jenis Pajak Daerah" className="!text-[10pt]" />
                                 <select
                                     value={data.pajak_daerah}
                                     onChange={(e) => setData('pajak_daerah', e.target.value)}
-                                    className="w-full text-gray-900 border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 rounded-md shadow-sm focus:ring-indigo-500 !text-[10pt]"
+                                    className="w-full text-slate-800 border-slate-200/90 dark:border-white/10 dark:bg-black/30 dark:text-slate-300 rounded-md shadow-sm focus:ring-4 focus:ring-lime-200/60 !text-[10pt]"
                                 >
                                     <option value="SPPD">SPPD</option>
                                     <option value="PB1">PB1</option>
@@ -2286,7 +2297,7 @@ export default function Bku({
                                     step="0.01"
                                     value={data.persen_pajak_daerah}
                                     onChange={(e) => setData('persen_pajak_daerah', e.target.value)}
-                                    className="w-full text-gray-900 !text-[10pt] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                    className="w-full text-slate-800 dark:text-white !text-[10pt] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 />
                             </div>
                             <div className="space-y-1">
@@ -2294,7 +2305,7 @@ export default function Bku({
                                 <TextInput
                                     value={formatCurrency(data.total_pajak_daerah)}
                                     disabled
-                                    className="w-full bg-gray-100 text-gray-900 !text-[10pt]"
+                                    className="w-full bg-slate-100 text-slate-800 dark:text-white !text-[10pt]"
                                 />
                             </div>
                         </div>
@@ -2358,48 +2369,31 @@ export default function Bku({
 
             <Head title={`BKU ${bulan} ${tahun}`} />
 
-            <div className="py-6 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-                {/* Back Button */}
-                <div className="mb-4">
-                    <Link
-                        href={vroute('penatausahaan.index')}
-                        className="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium text-[10pt] transition-colors"
-                    >
-                        <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                        </svg>
-                        Kembali ke Penatausahaan
-                    </Link>
-                </div>
-
-                {/* Header Section */}
-                <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
-                    <div>
-                        <div className="flex items-center gap-3">
-                            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                                BKU {bulan} {tahun}
-                            </h1>
+            <div className="space-y-4">
+                {/* Page Header */}
+                <PageHeader
+                    className="animate-rise"
+                    breadcrumb={[{ label: 'Dashboard' }, { label: 'Penatausahaan', href: vroute('penatausahaan.index') }, { label: 'BKU' }]}
+                    title={`BKU ${bulan} ${tahun}`}
+                    badge={<StatusBadge tone="violet" dot={false}>BOSP REGULER {tahun}</StatusBadge>}
+                    subtitle="Buku Kas Umum per transaksi pada periode ini."
+                    actions={
+                        <div className="flex flex-wrap items-center justify-end gap-2">
                             {!is_closed && (
                                 <button
                                     onClick={() => setIsDeleteAllBkuModalOpen(true)}
-                                    className="flex items-center text-gray-400 hover:text-red-500 transition-colors text-sm"
+                                    className="inline-flex items-center gap-1.5 rounded-xl px-2 py-1 text-[10.5px] font-bold text-slate-400 transition hover:bg-rose-500/10 hover:text-rose-500 dark:text-slate-500 dark:hover:text-rose-300"
                                 >
-                                    <svg className="w-5 h-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                     </svg>
                                     Hapus BKU
                                 </button>
                             )}
-                        </div>
-                        <p className="text-gray-500 dark:text-gray-400 mt-1 uppercase text-[10pt]">BOSP REGULER {tahun}</p>
-                    </div>
-
-                    <div className="flex flex-col items-end gap-2 w-full lg:w-auto">
-                        <div className="flex flex-wrap gap-2 w-full lg:w-auto">
                             {!is_closed && (
                                 <button
                                     onClick={handleOpenArkasMonthlyModal}
-                                    className="inline-flex items-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 border border-transparent rounded-md font-semibold text-[10pt] text-white uppercase tracking-widest shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition ease-in-out duration-150"
+                                    className="inline-flex items-center gap-2 rounded-2xl bg-mint px-4 py-2.5 text-[11.5px] font-extrabold text-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-600"
                                 >
                                     <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -2415,7 +2409,7 @@ export default function Bku({
                                         reset();
                                         setIsModalOpen(true);
                                     }}
-                                    className="inline-flex items-center px-4 py-2 bg-primary dark:bg-primary-800 border border-gray-300 dark:border-gray-600 rounded-md font-semibold text-[10pt] text-gray-300 dark:text-gray-300 uppercase tracking-widest shadow-sm hover:bg-gray-50 hover:text-gray-900 dark:hover:bg-gray-700 focus:outline-none transition ease-in-out duration-150"
+                                    className="inline-flex items-center gap-2 rounded-2xl bg-lime-400 px-4 py-2.5 text-[11.5px] font-extrabold text-slate-950 shadow-lime transition-all duration-200 hover:-translate-y-0.5 hover:bg-lime-300"
                                 >
                                     <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -2427,7 +2421,7 @@ export default function Bku({
                                 <div className="relative flex items-center transition-all duration-300 ease-in-out w-full sm:w-64">
                                     <div className="relative w-full">
                                         <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                                            <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 20">
+                                            <svg className="w-4 h-4 text-slate-500 dark:text-slate-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 20">
                                                 <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z" />
                                             </svg>
                                         </div>
@@ -2437,14 +2431,14 @@ export default function Bku({
                                             onChange={(e) => setSearchQuery(e.target.value)}
                                             placeholder="Cari transaksi..."
                                             autoFocus
-                                            className="block w-full p-2 pl-10 text-[10pt] text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                                            className="block w-full rounded-xl border border-slate-200/90 bg-white py-2 pl-10 pr-3 text-[12px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:placeholder:text-slate-500 dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
                                         />
                                         <button
                                             onClick={() => {
                                                 setIsSearchVisible(false);
                                                 setSearchQuery('');
                                             }}
-                                            className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                                            className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
                                         >
                                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -2455,7 +2449,7 @@ export default function Bku({
                             ) : (
                                 <button
                                     onClick={() => setIsSearchVisible(true)}
-                                    className="inline-flex items-center px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md font-semibold text-[10pt] text-gray-700 dark:text-gray-300 uppercase tracking-widest shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none transition ease-in-out duration-150"
+                                    className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-[11.5px] font-bold text-slate-700 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10"
                                 >
                                     <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -2465,7 +2459,7 @@ export default function Bku({
                             )}
                             <Link
                                 href={vroute('penatausahaan.rekapitulasi', { tahun, bulan: bulan.toLowerCase() })}
-                                className="inline-flex items-center px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md font-semibold text-[10pt] text-gray-700 dark:text-gray-300 uppercase tracking-widest shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none transition ease-in-out duration-150"
+                                className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-[11.5px] font-bold text-slate-700 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10"
                             >
                                 <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -2474,21 +2468,20 @@ export default function Bku({
                             </Link>
                             <button
                                 onClick={is_closed ? handleReopenBku : () => setIsTutupBkuOpen(true)}
-                                className={`inline-flex items-center px-4 py-2 border border-transparent rounded-md font-semibold text-[10pt] text-white uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-offset-2 transition ease-in-out duration-150
-                                    ${is_closed
-                                        ? 'bg-green-600 hover:bg-green-700 focus:bg-green-700 focus:ring-green-500'
-                                        : 'bg-gray-800 dark:bg-gray-200 dark:text-gray-800 hover:bg-gray-700 dark:hover:bg-white focus:bg-gray-700 dark:focus:bg-white active:bg-gray-900 dark:active:bg-gray-300 focus:ring-indigo-500 dark:focus:ring-offset-gray-800'
+                                className={`inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-[11.5px] font-extrabold shadow-sm transition-all duration-200 hover:-translate-y-0.5 ${is_closed
+                                        ? 'bg-mint text-white hover:bg-emerald-600'
+                                        : 'bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100'
                                     }`}
                             >
                                 {is_closed ? 'Aktifkan Kembali' : 'Tutup BKU'}
                             </button>
                         </div>
-                    </div>
-                </div>
+                    }
+                />
 
-                {/* Info Cards Section - UPDATED WITH REAL DATA */}
+                {/* Info Cards Section */}
                 {is_closed ? (
-                    <div className="bg-gradient-to-br from-indigo-500 to-purple-600 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 mb-8 shadow-sm">
+                    <div className="animate-rise rounded-[26px] border border-brand-500/15 bg-gradient-to-br from-brand-500 to-brand-600 p-5 mb-6 shadow-card dark:border-brand-400/20">
                         <div className="flex items-center gap-2 mb-6 text-white dark:text-white">
                             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -2500,31 +2493,31 @@ export default function Bku({
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                             <div>
-                                <InputLabel value="Total Dibelanjakan Nontunai" className="!text-[10pt] mb-2 text-white dark:text-white" />
-                                <div className="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-gray-500 dark:text-gray-300 font-bold text-[11pt]">
+                                <InputLabel value="Total Dibelanjakan Nontunai" className="!text-[10px] !mb-1.5 !text-white/70" />
+                                <div className="w-full rounded-xl border border-white/20 bg-white/15 px-3 py-2 text-[13px] font-extrabold text-white shadow-sm text-sikas-num">
                                     {formatCurrency(totalBelanjaNonTunai)}
                                 </div>
                             </div>
                             <div>
-                                <InputLabel value="Total Dibelanjakan Tunai" className="!text-[10pt] mb-2 text-white dark:text-white" />
-                                <div className="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-gray-500 dark:text-gray-300 font-bold text-[11pt]">
+                                <InputLabel value="Total Dibelanjakan Tunai" className="!text-[10px] !mb-1.5 !text-white/70" />
+                                <div className="w-full rounded-xl border border-white/20 bg-white/15 px-3 py-2 text-[13px] font-extrabold text-white shadow-sm text-sikas-num">
                                     {formatCurrency(totalBelanjaTunai)}
                                 </div>
                             </div>
                             <div>
-                                <InputLabel value="Pajak Wajib Lapor" className="!text-[10pt] mb-2 text-white dark:text-white" />
-                                <div className="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-gray-500 dark:text-gray-300 font-bold text-[11pt]">
+                                <InputLabel value="Pajak Wajib Lapor" className="!text-[10px] !mb-1.5 !text-white/70" />
+                                <div className="w-full rounded-xl border border-white/20 bg-white/15 px-3 py-2 text-[13px] font-extrabold text-white shadow-sm text-sikas-num">
                                     {formatCurrency(totalPajakWajibLapor)}
                                 </div>
                             </div>
                             <div>
                                 <div className="flex items-center gap-1 mb-2">
-                                    <InputLabel value="Sisa Dana Tersedia" className="!text-[10pt] text-white dark:text-white" />
+                                    <InputLabel value="Sisa Dana Tersedia" className="!text-[10px] !text-white/70" />
                                     <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
                                         <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                                     </svg>
                                 </div>
-                                <div className="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-gray-500 dark:text-gray-300 font-bold text-[11pt]">
+                                <div className="w-full rounded-xl border border-white/20 bg-white/15 px-3 py-2 text-[13px] font-extrabold text-white shadow-sm text-sikas-num">
                                     {formatCurrency(totalDanaTersedia - totalDibelanjakanBulanIni)}
                                 </div>
                             </div>
@@ -2532,64 +2525,64 @@ export default function Bku({
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                        <div className="bg-blue-50/50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg p-6 relative">
-                            <h3 className="text-gray-600 dark:text-gray-400 font-medium mb-1 text-[10pt]">TOTAL DANA TERSEDIA</h3>
-                            <div className="text-3xl font-bold text-blue-600 dark:text-blue-400 mb-6">{formatCurrency(totalDanaTersedia - totalDibelanjakanBulanIni)}</div>
+                        <div className="animate-rise relative overflow-hidden rounded-[26px] border border-sky/10 bg-pastel-sky/40 p-5 dark:border-sky/20 dark:bg-sky/[0.06]">
+                            <h3 className="mb-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">TOTAL DANA TERSEDIA</h3>
+                            <div className="mb-5 text-sikas-num text-[24px] font-extrabold tracking-tight text-slate-900 dark:text-white">{formatCurrency(totalDanaTersedia - totalDibelanjakanBulanIni)}</div>
 
-                            <div className="absolute top-6 right-6 flex gap-4 text-[10pt] font-medium text-blue-600 dark:text-blue-400">
+                            <div className="absolute right-5 top-5 flex items-center gap-1.5 text-[10.5px] font-bold text-sky-700 dark:text-sky-300">
                                 <button
                                     onClick={() => setIsTarikTunaiOpen(true)}
-                                    className="hover:underline"
+                                    className="rounded-xl bg-white/70 px-2.5 py-1 shadow-sm transition hover:bg-white dark:bg-white/10 dark:hover:bg-white/15"
                                 >
                                     Tarik Tunai
                                 </button>
                                 <button
                                     onClick={() => setIsSetorTunaiOpen(true)}
-                                    className="hover:underline"
+                                    className="rounded-xl bg-white/70 px-2.5 py-1 shadow-sm transition hover:bg-white dark:bg-white/10 dark:hover:bg-white/15"
                                 >
                                     Setor Tunai
                                 </button>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="border border-blue-200 dark:border-blue-700 rounded bg-white dark:bg-gray-800 p-2 flex justify-between items-center">
-                                    <span className="text-[10pt] text-gray-500 dark:text-gray-400">Nontunai</span>
-                                    <span className="text-blue-600 dark:text-blue-400 font-medium text-[10pt]">{formatCurrency(saldoNonTunai)}</span>
+                                <div className="flex items-center justify-between rounded-xl border border-sky/15 bg-white px-3 py-2 dark:border-sky/20 dark:bg-white/5">
+                                    <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">Nontunai</span>
+                                    <span className="text-sikas-num text-[11.5px] font-extrabold text-sky-700 dark:text-sky-300">{formatCurrency(saldoNonTunai)}</span>
                                 </div>
-                                <div className="border border-blue-200 dark:border-blue-700 rounded bg-white dark:bg-gray-800 p-2 flex justify-between items-center">
-                                    <span className="text-[10pt] text-gray-500 dark:text-gray-400">Tunai</span>
-                                    <span className="text-blue-600 dark:text-blue-400 font-medium text-[10pt]">{formatCurrency(saldoTunai)}</span>
+                                <div className="flex items-center justify-between rounded-xl border border-sky/15 bg-white px-3 py-2 dark:border-sky/20 dark:bg-white/5">
+                                    <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">Tunai</span>
+                                    <span className="text-sikas-num text-[11.5px] font-extrabold text-sky-700 dark:text-sky-300">{formatCurrency(saldoTunai)}</span>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-700/50 rounded-lg p-6">
-                            <h3 className="text-blue-600 dark:text-blue-400 font-medium mb-6 uppercase text-[10pt]">Anggaran Dibelanjakan Sampai Bulan Ini</h3>
+                        <div className="sikas-card p-5">
+                            <h3 className="mb-5 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">Anggaran Dibelanjakan Sampai Bulan Ini</h3>
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                 <div>
                                     <div className="flex items-center gap-1 mb-2">
-                                        <span className="text-[10pt] text-gray-600 dark:text-gray-400 font-medium">Bisa Dibelanjakan</span>
+                                        <span className="text-[10.5px] font-semibold text-slate-500 dark:text-slate-400">Bisa Dibelanjakan</span>
                                         {/* Icon */}
                                     </div>
-                                    <div className="bg-blue-50/50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded px-3 py-2 text-blue-600 dark:text-blue-400 font-bold text-[10pt]">
+                                    <div className="rounded-xl border border-sky/10 bg-pastel-sky/50 px-3 py-2 text-sikas-num text-[12px] font-extrabold text-sky-700 dark:border-sky/20 dark:bg-sky/[0.06] dark:text-sky-300">
                                         {formatCurrency(Math.max(0, anggaranBulanIni - realSpendingThisMonth))}
                                     </div>
                                 </div>
                                 <div>
                                     <div className="flex items-center gap-1 mb-2">
-                                        <span className="text-[10pt] text-gray-600 dark:text-gray-400 font-medium">Sudah Dibelanjakan</span>
+                                        <span className="text-[10.5px] font-semibold text-slate-500 dark:text-slate-400">Sudah Dibelanjakan</span>
                                         {/* Icon */}
                                     </div>
-                                    <div className="bg-blue-50/50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded px-3 py-2 text-blue-600 dark:text-blue-400 font-bold text-[10pt]">
+                                    <div className="rounded-xl border border-sky/10 bg-pastel-sky/50 px-3 py-2 text-sikas-num text-[12px] font-extrabold text-sky-700 dark:border-sky/20 dark:bg-sky/[0.06] dark:text-sky-300">
                                         {formatCurrency(totalDibelanjakanSampaiBulanIni)}
                                     </div>
                                 </div>
                                 <div>
                                     <div className="flex items-center gap-1 mb-2">
-                                        <span className="text-[10pt] text-gray-600 dark:text-gray-400 font-medium">Bisa Dianggarkan Ulang</span>
+                                        <span className="text-[10.5px] font-semibold text-slate-500 dark:text-slate-400">Bisa Dianggarkan Ulang</span>
                                         {/* Icon */}
                                     </div>
-                                    <div className="bg-blue-50/50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded px-3 py-2 text-blue-600 dark:text-blue-400 font-bold text-[10pt]">
+                                    <div className="rounded-xl border border-sky/10 bg-pastel-sky/50 px-3 py-2 text-sikas-num text-[12px] font-extrabold text-sky-700 dark:border-sky/20 dark:bg-sky/[0.06] dark:text-sky-300">
                                         {formatCurrency(anggaranBelumDibelanjakan)}
                                     </div>
                                 </div>
@@ -2598,11 +2591,24 @@ export default function Bku({
                     </div>
                 )}
 
-                {/* Table Section */}
-                <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
-                    <div className="overflow-x-auto overflow-y-auto max-h-[60vh] pb-32">
-                        <table className="w-full text-[10pt] text-left">
-                            <thead className="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 font-semibold uppercase text-[10pt] sticky top-0 z-10">
+                {/* Tabel Transaksi BKU */}
+                <div className="animate-rise" style={{ animationDelay: '80ms' }}>
+                    <DataTable
+                        title="Daftar Transaksi BKU"
+                        subtitle="Transaksi penerimaan, penarikan, setor, dan pembelanjaan."
+                        icon={
+                            <IconTile tone="violet" size="sm">
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                            </IconTile>
+                        }
+                        actions={<StatusBadge tone="info" dot={false} className="text-sikas-num">{filteredTransactions?.length || 0}</StatusBadge>}
+                        contentClassName="mx-4 mb-4"
+                    >
+                        <div className="overflow-x-auto overflow-y-auto max-h-[60vh] pb-32">
+                            <table className="w-full text-[10pt] text-left">
+                            <thead className="bg-slate-50 dark:bg-white/5 border-b border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 font-semibold uppercase text-[10pt] sticky top-0 z-10">
                                 <tr>
                                     <th className="px-6 py-4">ID</th>
                                     <th className="px-6 py-4">Tanggal</th>
@@ -2615,15 +2621,15 @@ export default function Bku({
                                     <th className="px-6 py-4">Aksi</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                            <tbody className="divide-y divide-slate-200 dark:divide-white/5">
                                 {filteredTransactions && filteredTransactions.length > 0 ? (
                                     filteredTransactions.map((item: any, index: number) => {
                                         if (item.type === 'penerimaan') {
                                             return (
-                                                <tr key={`penerimaan-${item.id}`} className="bg-blue-50/50 dark:bg-blue-900/10">
+                                                <tr key={`penerimaan-${item.id}`} className="bg-pastel-sky/50 dark:bg-sky/[0.06]">
                                                     <td colSpan={8} className="px-6 py-4">
-                                                        <div className="flex items-center text-gray-700 dark:text-gray-300">
-                                                            <svg className="w-5 h-5 mr-3 text-gray-400 rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <div className="flex items-center text-slate-700 dark:text-slate-300">
+                                                            <svg className="w-5 h-5 mr-3 text-slate-400 rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                                                             </svg>
                                                             <span>
@@ -2634,13 +2640,13 @@ export default function Bku({
                                                     <td className="px-6 py-4 text-right">
                                                         <Dropdown>
                                                             <Dropdown.Trigger>
-                                                                <button className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700/50">
+                                                                <button className="text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 transition-colors p-1 rounded-full hover:bg-slate-100 dark:hover:bg-white/10">
                                                                     <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                                                                         <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
                                                                     </svg>
                                                                 </button>
                                                             </Dropdown.Trigger>
-                                                            <Dropdown.Content align="right" width="48" contentClasses="py-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                                                            <Dropdown.Content align="right" width="48" contentClasses="py-1 bg-white dark:bg-[#15131F] border border-slate-200 dark:border-white/10">
                                                                 <button
                                                                     className="w-full text-left px-4 py-2 text-[10pt] text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center"
                                                                     onClick={() => handleDeleteClick(item.id, 'penerimaan')}
@@ -2657,10 +2663,10 @@ export default function Bku({
                                             );
                                         } else if (item.type === 'penarikan') {
                                             return (
-                                                <tr key={`penarikan-${item.id}`} className="bg-blue-50/50 dark:bg-blue-900/10 hover:bg-blue-100/50 dark:hover:bg-blue-900/20 transition-colors">
+                                                <tr key={`penarikan-${item.id}`} className="bg-pastel-sky/50 dark:bg-sky/[0.06] hover:bg-sky/10 dark:hover:bg-sky/10 transition-colors">
                                                     <td colSpan={8} className="px-6 py-4">
-                                                        <div className="flex items-center text-gray-700 dark:text-gray-300">
-                                                            <svg className="w-5 h-5 mr-3 text-gray-400 rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <div className="flex items-center text-slate-700 dark:text-slate-300">
+                                                            <svg className="w-5 h-5 mr-3 text-slate-400 rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                                                             </svg>
                                                             <span>
@@ -2671,13 +2677,13 @@ export default function Bku({
                                                     <td className="px-6 py-4 text-right">
                                                         <Dropdown>
                                                             <Dropdown.Trigger>
-                                                                <button className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700/50">
+                                                                <button className="text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 transition-colors p-1 rounded-full hover:bg-slate-100 dark:hover:bg-white/10">
                                                                     <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                                                                         <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
                                                                     </svg>
                                                                 </button>
                                                             </Dropdown.Trigger>
-                                                            <Dropdown.Content align="right" width="48" contentClasses="py-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                                                            <Dropdown.Content align="right" width="48" contentClasses="py-1 bg-white dark:bg-[#15131F] border border-slate-200 dark:border-white/10">
                                                                 <button
                                                                     className="w-full text-left px-4 py-2 text-[10pt] text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center"
                                                                     onClick={() => handleDeleteClick(item.id, 'penarikan')}
@@ -2694,10 +2700,10 @@ export default function Bku({
                                             );
                                         } else if (item.type === 'setor') {
                                             return (
-                                                <tr key={`setor-${item.id}`} className="bg-green-50/50 dark:bg-green-900/10 hover:bg-green-100/50 dark:hover:bg-green-900/20 transition-colors">
+                                                <tr key={`setor-${item.id}`} className="bg-pastel-mint/50 dark:bg-mint/[0.06] hover:bg-mint/10 dark:hover:bg-mint/10 transition-colors">
                                                     <td colSpan={8} className="px-6 py-4">
-                                                        <div className="flex items-center text-gray-700 dark:text-gray-300">
-                                                            <svg className="w-5 h-5 mr-3 text-gray-400 -rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <div className="flex items-center text-slate-700 dark:text-slate-300">
+                                                            <svg className="w-5 h-5 mr-3 text-slate-400 -rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                                                             </svg>
                                                             <span>
@@ -2708,13 +2714,13 @@ export default function Bku({
                                                     <td className="px-6 py-4 text-right">
                                                         <Dropdown>
                                                             <Dropdown.Trigger>
-                                                                <button className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700/50">
+                                                                <button className="text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 transition-colors p-1 rounded-full hover:bg-slate-100 dark:hover:bg-white/10">
                                                                     <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                                                                         <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
                                                                     </svg>
                                                                 </button>
                                                             </Dropdown.Trigger>
-                                                            <Dropdown.Content align="right" width="48" contentClasses="py-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                                                            <Dropdown.Content align="right" width="48" contentClasses="py-1 bg-white dark:bg-[#15131F] border border-slate-200 dark:border-white/10">
                                                                 <button
                                                                     className="w-full text-left px-4 py-2 text-[10pt] text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center"
                                                                     onClick={() => handleDeleteClick(item.id, 'setor')}
@@ -2731,21 +2737,21 @@ export default function Bku({
                                             );
                                         } else {
                                             return (
-                                                <tr key={`bku-${item.id}`} className="bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700">
+                                                <tr key={`bku-${item.id}`} className="bg-white dark:bg-[#15131F] hover:bg-slate-50 dark:hover:bg-white/10">
                                                     <td className="px-6 py-4">{item.id_transaksi || '-'}</td>
                                                     <td className="px-6 py-4">{format(new Date(item.tanggal_transaksi), 'dd/MM/yyyy')}</td>
                                                     <td className="px-6 py-4">{item.kode_kegiatan?.sub_program || '-'}</td>
                                                     <td className="px-6 py-4">{item.uraian_opsional || item.uraian || '-'}</td>
                                                     <td className="px-6 py-4 capitalize">{item.jenis_transaksi}</td>
-                                                    <td className="px-6 py-4 text-green-600">
+                                                    <td className="px-6 py-4 text-right text-sikas-num font-semibold text-mint dark:text-mint">
                                                         {formatCurrency(item.total_transaksi_kotor)}
                                                     </td>
-                                                    <td className="px-6 py-4 text-green-600">
+                                                    <td className="px-6 py-4 text-right text-sikas-num font-semibold text-mint dark:text-mint">
                                                         {formatCurrency(item.total_transaksi_kotor)}
                                                     </td>
                                                     <td className="px-6 py-4">
                                                         {item.total_pajak > 0 ? (
-                                                            <span className={`px-2 py-1 text-[10pt] rounded ${item.ntpn ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                                            <span className={`inline-flex items-center rounded-lg px-2 py-1 text-[10pt] font-bold text-sikas-num ${item.ntpn ? 'bg-pastel-mint text-mint dark:bg-mint/10 dark:text-mint' : 'bg-pastel-rose text-rose-600 dark:bg-rose-500/10 dark:text-rose-300'}`}>
                                                                 {formatCurrency(item.total_pajak)}
                                                             </span>
                                                         ) : '0'}
@@ -2753,17 +2759,17 @@ export default function Bku({
                                                     <td className="px-6 py-4">
                                                         <Dropdown>
                                                             <Dropdown.Trigger>
-                                                                <button className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700/50">
+                                                                <button className="text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 transition-colors p-1 rounded-full hover:bg-slate-100 dark:hover:bg-white/10">
                                                                     <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                                                                         <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
                                                                     </svg>
                                                                 </button>
                                                             </Dropdown.Trigger>
-                                                            <Dropdown.Content align="right" width="48" contentClasses="py-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                                                            <Dropdown.Content align="right" width="48" contentClasses="py-1 bg-white dark:bg-[#15131F] border border-slate-200 dark:border-white/10">
 
                                                                 {item.total_pajak > 0 && (
                                                                     <button
-                                                                        className="w-full text-left px-4 py-2 text-[10pt] text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 flex items-center"
+                                                                        className="w-full text-left px-4 py-2 text-[10pt] text-sky-600 dark:text-sky-300 hover:bg-sky/10 dark:hover:bg-sky/10 flex items-center"
                                                                         onClick={() => openLaporPajakModal(item.id, item)}
                                                                     >
                                                                         <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -2775,7 +2781,7 @@ export default function Bku({
                                                                 {!is_closed && (
                                                                     <>
                                                                         <button
-                                                                            className="w-full text-left px-4 py-2 text-[10pt] text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 flex items-center"
+                                                                            className="w-full text-left px-4 py-2 text-[10pt] text-brand-600 dark:text-brand-300 hover:bg-brand-500/10 dark:hover:bg-brand-500/10 flex items-center"
                                                                             onClick={() => handleEditClick(item)}
                                                                         >
                                                                             <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -2795,7 +2801,7 @@ export default function Bku({
                                                                     </>
                                                                 )}
                                                                 <button
-                                                                    className="w-full text-left px-4 py-2 text-[10pt] text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-900/20 flex items-center"
+                                                                    className="w-full text-left px-4 py-2 text-[10pt] text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900/20 flex items-center"
                                                                     onClick={() => openDetailModal(item)}
                                                                 >
                                                                     <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -2812,27 +2818,34 @@ export default function Bku({
                                         }
                                     })
                                 ) : (
-                                    <tr className="bg-white dark:bg-gray-800">
-                                        <td colSpan={9} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
-                                            <div className="flex flex-col items-center justify-center p-8 bg-dashed border-2 border-gray-200 dark:border-gray-700 rounded-lg mx-auto max-w-lg border-dashed">
-                                                <p className="mt-2">Belum ada transaksi</p>
-                                            </div>
+                                    <tr>
+                                        <td colSpan={9} className="p-0">
+                                            <EmptyState
+                                                className="border-0 bg-transparent py-9 dark:bg-transparent"
+                                                title="Belum ada transaksi"
+                                                description="Tambah pembelanjaan atau tarik data dari ARKAS untuk mengisi BKU."
+                                                icon={
+                                                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                    </svg>
+                                                }
+                                            />
                                         </td>
                                     </tr>
                                 )}
                             </tbody>
                         </table>
                     </div>
-                </div>
-
+                </DataTable>
+            </div>
 
             </div>
 
             {/* Modal Tambah Pembelanjaan */}
             <Modal show={isModalOpen} onClose={closeModal} closeable={false} maxWidth="4xl">
-                <div className="relative bg-white dark:bg-gray-800 rounded-lg">
+                <div className="relative bg-white dark:bg-[#15131F] rounded-lg">
                     {/* Beautiful Header Background */}
-                    <div className="bg-gradient-to-r from-cyan-600 to-blue-600 p-6 rounded-t-lg shadow-sm">
+                    <div className="rounded-t-[26px] bg-gradient-to-br from-[#2B2940] via-[#232135] to-[#191826] p-5">
                         <div className="flex items-center gap-3">
                             <div className="p-2 bg-white/20 rounded-lg">
                                 <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -2840,10 +2853,10 @@ export default function Bku({
                                 </svg>
                             </div>
                             <div>
-                                <h2 className="text-xl font-bold text-white">
+                                <h2 className="text-[15px] font-extrabold tracking-tight text-white">
                                     {isEditMode ? 'UPDATE Detail Pembelanjaan' : 'Isi Detail Pembelanjaan'}
                                 </h2>
-                                <p className="text-cyan-100 text-[10pt] mt-1">
+                                <p className="mt-0.5 text-[10px] font-medium text-white/50">
                                     Isi detail barang atau jasa yang Anda belanjakan yang terdapat dalam 1 nota.
                                 </p>
                             </div>
@@ -2855,13 +2868,13 @@ export default function Bku({
                         {/* Stepper Header */}
                         <div className="flex items-center justify-between mb-4 relative">
                             {/* ... */}
-                            <div className="absolute top-1/2 left-0 w-full h-0.5 bg-gray-200 dark:bg-gray-700 -z-10" />
+                            <div className="absolute top-1/2 left-0 w-full h-0.5 bg-slate-200 dark:bg-white/5 -z-10" />
                             {steps.map((step) => (
-                                <div key={step.number} className="flex flex-row items-center gap-2 bg-white dark:bg-gray-800 px-2 group">
+                                <div key={step.number} className="flex flex-row items-center gap-2 bg-white dark:bg-[#15131F] px-2 group">
                                     <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-colors shadow-sm
                                     ${currentStep >= step.number
-                                            ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white border-transparent'
-                                            : 'bg-white text-gray-400 border-gray-300 dark:bg-gray-800 dark:border-gray-600'
+                                            ? 'bg-lime-400 text-slate-950 border-transparent shadow-lime'
+                                            : 'bg-white text-slate-400 border-slate-200/90 dark:bg-white/5 dark:border-white/10'
                                         }`}
                                     >
                                         {currentStep > step.number ? (
@@ -2870,7 +2883,7 @@ export default function Bku({
                                             </svg>
                                         ) : step.number}
                                     </div>
-                                    <span className={`text-sm ${currentStep >= step.number ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-gray-400 dark:text-gray-500 font-medium'}`}>
+                                    <span className={`text-sm ${currentStep >= step.number ? 'text-sky-600 dark:text-sky-300 font-bold' : 'text-slate-400 dark:text-slate-500 font-medium'}`}>
                                         {step.title}
                                     </span>
                                 </div>
@@ -2885,7 +2898,7 @@ export default function Bku({
                         </div>
 
                         {/* Footer Actions */}
-                        <div className="mt-8 flex justify-end gap-3 pt-6 border-t border-gray-100 dark:border-gray-700">
+                        <div className="mt-6 flex items-center justify-end gap-2 border-t border-slate-100 pt-4 dark:border-white/5">
                             {currentStep === 1 ? (
                                 <SecondaryButton onClick={closeModal}>Batal</SecondaryButton>
                             ) : (
@@ -2902,7 +2915,7 @@ export default function Bku({
                                 </PrimaryButton>
                             ) : (
                                 <PrimaryButton
-                                    className={`bg-blue-600 hover:bg-blue-700 text-white ${processing ? 'opacity-75 cursor-wait' : ''}`}
+                                    className={processing ? 'opacity-75 cursor-wait' : ''}
                                     onClick={submitBku}
                                     disabled={processing}
                                 >
@@ -2921,16 +2934,16 @@ export default function Bku({
                         <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                         </svg>
-                        <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">Nomor Nota Kosong</h3>
+                        <h3 className="text-[15px] font-extrabold tracking-tight text-slate-900 dark:text-white">Nomor Nota Kosong</h3>
                     </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">
                         Nomor nota masih kosong, apakah Anda yakin ingin melanjutkan? 
                         <br /><br />
-                        Jika lanjut, sistem akan otomatis membuat nomor nota menjadi <span className="font-bold text-blue-600">{generateNextBpu()}</span>.
+                        Jika lanjut, sistem akan otomatis membuat nomor nota menjadi <span className="font-bold text-sky-600 dark:text-sky-300">{generateNextBpu()}</span>.
                     </p>
                     <div className="flex justify-end gap-3">
                         <SecondaryButton onClick={() => setIsNoteConfirmationOpen(false)}>Batal</SecondaryButton>
-                        <PrimaryButton onClick={handleConfirmEmptyNote} className="bg-amber-600 hover:bg-amber-700">Ya, Lanjut</PrimaryButton>
+                        <PrimaryButton onClick={handleConfirmEmptyNote} className="!bg-amber-500 hover:!bg-amber-600">Ya, Lanjut</PrimaryButton>
                     </div>
                 </div>
             </Modal>
@@ -2942,13 +2955,13 @@ export default function Bku({
                         <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">Nomor Nota Sudah Digunakan</h3>
+                        <h3 className="text-[15px] font-extrabold tracking-tight text-slate-900 dark:text-white">Nomor Nota Sudah Digunakan</h3>
                     </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">
                         Nomor nota <span className="font-bold text-red-600">{data.nomor_nota}</span> sudah pernah digunakan dalam transaksi lain. Silakan gunakan nomor nota yang berbeda.
                     </p>
                     <div className="flex justify-end">
-                        <PrimaryButton onClick={() => setIsDuplicateNoteModalOpen(false)} className="bg-red-600 hover:bg-red-700 text-white">
+                        <PrimaryButton onClick={() => setIsDuplicateNoteModalOpen(false)} className="!bg-rose-500 hover:!bg-rose-600">
                             Mengerti
                         </PrimaryButton>
                     </div>
@@ -2958,23 +2971,23 @@ export default function Bku({
             {/* Modal Peringatan Belum Ada API Key DeepSeek */}
             <Modal show={isAiApiKeyModalOpen} onClose={() => setIsAiApiKeyModalOpen(false)} maxWidth="md">
                 <div className="p-6">
-                    <div className="flex items-center gap-3 text-purple-600 mb-4">
-                        <div className="p-2.5 bg-purple-100 dark:bg-purple-900/30 rounded-xl">
-                            <Brain className="w-7 h-7 text-purple-600 dark:text-purple-400" />
+                    <div className="mb-4 flex items-center gap-3 text-brand-600 dark:text-brand-300">
+                        <div className="p-2.5 rounded-xl bg-pastel-lavender ring-1 ring-brand-500/15 dark:bg-brand-500/15 dark:ring-brand-400/25">
+                            <Brain className="w-7 h-7 text-brand-600 dark:text-brand-300" />
                         </div>
                         <div>
-                            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">Kunci API DeepSeek Diperlukan</h3>
-                            <p className="text-xs text-gray-500">Asisten AI Penulis Uraian BKU</p>
+                            <h3 className="text-[15px] font-extrabold tracking-tight text-slate-900 dark:text-white">Kunci API DeepSeek Diperlukan</h3>
+                            <p className="text-xs text-slate-500">Asisten AI Penulis Uraian BKU</p>
                         </div>
                     </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-6 leading-relaxed">
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-6 leading-relaxed">
                         {aiErrorMessage || 'Kunci API DeepSeek belum dikonfigurasi pada profil akun Anda. Silakan masukkan API Key DeepSeek Anda pada menu Profil Pengguna untuk mengaktifkan fitur Asisten AI.'}
                     </p>
                     <div className="flex justify-end gap-3">
                         <SecondaryButton onClick={() => setIsAiApiKeyModalOpen(false)}>Tutup</SecondaryButton>
                         <Link
                             href={route('profile.edit')}
-                            className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-md font-semibold text-xs uppercase tracking-widest transition"
+                            className="inline-flex items-center gap-2 rounded-2xl bg-lime-400 px-4 py-2.5 text-[11.5px] font-extrabold text-slate-950 shadow-lime transition-all duration-200 hover:-translate-y-0.5 hover:bg-lime-300"
                         >
                             Buka Pengaturan Profil
                         </Link>
@@ -2983,137 +2996,60 @@ export default function Bku({
             </Modal>
 
             {/* Modal Tarik Tunai */}
-            <Modal show={isTarikTunaiOpen} onClose={() => setIsTarikTunaiOpen(false)} maxWidth="5xl">
-                <div className="relative bg-white dark:bg-gray-800 rounded-lg">
-                    {/* Unique Header Background */}
-                    <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-6 rounded-t-lg">
-                        <h2 className="text-xl font-bold text-white">
-                            Penarikan Tunai
-                        </h2>
-                        <p className="text-blue-100 text-[10pt] mt-1">
-                            Isi sesuai dengan detail yang tertera di slip dari bank
-                        </p>
-                    </div>
-
-                    <div className="p-6">
-                        <form onSubmit={submitTarikTunai}>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <InputLabel value="Tanggal Tarik Tunai" className="mb-2 !text-[10pt]" />
-                                    <div className="relative">
-                                        <DatePicker
-                                            value={tarikForm.data.tanggal_penarikan}
-                                            onChange={(date) => tarikForm.setData('tanggal_penarikan', date ? format(date, 'yyyy-MM-dd') : '')}
-                                            className="mt-1 block w-full text-gray-900 !text-[10pt]"
-                                            placeholder="Pilih tanggal"
-                                            startMonth={startOfActiveMonth}
-                                            endMonth={endOfActiveMonth}
-                                            disabled={disabledWithdrawalDates}
-                                        />
-                                        <InputError message={tarikForm.errors.tanggal_penarikan} className="mt-2" />
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <div className="flex justify-between items-center mb-2">
-                                        <InputLabel value="Jumlah Penarikan" className="!text-[10pt]" />
-                                        <span className="text-[10pt] font-bold text-blue-600">Saldo Non Tunai: {formatCurrency(saldoNonTunai)}</span>
-                                    </div>
-                                    <div className="relative">
-                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                            <span className="text-gray-500 font-medium !text-[10pt]">Rp</span>
-                                        </div>
-                                        <TextInput
-                                            className="pl-10 block w-full text-gray-900 !text-[10pt]"
-                                            value={tarikForm.data.jumlah_penarikan}
-                                            onChange={(e) => handleCurrencyChange(e, tarikForm, 'jumlah_penarikan')}
-                                            placeholder="0"
-                                        />
-                                        <InputError message={tarikForm.errors.jumlah_penarikan} className="mt-2" />
-                                    </div>
-                                    <p className="text-[10pt] text-gray-500 mt-1">Maksimal: {formatCurrency(saldoNonTunai)}</p>
-                                </div>
-                            </div>
-
-                            <div className="mt-8 flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
-                                <SecondaryButton onClick={() => setIsTarikTunaiOpen(false)} type="button">
-                                    Tutup
-                                </SecondaryButton>
-                                <PrimaryButton className="bg-blue-600 hover:bg-blue-700" disabled={tarikForm.processing}>
-                                    {tarikForm.processing ? 'Menyimpan...' : 'Simpan'}
-                                </PrimaryButton>
-                            </div>
-                        </form >
-                    </div >
-                </div >
-            </Modal >
+            <KasBankTransferModal
+                show={isTarikTunaiOpen}
+                onClose={() => setIsTarikTunaiOpen(false)}
+                onSubmit={submitTarikTunai}
+                processing={tarikForm.processing}
+                tone="sky"
+                title="Penarikan Tunai"
+                subtitle="Isi sesuai dengan detail penarikan yang tertera di slip bank."
+                badgeLabel="Bank → Kas Tunai"
+                icon={<ArrowDownToLine />}
+                balanceLabel="Saldo Non-Tunai Tersedia"
+                availableBalance={saldoNonTunai}
+                formattedBalance={formatCurrency(saldoNonTunai)}
+                dateLabel="Tanggal Tarik Tunai"
+                dateValue={tarikForm.data.tanggal_penarikan}
+                onDateChange={(date) => tarikForm.setData('tanggal_penarikan', date ? format(date, 'yyyy-MM-dd') : '')}
+                dateError={tarikForm.errors.tanggal_penarikan}
+                amountLabel="Jumlah Penarikan"
+                amountValue={tarikForm.data.jumlah_penarikan}
+                onAmountChange={(e) => handleCurrencyChange(e, tarikForm, 'jumlah_penarikan')}
+                onFillMax={() => tarikForm.setData('jumlah_penarikan', formatNominalInput(saldoNonTunai))}
+                amountError={tarikForm.errors.jumlah_penarikan}
+                startMonth={startOfActiveMonth}
+                endMonth={endOfActiveMonth}
+                disabledDates={disabledWithdrawalDates}
+            />
 
             {/* Modal Setor Tunai */}
-            < Modal show={isSetorTunaiOpen} onClose={() => setIsSetorTunaiOpen(false)
-            } maxWidth="5xl" >
-                <div className="relative bg-white dark:bg-gray-800 rounded-lg">
-                    {/* Unique Header Background */}
-                    <div className="bg-gradient-to-r from-blue-500 to-indigo-600 p-6 rounded-t-lg">
-                        <h2 className="text-xl font-bold text-white">
-                            Setor Tunai
-                        </h2>
-                        <p className="text-blue-100 text-[10pt] mt-1">
-                            Isi sesuai dengan detail setor tunai ke bank
-                        </p>
-                    </div>
-
-                    <div className="p-6">
-                        <form onSubmit={submitSetorTunai}>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <InputLabel value="Tanggal Setor Tunai" className="mb-2 !text-[10pt]" />
-                                    <div className="relative">
-                                        <DatePicker
-                                            value={setorForm.data.tanggal_setor}
-                                            onChange={(date) => setorForm.setData('tanggal_setor', date ? format(date, 'yyyy-MM-dd') : '')}
-                                            className="mt-1 block w-full text-gray-900 !text-[10pt]"
-                                            placeholder="Pilih tanggal"
-                                            startMonth={startOfActiveMonth}
-                                            endMonth={endOfActiveMonth}
-                                            disabled={disabledDepositDates}
-                                        />
-                                        <InputError message={setorForm.errors.tanggal_setor} className="mt-2" />
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <div className="flex justify-between items-center mb-2">
-                                        <InputLabel value="Jumlah Setor" className="!text-[10pt]" />
-                                        <span className="text-[10pt] font-bold text-blue-600">Saldo Tunai: {formatCurrency(saldoTunai)}</span>
-                                    </div>
-                                    <div className="relative">
-                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                            <span className="text-gray-500 font-medium">Rp</span>
-                                        </div>
-                                        <TextInput
-                                            className="pl-10 block w-full text-gray-900 !text-[10pt]"
-                                            value={setorForm.data.jumlah_setor}
-                                            onChange={(e) => handleCurrencyChange(e, setorForm, 'jumlah_setor')}
-                                            placeholder="0"
-                                        />
-                                        <InputError message={setorForm.errors.jumlah_setor} className="mt-2" />
-                                    </div>
-                                    <p className="text-[10pt] text-gray-500 mt-1">Maksimal: {formatCurrency(saldoTunai)}</p>
-                                </div>
-                            </div>
-
-                            <div className="mt-8 flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
-                                <SecondaryButton onClick={() => setIsSetorTunaiOpen(false)} type="button">
-                                    Tutup
-                                </SecondaryButton>
-                                <PrimaryButton className="bg-blue-600 hover:bg-blue-700" disabled={setorForm.processing}>
-                                    {setorForm.processing ? 'Menyimpan...' : 'Simpan'}
-                                </PrimaryButton>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </Modal >
+            <KasBankTransferModal
+                show={isSetorTunaiOpen}
+                onClose={() => setIsSetorTunaiOpen(false)}
+                onSubmit={submitSetorTunai}
+                processing={setorForm.processing}
+                tone="mint"
+                title="Setor Tunai"
+                subtitle="Isi sesuai dengan detail setoran tunai ke rekening bank."
+                badgeLabel="Kas Tunai → Bank"
+                icon={<ArrowUpFromLine />}
+                balanceLabel="Saldo Tunai Tersedia"
+                availableBalance={saldoTunai}
+                formattedBalance={formatCurrency(saldoTunai)}
+                dateLabel="Tanggal Setor Tunai"
+                dateValue={setorForm.data.tanggal_setor}
+                onDateChange={(date) => setorForm.setData('tanggal_setor', date ? format(date, 'yyyy-MM-dd') : '')}
+                dateError={setorForm.errors.tanggal_setor}
+                amountLabel="Jumlah Setor"
+                amountValue={setorForm.data.jumlah_setor}
+                onAmountChange={(e) => handleCurrencyChange(e, setorForm, 'jumlah_setor')}
+                onFillMax={() => setorForm.setData('jumlah_setor', formatNominalInput(saldoTunai))}
+                amountError={setorForm.errors.jumlah_setor}
+                startMonth={startOfActiveMonth}
+                endMonth={endOfActiveMonth}
+                disabledDates={disabledDepositDates}
+            />
 
             {/* Delete Confirmation Modal */}
             < Modal show={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} maxWidth="sm" >
@@ -3123,10 +3059,10 @@ export default function Bku({
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                         </svg>
                     </div>
-                    <h3 className="text-lg font-medium text-center text-gray-900 dark:text-gray-100 mb-2">
+                    <h3 className="mb-2 text-center text-[15px] font-extrabold tracking-tight text-slate-900 dark:text-white">
                         Konfirmasi Hapus
                     </h3>
-                    <p className="text-[10pt] text-center text-gray-500 dark:text-gray-400 mb-6">
+                    <p className="text-[10pt] text-center text-slate-500 dark:text-slate-400 mb-6">
                         Apakah Anda yakin ingin menghapus data ini? Tindakan ini tidak dapat dibatalkan.
                     </p>
                     <div className="flex justify-end gap-3">
@@ -3148,10 +3084,10 @@ export default function Bku({
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
                     </div>
-                    <h3 className="text-lg font-medium text-center text-gray-900 dark:text-gray-100 mb-2">
+                    <h3 className="mb-2 text-center text-[15px] font-extrabold tracking-tight text-slate-900 dark:text-white">
                         Hapus Semua Belanja BKU?
                     </h3>
-                    <p className="text-[10pt] text-center text-gray-500 dark:text-gray-400 mb-6">
+                    <p className="text-[10pt] text-center text-slate-500 dark:text-slate-400 mb-6">
                         Tindakan ini akan menghapus <strong>semua data belanja</strong> pada bulan <strong>{bulan}</strong>. Data Penarikan Tunai, Setor Tunai, dan Penerimaan Dana <strong>tidak akan terhapus</strong>.
                     </p>
                     <div className="flex justify-end gap-3">
@@ -3169,9 +3105,9 @@ export default function Bku({
 
             {/* Modal Tutup BKU */}
             < Modal show={isTutupBkuOpen} onClose={() => setIsTutupBkuOpen(false)} maxWidth="lg" >
-                <div className="bg-white dark:bg-gray-800 rounded-lg">
+                <div className="bg-white dark:bg-[#15131F] rounded-lg">
                     <div className="p-6">
-                        <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
+                        <h2 className="mb-4 text-[15px] font-extrabold tracking-tight text-slate-900 dark:text-white">
                             Konfirmasi Tutup BKU
                         </h2>
 
@@ -3203,7 +3139,7 @@ export default function Bku({
                                         <DatePicker
                                             value={tutupForm.data.tanggal_tutup}
                                             onChange={(date) => tutupForm.setData('tanggal_tutup', date ? format(date, 'yyyy-MM-dd') : '')}
-                                            className="mt-1 block w-full text-gray-900 !text-[10pt]"
+                                            className="mt-1 block w-full text-slate-900 !text-[10pt] dark:!bg-white/5 dark:text-white"
                                             placeholder="Pilih tanggal tutup"
                                             startMonth={startOfActiveMonth}
                                             endMonth={endOfActiveMonth}
@@ -3219,10 +3155,10 @@ export default function Bku({
                                     <InputLabel value="Jasa Giro / Bunga Bank" className="!text-[10pt]" />
                                     <div className="relative mt-1">
                                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                            <span className="text-gray-500 text-[10pt]">Rp</span>
+                                            <span className="text-slate-500 text-[10pt]">Rp</span>
                                         </div>
                                         <TextInput
-                                            className="pl-7 block w-full text-gray-900 !text-[10pt]"
+                                            className="pl-7 block w-full text-slate-900 !text-[10pt]"
                                             value={tutupForm.data.bunga_bank}
                                             onChange={(e) => handleCurrencyChange(e, tutupForm, 'bunga_bank')}
                                             placeholder="0"
@@ -3235,10 +3171,10 @@ export default function Bku({
                                     <InputLabel value="Pajak Bunga Bank" className="!text-[10pt]" />
                                     <div className="relative mt-1">
                                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                            <span className="text-gray-500 text-[10pt]">Rp</span>
+                                            <span className="text-slate-500 text-[10pt]">Rp</span>
                                         </div>
                                         <TextInput
-                                            className="pl-7 block w-full text-gray-900 !text-[10pt]"
+                                            className="pl-7 block w-full text-slate-900 !text-[10pt]"
                                             value={tutupForm.data.pajak_bunga}
                                             onChange={(e) => handleCurrencyChange(e, tutupForm, 'pajak_bunga')}
                                             placeholder="0"
@@ -3265,14 +3201,14 @@ export default function Bku({
             < Modal show={isReopenModalOpen} onClose={() => setIsReopenModalOpen(false)} maxWidth="sm" >
                 <div className="p-6">
                     <div className="flex items-center justify-center w-12 h-12 mx-auto bg-green-100 dark:bg-green-900/30 rounded-full mb-4">
-                        <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg className="w-6 h-6 text-mint dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                         </svg>
                     </div>
-                    <h3 className="text-lg font-medium text-center text-gray-900 dark:text-gray-100 mb-2">
+                    <h3 className="mb-2 text-center text-[15px] font-extrabold tracking-tight text-slate-900 dark:text-white">
                         Aktifkan Kembali BKU
                     </h3>
-                    <p className="text-[10pt] text-center text-gray-500 dark:text-gray-400 mb-6">
+                    <p className="text-[10pt] text-center text-slate-500 dark:text-slate-400 mb-6">
                         Apakah Anda yakin ingin mengaktifkan kembali BKU bulan <strong>{bulan}</strong>? <br className="hidden sm:block" />
                         Transaksi penutupan (bunga bank/pajak) akan dihapus dan Anda dapat mengedit kembali pembelanjaan.
                     </p>
@@ -3306,10 +3242,10 @@ export default function Bku({
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                         </svg>
                     </div>
-                    <h3 className="text-lg font-medium text-center text-gray-900 dark:text-gray-100 mb-2">
+                    <h3 className="mb-2 text-center text-[15px] font-extrabold tracking-tight text-slate-900 dark:text-white">
                         Tidak Dapat Menghapus
                     </h3>
-                    <p className="text-[10pt] text-center text-gray-500 dark:text-gray-400 mb-6">
+                    <p className="text-[10pt] text-center text-slate-500 dark:text-slate-400 mb-6">
                         Anda tidak dapat menghapus Penerimaan Dana karena terdapat transaksi <strong>Penarikan Tunai</strong>. Silahkan hapus transaksi penarikan tunai terlebih dahulu.
                     </p>
                     <div className="flex justify-center">
@@ -3322,7 +3258,7 @@ export default function Bku({
             {/* Modal Lapor Pajak */}
             <Modal show={isLaporPajakOpen} onClose={() => setIsLaporPajakOpen(false)} maxWidth="md">
                 <div className="p-6">
-                    <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Lapor Pajak</h2>
+                    <h2 className="mb-4 text-[15px] font-extrabold tracking-tight text-slate-900 dark:text-white">Lapor Pajak</h2>
                     <form onSubmit={submitLaporPajak}>
                         <div className="space-y-4">
                             <div>
@@ -3331,7 +3267,7 @@ export default function Bku({
                                     <DatePicker
                                         value={data.tanggal_lapor}
                                         onChange={(date) => setData('tanggal_lapor', date ? format(date, 'yyyy-MM-dd') : '')}
-                                        className="mt-1 block w-full text-gray-900 !text-[10pt]"
+                                        className="mt-1 block w-full text-slate-900 !text-[10pt] dark:!bg-white/5 dark:text-white"
                                         placeholder="Pilih tanggal"
                                         startMonth={startOfActiveMonth}
                                         disabled={[
@@ -3343,7 +3279,7 @@ export default function Bku({
                             <div>
                                 <InputLabel value="Kode Masa Pajak" className="!text-[10pt]" />
                                 <TextInput
-                                    className="mt-1 block w-full text-gray-900 !text-[10pt]"
+                                    className="mt-1 block w-full text-slate-900 !text-[10pt] dark:!bg-white/5 dark:text-white"
                                     value={data.kode_masa_pajak}
                                     onChange={(e) => setData('kode_masa_pajak', e.target.value)}
                                     required
@@ -3353,7 +3289,7 @@ export default function Bku({
                             <div>
                                 <InputLabel value="NTPN" className="!text-[10pt]" />
                                 <TextInput
-                                    className="mt-1 block w-full text-gray-900 !text-[10pt]"
+                                    className="mt-1 block w-full text-slate-900 !text-[10pt] dark:!bg-white/5 dark:text-white"
                                     value={data.ntpn}
                                     onChange={(e) => setData('ntpn', e.target.value.toUpperCase().slice(0, 16))}
                                     required
@@ -3365,7 +3301,7 @@ export default function Bku({
 
                         <div className="mt-6 flex justify-end gap-3">
                             <SecondaryButton onClick={() => setIsLaporPajakOpen(false)}>Batal</SecondaryButton>
-                            <PrimaryButton disabled={isReportingTax} className="bg-blue-600">
+                            <PrimaryButton disabled={isReportingTax} className="">
                                 {isReportingTax ? 'Menyimpan...' : 'Simpan'}
                             </PrimaryButton>
                         </div>
@@ -3375,10 +3311,10 @@ export default function Bku({
             {/* Modal Detail Pembelanjaan */}
             <Modal show={isDetailModalOpen} onClose={() => setIsDetailModalOpen(false)} maxWidth="4xl">
                 {selectedDetailItem && (
-                    <div className="bg-white dark:bg-gray-800 rounded-lg overflow-hidden">
+                    <div className="bg-white dark:bg-[#15131F] rounded-lg overflow-hidden">
                         {/* Header */}
-                        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-4 flex justify-between items-center">
-                            <h2 className="text-lg font-bold text-white">Detail Pembelanjaan</h2>
+                        <div className="flex items-center justify-between gap-3 rounded-t-[26px] bg-gradient-to-br from-[#2B2940] via-[#232135] to-[#191826] px-5 py-4">
+                            <h2 className="text-[15px] font-extrabold tracking-tight text-white">Detail Pembelanjaan</h2>
                             <button onClick={() => setIsDetailModalOpen(false)} className="text-white hover:bg-white/20 rounded-full p-1 transition-colors">
                                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -3390,48 +3326,48 @@ export default function Bku({
                             {/* Top Details */}
                             <div className="grid grid-cols-1 gap-4 mb-6">
                                 <div className="space-y-3">
-                                    <div className="flex justify-between border-b border-gray-100 dark:border-gray-700 pb-1">
-                                        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">Tanggal Transaksi</p>
-                                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                    <div className="flex justify-between border-b border-slate-100 dark:border-white/10 pb-1">
+                                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Tanggal Transaksi</p>
+                                        <p className="text-sm font-medium text-slate-900 dark:text-white">
                                             {format(new Date(selectedDetailItem.tanggal_transaksi), 'd MMM yyyy')}
                                         </p>
                                     </div>
-                                    <div className="flex justify-between border-b border-gray-100 dark:border-gray-700 pb-1">
-                                        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">ID Transaksi</p>
-                                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{selectedDetailItem.id_transaksi || '-'}</p>
+                                    <div className="flex justify-between border-b border-slate-100 dark:border-white/10 pb-1">
+                                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">ID Transaksi</p>
+                                        <p className="text-sm font-medium text-slate-900 dark:text-white">{selectedDetailItem.id_transaksi || '-'}</p>
                                     </div>
-                                    <div className="flex justify-between border-b border-gray-100 dark:border-gray-700 pb-1">
-                                        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">Nama Penyedia / Penerima</p>
-                                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{selectedDetailItem.nama_toko || selectedDetailItem.nama_penyedia || selectedDetailItem.nama_penyedia_barang_jasa || selectedDetailItem.nama_penerima_pembayaran || selectedDetailItem.nama_penerima || '-'}</p>
+                                    <div className="flex justify-between border-b border-slate-100 dark:border-white/10 pb-1">
+                                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Nama Penyedia / Penerima</p>
+                                        <p className="text-sm font-medium text-slate-900 dark:text-white">{selectedDetailItem.nama_toko || selectedDetailItem.nama_penyedia || selectedDetailItem.nama_penyedia_barang_jasa || selectedDetailItem.nama_penerima_pembayaran || selectedDetailItem.nama_penerima || '-'}</p>
                                     </div>
-                                    <div className="flex justify-between border-b border-gray-100 dark:border-gray-700 pb-1">
-                                        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">NPWP</p>
-                                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{selectedDetailItem.npwp || '-'}</p>
+                                    <div className="flex justify-between border-b border-slate-100 dark:border-white/10 pb-1">
+                                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">NPWP</p>
+                                        <p className="text-sm font-medium text-slate-900 dark:text-white">{selectedDetailItem.npwp || '-'}</p>
                                     </div>
-                                    <div className="flex justify-between border-b border-gray-100 dark:border-gray-700 pb-1">
-                                        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">Alamat</p>
-                                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{selectedDetailItem.alamat_toko || selectedDetailItem.alamat || '-'}</p>
+                                    <div className="flex justify-between border-b border-slate-100 dark:border-white/10 pb-1">
+                                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Alamat</p>
+                                        <p className="text-sm font-medium text-slate-900 dark:text-white">{selectedDetailItem.alamat_toko || selectedDetailItem.alamat || '-'}</p>
                                     </div>
                                 </div>
                             </div>
 
                             {/* Cards: Kegiatan & Rekening */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                                <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-5">
-                                    <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-3 border-b border-gray-100 dark:border-gray-700 pb-2">
+                                <div className="border border-slate-200 dark:border-white/10 rounded-lg p-5">
+                                    <h3 className="mb-3 border-b border-slate-100 pb-2 text-[12px] font-extrabold text-slate-900 dark:border-white/5 dark:text-white">
                                         Kegiatan
                                     </h3>
-                                    <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+                                    <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
                                         {selectedDetailItem.kode_kegiatan ? (
                                             `${selectedDetailItem.kode_kegiatan.kode} - ${selectedDetailItem.kode_kegiatan.uraian}`
                                         ) : '-'}
                                     </p>
                                 </div>
-                                <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-5">
-                                    <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-3 border-b border-gray-100 dark:border-gray-700 pb-2">
+                                <div className="border border-slate-200 dark:border-white/10 rounded-lg p-5">
+                                    <h3 className="mb-3 border-b border-slate-100 pb-2 text-[12px] font-extrabold text-slate-900 dark:border-white/5 dark:text-white">
                                         Rekening Belanja
                                     </h3>
-                                    <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+                                    <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
                                         {selectedDetailItem.rekening_belanja ? (
                                             `${selectedDetailItem.rekening_belanja.kode_rekening} - ${selectedDetailItem.rekening_belanja.rincian_objek}`
                                         ) : '-'}
@@ -3440,34 +3376,34 @@ export default function Bku({
                             </div>
 
                             {/* Table Details */}
-                            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Detail Uraian Pembelanjaan</h3>
-                            <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden mb-6">
+                            <h3 className="mb-4 text-[15px] font-extrabold tracking-tight text-slate-900 dark:text-white">Detail Uraian Pembelanjaan</h3>
+                            <div className="border border-slate-200 dark:border-white/10 rounded-lg overflow-hidden mb-6">
                                 <table className="w-full text-sm text-left">
-                                    <thead className="text-xs text-gray-500 dark:text-gray-400 uppercase bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
+                                    <thead className="text-xs text-slate-500 dark:text-slate-400 uppercase bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-white/10">
                                         <tr>
                                             <th className="px-6 py-3 font-medium">Uraian</th>
                                             <th className="px-6 py-3 font-medium text-center">Volume</th>
-                                            <th className="px-6 py-3 font-medium text-right">Harga Satuan</th>
-                                            <th className="px-6 py-3 font-medium text-right">Subtotal</th>
+                                            <th className="px-6 py-3 font-medium text-right text-sikas-num">Harga Satuan</th>
+                                            <th className="px-6 py-3 font-medium text-right text-sikas-num">Subtotal</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                                    <tbody className="divide-y divide-slate-200 dark:divide-white/5">
                                         {selectedDetailItem.uraian_details && selectedDetailItem.uraian_details.length > 0 ? (
                                             selectedDetailItem.uraian_details.map((detail: any, index: number) => (
-                                                <tr key={index} className="bg-white dark:bg-gray-800">
-                                                    <td className="px-6 py-4 text-gray-900 dark:text-gray-100">{detail.uraian}</td>
-                                                    <td className="px-6 py-4 text-center text-gray-600 dark:text-gray-400">{detail.volume} {detail.satuan}</td>
-                                                    <td className="px-6 py-4 text-right text-gray-600 dark:text-gray-400">{formatCurrency(detail.harga_satuan)}</td>
-                                                    <td className="px-6 py-4 text-right text-gray-900 dark:text-gray-100 font-medium">{formatCurrency(detail.volume * detail.harga_satuan)}</td>
+                                                <tr key={index} className="bg-white dark:bg-[#15131F]">
+                                                    <td className="px-6 py-4 text-slate-900 dark:text-white">{detail.uraian}</td>
+                                                    <td className="px-6 py-4 text-center text-slate-600 dark:text-slate-400">{detail.volume} {detail.satuan}</td>
+                                                    <td className="px-6 py-4 text-right text-slate-600 dark:text-slate-400">{formatCurrency(detail.harga_satuan)}</td>
+                                                    <td className="px-6 py-4 text-right text-slate-900 dark:text-white font-medium text-sikas-num">{formatCurrency(detail.volume * detail.harga_satuan)}</td>
                                                 </tr>
                                             ))
                                         ) : (
                                             /* If no details, show the main item info as a single row fallback */
-                                            <tr className="bg-white dark:bg-gray-800">
-                                                <td className="px-6 py-4 text-gray-900 dark:text-gray-100">{selectedDetailItem.uraian}</td>
-                                                <td className="px-6 py-4 text-center text-gray-600 dark:text-gray-400">-</td>
-                                                <td className="px-6 py-4 text-right text-gray-600 dark:text-gray-400">-</td>
-                                                <td className="px-6 py-4 text-right text-gray-900 dark:text-gray-100 font-medium">{formatCurrency(selectedDetailItem.total_transaksi_kotor)}</td>
+                                            <tr className="bg-white dark:bg-[#15131F]">
+                                                <td className="px-6 py-4 text-slate-900 dark:text-white">{selectedDetailItem.uraian}</td>
+                                                <td className="px-6 py-4 text-center text-slate-600 dark:text-slate-400">-</td>
+                                                <td className="px-6 py-4 text-right text-slate-600 dark:text-slate-400">-</td>
+                                                <td className="px-6 py-4 text-right text-slate-900 dark:text-white font-medium text-sikas-num">{formatCurrency(selectedDetailItem.total_transaksi_kotor)}</td>
                                             </tr>
                                         )}
                                     </tbody>
@@ -3475,15 +3411,15 @@ export default function Bku({
                             </div>
 
                             {/* Summary Footer */}
-                            <div className="flex flex-col items-end gap-2 border-t border-gray-200 dark:border-gray-700 pt-4">
+                            <div className="flex flex-col items-end gap-2 border-t border-slate-200 dark:border-white/10 pt-4">
                                 <div className="flex justify-between w-full md:w-1/3">
-                                    <span className="text-gray-500 dark:text-gray-400 uppercase text-xs font-bold tracking-wider">Total Transaksi Kotor:</span>
-                                    <span className="text-gray-900 dark:text-gray-100 font-bold">{formatCurrency(selectedDetailItem.total_transaksi_kotor)}</span>
+                                    <span className="text-slate-500 dark:text-slate-400 uppercase text-xs font-bold tracking-wider">Total Transaksi Kotor:</span>
+                                    <span className="text-slate-900 dark:text-white font-bold">{formatCurrency(selectedDetailItem.total_transaksi_kotor)}</span>
                                 </div>
                                 <div className="flex justify-between w-full md:w-1/3">
-                                    <span className="text-gray-500 dark:text-gray-400 uppercase text-xs font-bold tracking-wider">Total Harga Bersih:</span>
+                                    <span className="text-slate-500 dark:text-slate-400 uppercase text-xs font-bold tracking-wider">Total Harga Bersih:</span>
                                     {/* Assuming Harga Bersih is Kotor - Pajak */}
-                                    <span className="text-gray-900 dark:text-gray-100 font-bold">{formatCurrency(selectedDetailItem.total_transaksi_kotor - selectedDetailItem.total_pajak)}</span>
+                                    <span className="text-slate-900 dark:text-white font-bold">{formatCurrency(selectedDetailItem.total_transaksi_kotor - selectedDetailItem.total_pajak)}</span>
                                 </div>
                             </div>
                         </div>
@@ -3494,21 +3430,21 @@ export default function Bku({
             {/* Modal Informasi Tarif Pajak PPh 21 — Custom overlay (bukan HeadlessUI Dialog) agar tidak ikut menutup modal induk */}
             {showTarifModal && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 py-6" onClick={() => setShowTarifModal(false)}>
-                    <div className="absolute inset-0 bg-gray-500/75" />
+                    <div className="absolute inset-0 bg-slate-500/75" />
                     <div
-                        className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl sm:max-w-2xl sm:w-full max-h-[85vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+                        className="relative bg-white dark:bg-[#15131F] rounded-lg shadow-xl sm:max-w-2xl sm:w-full max-h-[85vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className="p-6 max-h-[80vh] overflow-y-auto">
                             <div className="flex justify-between items-center mb-4">
-                                <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Informasi Tarif Pajak</h2>
-                                <button onClick={() => setShowTarifModal(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                                <h2 className="text-[15px] font-extrabold tracking-tight text-slate-900 dark:text-white">Informasi Tarif Pajak</h2>
+                                <button onClick={() => setShowTarifModal(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
                                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                                 </button>
                             </div>
 
-                            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-3 mb-4">
-                                <p className="text-[10pt] text-blue-800 dark:text-blue-200">
+                            <div className="bg-pastel-sky/50 dark:bg-sky/[0.06] border border-sky/15 dark:border-sky/20 rounded-lg p-3 mb-4">
+                                <p className="text-[10pt] text-sky-800 dark:text-sky-200">
                                     Berdasarkan <strong>PP 58 Tahun 2023</strong> dan <strong>PMK 168 Tahun 2023</strong>, terdapat penyesuaian besaran PPh 21 untuk honor.
                                 </p>
                             </div>
@@ -3516,20 +3452,20 @@ export default function Bku({
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {/* Tarif Dengan NPWP */}
                                 <div>
-                                    <h3 className="text-[10pt] font-bold text-green-700 dark:text-green-400 mb-2">Tarif Non-PNS dengan NIK/NPWP</h3>
-                                    <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                                    <h3 className="text-[10pt] font-bold text-mint dark:text-mint mb-2">Tarif Non-PNS dengan NIK/NPWP</h3>
+                                    <div className="border border-slate-200 dark:border-white/10 rounded-lg overflow-hidden">
                                         <table className="w-full text-[9pt]">
                                             <thead className="bg-green-50 dark:bg-green-900/30">
                                                 <tr>
-                                                    <th className="px-2 py-1.5 text-left font-semibold text-gray-700 dark:text-gray-300">Tarif</th>
-                                                    <th className="px-2 py-1.5 text-left font-semibold text-gray-700 dark:text-gray-300">Rentang Penghasilan</th>
+                                                    <th className="px-2 py-1.5 text-left font-semibold text-slate-700 dark:text-slate-300">Tarif</th>
+                                                    <th className="px-2 py-1.5 text-left font-semibold text-slate-700 dark:text-slate-300">Rentang Penghasilan</th>
                                                 </tr>
                                             </thead>
-                                            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                                            <tbody className="divide-y divide-slate-100 dark:divide-white/5">
                                                 {TARIF_PPH21_DENGAN_NPWP.map((t, i) => (
-                                                    <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-700/30">
-                                                        <td className="px-2 py-1 font-semibold text-green-700 dark:text-green-400">{t.rate}%</td>
-                                                        <td className="px-2 py-1 text-gray-600 dark:text-gray-400">Rp {(t.min / 1000000).toFixed(1)} jt - Rp {(t.max / 1000000).toFixed(1)} jt</td>
+                                                    <tr key={i} className="hover:bg-slate-50 dark:hover:bg-white/10">
+                                                        <td className="px-2 py-1 font-semibold text-mint dark:text-mint">{t.rate}%</td>
+                                                        <td className="px-2 py-1 text-slate-600 dark:text-slate-400">Rp {(t.min / 1000000).toFixed(1)} jt - Rp {(t.max / 1000000).toFixed(1)} jt</td>
                                                     </tr>
                                                 ))}
                                             </tbody>
@@ -3539,20 +3475,20 @@ export default function Bku({
 
                                 {/* Tarif Tanpa NPWP */}
                                 <div>
-                                    <h3 className="text-[10pt] font-bold text-red-700 dark:text-red-400 mb-2">Tarif Non-PNS tanpa NIK/NPWP</h3>
-                                    <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                                    <h3 className="text-[10pt] font-bold text-rose-600 dark:text-rose-300 mb-2">Tarif Non-PNS tanpa NIK/NPWP</h3>
+                                    <div className="border border-slate-200 dark:border-white/10 rounded-lg overflow-hidden">
                                         <table className="w-full text-[9pt]">
                                             <thead className="bg-red-50 dark:bg-red-900/30">
                                                 <tr>
-                                                    <th className="px-2 py-1.5 text-left font-semibold text-gray-700 dark:text-gray-300">Tarif</th>
-                                                    <th className="px-2 py-1.5 text-left font-semibold text-gray-700 dark:text-gray-300">Rentang Penghasilan</th>
+                                                    <th className="px-2 py-1.5 text-left font-semibold text-slate-700 dark:text-slate-300">Tarif</th>
+                                                    <th className="px-2 py-1.5 text-left font-semibold text-slate-700 dark:text-slate-300">Rentang Penghasilan</th>
                                                 </tr>
                                             </thead>
-                                            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                                            <tbody className="divide-y divide-slate-100 dark:divide-white/5">
                                                 {TARIF_PPH21_TANPA_NPWP.map((t, i) => (
-                                                    <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-700/30">
-                                                        <td className="px-2 py-1 font-semibold text-red-700 dark:text-red-400">{t.rate}%</td>
-                                                        <td className="px-2 py-1 text-gray-600 dark:text-gray-400">Rp {(t.min / 1000000).toFixed(1)} jt - Rp {(t.max / 1000000).toFixed(1)} jt</td>
+                                                    <tr key={i} className="hover:bg-slate-50 dark:hover:bg-white/10">
+                                                        <td className="px-2 py-1 font-semibold text-rose-600 dark:text-rose-300">{t.rate}%</td>
+                                                        <td className="px-2 py-1 text-slate-600 dark:text-slate-400">Rp {(t.min / 1000000).toFixed(1)} jt - Rp {(t.max / 1000000).toFixed(1)} jt</td>
                                                     </tr>
                                                 ))}
                                             </tbody>
@@ -3567,17 +3503,17 @@ export default function Bku({
             {/* Modal Tarik BKU dari ARKAS (Bulanan) */}
             <Modal show={isArkasMonthlyModalOpen} onClose={() => !pullingMonthlyBku && setIsArkasMonthlyModalOpen(false)} maxWidth="2xl">
                 <div className="p-6">
-                    <div className="flex items-center gap-3 border-b border-gray-100 dark:border-gray-700 pb-4">
+                    <div className="flex items-center gap-3 border-b border-slate-100 dark:border-white/10 pb-4">
                         <div className="p-2.5 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl text-emerald-600 dark:text-emerald-400">
                             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                             </svg>
                         </div>
                         <div>
-                            <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">
+                            <h2 className="text-[15px] font-extrabold tracking-tight text-slate-900 dark:text-white">
                                 Tarik BKU Bulan {bulan} dari ARKAS
                             </h2>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
                                 Tahun Anggaran {tahun} • {bulan}
                             </p>
                         </div>
@@ -3587,7 +3523,7 @@ export default function Bku({
                         {arkasMonthlyLoading ? (
                             <div className="py-12 flex flex-col items-center justify-center gap-3">
                                 <div className="w-9 h-9 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
-                                <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                                <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">
                                     Memeriksa data BKU Bulan {bulan} di database ARKAS...
                                 </p>
                             </div>
@@ -3598,10 +3534,10 @@ export default function Bku({
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                                     </svg>
                                 </div>
-                                <h4 className="text-base font-semibold text-gray-800 dark:text-gray-200 mb-1">
+                                <h4 className="text-base font-semibold text-slate-800 dark:text-slate-200 mb-1">
                                     Data BKU Bulan {bulan} Tidak Ditemukan
                                 </h4>
-                                <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md mx-auto">
+                                <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto">
                                     {arkasMonthlyData?.message || `Tidak ditemukan catatan transaksi BKU Bulan ${bulan} ${tahun} di database ARKAS.`}
                                 </p>
                             </div>
@@ -3609,12 +3545,12 @@ export default function Bku({
                             <div className="space-y-5">
                                 {/* Ringkasan Data ARKAS Bulan Ini */}
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    <div className="bg-purple-50/60 dark:bg-purple-950/20 border border-purple-200/60 dark:border-purple-800/40 rounded-xl p-3.5">
-                                        <span className="text-[10pt] text-purple-700 dark:text-purple-300 font-medium">Belanja Kas Bulan Ini</span>
-                                        <div className="text-lg font-bold text-purple-800 dark:text-purple-200 mt-1">
+                                    <div className="bg-brand-50/60 dark:bg-brand-950/20 border border-brand-200/60 dark:border-brand-800/40 rounded-xl p-3.5">
+                                        <span className="text-[10pt] text-brand-700 dark:text-brand-300 font-medium">Belanja Kas Bulan Ini</span>
+                                        <div className="text-lg font-bold text-brand-800 dark:text-brand-200 mt-1">
                                             {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(arkasMonthlyData.arkas_data.nominal_belanja || 0)}
                                         </div>
-                                        <div className="text-xs text-purple-600 dark:text-purple-400 mt-0.5">
+                                        <div className="text-xs text-brand-600 dark:text-brand-300 mt-0.5">
                                             {arkasMonthlyData.arkas_data.total_nota_belanja || 0} nota ({arkasMonthlyData.arkas_data.total_item_belanja || 0} item belanja)
                                         </div>
                                     </div>
@@ -3668,7 +3604,7 @@ export default function Bku({
                                                 type="checkbox"
                                                 checked={isMonthlyOverwriteChecked}
                                                 onChange={(e) => setIsMonthlyOverwriteChecked(e.target.checked)}
-                                                className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500"
+                                                className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500"
                                             />
                                             <span className="text-xs font-semibold text-amber-900 dark:text-amber-200">
                                                 Saya memahami dan menyetujui untuk menimpa ulang data BKU bulan {bulan} {tahun}.
@@ -3680,16 +3616,16 @@ export default function Bku({
                         )}
                     </div>
 
-                    <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-gray-100 dark:border-gray-700 pt-4">
+                    <div className="mt-6 flex flex-col items-center justify-between gap-3 border-t border-slate-100 pt-4 sm:flex-row dark:border-white/5">
                         <button
                             type="button"
                             onClick={() => {
                                 setIsArkasMonthlyModalOpen(false);
                                 setIsArkasAiModalOpen(true);
                             }}
-                            className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/50 dark:text-indigo-300 dark:hover:bg-indigo-900/50 rounded-lg border border-indigo-200 dark:border-indigo-800 transition"
+                            className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-brand-700 bg-brand-50 hover:bg-brand-100 dark:bg-brand-950/50 dark:text-brand-300 dark:hover:bg-brand-900/50 rounded-lg border border-brand-200 dark:border-brand-800 transition"
                         >
-                            <Brain className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                            <Brain className="w-4 h-4 text-brand-600 dark:text-brand-300" />
                             Analisis Selisih AI (DeepSeek)
                         </button>
                         <div className="w-full sm:w-auto flex items-center justify-end gap-3">
@@ -3702,7 +3638,7 @@ export default function Bku({
                                     disabled={pullingMonthlyBku || (arkasMonthlyData.has_existing_data && !isMonthlyOverwriteChecked)}
                                     className={`inline-flex items-center px-5 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider text-white shadow-sm transition-all duration-150 ${
                                         pullingMonthlyBku || (arkasMonthlyData.has_existing_data && !isMonthlyOverwriteChecked)
-                                            ? 'bg-gray-400 dark:bg-gray-600 cursor-not-allowed opacity-60'
+                                            ? 'bg-slate-400 dark:bg-white/10 cursor-not-allowed opacity-60'
                                             : 'bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2'
                                     }`}
                                 >
