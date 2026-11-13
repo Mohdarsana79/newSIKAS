@@ -16,7 +16,7 @@ import Dropdown from '@/Components/Dropdown';
 import SearchableSelect from '@/Components/SearchableSelect';
 import axios from 'axios';
 import ArkasDiagnosticModal from '@/Components/Ai/ArkasDiagnosticModal';
-import { Brain, ArrowDownToLine, ArrowUpFromLine } from 'lucide-react';
+import { Brain, ArrowDownToLine, ArrowUpFromLine, ArrowLeft } from 'lucide-react';
 import PageHeader from '@/Components/ui/PageHeader';
 import DataTable from '@/Components/ui/DataTable';
 import IconTile from '@/Components/ui/IconTile';
@@ -2362,6 +2362,16 @@ export default function Bku({
                 <PageHeader
                     className="animate-rise"
                     breadcrumb={[{ label: 'Dashboard' }, { label: 'Penatausahaan', href: vroute('penatausahaan.index') }, { label: 'BKU' }]}
+                    icon={
+                        <Link
+                            href={vroute('penatausahaan.index')}
+                            title="Kembali ke Penatausahaan"
+                            aria-label="Kembali ke Penatausahaan"
+                            className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200/90 bg-white text-slate-600 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-300 hover:bg-pastel-lavender/50 hover:text-brand-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:border-brand-400/40 dark:hover:bg-brand-500/15 dark:hover:text-brand-300"
+                        >
+                            <ArrowLeft className="h-4 w-4" />
+                        </Link>
+                    }
                     title={`BKU ${bulan} ${tahun}`}
                     badge={<StatusBadge tone="violet" dot={false}>BOSP REGULER {tahun}</StatusBadge>}
                     subtitle="Buku Kas Umum per transaksi pada periode ini."
