@@ -7,6 +7,7 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import ArkasDiagnosticModal from '@/Components/Ai/ArkasDiagnosticModal';
 import ArkasSyncModal, { ArkasSyncCompletePayload } from '@/Components/Arkas/ArkasSyncModal';
+import ArkasYearSelect from '@/Components/Arkas/ArkasYearSelect';
 import { Brain, Sparkles, Database, ShieldCheck, AlertTriangle, ArrowRight, RotateCw, FileSearch, CheckCircle2, ShieldAlert } from 'lucide-react';
 import PageHeader from '@/Components/ui/PageHeader';
 import Surface from '@/Components/ui/Surface';
@@ -30,13 +31,15 @@ interface Props {
     auth: any;
     initialData?: PaginatedData;
     defaultYear?: string;
+    activeYears?: string[];
     localStats?: {
         total: number;
         perYear: Record<string, number>;
     };
 }
 
-export default function Index({ auth, initialData, defaultYear = '2026', localStats }: Props) {
+export default function Index({ auth, initialData, defaultYear = '2026', activeYears, localStats }: Props) {
+    const resolvedActiveYears = activeYears && activeYears.length > 0 ? activeYears : [defaultYear];
     const [keyword, setKeyword] = useState('');
     const [year, setYear] = useState(defaultYear);
     const [results, setResults] = useState<any[]>(initialData?.data || []);
@@ -383,8 +386,8 @@ export default function Index({ auth, initialData, defaultYear = '2026', localSt
                         </div>
 
                         {/* Form Pencarian & Tombol Aksi */}
-                        <div className="animate-rise" style={{ animationDelay: '270ms' }}>
-                            <Surface padding="sm">
+                        <div className="relative z-20 animate-rise" style={{ animationDelay: '270ms' }}>
+                            <Surface padding="sm" className="overflow-visible">
                                 <form onSubmit={handleSearch} className="flex flex-col items-end gap-3 lg:flex-row">
                                     {/* Input Keyword */}
                                     <div className="w-full flex-1">
@@ -398,19 +401,19 @@ export default function Index({ auth, initialData, defaultYear = '2026', localSt
                                         />
                                     </div>
 
-                                    {/* Pilihan Tahun */}
-                                    <div className="w-full lg:w-44">
-                                        <InputLabel value="Tahun Anggaran" />
-                                        <select
+                                    {/* Pilihan Tahun Anggaran Aktif (React Select) */}
+                                    <div className="w-full lg:w-52">
+                                        <InputLabel htmlFor="arkas_filter_year" value="Tahun Anggaran" />
+                                        <ArkasYearSelect
+                                            inputId="arkas_filter_year"
                                             value={year}
-                                            onChange={(e) => handleYearChange(e.target.value)}
-                                            className="mt-1 w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-[12px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-slate-900 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
-                                        >
-                                            <option value="2026">Tahun 2026</option>
-                                            <option value="2025">Tahun 2025</option>
-                                            <option value="2024">Tahun 2024</option>
-                                            <option value="ALL">Semua Tahun</option>
-                                        </select>
+                                            onChange={handleYearChange}
+                                            activeYears={resolvedActiveYears}
+                                            localStatsPerYear={localStats?.perYear}
+                                            totalLocal={localStats?.total}
+                                            className="mt-1"
+                                            placeholder="Ketik / pilih tahun..."
+                                        />
                                     </div>
 
                                     {/* Tombol-tombol Aksi */}
@@ -669,6 +672,7 @@ export default function Index({ auth, initialData, defaultYear = '2026', localSt
                 show={showSyncModal}
                 onClose={() => setShowSyncModal(false)}
                 defaultYear={year}
+                activeYears={resolvedActiveYears}
                 localStats={localStats}
                 onSyncComplete={handleSyncComplete}
             />
@@ -677,7 +681,11 @@ export default function Index({ auth, initialData, defaultYear = '2026', localSt
             <ArkasDiagnosticModal
                 isOpen={isAiModalOpen}
                 onClose={() => setIsAiModalOpen(false)}
-                tahun={year !== 'ALL' ? parseInt(year, 10) : 2026}
+                tahun={
+                    year !== 'ALL'
+                        ? parseInt(year, 10)
+                        : parseInt(resolvedActiveYears[0] || String(new Date().getFullYear()), 10)
+                }
                 scope="comprehensive"
             />
         </AuthenticatedLayout>

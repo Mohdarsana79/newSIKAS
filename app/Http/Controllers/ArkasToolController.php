@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Config\VariantConfig;
 use App\Models\RefBarang;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -17,7 +18,25 @@ class ArkasToolController extends Controller
      */
     public function index(Request $request)
     {
-        $year = $request->input('year', '2026');
+        $variant = app()->bound('variant') ? app('variant') : 'reguler';
+        $penganggaranClass = VariantConfig::getModelClass('penganggaran', $variant);
+
+        $activeYears = $penganggaranClass::query()
+            ->select('tahun_anggaran')
+            ->distinct()
+            ->orderBy('tahun_anggaran', 'desc')
+            ->pluck('tahun_anggaran')
+            ->map(fn ($y) => (string) $y)
+            ->values()
+            ->toArray();
+
+        if (empty($activeYears)) {
+            $activeYears = [(string) date('Y')];
+        }
+
+        $year = $request->filled('year')
+            ? (string) $request->input('year')
+            : $activeYears[0];
         $perPage = (int) $request->input('per_page', 50);
         if ($perPage <= 0 || $perPage > 200) {
             $perPage = 50;
@@ -59,6 +78,7 @@ class ArkasToolController extends Controller
         return Inertia::render('ArkasTools/Index', [
             'initialData' => $paginated,
             'defaultYear' => $year,
+            'activeYears' => $activeYears,
             'localStats' => [
                 'total' => $localCount,
                 'perYear' => $yearsCount,

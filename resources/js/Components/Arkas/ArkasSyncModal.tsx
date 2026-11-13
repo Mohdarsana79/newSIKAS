@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import {
     AlertTriangle,
-    Check,
     CheckCircle2,
     Database,
     Layers,
@@ -15,6 +14,7 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import { IconTile } from '@/Components/ui/IconTile';
 import { StatusBadge } from '@/Components/ui/StatusBadge';
+import ArkasYearSelect from '@/Components/Arkas/ArkasYearSelect';
 
 export interface ArkasSyncCompletePayload {
     synced: number;
@@ -26,6 +26,7 @@ interface ArkasSyncModalProps {
     show: boolean;
     onClose: () => void;
     defaultYear: string;
+    activeYears: string[];
     localStats?: {
         total: number;
         perYear: Record<string, number>;
@@ -44,23 +45,16 @@ interface YearStep {
     errorMessage?: string;
 }
 
-const SEQUENTIAL_ALL_YEARS = ['2024', '2025', '2026'] as const;
-
-const TARGET_OPTIONS = [
-    { value: '2026', label: '2026' },
-    { value: '2025', label: '2025' },
-    { value: '2024', label: '2024' },
-    { value: 'ALL', label: 'Semua Tahun' },
-] as const;
-
 export default function ArkasSyncModal({
     show,
     onClose,
     defaultYear,
+    activeYears,
     localStats,
     onSyncComplete,
 }: ArkasSyncModalProps) {
-    const [selectedTargetYear, setSelectedTargetYear] = useState<string>(defaultYear || '2026');
+    const resolvedDefaultYear = defaultYear || activeYears[0] || String(new Date().getFullYear());
+    const [selectedTargetYear, setSelectedTargetYear] = useState<string>(resolvedDefaultYear);
     const [phase, setPhase] = useState<SyncPhase>('confirm');
     const [yearSteps, setYearSteps] = useState<YearStep[]>([]);
     const [totalSynced, setTotalSynced] = useState(0);
@@ -69,23 +63,29 @@ export default function ArkasSyncModal({
 
     useEffect(() => {
         if (show) {
-            setSelectedTargetYear(defaultYear || '2026');
+            setSelectedTargetYear(resolvedDefaultYear);
             setPhase('confirm');
             setYearSteps([]);
             setTotalSynced(0);
             setTotalUpdated(0);
             setOverallError(null);
         }
-    }, [show, defaultYear]);
+    }, [show, resolvedDefaultYear]);
 
     const handleSafeClose = () => {
         if (phase === 'syncing') return;
         onClose();
     };
 
+    const chronologicalActiveYears = [...activeYears]
+        .map(String)
+        .sort((a, b) => Number(a) - Number(b));
+
     const getYearsQueue = (target: string): string[] => {
         if (target === 'ALL') {
-            return [...SEQUENTIAL_ALL_YEARS];
+            return chronologicalActiveYears.length > 0
+                ? chronologicalActiveYears
+                : [resolvedDefaultYear];
         }
         return [target];
     };
@@ -241,7 +241,7 @@ export default function ArkasSyncModal({
 
     return (
         <Modal show={show} onClose={handleSafeClose} maxWidth="md" closeable={phase !== 'syncing'}>
-            <div className="relative overflow-hidden rounded-[26px] bg-white dark:bg-[#15131F]">
+            <div className="relative overflow-visible rounded-[26px] bg-white dark:bg-[#15131F]">
                 {/* Ambient glow terisolasi di dalam sudut modal */}
                 <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[26px]">
                     <div className="absolute -right-14 -top-14 h-40 w-40 rounded-full bg-brand-500/15 blur-3xl dark:bg-brand-500/20" />
@@ -249,7 +249,7 @@ export default function ArkasSyncModal({
                 </div>
 
                 {/* Header Neo-Bento */}
-                <div className="relative flex items-start justify-between gap-3 border-b border-slate-100 px-6 py-5 dark:border-white/5">
+                <div className="relative flex items-start justify-between gap-3 rounded-t-[26px] border-b border-slate-100 px-6 py-5 dark:border-white/5">
                     <div className="flex items-start gap-3.5">
                         <IconTile tone={headerIconTone} size="md">
                             {phase === 'syncing' ? (
@@ -296,38 +296,32 @@ export default function ArkasSyncModal({
                 <div className="relative space-y-4 p-6">
                     {phase === 'confirm' && (
                         <>
-                            {/* Pill Selector Target Tahun */}
-                            <div className="rounded-[20px] border border-slate-200/80 bg-slate-50/90 p-4 dark:border-white/10 dark:bg-white/[0.03]">
-                                <div className="flex items-center justify-between gap-2">
-                                    <span className="text-[10.5px] font-extrabold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+                            {/* Pilih Target Tahun Anggaran Aktif via React Select */}
+                            <div className="overflow-visible rounded-[20px] border border-slate-200/80 bg-slate-50/90 p-4 dark:border-white/10 dark:bg-white/[0.03]">
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                    <label
+                                        htmlFor="sync_target_year"
+                                        className="text-[10.5px] font-extrabold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400"
+                                    >
                                         Target Tahun Anggaran
-                                    </span>
+                                    </label>
                                     <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500">
                                         {selectedTargetYear === 'ALL'
-                                            ? 'Berurutan 2024 -> 2025 -> 2026'
+                                            ? `Berurutan ${chronologicalActiveYears.join(' -> ')}`
                                             : `Khusus Tahun ${selectedTargetYear}`}
                                     </span>
                                 </div>
 
-                                <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                                    {TARGET_OPTIONS.map((opt) => {
-                                        const isActive = selectedTargetYear === opt.value;
-                                        return (
-                                            <button
-                                                key={opt.value}
-                                                type="button"
-                                                onClick={() => setSelectedTargetYear(opt.value)}
-                                                className={`flex items-center justify-center gap-1.5 rounded-full border px-3 py-2 text-[11px] font-extrabold transition ${
-                                                    isActive
-                                                        ? 'border-brand-500 bg-pastel-lavender text-brand-700 ring-2 ring-brand-500/20 dark:border-brand-400/60 dark:bg-brand-500/20 dark:text-brand-200'
-                                                        : 'border-slate-200/80 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10'
-                                                }`}
-                                            >
-                                                {isActive && <Check className="h-3.5 w-3.5 shrink-0" />}
-                                                <span>{opt.label}</span>
-                                            </button>
-                                        );
-                                    })}
+                                <div className="mt-2.5">
+                                    <ArkasYearSelect
+                                        inputId="sync_target_year"
+                                        value={selectedTargetYear}
+                                        onChange={setSelectedTargetYear}
+                                        activeYears={activeYears}
+                                        localStatsPerYear={localStats?.perYear}
+                                        totalLocal={localStats?.total}
+                                        placeholder="Ketik atau pilih tahun anggaran aktif..."
+                                    />
                                 </div>
                             </div>
 
@@ -348,7 +342,7 @@ export default function ArkasSyncModal({
                                         </div>
                                         <p className="text-[11px] font-medium leading-relaxed text-slate-500 dark:text-slate-400">
                                             {selectedTargetYear === 'ALL'
-                                                ? 'Sistem akan menyinkronkan tahun 2024, 2025, dan 2026 satu per satu langsung dari database ARKAS ke PostgreSQL tanpa membebani browser.'
+                                                ? `Sistem akan menyinkronkan tahun ${chronologicalActiveYears.join(', ')} satu per satu langsung dari database ARKAS ke PostgreSQL tanpa membebani browser.`
                                                 : `Data referensi tahun ${selectedTargetYear} dari database ARKAS akan langsung dibandingkan dan di-upsert ke database lokal SIKAS.`}
                                         </p>
                                     </div>
@@ -497,7 +491,7 @@ export default function ArkasSyncModal({
                 </div>
 
                 {/* Footer */}
-                <div className="relative flex items-center justify-end gap-2.5 border-t border-slate-100 bg-slate-50/70 px-6 py-4 dark:border-white/5 dark:bg-white/[0.02]">
+                <div className="relative flex items-center justify-end gap-2.5 rounded-b-[26px] border-t border-slate-100 bg-slate-50/70 px-6 py-4 dark:border-white/5 dark:bg-white/[0.02]">
                     {phase === 'confirm' && (
                         <>
                             <SecondaryButton type="button" onClick={handleSafeClose}>
