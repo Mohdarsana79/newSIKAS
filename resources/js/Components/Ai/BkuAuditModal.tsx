@@ -1,25 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import useVariantRoute from '@/Hooks/useVariantRoute';
 import axios from 'axios';
-import { 
-    X, 
-    Brain, 
-    Sparkles, 
-    AlertTriangle, 
-    CheckCircle2, 
-    AlertOctagon, 
-    FileText, 
-    RotateCw, 
-    ChevronDown, 
+import {
+    X,
+    Brain,
+    Sparkles,
+    AlertTriangle,
+    CheckCircle2,
+    AlertOctagon,
+    FileText,
+    RotateCw,
+    ChevronDown,
     ChevronUp,
     ShieldCheck,
     Coins,
-    Calendar,
-    ArrowRight,
     Layers,
-    BookOpen
+    BookOpen,
 } from 'lucide-react';
-import { Link } from '@inertiajs/react';
+import Modal from '@/Components/Modal';
+import PrimaryButton from '@/Components/PrimaryButton';
+import SecondaryButton from '@/Components/SecondaryButton';
+import IconTile from '@/Components/ui/IconTile';
+import StatusBadge from '@/Components/ui/StatusBadge';
+import { cn } from '@/lib/utils';
 
 interface Finding {
     id: string;
@@ -61,6 +64,33 @@ interface Props {
     onAuditCompleted?: (audit: AuditData, tabType: string) => void;
 }
 
+const MONTH_LIST = [
+    'januari', 'februari', 'maret', 'april', 'mei', 'juni',
+    'juli', 'agustus', 'september', 'oktober', 'november', 'desember',
+];
+
+const SEVERITY_META: Record<Finding['severity'], {
+    label: string;
+    badgeTone: 'danger' | 'warning' | 'info';
+    cardBorder: string;
+}> = {
+    danger: {
+        label: 'BAHAYA',
+        badgeTone: 'danger',
+        cardBorder: 'border-rose-200/90 dark:border-rose-500/25',
+    },
+    warning: {
+        label: 'PERINGATAN',
+        badgeTone: 'warning',
+        cardBorder: 'border-amber-200/90 dark:border-amber-500/25',
+    },
+    info: {
+        label: 'INFO',
+        badgeTone: 'info',
+        cardBorder: 'border-sky/25 dark:border-sky/25',
+    },
+};
+
 export default function BkuAuditModal({
     isOpen,
     onClose,
@@ -76,31 +106,34 @@ export default function BkuAuditModal({
 }: Props) {
     const vroute = useVariantRoute();
 
-    // Period Scope State
-    const [periodeType, setPeriodeType] = useState<'bulanan' | 'tahapan' | 'tahunan'>(initialPeriodeType || 'bulanan');
+    const [periodeType, setPeriodeType] = useState<'bulanan' | 'tahapan' | 'tahunan'>(
+        initialPeriodeType || 'bulanan'
+    );
     const [selectedMonth, setSelectedMonth] = useState<string>(
-        (initialPeriodeKey && initialPeriodeType === 'bulanan') 
-            ? initialPeriodeKey.toLowerCase() 
-            : (bulan ? bulan.toLowerCase() : 'januari')
+        initialPeriodeKey && initialPeriodeType === 'bulanan'
+            ? initialPeriodeKey.toLowerCase()
+            : bulan
+                ? bulan.toLowerCase()
+                : 'januari'
     );
     const [selectedTahap, setSelectedTahap] = useState<'tahap_1' | 'tahap_2'>(
-        (initialPeriodeKey === 'tahap_2') ? 'tahap_2' : 'tahap_1'
+        initialPeriodeKey === 'tahap_2' ? 'tahap_2' : 'tahap_1'
     );
-    // Sync scope state when modal opens or target changes
+
     useEffect(() => {
-        if (isOpen) {
-            if (initialPeriodeType) {
-                setPeriodeType(initialPeriodeType);
+        if (!isOpen) return;
+
+        if (initialPeriodeType) {
+            setPeriodeType(initialPeriodeType);
+        }
+        if (initialPeriodeKey) {
+            if (initialPeriodeType === 'tahapan') {
+                setSelectedTahap(initialPeriodeKey === 'tahap_2' ? 'tahap_2' : 'tahap_1');
+            } else if (initialPeriodeType === 'bulanan') {
+                setSelectedMonth(initialPeriodeKey.toLowerCase());
             }
-            if (initialPeriodeKey) {
-                if (initialPeriodeType === 'tahapan') {
-                    setSelectedTahap(initialPeriodeKey === 'tahap_2' ? 'tahap_2' : 'tahap_1');
-                } else if (initialPeriodeType === 'bulanan') {
-                    setSelectedMonth(initialPeriodeKey.toLowerCase());
-                }
-            } else if (bulan) {
-                setSelectedMonth(bulan.toLowerCase());
-            }
+        } else if (bulan) {
+            setSelectedMonth(bulan.toLowerCase());
         }
     }, [isOpen, tabType, initialPeriodeType, initialPeriodeKey, bulan]);
 
@@ -112,20 +145,19 @@ export default function BkuAuditModal({
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
     const [expandedFinding, setExpandedFinding] = useState<string | null>(null);
 
-    const monthList = [
-        'januari', 'februari', 'maret', 'april', 'mei', 'juni',
-        'juli', 'agustus', 'september', 'oktober', 'november', 'desember'
-    ];
+    const currentPeriodeKey =
+        periodeType === 'bulanan'
+            ? selectedMonth
+            : periodeType === 'tahapan'
+                ? selectedTahap
+                : 'tahunan';
 
-    const currentPeriodeKey = periodeType === 'bulanan' 
-        ? selectedMonth 
-        : (periodeType === 'tahapan' ? selectedTahap : 'tahunan');
-
-    const periodeLabel = periodeType === 'bulanan'
-        ? `Bulan ${selectedMonth.charAt(0).toUpperCase() + selectedMonth.slice(1)} ${tahun}`
-        : (periodeType === 'tahapan'
-            ? `${selectedTahap === 'tahap_1' ? 'Tahap 1 (Januari - Juni)' : 'Tahap 2 (Juli - Desember)'} ${tahun}`
-            : `Tahun Anggaran Penuh ${tahun}`);
+    const periodeLabel =
+        periodeType === 'bulanan'
+            ? `Bulan ${selectedMonth.charAt(0).toUpperCase() + selectedMonth.slice(1)} ${tahun}`
+            : periodeType === 'tahapan'
+                ? `${selectedTahap === 'tahap_1' ? 'Tahap 1 (Januari - Juni)' : 'Tahap 2 (Juli - Desember)'} ${tahun}`
+                : `Tahun Anggaran Penuh ${tahun}`;
 
     const steps = [
         `Menganalisis pencatatan dan formula pada ${tabTitle}...`,
@@ -135,7 +167,6 @@ export default function BkuAuditModal({
         'Menyusun skor kepatuhan & matriks rekomendasi BPK...',
     ];
 
-    // Reset or fetch status when scope changes
     useEffect(() => {
         if (!isOpen) return;
 
@@ -151,15 +182,16 @@ export default function BkuAuditModal({
                         tab_type: tabType,
                         periode_type: periodeType,
                         periode_key: currentPeriodeKey,
-                    }
+                    },
                 });
 
                 if (isMounted && response.data.success) {
                     setAuditData(response.data.audit || null);
                     setSelectedCategory('all');
+                    setExpandedFinding(null);
                 }
             } catch (err: any) {
-                console.error("Error fetching audit status:", err);
+                console.error('Error fetching audit status:', err);
             } finally {
                 if (isMounted) setFetchingStatus(false);
             }
@@ -167,21 +199,23 @@ export default function BkuAuditModal({
 
         fetchStatus();
 
-        return () => { isMounted = false; };
+        return () => {
+            isMounted = false;
+        };
     }, [isOpen, tahun, tabType, periodeType, currentPeriodeKey]);
 
     useEffect(() => {
-        let interval: any;
+        let interval: ReturnType<typeof setInterval> | undefined;
         if (loading) {
             setLoadingStep(0);
             interval = setInterval(() => {
                 setLoadingStep((prev) => (prev < steps.length - 1 ? prev + 1 : prev));
             }, 3000);
         }
-        return () => clearInterval(interval);
+        return () => {
+            if (interval) clearInterval(interval);
+        };
     }, [loading]);
-
-    if (!isOpen) return null;
 
     const handleRunAudit = async (forceRefresh = false) => {
         setLoading(true);
@@ -200,6 +234,7 @@ export default function BkuAuditModal({
             if (response.data.success) {
                 const newAudit = response.data.data;
                 setAuditData(newAudit);
+                setExpandedFinding(null);
                 if (onAuditCompleted) {
                     onAuditCompleted(newAudit, tabType);
                 }
@@ -209,8 +244,8 @@ export default function BkuAuditModal({
         } catch (error: any) {
             console.error('Audit execution error:', error);
             setErrorMessage(
-                error.response?.data?.message || 
-                'Terjadi kesalahan saat menghubungi server audit DeepSeek.'
+                error.response?.data?.message ||
+                    'Terjadi kesalahan saat menghubungi server audit DeepSeek.'
             );
         } finally {
             setLoading(false);
@@ -222,124 +257,163 @@ export default function BkuAuditModal({
         window.open(vroute('bku-audit.pdf', { id: auditData.id }), '_blank');
     };
 
-    const score = auditData?.compliance_score ?? 100;
-    const scoreColor = score >= 85 ? 'text-emerald-500' : (score >= 60 ? 'text-amber-500' : 'text-rose-500');
-    const scoreBg = score >= 85 ? 'bg-emerald-50 border-emerald-200' : (score >= 60 ? 'bg-amber-50 border-amber-200' : 'bg-rose-50 border-rose-200');
-    const scoreText = score >= 85 ? 'Tingkat Kepatuhan Sangat Baik' : (score >= 60 ? 'Perlu Perhatian / Catatan' : 'Risiko Temuan BPK Tinggi');
+    const score = Math.max(0, Math.min(100, Number(auditData?.compliance_score ?? 100)));
+    const scoreTier =
+        score >= 85
+            ? {
+                  tone: 'success' as const,
+                  label: 'Tingkat Kepatuhan Sangat Baik',
+                  stroke: 'text-mint',
+                  numberClass: 'text-emerald-600 dark:text-emerald-300',
+                  cardClass:
+                      'border-mint/25 bg-pastel-mint/45 dark:border-mint/25 dark:bg-mint/[0.08]',
+              }
+            : score >= 60
+                ? {
+                      tone: 'warning' as const,
+                      label: 'Perlu Perhatian / Catatan',
+                      stroke: 'text-amber-500',
+                      numberClass: 'text-amber-600 dark:text-amber-300',
+                      cardClass:
+                          'border-amber-200/80 bg-pastel-amber/55 dark:border-amber-500/25 dark:bg-amber-500/[0.08]',
+                  }
+                : {
+                      tone: 'danger' as const,
+                      label: 'Risiko Temuan BPK Tinggi',
+                      stroke: 'text-rose-500',
+                      numberClass: 'text-rose-600 dark:text-rose-300',
+                      cardClass:
+                          'border-rose-200/80 bg-pastel-rose/55 dark:border-rose-500/25 dark:bg-rose-500/[0.08]',
+                  };
 
-    // Extract categories dynamically
-    const categories = Array.from(new Set((auditData?.findings || []).map(f => f.category))).filter(Boolean);
+    const gaugeRadius = 42;
+    const gaugeCircumference = 2 * Math.PI * gaugeRadius;
+    const gaugeOffset = gaugeCircumference * (1 - score / 100);
 
-    const filteredFindings = (auditData?.findings || []).filter((f) => {
-        if (selectedCategory === 'all') return true;
-        return f.category === selectedCategory;
-    });
+    const allFindings = auditData?.findings || [];
+    const categories = Array.from(new Set(allFindings.map((f) => f.category))).filter(Boolean);
+    const filteredFindings = allFindings.filter((f) =>
+        selectedCategory === 'all' ? true : f.category === selectedCategory
+    );
 
-    const dangerCount = (auditData?.findings || []).filter(f => f.severity === 'danger').length;
-    const warningCount = (auditData?.findings || []).filter(f => f.severity === 'warning').length;
+    const dangerCount = allFindings.filter((f) => f.severity === 'danger').length;
+    const warningCount = allFindings.filter((f) => f.severity === 'warning').length;
+    const rulesChecked = Array.isArray(auditData?.rules_checked) ? auditData.rules_checked : [];
+
+    const scopeOptions: {
+        id: string;
+        label: string;
+        active: boolean;
+        onClick: () => void;
+    }[] = [
+        {
+            id: 'bulanan',
+            label: 'Bulanan',
+            active: periodeType === 'bulanan',
+            onClick: () => setPeriodeType('bulanan'),
+        },
+        {
+            id: 'tahap_1',
+            label: 'Tahap 1',
+            active: periodeType === 'tahapan' && selectedTahap === 'tahap_1',
+            onClick: () => {
+                setPeriodeType('tahapan');
+                setSelectedTahap('tahap_1');
+            },
+        },
+        {
+            id: 'tahap_2',
+            label: 'Tahap 2',
+            active: periodeType === 'tahapan' && selectedTahap === 'tahap_2',
+            onClick: () => {
+                setPeriodeType('tahapan');
+                setSelectedTahap('tahap_2');
+            },
+        },
+        {
+            id: 'tahunan',
+            label: 'Tahunan (1 Tahun)',
+            active: periodeType === 'tahunan',
+            onClick: () => setPeriodeType('tahunan'),
+        },
+    ];
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden border border-gray-100 dark:border-gray-700">
-                
-                {/* Header Modal */}
-                <div className="px-5 py-3.5 bg-gradient-to-r from-purple-700 via-indigo-600 to-indigo-800 text-white flex items-center justify-between shadow">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-white/10 rounded-xl backdrop-blur-md">
-                            <Brain className="w-6 h-6 text-purple-200" />
-                        </div>
-                        <div>
-                            <div className="flex items-center gap-2">
-                                <h3 className="text-base sm:text-lg font-bold">Pra-Audit Forensik AI</h3>
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/20 tracking-wider">
-                                    DEEPSEEK-R1
-                                </span>
+        <Modal show={isOpen} onClose={onClose} maxWidth="4xl">
+            <div className="relative flex max-h-[88vh] flex-col overflow-hidden rounded-[26px] bg-white dark:bg-[#15131F]">
+                {/* Isolated decorative Neo-Bento glow */}
+                <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[26px]">
+                    <div className="absolute -right-20 -top-20 h-56 w-56 rounded-full bg-pastel-lavender/70 blur-3xl dark:bg-brand-500/15" />
+                    <div className="absolute -bottom-24 -left-16 h-48 w-48 rounded-full bg-pastel-mint/45 blur-3xl dark:bg-mint/10" />
+                </div>
+
+                {/* Header Neo-Bento */}
+                <div className="relative flex shrink-0 items-start justify-between gap-4 border-b border-slate-100 px-6 py-4 dark:border-white/10">
+                    <div className="flex min-w-0 items-center gap-3.5">
+                        <IconTile tone="violet" size="md">
+                            <Brain className="h-5 w-5" />
+                        </IconTile>
+                        <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <h2 className="text-[16px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                                    Pra-Audit Forensik AI
+                                </h2>
+                                <StatusBadge tone="violet">DEEPSEEK-R1</StatusBadge>
                             </div>
-                            <p className="text-xs text-purple-200 flex items-center gap-1.5 mt-0.5 font-medium">
-                                <BookOpen className="w-3.5 h-3.5" />
-                                {tabTitle}
+                            <p className="mt-0.5 flex items-center gap-1.5 truncate text-xs font-medium text-slate-500 dark:text-slate-400">
+                                <BookOpen className="h-3.5 w-3.5 shrink-0 text-brand-500 dark:text-brand-300" />
+                                <span className="truncate">{tabTitle}</span>
                             </p>
                         </div>
                     </div>
+
                     <button
+                        type="button"
                         onClick={onClose}
-                        className="text-white/80 hover:text-white p-1 rounded-lg hover:bg-white/10 transition"
+                        aria-label="Tutup modal pra-audit"
+                        className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-white/10 dark:hover:text-white"
                     >
-                        <X className="w-6 h-6" />
+                        <X className="h-4 w-4" />
                     </button>
                 </div>
 
                 {/* Scope Switcher Bar */}
-                <div className="px-6 py-3 bg-indigo-50/70 dark:bg-gray-850 border-b border-indigo-100 dark:border-gray-700 flex flex-wrap items-center justify-between gap-3 text-xs">
-                    <div className="flex items-center gap-1.5">
-                        <Layers className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                        <span className="font-bold text-gray-700 dark:text-gray-300">Cakupan Audit:</span>
+                <div className="relative flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/90 px-6 py-3 text-xs dark:border-white/10 dark:bg-white/[0.03]">
+                    <div className="flex items-center gap-2">
+                        <Layers className="h-4 w-4 text-brand-600 dark:text-brand-300" />
+                        <span className="font-bold text-slate-700 dark:text-slate-200">
+                            Cakupan Audit:
+                        </span>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
-                        {/* Scope Tabs */}
-                        <div className="inline-flex rounded-lg bg-gray-200 dark:bg-gray-700 p-0.5 shadow-inner">
-                            <button
-                                type="button"
-                                onClick={() => setPeriodeType('bulanan')}
-                                className={`px-3 py-1 rounded-md font-semibold transition ${
-                                    periodeType === 'bulanan'
-                                        ? 'bg-white dark:bg-gray-800 text-indigo-700 dark:text-indigo-300 shadow-sm'
-                                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900'
-                                }`}
-                            >
-                                Bulanan
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setPeriodeType('tahapan');
-                                    setSelectedTahap('tahap_1');
-                                }}
-                                className={`px-3 py-1 rounded-md font-semibold transition ${
-                                    periodeType === 'tahapan' && selectedTahap === 'tahap_1'
-                                        ? 'bg-white dark:bg-gray-800 text-indigo-700 dark:text-indigo-300 shadow-sm'
-                                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900'
-                                }`}
-                            >
-                                Tahap 1
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setPeriodeType('tahapan');
-                                    setSelectedTahap('tahap_2');
-                                }}
-                                className={`px-3 py-1 rounded-md font-semibold transition ${
-                                    periodeType === 'tahapan' && selectedTahap === 'tahap_2'
-                                        ? 'bg-white dark:bg-gray-800 text-indigo-700 dark:text-indigo-300 shadow-sm'
-                                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900'
-                                }`}
-                            >
-                                Tahap 2
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setPeriodeType('tahunan')}
-                                className={`px-3 py-1 rounded-md font-semibold transition ${
-                                    periodeType === 'tahunan'
-                                        ? 'bg-white dark:bg-gray-800 text-indigo-700 dark:text-indigo-300 shadow-sm'
-                                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900'
-                                }`}
-                            >
-                                Tahunan (1 Tahun)
-                            </button>
+                        <div className="inline-flex flex-wrap items-center gap-1 rounded-2xl border border-slate-200/80 bg-slate-100/90 p-1 dark:border-white/10 dark:bg-white/[0.04]">
+                            {scopeOptions.map((option) => (
+                                <button
+                                    key={option.id}
+                                    type="button"
+                                    onClick={option.onClick}
+                                    className={cn(
+                                        'rounded-xl px-3 py-1.5 text-[11.5px] font-bold transition-all',
+                                        option.active
+                                            ? 'bg-white text-brand-700 shadow-sm dark:bg-brand-500/25 dark:text-brand-200'
+                                            : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                                    )}
+                                >
+                                    {option.label}
+                                </button>
+                            ))}
                         </div>
 
-                        {/* Month Dropdown when 'bulanan' */}
                         {periodeType === 'bulanan' && (
                             <select
                                 value={selectedMonth}
                                 onChange={(e) => setSelectedMonth(e.target.value)}
-                                className="block rounded-lg border-gray-300 text-xs py-1 px-2.5 font-medium shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                aria-label="Pilih bulan audit"
+                                className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold capitalize text-slate-800 shadow-sm transition focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-200 dark:border-white/10 dark:bg-[#1E1B2E] dark:text-white dark:focus:border-brand-400 dark:focus:ring-brand-500/20"
                             >
-                                {monthList.map((m) => (
-                                    <option key={m} value={m} className="capitalize">
+                                {MONTH_LIST.map((m) => (
+                                    <option key={m} value={m} className="bg-white text-slate-900 dark:bg-[#1E1B2E] dark:text-white">
                                         {m.charAt(0).toUpperCase() + m.slice(1)}
                                     </option>
                                 ))}
@@ -348,157 +422,224 @@ export default function BkuAuditModal({
                     </div>
                 </div>
 
-                {/* Body Content */}
-                <div className="p-6 overflow-y-auto flex-1 space-y-6">
-
-                    {/* Banner jika belum memiliki API Key */}
+                {/* Scrollable Body */}
+                <div className="sikas-scroll relative min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5">
+                    {/* Warning jika belum ada API Key */}
                     {!hasApiKey && (
-                        <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 flex items-start gap-3">
-                            <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                        <div className="flex items-start gap-3 rounded-[20px] border border-amber-200/80 bg-pastel-amber/75 p-4 dark:border-amber-500/25 dark:bg-amber-500/[0.08]">
+                            <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/80 text-amber-600 shadow-sm dark:bg-amber-500/20 dark:text-amber-300">
+                                <AlertTriangle className="h-4 w-4" />
+                            </div>
                             <div className="text-xs">
-                                <span className="font-bold text-amber-900 dark:text-amber-200">
+                                <span className="font-extrabold text-amber-900 dark:text-amber-200">
                                     Kunci API DeepSeek Pribadi Belum Dikonfigurasi
                                 </span>
-                                <p className="text-amber-800 dark:text-amber-300 mt-0.5">
-                                    Audit saat ini berjalan dengan <strong>Mesin Analisis Deterministik Internal</strong>. Untuk mengaktifkan penalaran mendalam AI (DeepSeek-R1), silakan masukkan API Key Anda di menu Profil Pengguna.
+                                <p className="mt-0.5 leading-relaxed text-amber-800/90 dark:text-amber-200/80">
+                                    Audit saat ini berjalan dengan <strong>Mesin Analisis Deterministik Internal</strong>. Untuk mengaktifkan penalaran mendalam AI (DeepSeek-R1), masukkan API Key Anda pada menu Profil Pengguna.
                                 </p>
                             </div>
                         </div>
                     )}
 
-                    {/* Error Banner jika ada kegagalan */}
+                    {/* Error Banner */}
                     {errorMessage && (
-                        <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 flex items-start gap-3 text-sm text-rose-800 dark:text-rose-200">
-                            <AlertOctagon className="w-5 h-5 flex-shrink-0 text-rose-600 mt-0.5" />
-                            <div>{errorMessage}</div>
+                        <div className="flex items-start gap-3 rounded-[20px] border border-rose-200/80 bg-pastel-rose/75 p-4 text-xs text-rose-800 dark:border-rose-500/25 dark:bg-rose-500/[0.08] dark:text-rose-200">
+                            <AlertOctagon className="mt-0.5 h-5 w-5 shrink-0 text-rose-600 dark:text-rose-300" />
+                            <div className="leading-relaxed font-medium">{errorMessage}</div>
                         </div>
                     )}
 
-                    {/* Loading Screen / Stepper Animation */}
+                    {/* Loading Stepper */}
                     {loading && (
-                        <div className="py-12 px-6 flex flex-col items-center justify-center text-center">
-                            <div className="relative mb-6">
-                                <div className="w-16 h-16 rounded-full border-4 border-purple-200 border-t-purple-600 animate-spin" />
+                        <div className="flex flex-col items-center justify-center rounded-[24px] border border-slate-200/80 bg-slate-50/80 px-6 py-12 text-center dark:border-white/10 dark:bg-white/[0.03]">
+                            <div className="relative mb-5">
+                                <div className="h-16 w-16 animate-spin rounded-full border-4 border-brand-200 border-t-brand-600 dark:border-brand-500/25 dark:border-t-brand-400" />
                                 <div className="absolute inset-0 flex items-center justify-center">
-                                    <Sparkles className="w-6 h-6 text-purple-600 animate-pulse" />
+                                    <Sparkles className="h-6 w-6 animate-pulse text-brand-600 dark:text-brand-300" />
                                 </div>
                             </div>
-                            <h4 className="text-base font-bold text-gray-900 dark:text-white">
+                            <h4 className="text-base font-extrabold text-slate-900 dark:text-white">
                                 AI Sedang Menelaah {tabTitle}...
                             </h4>
-                            <p className="text-sm text-indigo-600 dark:text-indigo-400 font-medium mt-2 animate-fade">
+                            <p className="mt-2 text-xs font-semibold text-brand-600 dark:text-brand-300 sm:text-sm">
                                 {steps[loadingStep]}
                             </p>
-                            <div className="w-64 h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full mt-4 overflow-hidden">
-                                <div 
-                                    className="h-full bg-gradient-to-r from-purple-600 to-indigo-600 transition-all duration-500"
+                            <div className="mt-4 h-2 w-64 overflow-hidden rounded-full bg-slate-200 dark:bg-white/10">
+                                <div
+                                    className="h-full rounded-full bg-gradient-to-r from-brand-500 to-lime-400 transition-all duration-500"
                                     style={{ width: `${((loadingStep + 1) / steps.length) * 100}%` }}
                                 />
                             </div>
-                            <p className="text-xs text-gray-400 mt-3">
+                            <p className="mt-3 text-[11px] text-slate-500 dark:text-slate-400">
                                 Memeriksa kepatuhan terhadap standar pengawasan BPK RI & Inspektorat Daerah.
                             </p>
                         </div>
                     )}
 
-                    {/* Fetching Status Spinner */}
+                    {/* Fetching History Status */}
                     {fetchingStatus && !loading && (
-                        <div className="py-12 text-center text-xs text-gray-500">
-                            <RotateCw className="w-6 h-6 mx-auto mb-2 animate-spin text-indigo-600" />
-                            Memeriksa data riwayat audit untuk {periodeLabel}...
+                        <div className="flex flex-col items-center justify-center rounded-[24px] border border-slate-200/80 bg-slate-50/70 py-12 text-center text-xs text-slate-500 dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-400">
+                            <RotateCw className="mb-2.5 h-6 w-6 animate-spin text-brand-600 dark:text-brand-300" />
+                            <span>Memeriksa data riwayat audit untuk {periodeLabel}...</span>
                         </div>
                     )}
 
-                    {/* Belum Ada Audit untuk Periode Ini & Tidak Sedang Loading */}
+                    {/* Empty State */}
                     {!loading && !fetchingStatus && !auditData && (
-                        <div className="py-12 px-6 text-center space-y-4">
-                            <div className="w-16 h-16 bg-purple-100 dark:bg-purple-900/30 rounded-2xl flex items-center justify-center mx-auto text-purple-600 dark:text-purple-400">
-                                <ShieldCheck className="w-8 h-8" />
+                        <div className="flex flex-col items-center justify-center space-y-4 rounded-[24px] border border-slate-200/80 bg-slate-50/70 px-6 py-12 text-center dark:border-white/10 dark:bg-white/[0.03]">
+                            <IconTile tone="violet" size="lg">
+                                <ShieldCheck className="h-7 w-7" />
+                            </IconTile>
+                            <div className="space-y-1.5">
+                                <h4 className="text-base font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-lg">
+                                    Siap Melakukan Pra-Audit {tabTitle}
+                                </h4>
+                                <p className="mx-auto max-w-md text-xs leading-relaxed text-slate-600 dark:text-slate-400">
+                                    Memindai pembukuan pada <strong className="text-slate-900 dark:text-white">{periodeLabel}</strong> untuk mengidentifikasi potensi catatan kepatuhan sebelum pelaporan resmi.
+                                </p>
                             </div>
-                            <h4 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
-                                Siap Melakukan Pra-Audit {tabTitle}
-                            </h4>
-                            <p className="text-xs text-gray-600 dark:text-gray-400 max-w-md mx-auto">
-                                Memindai pembukuan pada <strong>{periodeLabel}</strong> untuk mengidentifikasi potensi catatan kepatuhan sebelum pelaporan resmi.
-                            </p>
-                            <button
-                                onClick={() => handleRunAudit(false)}
-                                className="inline-flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-xs font-bold rounded-xl shadow-lg shadow-purple-600/20 transition transform hover:-translate-y-0.5"
-                            >
-                                <Sparkles className="w-4 h-4" />
+                            <PrimaryButton type="button" onClick={() => handleRunAudit(false)}>
+                                <Sparkles className="h-4 w-4" />
                                 Mulai Pra-Audit Forensik Sekarang
-                            </button>
+                            </PrimaryButton>
                         </div>
                     )}
 
-                    {/* Hasil Audit Ditampilkan */}
+                    {/* Audit Results */}
                     {!loading && !fetchingStatus && auditData && (
-                        <div className="space-y-6 animate-fadeIn">
-                            
-                            {/* Summary Card with Gauge & Highlights */}
-                            <div className={`p-5 rounded-2xl border ${scoreBg} flex flex-col md:flex-row items-center gap-6`}>
-                                <div className="text-center md:border-r md:pr-6 border-gray-200 dark:border-gray-700 flex flex-col items-center">
-                                    <div className={`text-5xl font-black ${scoreColor}`}>
-                                        {score}
+                        <div className="space-y-5">
+                            {/* Bento Grid 2-Bagian: Skor & Ringkasan Eksekutif */}
+                            <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+                                {/* Kartu Skor Kepatuhan */}
+                                <div
+                                    className={cn(
+                                        'flex flex-col items-center justify-center rounded-[22px] border p-5 text-center lg:col-span-4',
+                                        scoreTier.cardClass
+                                    )}
+                                >
+                                    <div className="relative flex h-28 w-28 items-center justify-center">
+                                        <svg className="h-28 w-28 -rotate-90" viewBox="0 0 100 100">
+                                            <circle
+                                                cx="50"
+                                                cy="50"
+                                                r={gaugeRadius}
+                                                fill="none"
+                                                strokeWidth="8"
+                                                className="stroke-slate-200/80 dark:stroke-white/10"
+                                            />
+                                            <circle
+                                                cx="50"
+                                                cy="50"
+                                                r={gaugeRadius}
+                                                fill="none"
+                                                strokeWidth="8"
+                                                strokeLinecap="round"
+                                                strokeDasharray={gaugeCircumference}
+                                                strokeDashoffset={gaugeOffset}
+                                                className={cn('stroke-current transition-all duration-700', scoreTier.stroke)}
+                                            />
+                                        </svg>
+                                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                            <span
+                                                className={cn(
+                                                    'text-3xl font-black leading-none text-sikas-num',
+                                                    scoreTier.numberClass
+                                                )}
+                                            >
+                                                {score}
+                                            </span>
+                                            <span className="mt-1 text-[9.5px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                                                Skor
+                                            </span>
+                                        </div>
                                     </div>
-                                    <div className="text-[10px] font-bold tracking-wider text-gray-500 uppercase mt-1">
-                                        Skor Kepatuhan
+
+                                    <StatusBadge tone={scoreTier.tone} dot className="mt-3">
+                                        {scoreTier.label}
+                                    </StatusBadge>
+
+                                    <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+                                        {dangerCount > 0 && (
+                                            <StatusBadge tone="danger">{dangerCount} Bahaya</StatusBadge>
+                                        )}
+                                        {warningCount > 0 && (
+                                            <StatusBadge tone="warning">{warningCount} Peringatan</StatusBadge>
+                                        )}
+                                        {dangerCount === 0 && warningCount === 0 && (
+                                            <StatusBadge tone="neutral">Nihil Temuan Kritis</StatusBadge>
+                                        )}
                                     </div>
-                                    <span className={`mt-2 px-2.5 py-0.5 rounded-full text-xs font-semibold ${scoreColor} bg-white dark:bg-gray-800 shadow-sm`}>
-                                        {scoreText}
-                                    </span>
                                 </div>
 
-                                <div className="flex-1 space-y-2 text-sm text-gray-700 dark:text-gray-300">
-                                    <div className="flex items-center justify-between">
-                                        <h5 className="font-bold text-gray-900 dark:text-white flex items-center gap-1.5 text-xs sm:text-sm">
-                                            <Sparkles className="w-4 h-4 text-purple-600" />
-                                            Ringkasan Eksekutif Auditor:
-                                        </h5>
-                                        <div className="flex items-center gap-2 text-xs">
-                                            {dangerCount > 0 && (
-                                                <span className="px-2 py-0.5 rounded bg-rose-100 text-rose-800 font-bold">
-                                                    {dangerCount} Bahaya
+                                {/* Kartu Ringkasan Eksekutif Auditor */}
+                                <div className="flex flex-col justify-between rounded-[22px] border border-slate-200/80 bg-white p-5 dark:border-white/10 dark:bg-white/[0.03] lg:col-span-8">
+                                    <div>
+                                        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2.5 dark:border-white/10">
+                                            <h5 className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-slate-900 dark:text-white">
+                                                <Sparkles className="h-4 w-4 text-brand-600 dark:text-brand-300" />
+                                                Ringkasan Eksekutif Auditor
+                                            </h5>
+                                            <span className="rounded-lg bg-slate-100 px-2.5 py-0.5 text-[11px] font-bold text-slate-600 dark:bg-white/10 dark:text-slate-300">
+                                                {periodeLabel}
+                                            </span>
+                                        </div>
+                                        <p className="text-xs leading-relaxed text-slate-700 dark:text-slate-200 sm:text-[13px]">
+                                            {auditData.executive_summary}
+                                        </p>
+                                    </div>
+
+                                    {rulesChecked.length > 0 && (
+                                        <div className="mt-4 flex flex-wrap items-center gap-1.5 border-t border-slate-100 pt-3 dark:border-white/10">
+                                            <span className="mr-1 text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                                                Aturan Diperiksa:
+                                            </span>
+                                            {rulesChecked.slice(0, 6).map((rule, idx) => (
+                                                <span
+                                                    key={idx}
+                                                    className="rounded-lg bg-slate-100 px-2 py-0.5 text-[10.5px] font-semibold text-slate-600 dark:bg-white/10 dark:text-slate-300"
+                                                >
+                                                    {rule}
                                                 </span>
-                                            )}
-                                            {warningCount > 0 && (
-                                                <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-bold">
-                                                    {warningCount} Peringatan
+                                            ))}
+                                            {rulesChecked.length > 6 && (
+                                                <span className="rounded-lg bg-pastel-lavender px-2 py-0.5 text-[10.5px] font-bold text-brand-700 dark:bg-brand-500/20 dark:text-brand-200">
+                                                    +{rulesChecked.length - 6} lainnya
                                                 </span>
                                             )}
                                         </div>
-                                    </div>
-                                    <p className="leading-relaxed text-justify text-xs sm:text-sm">
-                                        {auditData.executive_summary}
-                                    </p>
+                                    )}
                                 </div>
                             </div>
 
-                            {/* Category Filter Pills */}
+                            {/* Filter Kategori */}
                             {categories.length > 0 && (
-                                <div className="flex flex-wrap items-center gap-2 border-b pb-3 border-gray-100 dark:border-gray-700 text-xs">
-                                    <span className="text-gray-400 font-medium mr-1">Filter Kategori:</span>
+                                <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 pb-3 text-xs dark:border-white/10">
+                                    <span className="mr-1 font-bold text-slate-500 dark:text-slate-400">
+                                        Filter Kategori:
+                                    </span>
                                     <button
                                         type="button"
                                         onClick={() => setSelectedCategory('all')}
-                                        className={`px-3 py-1 rounded-full font-medium transition ${
+                                        className={cn(
+                                            'rounded-full px-3.5 py-1.5 text-[11px] font-bold transition-all',
                                             selectedCategory === 'all'
-                                                ? 'bg-indigo-600 text-white shadow-sm'
-                                                : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200'
-                                        }`}
+                                                ? 'bg-slate-900 text-white shadow-sm dark:bg-white dark:text-slate-900'
+                                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-white/10 dark:text-slate-300 dark:hover:bg-white/15'
+                                        )}
                                     >
-                                        Semua ({auditData.findings?.length || 0})
+                                        Semua ({allFindings.length})
                                     </button>
                                     {categories.map((cat) => (
                                         <button
                                             key={cat}
                                             type="button"
                                             onClick={() => setSelectedCategory(cat)}
-                                            className={`px-3 py-1 rounded-full font-medium capitalize transition ${
+                                            className={cn(
+                                                'rounded-full px-3.5 py-1.5 text-[11px] font-bold capitalize transition-all',
                                                 selectedCategory === cat
-                                                    ? 'bg-indigo-600 text-white shadow-sm'
-                                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200'
-                                            }`}
+                                                    ? 'bg-slate-900 text-white shadow-sm dark:bg-white dark:text-slate-900'
+                                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-white/10 dark:text-slate-300 dark:hover:bg-white/15'
+                                            )}
                                         >
                                             {cat.replace(/_/g, ' ')}
                                         </button>
@@ -509,86 +650,108 @@ export default function BkuAuditModal({
                             {/* Daftar Temuan Accordion */}
                             <div className="space-y-3">
                                 {filteredFindings.length === 0 ? (
-                                    <div className="p-8 text-center text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-900/10 rounded-xl border border-emerald-100 dark:border-emerald-900/30">
-                                        <CheckCircle2 className="w-8 h-8 mx-auto mb-2" />
-                                        <p className="font-bold text-sm">Tidak Ditemukan Catatan Kepatuhan</p>
-                                        <p className="text-xs text-gray-500 mt-1">
+                                    <div className="flex flex-col items-center rounded-[22px] border border-mint/25 bg-pastel-mint/55 p-8 text-center dark:border-mint/20 dark:bg-mint/[0.08]">
+                                        <IconTile tone="mint" size="md" className="mb-3">
+                                            <CheckCircle2 className="h-5 w-5" />
+                                        </IconTile>
+                                        <p className="text-sm font-extrabold text-emerald-900 dark:text-emerald-200">
+                                            Tidak Ditemukan Catatan Kepatuhan
+                                        </p>
+                                        <p className="mt-1 max-w-lg text-xs leading-relaxed text-emerald-800/80 dark:text-emerald-200/75">
                                             Seluruh catatan pembukuan pada {tabTitle} periode {periodeLabel} telah tertib dan sesuai standar regulasi.
                                         </p>
                                     </div>
                                 ) : (
                                     filteredFindings.map((finding) => {
                                         const isExpanded = expandedFinding === finding.id;
-                                        const sev = finding.severity;
-                                        const borderClass = sev === 'danger' 
-                                            ? 'border-rose-200 dark:border-rose-800/50' 
-                                            : (sev === 'warning' ? 'border-amber-200 dark:border-amber-800/50' : 'border-sky-200 dark:border-sky-800/50');
-                                        const badgeClass = sev === 'danger'
-                                            ? 'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300'
-                                            : (sev === 'warning' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300' : 'bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-300');
-                                        
+                                        const sevMeta = SEVERITY_META[finding.severity] || SEVERITY_META.info;
+
                                         return (
-                                            <div 
+                                            <div
                                                 key={finding.id}
-                                                className={`rounded-xl border transition ${borderClass} bg-white dark:bg-gray-800 shadow-sm overflow-hidden`}
+                                                className={cn(
+                                                    'overflow-hidden rounded-[20px] border bg-white shadow-sm transition-colors dark:bg-white/[0.03]',
+                                                    sevMeta.cardBorder
+                                                )}
                                             >
-                                                <div 
-                                                    onClick={() => setExpandedFinding(isExpanded ? null : finding.id)}
-                                                    className="p-3.5 sm:p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-750 transition"
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        setExpandedFinding(isExpanded ? null : finding.id)
+                                                    }
+                                                    className="flex w-full items-center justify-between gap-3 p-4 text-left transition-colors hover:bg-slate-50/80 dark:hover:bg-white/[0.04]"
                                                 >
-                                                    <div className="flex items-start gap-3">
-                                                        <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase mt-0.5 ${badgeClass}`}>
-                                                            {sev === 'danger' ? 'BAHAYA' : (sev === 'warning' ? 'PERINGATAN' : 'INFO')}
-                                                        </span>
-                                                        <div>
-                                                            <h6 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white">
+                                                    <div className="flex min-w-0 items-start gap-3">
+                                                        <StatusBadge
+                                                            tone={sevMeta.badgeTone}
+                                                            className="mt-0.5 shrink-0"
+                                                        >
+                                                            {sevMeta.label}
+                                                        </StatusBadge>
+                                                        <div className="min-w-0">
+                                                            <h6 className="text-xs font-bold text-slate-900 dark:text-white sm:text-sm">
                                                                 {finding.title}
                                                             </h6>
-                                                            <div className="text-xs text-gray-500 mt-0.5 flex flex-wrap items-center gap-3">
-                                                                <span className="capitalize">Kategori: {finding.category.replace(/_/g, ' ')}</span>
-                                                                {finding.amount && (
-                                                                    <span className="font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-1">
-                                                                        <Coins className="w-3 h-3 text-amber-500" />
+                                                            <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                                                                <span className="capitalize">
+                                                                    Kategori: {finding.category.replace(/_/g, ' ')}
+                                                                </span>
+                                                                {finding.amount ? (
+                                                                    <span className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-700 text-sikas-num dark:bg-white/10 dark:text-slate-200">
+                                                                        <Coins className="h-3 w-3 text-amber-500" />
                                                                         Rp {finding.amount.toLocaleString('id-ID')}
                                                                     </span>
-                                                                )}
+                                                                ) : null}
                                                                 {finding.transaction_ref && (
-                                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 text-[11px] font-semibold border border-indigo-200/70 dark:border-indigo-800/60 max-w-md truncate" title={finding.transaction_ref}>
-                                                                        <FileText className="w-3 h-3 text-indigo-500 shrink-0" />
-                                                                        <span className="truncate">{finding.transaction_ref}</span>
+                                                                    <span
+                                                                        className="inline-flex max-w-md items-center gap-1 truncate rounded-lg border border-brand-200/70 bg-pastel-lavender/70 px-2 py-0.5 text-[11px] font-semibold text-brand-700 dark:border-brand-500/30 dark:bg-brand-500/15 dark:text-brand-200"
+                                                                        title={finding.transaction_ref}
+                                                                    >
+                                                                        <FileText className="h-3 w-3 shrink-0" />
+                                                                        <span className="truncate">
+                                                                            {finding.transaction_ref}
+                                                                        </span>
                                                                     </span>
                                                                 )}
                                                             </div>
                                                         </div>
                                                     </div>
-                                                    {isExpanded ? <ChevronUp className="w-5 h-5 text-gray-400 shrink-0" /> : <ChevronDown className="w-5 h-5 text-gray-400 shrink-0" />}
-                                                </div>
+                                                    {isExpanded ? (
+                                                        <ChevronUp className="h-5 w-5 shrink-0 text-slate-400" />
+                                                    ) : (
+                                                        <ChevronDown className="h-5 w-5 shrink-0 text-slate-400" />
+                                                    )}
+                                                </button>
 
                                                 {isExpanded && (
-                                                    <div className="px-4 pb-4 pt-2 border-t border-gray-100 dark:border-gray-700/60 bg-gray-50/50 dark:bg-gray-850/50 text-xs space-y-2">
+                                                    <div className="space-y-3 border-t border-slate-100 bg-slate-50/70 px-4 pb-4 pt-3 text-xs dark:border-white/10 dark:bg-white/[0.02]">
                                                         {finding.transaction_ref && (
-                                                            <div className="p-2.5 bg-indigo-50/80 dark:bg-indigo-950/40 rounded-lg border border-indigo-200/80 dark:border-indigo-900/60">
-                                                                <span className="font-bold text-indigo-900 dark:text-indigo-300 flex items-center gap-1.5 mb-0.5">
-                                                                    <FileText className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                                                            <div className="rounded-2xl border border-brand-200/80 bg-pastel-lavender/60 p-3 dark:border-brand-500/25 dark:bg-brand-500/10">
+                                                                <span className="mb-1 flex items-center gap-1.5 font-bold text-brand-800 dark:text-brand-200">
+                                                                    <FileText className="h-3.5 w-3.5" />
                                                                     Rujukan Transaksi / Rekening / Kegiatan:
                                                                 </span>
-                                                                <p className="text-indigo-950 dark:text-indigo-200 font-medium">
+                                                                <p className="font-medium text-brand-900 dark:text-brand-100">
                                                                     {finding.transaction_ref}
                                                                 </p>
                                                             </div>
                                                         )}
+
                                                         <div>
-                                                            <span className="font-bold text-gray-700 dark:text-gray-300">Uraian Fakta Kasus:</span>
-                                                            <p className="text-gray-600 dark:text-gray-400 mt-0.5 text-justify leading-relaxed">
+                                                            <span className="font-bold text-slate-800 dark:text-slate-200">
+                                                                Uraian Fakta Kasus:
+                                                            </span>
+                                                            <p className="mt-1 leading-relaxed text-slate-600 dark:text-slate-300">
                                                                 {finding.description}
                                                             </p>
                                                         </div>
-                                                        <div className="p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-                                                            <span className="font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1 mb-1">
-                                                                <CheckCircle2 className="w-3.5 h-3.5" />
+
+                                                        <div className="rounded-2xl border border-slate-200/80 bg-white p-3.5 dark:border-white/10 dark:bg-[#15131F]">
+                                                            <span className="mb-1 flex items-center gap-1.5 font-bold text-emerald-700 dark:text-emerald-300">
+                                                                <CheckCircle2 className="h-3.5 w-3.5" />
                                                                 Saran Rekomendasi Tindak Lanjut:
                                                             </span>
-                                                            <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+                                                            <p className="leading-relaxed text-slate-700 dark:text-slate-300">
                                                                 {finding.recommendation}
                                                             </p>
                                                         </div>
@@ -604,41 +767,38 @@ export default function BkuAuditModal({
                 </div>
 
                 {/* Footer Modal Actions */}
-                <div className="px-6 py-3.5 bg-gray-50 dark:bg-gray-900 border-t border-gray-100 dark:border-gray-700 flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex items-center gap-2">
+                <div className="relative flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-6 py-4 dark:border-white/10">
+                    <div>
                         {auditData && !loading && (
-                            <button
+                            <SecondaryButton
+                                type="button"
                                 onClick={() => handleRunAudit(true)}
                                 disabled={loading}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 transition shadow-sm"
                             >
-                                <RotateCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+                                <RotateCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
                                 Audit Ulang (Paksa Cek Baru)
-                            </button>
+                            </SecondaryButton>
                         )}
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-2.5">
                         {auditData && (
                             <button
+                                type="button"
                                 onClick={handleDownloadPdf}
-                                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800 rounded-lg hover:bg-indigo-100 transition shadow-sm"
+                                className="inline-flex items-center gap-2 rounded-2xl border border-brand-200 bg-pastel-lavender/80 px-4 py-2.5 text-[11.5px] font-extrabold text-brand-700 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-pastel-lavender dark:border-brand-500/30 dark:bg-brand-500/15 dark:text-brand-200 dark:hover:bg-brand-500/25"
                             >
-                                <FileText className="w-4 h-4" />
+                                <FileText className="h-4 w-4" />
                                 Unduh Lembar Kerja Audit (PDF)
                             </button>
                         )}
 
-                        <button
-                            onClick={onClose}
-                            className="px-4 py-1.5 text-xs font-bold text-white bg-gray-900 hover:bg-black dark:bg-gray-700 dark:hover:bg-gray-600 rounded-lg transition shadow"
-                        >
+                        <SecondaryButton type="button" onClick={onClose}>
                             Tutup
-                        </button>
+                        </SecondaryButton>
                     </div>
                 </div>
-
             </div>
-        </div>
+        </Modal>
     );
 }
