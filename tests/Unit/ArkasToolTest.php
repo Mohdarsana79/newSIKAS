@@ -2,7 +2,7 @@
 
 namespace Tests\Unit;
 
-use App\Models\Penganggaran;
+use App\Http\Controllers\ArkasToolController;
 use App\Models\RefBarang;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -40,35 +40,38 @@ class ArkasToolTest extends TestCase
         );
     }
 
-    public function test_arkas_tool_index_uses_active_penganggaran_years_and_defaults_to_latest()
+    public function test_arkas_tool_index_uses_detected_arkas_years_and_defaults_to_latest()
     {
         $user = User::factory()->create([
             'username' => 'testuser',
         ]);
 
-        foreach ([2025, 2027] as $tahun) {
-            Penganggaran::create([
-                'pagu_anggaran' => 50000000,
-                'tahun_anggaran' => $tahun,
-                'kepala_sekolah' => 'Nama Kepsek',
-                'sk_kepala_sekolah' => 'SK-001',
-                'bendahara' => 'Nama Bendahara',
-                'sk_bendahara' => 'SK-002',
-                'komite' => 'Nama Komite',
-                'nip_kepala_sekolah' => '198001012005011001',
-                'nip_bendahara' => '198501012010012002',
-                'tanggal_sk_kepala_sekolah' => "{$tahun}-01-02",
-                'tanggal_sk_bendahara' => "{$tahun}-01-02",
-            ]);
-        }
+        RefBarang::create([
+            'id_barang' => 'BRG-LOCAL-2024',
+            'nama_barang' => 'Spidol Papan Tulis',
+            'kode_rekening' => '5.1.02.01.01.0024',
+            'rekening' => 'Belanja Alat Tulis Kantor',
+            'satuan' => 'Buah',
+            'batas_atas' => 8000,
+            'tahun' => 2024,
+        ]);
+
+        $stubController = new class extends ArkasToolController
+        {
+            protected function detectArkasYears(): array
+            {
+                return ['2026', '2025'];
+            }
+        };
+        $this->app->instance(ArkasToolController::class, $stubController);
 
         $response = $this->actingAs($user)->get('/arkas-tools');
 
         $response->assertStatus(200);
         $response->assertInertia(fn ($page) => $page
             ->component('ArkasTools/Index')
-            ->where('defaultYear', '2027')
-            ->where('activeYears', ['2027', '2025'])
+            ->where('defaultYear', '2026')
+            ->where('activeYears', ['2026', '2025', '2024'])
         );
     }
 

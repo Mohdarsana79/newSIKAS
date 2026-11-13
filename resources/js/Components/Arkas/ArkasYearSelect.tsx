@@ -23,7 +23,7 @@ interface ArkasYearSelectProps {
 
 /**
  * Dropdown Neo-Bento berbasis react-select (dapat diketik untuk memfilter)
- * yang menampilkan Tahun Anggaran aktif dari model Penganggaran varian berjalan.
+ * yang menampilkan daftar tahun yang terdeteksi di database ARKAS (dan lokal).
  */
 export default function ArkasYearSelect({
     value,
@@ -69,7 +69,7 @@ export default function ArkasYearSelect({
                 isClearable={false}
                 isDisabled={isDisabled}
                 placeholder={placeholder}
-                noOptionsMessage={() => 'Tahun anggaran aktif tidak ditemukan'}
+                noOptionsMessage={() => 'Tahun tidak ditemukan di database ARKAS'}
                 options={options}
                 value={selectedOption}
                 onChange={(opt) => {

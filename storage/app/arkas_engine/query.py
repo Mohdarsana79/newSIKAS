@@ -82,6 +82,13 @@ def main():
 
         has_year_filter = (year and year.upper() != 'ALL')
 
+        if keyword == '__YEARS__':
+            cursor.execute("SELECT DISTINCT tahun FROM ref_acuan_barang WHERE tahun IS NOT NULL ORDER BY tahun DESC")
+            years = [str(row[0]) for row in cursor.fetchall() if row[0] is not None]
+            conn.close()
+            print(json.dumps({'status': 'success', 'years': years, 'db_path': db_path}))
+            return
+
         if keyword == '__ALL__':
             if has_year_filter:
                 query = """

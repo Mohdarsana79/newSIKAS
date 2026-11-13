@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Config\VariantConfig;
 use App\Models\RefBarang;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -18,25 +17,6 @@ class ArkasToolController extends Controller
      */
     public function index(Request $request)
     {
-        $variant = app()->bound('variant') ? app('variant') : 'reguler';
-        $penganggaranClass = VariantConfig::getModelClass('penganggaran', $variant);
-
-        $activeYears = $penganggaranClass::query()
-            ->select('tahun_anggaran')
-            ->distinct()
-            ->orderBy('tahun_anggaran', 'desc')
-            ->pluck('tahun_anggaran')
-            ->map(fn ($y) => (string) $y)
-            ->values()
-            ->toArray();
-
-        if (empty($activeYears)) {
-            $activeYears = [(string) date('Y')];
-        }
-
-        $year = $request->filled('year')
-            ? (string) $request->input('year')
-            : $activeYears[0];
         $perPage = (int) $request->input('per_page', 50);
         if ($perPage <= 0 || $perPage > 200) {
             $perPage = 50;
@@ -49,6 +29,24 @@ class ArkasToolController extends Controller
             ->orderBy('tahun', 'desc')
             ->pluck('total', 'tahun')
             ->toArray();
+
+        $arkasYears = $this->detectArkasYears();
+        $localYears = array_map('strval', array_keys($yearsCount));
+
+        $activeYears = array_values(array_filter(
+            array_unique(array_merge($arkasYears, $localYears)),
+            fn ($y) => preg_match('/^\d{4}$/', (string) $y) === 1
+        ));
+
+        usort($activeYears, fn ($a, $b) => (int) $b <=> (int) $a);
+
+        if (empty($activeYears)) {
+            $activeYears = [(string) date('Y')];
+        }
+
+        $year = $request->filled('year')
+            ? (string) $request->input('year')
+            : $activeYears[0];
 
         // Query data awal untuk tahun aktif (default 2026)
         $query = RefBarang::query();
@@ -430,6 +428,25 @@ class ArkasToolController extends Controller
     }
 
     /**
+     * Deteksi cepat daftar tahun referensi barang yang tersedia pada file arkas.db
+     *
+     * @return array<int, string>
+     */
+    protected function detectArkasYears(): array
+    {
+        $pythonResult = $this->runPythonQuery('__YEARS__', 'ALL');
+
+        if (($pythonResult['status'] ?? null) !== 'success' || ! is_array($pythonResult['years'] ?? null)) {
+            return [];
+        }
+
+        return array_values(array_filter(
+            array_map('strval', $pythonResult['years']),
+            fn ($y) => preg_match('/^\d{4}$/', $y) === 1
+        ));
+    }
+
+    /**
      * Helper privat untuk menjalankan script Python query.py
      */
     private function runPythonQuery($keyword, $year = 'ALL')
@@ -476,7 +493,7 @@ class ArkasToolController extends Controller
         $dbPathManual = str_replace('\\', '/', $dbPathManual);
 
         $process = new Process([$pythonPath, $scriptPath, $keyword, (string) $year, $dbPathManual], null, $env);
-        $process->setTimeout(180); // 3 menit untuk dump 76.000 data jika __ALL__
+        $process->setTimeout($keyword === '__YEARS__' ? 15 : 180); // 15s untuk daftar tahun, 180s untuk dump penuh
         $process->run();
 
         if (! $process->isSuccessful()) {
