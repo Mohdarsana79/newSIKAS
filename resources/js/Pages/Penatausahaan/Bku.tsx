@@ -24,6 +24,7 @@ import StatusBadge from '@/Components/ui/StatusBadge';
 import EmptyState from '@/Components/ui/EmptyState';
 import KasBankTransferModal from './Partials/KasBankTransferModal';
 import DetailPembelanjaanModal from './Partials/DetailPembelanjaanModal';
+import TutupBkuModal from './Partials/TutupBkuModal';
 
 /**
  * Helper: Parse string tanggal dari server (format YYYY-MM-DD atau ISO UTC)
@@ -3127,98 +3128,26 @@ export default function Bku({
 
 
             {/* Modal Tutup BKU */}
-            < Modal show={isTutupBkuOpen} onClose={() => setIsTutupBkuOpen(false)} maxWidth="lg" >
-                <div className="bg-white dark:bg-[#15131F] rounded-lg">
-                    <div className="p-6">
-                        <h2 className="mb-4 text-[15px] font-extrabold tracking-tight text-slate-900 dark:text-white">
-                            Konfirmasi Tutup BKU
-                        </h2>
-
-                        <div className="mb-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
-                            <div className="flex">
-                                <div className="flex-shrink-0">
-                                    <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                    </svg>
-                                </div>
-                                <div className="ml-3">
-                                    <h3 className="text-[10pt] font-medium text-yellow-800 dark:text-yellow-300">
-                                        Perhatian
-                                    </h3>
-                                    <div className="mt-2 text-[10pt] text-yellow-700 dark:text-yellow-400">
-                                        <p>
-                                            Dengan menutup BKU, Anda tidak dapat lagi menambah atau mengubah transaksi pada bulan <strong>{bulan}</strong>. Pastikan semua data sudah benar.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <form onSubmit={submitTutupBku}>
-                            <div className="space-y-4">
-                                <div>
-                                    <InputLabel value="Tanggal Tutup BKU" className="!text-[10pt]" />
-                                    <div className="relative">
-                                        <DatePicker
-                                            value={tutupForm.data.tanggal_tutup}
-                                            onChange={(date) => tutupForm.setData('tanggal_tutup', date ? format(date, 'yyyy-MM-dd') : '')}
-                                            className="mt-1 block w-full text-slate-900 !text-[10pt] dark:!bg-white/5 dark:text-white"
-                                            placeholder="Pilih tanggal tutup"
-                                            startMonth={startOfActiveMonth}
-                                            endMonth={endOfActiveMonth}
-                                            disabled={[
-                                                { before: startOfActiveMonth },
-                                                { after: endOfActiveMonth }
-                                            ]}
-                                        />
-                                    </div>
-                                    <InputError message={tutupForm.errors.tanggal_tutup} className="mt-2" />
-                                </div>
-                                <div>
-                                    <InputLabel value="Jasa Giro / Bunga Bank" className="!text-[10pt]" />
-                                    <div className="relative mt-1">
-                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                            <span className="text-slate-500 text-[10pt]">Rp</span>
-                                        </div>
-                                        <TextInput
-                                            className="pl-7 block w-full text-slate-900 !text-[10pt]"
-                                            value={tutupForm.data.bunga_bank}
-                                            onChange={(e) => handleCurrencyChange(e, tutupForm, 'bunga_bank')}
-                                            placeholder="0"
-                                        />
-                                    </div>
-                                    <InputError message={tutupForm.errors.bunga_bank} className="mt-2" />
-                                </div>
-
-                                <div>
-                                    <InputLabel value="Pajak Bunga Bank" className="!text-[10pt]" />
-                                    <div className="relative mt-1">
-                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                            <span className="text-slate-500 text-[10pt]">Rp</span>
-                                        </div>
-                                        <TextInput
-                                            className="pl-7 block w-full text-slate-900 !text-[10pt]"
-                                            value={tutupForm.data.pajak_bunga}
-                                            onChange={(e) => handleCurrencyChange(e, tutupForm, 'pajak_bunga')}
-                                            placeholder="0"
-                                        />
-                                    </div>
-                                    <InputError message={tutupForm.errors.pajak_bunga} className="mt-2" />
-                                </div>
-                            </div>
-
-                            <div className="mt-6 flex justify-end gap-3">
-                                <SecondaryButton onClick={() => setIsTutupBkuOpen(false)} type="button">
-                                    Batal
-                                </SecondaryButton>
-                                <PrimaryButton className="bg-red-600 hover:bg-red-700" disabled={tutupForm.processing}>
-                                    {tutupForm.processing ? 'Memproses...' : 'Tutup BKU'}
-                                </PrimaryButton>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </Modal >
+            <TutupBkuModal
+                show={isTutupBkuOpen}
+                onClose={() => setIsTutupBkuOpen(false)}
+                onSubmit={submitTutupBku}
+                processing={tutupForm.processing}
+                bulan={bulan}
+                tahun={tahun}
+                saldoTunai={saldoTunai}
+                saldoNonTunai={saldoNonTunai}
+                tanggalTutup={tutupForm.data.tanggal_tutup}
+                bungaBank={tutupForm.data.bunga_bank}
+                pajakBunga={tutupForm.data.pajak_bunga}
+                errors={tutupForm.errors}
+                onDateChange={(dateStr) => tutupForm.setData('tanggal_tutup', dateStr)}
+                onBungaChange={(e) => handleCurrencyChange(e, tutupForm, 'bunga_bank')}
+                onPajakBungaChange={(e) => handleCurrencyChange(e, tutupForm, 'pajak_bunga')}
+                startOfActiveMonth={startOfActiveMonth}
+                endOfActiveMonth={endOfActiveMonth}
+                formatCurrency={formatCurrency}
+            />
 
             {/* Modal Reopen BKU */}
             < Modal show={isReopenModalOpen} onClose={() => setIsReopenModalOpen(false)} maxWidth="sm" >
