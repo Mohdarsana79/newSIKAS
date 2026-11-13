@@ -298,7 +298,8 @@ export default function BkuAuditModal({
 
     const dangerCount = allFindings.filter((f) => f.severity === 'danger').length;
     const warningCount = allFindings.filter((f) => f.severity === 'warning').length;
-    const rulesChecked = Array.isArray(auditData?.rules_checked) ? auditData.rules_checked : [];
+    const rawRules = auditData?.rules_checked;
+    const rulesChecked = Array.isArray(rawRules) ? rawRules : [];
 
     const scopeOptions: {
         id: string;
