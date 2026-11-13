@@ -23,6 +23,7 @@ import IconTile from '@/Components/ui/IconTile';
 import StatusBadge from '@/Components/ui/StatusBadge';
 import EmptyState from '@/Components/ui/EmptyState';
 import KasBankTransferModal from './Partials/KasBankTransferModal';
+import DetailPembelanjaanModal from './Partials/DetailPembelanjaanModal';
 
 /**
  * Helper: Parse string tanggal dari server (format YYYY-MM-DD atau ISO UTC)
@@ -3331,123 +3332,12 @@ export default function Bku({
                 </div>
             </Modal>
             {/* Modal Detail Pembelanjaan */}
-            <Modal show={isDetailModalOpen} onClose={() => setIsDetailModalOpen(false)} maxWidth="4xl">
-                {selectedDetailItem && (
-                    <div className="bg-white dark:bg-[#15131F] rounded-lg overflow-hidden">
-                        {/* Header */}
-                        <div className="flex items-center justify-between gap-3 rounded-t-[26px] bg-gradient-to-br from-[#2B2940] via-[#232135] to-[#191826] px-5 py-4">
-                            <h2 className="text-[15px] font-extrabold tracking-tight text-white">Detail Pembelanjaan</h2>
-                            <button onClick={() => setIsDetailModalOpen(false)} className="text-white hover:bg-white/20 rounded-full p-1 transition-colors">
-                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </div>
-
-                        <div className="p-4 max-h-[70vh] overflow-y-auto">
-                            {/* Top Details */}
-                            <div className="grid grid-cols-1 gap-4 mb-6">
-                                <div className="space-y-3">
-                                    <div className="flex justify-between border-b border-slate-100 dark:border-white/10 pb-1">
-                                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Tanggal Transaksi</p>
-                                        <p className="text-sm font-medium text-slate-900 dark:text-white">
-                                            {format(new Date(selectedDetailItem.tanggal_transaksi), 'd MMM yyyy')}
-                                        </p>
-                                    </div>
-                                    <div className="flex justify-between border-b border-slate-100 dark:border-white/10 pb-1">
-                                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">ID Transaksi</p>
-                                        <p className="text-sm font-medium text-slate-900 dark:text-white">{selectedDetailItem.id_transaksi || '-'}</p>
-                                    </div>
-                                    <div className="flex justify-between border-b border-slate-100 dark:border-white/10 pb-1">
-                                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Nama Penyedia / Penerima</p>
-                                        <p className="text-sm font-medium text-slate-900 dark:text-white">{selectedDetailItem.nama_toko || selectedDetailItem.nama_penyedia || selectedDetailItem.nama_penyedia_barang_jasa || selectedDetailItem.nama_penerima_pembayaran || selectedDetailItem.nama_penerima || '-'}</p>
-                                    </div>
-                                    <div className="flex justify-between border-b border-slate-100 dark:border-white/10 pb-1">
-                                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">NPWP</p>
-                                        <p className="text-sm font-medium text-slate-900 dark:text-white">{selectedDetailItem.npwp || '-'}</p>
-                                    </div>
-                                    <div className="flex justify-between border-b border-slate-100 dark:border-white/10 pb-1">
-                                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Alamat</p>
-                                        <p className="text-sm font-medium text-slate-900 dark:text-white">{selectedDetailItem.alamat_toko || selectedDetailItem.alamat || '-'}</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Cards: Kegiatan & Rekening */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                                <div className="border border-slate-200 dark:border-white/10 rounded-lg p-5">
-                                    <h3 className="mb-3 border-b border-slate-100 pb-2 text-[12px] font-extrabold text-slate-900 dark:border-white/5 dark:text-white">
-                                        Kegiatan
-                                    </h3>
-                                    <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                                        {selectedDetailItem.kode_kegiatan ? (
-                                            `${selectedDetailItem.kode_kegiatan.kode} - ${selectedDetailItem.kode_kegiatan.uraian}`
-                                        ) : '-'}
-                                    </p>
-                                </div>
-                                <div className="border border-slate-200 dark:border-white/10 rounded-lg p-5">
-                                    <h3 className="mb-3 border-b border-slate-100 pb-2 text-[12px] font-extrabold text-slate-900 dark:border-white/5 dark:text-white">
-                                        Rekening Belanja
-                                    </h3>
-                                    <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                                        {selectedDetailItem.rekening_belanja ? (
-                                            `${selectedDetailItem.rekening_belanja.kode_rekening} - ${selectedDetailItem.rekening_belanja.rincian_objek}`
-                                        ) : '-'}
-                                    </p>
-                                </div>
-                            </div>
-
-                            {/* Table Details */}
-                            <h3 className="mb-4 text-[15px] font-extrabold tracking-tight text-slate-900 dark:text-white">Detail Uraian Pembelanjaan</h3>
-                            <div className="border border-slate-200 dark:border-white/10 rounded-lg overflow-hidden mb-6">
-                                <table className="w-full text-sm text-left">
-                                    <thead className="text-xs text-slate-500 dark:text-slate-400 uppercase bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-white/10">
-                                        <tr>
-                                            <th className="px-6 py-3 font-medium">Uraian</th>
-                                            <th className="px-6 py-3 font-medium text-center">Volume</th>
-                                            <th className="px-6 py-3 font-medium text-right text-sikas-num">Harga Satuan</th>
-                                            <th className="px-6 py-3 font-medium text-right text-sikas-num">Subtotal</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-200 dark:divide-white/5">
-                                        {selectedDetailItem.uraian_details && selectedDetailItem.uraian_details.length > 0 ? (
-                                            selectedDetailItem.uraian_details.map((detail: any, index: number) => (
-                                                <tr key={index} className="bg-white dark:bg-[#15131F]">
-                                                    <td className="px-6 py-4 text-slate-900 dark:text-white">{detail.uraian}</td>
-                                                    <td className="px-6 py-4 text-center text-slate-600 dark:text-slate-400">{detail.volume} {detail.satuan}</td>
-                                                    <td className="px-6 py-4 text-right text-slate-600 dark:text-slate-400">{formatCurrency(detail.harga_satuan)}</td>
-                                                    <td className="px-6 py-4 text-right text-slate-900 dark:text-white font-medium text-sikas-num">{formatCurrency(detail.volume * detail.harga_satuan)}</td>
-                                                </tr>
-                                            ))
-                                        ) : (
-                                            /* If no details, show the main item info as a single row fallback */
-                                            <tr className="bg-white dark:bg-[#15131F]">
-                                                <td className="px-6 py-4 text-slate-900 dark:text-white">{selectedDetailItem.uraian}</td>
-                                                <td className="px-6 py-4 text-center text-slate-600 dark:text-slate-400">-</td>
-                                                <td className="px-6 py-4 text-right text-slate-600 dark:text-slate-400">-</td>
-                                                <td className="px-6 py-4 text-right text-slate-900 dark:text-white font-medium text-sikas-num">{formatCurrency(selectedDetailItem.total_transaksi_kotor)}</td>
-                                            </tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-
-                            {/* Summary Footer */}
-                            <div className="flex flex-col items-end gap-2 border-t border-slate-200 dark:border-white/10 pt-4">
-                                <div className="flex justify-between w-full md:w-1/3">
-                                    <span className="text-slate-500 dark:text-slate-400 uppercase text-xs font-bold tracking-wider">Total Transaksi Kotor:</span>
-                                    <span className="text-slate-900 dark:text-white font-bold">{formatCurrency(selectedDetailItem.total_transaksi_kotor)}</span>
-                                </div>
-                                <div className="flex justify-between w-full md:w-1/3">
-                                    <span className="text-slate-500 dark:text-slate-400 uppercase text-xs font-bold tracking-wider">Total Harga Bersih:</span>
-                                    {/* Assuming Harga Bersih is Kotor - Pajak */}
-                                    <span className="text-slate-900 dark:text-white font-bold">{formatCurrency(selectedDetailItem.total_transaksi_kotor - selectedDetailItem.total_pajak)}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </Modal>
+            <DetailPembelanjaanModal
+                show={isDetailModalOpen}
+                onClose={() => setIsDetailModalOpen(false)}
+                item={selectedDetailItem}
+                formatCurrency={formatCurrency}
+            />
 
             {/* Modal Informasi Tarif Pajak PPh 21 — Custom overlay (bukan HeadlessUI Dialog) agar tidak ikut menutup modal induk */}
             {showTarifModal && (
