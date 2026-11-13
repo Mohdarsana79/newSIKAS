@@ -2,18 +2,14 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, usePage, Link } from '@inertiajs/react';
 import useVariantRoute from '@/Hooks/useVariantRoute';
-import { useState, useEffect } from 'react';
-import Modal from '@/Components/Modal';
-import InputLabel from '@/Components/InputLabel';
-import TextInput from '@/Components/TextInput';
+import { useState } from 'react';
 import PrimaryButton from '@/Components/PrimaryButton';
-import SecondaryButton from '@/Components/SecondaryButton';
-import DangerButton from '@/Components/DangerButton';
-import InputError from '@/Components/InputError';
-import DatePicker from '@/Components/DatePicker';
-import { format } from 'date-fns';
-import { Transition } from '@headlessui/react';
-import Select from 'react-select';
+import PageHeader from '@/Components/ui/PageHeader';
+import DataTable from '@/Components/ui/DataTable';
+import EmptyState from '@/Components/ui/EmptyState';
+import IconTile from '@/Components/ui/IconTile';
+import StatusBadge from '@/Components/ui/StatusBadge';
+import StsModals from './Partials/StsModals';
 
 export default function Index({ stsList, penganggaranList, penganggaranFk = 'penganggaran_id' }: any) {
     const vroute = useVariantRoute();
@@ -187,353 +183,240 @@ export default function Index({ stsList, penganggaranList, penganggaranFk = 'pen
     };
 
     return (
-        <AuthenticatedLayout
-            header={
-                <h2 className="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
-                    STS
-                </h2>
-            }
-        >
+        <AuthenticatedLayout>
             <Head title="STS - Penatausahaan" />
 
-            <div className="py-8">
-                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-
-                    {/* Header Action */}
-                    <div className="flex justify-between items-center mb-6">
-                        <div>
-                            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Daftar STS</h3>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">Kelola data sisa titipan sekolah dan pembayarannya</p>
-                        </div>
+            <div className="space-y-4">
+                <PageHeader
+                    className="animate-rise"
+                    breadcrumb={[
+                        { label: 'Dashboard' },
+                        { label: 'Penatausahaan' },
+                        { label: 'STS' },
+                    ]}
+                    title="Daftar STS"
+                    badge={<StatusBadge tone="violet" dot={false}>Penatausahaan</StatusBadge>}
+                    subtitle="Kelola data sisa titipan sekolah dan pembayarannya"
+                    actions={
                         <PrimaryButton onClick={openCreateModal} className="flex items-center gap-2">
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
                             </svg>
                             Tambah STS
                         </PrimaryButton>
+                    }
+                />
+
+                {/* Kartu ringkas dari data existing */}
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <div className="sikas-card sikas-card-hover animate-rise p-4" style={{ animationDelay: '60ms' }}>
+                        <div className="flex items-center gap-2.5">
+                            <IconTile tone="sky" size="md">
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
+                                    <path d="M9 3h6v4H9z" />
+                                    <path d="M9 12h6M9 16h4" />
+                                </svg>
+                            </IconTile>
+                            <div className="min-w-0">
+                                <p className="text-[11.5px] font-extrabold tracking-tight text-slate-900 dark:text-white">Total STS</p>
+                                <p className="text-[9.5px] font-medium text-slate-400 dark:text-slate-500">Dokumen tercatat</p>
+                            </div>
+                        </div>
+                        <p className="mt-3 text-sikas-num text-[19px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                            {stsList.length}
+                        </p>
                     </div>
 
-                    {/* Table Card */}
-                    <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg border border-gray-200 dark:border-gray-700">
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                                <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
-                                    <tr>
-                                        <th scope="col" className="px-6 py-3">Tahun Anggaran</th>
-                                        <th scope="col" className="px-6 py-3">Nomor STS</th>
-                                        <th scope="col" className="px-6 py-3">Jumlah STS</th>
-                                        <th scope="col" className="px-6 py-3">Jumlah Bayar</th>
-                                        <th scope="col" className="px-6 py-3">Sisa</th>
-                                        <th scope="col" className="px-6 py-3">Status</th>
-                                        <th scope="col" className="px-6 py-3 text-center">Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {stsList.length > 0 ? (
-                                        stsList.map((item: any) => (
-                                            <tr key={item.id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                                                <td className="px-6 py-4 font-medium text-gray-900 dark:text-gray-100">
-                                                    {item.tahun}
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    {item.nomor_sts}
-                                                </td>
-                                                <td className="px-6 py-4 font-semibold text-gray-900 dark:text-gray-100">
-                                                    Rp {item.jumlah_sts_formatted}
-                                                </td>
-                                                <td className="px-6 py-4 text-green-600 dark:text-green-400">
-                                                    Rp {item.jumlah_bayar_formatted}
-                                                    {item.tanggal_bayar && (
-                                                        <div className="text-xs text-gray-500 mt-1">
-                                                            Tgl: {item.tanggal_bayar_formatted}
-                                                        </div>
-                                                    )}
-                                                </td>
-                                                <td className="px-6 py-4 text-red-600 dark:text-red-400">
-                                                    Rp {item.sisa_formatted}
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <span className={`px-2 py-1 rounded-full text-xs font-semibold
-                                                        ${item.status === 'Lunas' ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300' :
-                                                            item.status === 'Parsial' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300' :
-                                                                'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300'}
-                                                    `}>
-                                                        {item.status}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 text-center">
-                                                    <div className="flex items-center justify-center gap-2">
-                                                        {/* Pay Button - Only if sisa > 0 */}
-                                                        {item.sisa > 0 && (
-                                                            <button
-                                                                onClick={() => openPaymentModal(item)}
-                                                                className="p-1.5 bg-blue-100 text-blue-600 rounded-md hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50 transition-colors"
-                                                                title="Bayar"
-                                                            >
-                                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-                                                                </svg>
-                                                            </button>
-                                                        )}
+                    <div className="sikas-card sikas-card-hover animate-rise p-4" style={{ animationDelay: '110ms' }}>
+                        <div className="flex items-center gap-2.5">
+                            <IconTile tone="mint" size="md">
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </IconTile>
+                            <div className="min-w-0">
+                                <p className="text-[11.5px] font-extrabold tracking-tight text-slate-900 dark:text-white">Lunas</p>
+                                <p className="text-[9.5px] font-medium text-slate-400 dark:text-slate-500">STS sudah dibayar</p>
+                            </div>
+                        </div>
+                        <p className="mt-3 text-sikas-num text-[19px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                            {stsList.filter((item: any) => item.status === 'Lunas').length}
+                        </p>
+                    </div>
 
-                                                        {/* Edit Payment (if paid) */}
-                                                        {item.jumlah_bayar > 0 && (
-                                                            <button
-                                                                onClick={() => openPaymentModal(item, true)}
-                                                                className="p-1.5 bg-green-100 text-green-600 rounded-md hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50 transition-colors"
-                                                                title="Edit Pembayaran"
-                                                            >
-                                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                                </svg>
-                                                            </button>
-                                                        )}
+                    <div className="sikas-card sikas-card-hover animate-rise p-4" style={{ animationDelay: '160ms' }}>
+                        <div className="flex items-center gap-2.5">
+                            <IconTile tone="rose" size="md">
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                                </svg>
+                            </IconTile>
+                            <div className="min-w-0">
+                                <p className="text-[11.5px] font-extrabold tracking-tight text-slate-900 dark:text-white">Total Sisa</p>
+                                <p className="text-[9.5px] font-medium text-slate-400 dark:text-slate-500">Sisa titipan sekolah</p>
+                            </div>
+                        </div>
+                        <p className="mt-3 truncate text-sikas-num text-[19px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                            Rp {new Intl.NumberFormat('id-ID').format(stsList.reduce((acc: number, item: any) => acc + Number(item.sisa || 0), 0))}
+                        </p>
+                    </div>
+                </div>
 
-                                                        {/* Edit STS info */}
-                                                        <button
-                                                            onClick={() => openEditModal(item)}
-                                                            className="p-1.5 bg-yellow-100 text-yellow-600 rounded-md hover:bg-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:hover:bg-yellow-900/50 transition-colors"
-                                                            title="Edit Detail STS"
-                                                        >
-                                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                                            </svg>
-                                                        </button>
-
-                                                        {/* Delete */}
-                                                        <button
-                                                            onClick={() => handleDeleteClick(item.id)}
-                                                            className="p-1.5 bg-red-100 text-red-600 rounded-md hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 transition-colors"
-                                                            title="Hapus"
-                                                        >
-                                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                            </svg>
-                                                        </button>
+                {/* Tabel STS */}
+                <div className="animate-rise" style={{ animationDelay: '210ms' }}>
+                    <DataTable
+                        title="Daftar STS"
+                        subtitle="Sisa titipan sekolah dan status pembayarannya."
+                        icon={
+                            <IconTile tone="sky" size="sm">
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M4 6h16M4 12h16M4 18h10" />
+                                </svg>
+                            </IconTile>
+                        }
+                        actions={<StatusBadge tone="info" dot={false} className="text-sikas-num">{stsList.length}</StatusBadge>}
+                        contentClassName="bento-table-wrapper mx-4 mb-4"
+                    >
+                        <table className="min-w-full">
+                            <thead>
+                                <tr>
+                                    <th scope="col" className="text-left">Tahun Anggaran</th>
+                                    <th scope="col" className="text-left">Nomor STS</th>
+                                    <th scope="col" className="text-right">Jumlah STS</th>
+                                    <th scope="col" className="text-right">Jumlah Bayar</th>
+                                    <th scope="col" className="text-right">Sisa</th>
+                                    <th scope="col" className="text-left">Status</th>
+                                    <th scope="col" className="text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {stsList.length > 0 ? (
+                                    stsList.map((item: any) => (
+                                        <tr key={item.id}>
+                                            <td className="whitespace-nowrap text-sikas-num font-extrabold text-slate-900 dark:text-white">
+                                                {item.tahun}
+                                            </td>
+                                            <td className="whitespace-nowrap font-semibold text-slate-700 dark:text-slate-200">
+                                                {item.nomor_sts}
+                                            </td>
+                                            <td className="whitespace-nowrap text-right text-sikas-num font-extrabold text-slate-900 dark:text-white">
+                                                Rp {item.jumlah_sts_formatted}
+                                            </td>
+                                            <td className="whitespace-nowrap text-right text-sikas-num font-semibold text-mint dark:text-mint">
+                                                Rp {item.jumlah_bayar_formatted}
+                                                {item.tanggal_bayar && (
+                                                    <div className="mt-1 text-[10px] font-medium text-slate-400 dark:text-slate-500">
+                                                        Tgl: {item.tanggal_bayar_formatted}
                                                     </div>
-                                                </td>
-                                            </tr>
-                                        ))
-                                    ) : (
-                                        <tr>
-                                            <td colSpan={7} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
-                                                Belum ada data STS yang ditambahkan.
+                                                )}
+                                            </td>
+                                            <td className="whitespace-nowrap text-right text-sikas-num font-semibold text-rose-600 dark:text-rose-400">
+                                                Rp {item.sisa_formatted}
+                                            </td>
+                                            <td className="whitespace-nowrap">
+                                                <StatusBadge tone={item.status === 'Lunas' ? 'success' : item.status === 'Parsial' ? 'warning' : 'danger'}>
+                                                    {item.status}
+                                                </StatusBadge>
+                                            </td>
+                                            <td className="whitespace-nowrap text-center">
+                                                <div className="flex items-center justify-center gap-1.5">
+                                                    {/* Pay Button - Only if sisa > 0 */}
+                                                    {item.sisa > 0 && (
+                                                        <button
+                                                            onClick={() => openPaymentModal(item)}
+                                                            className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-slate-100 bg-white text-sky-600 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 hover:text-sky-700 dark:border-white/10 dark:bg-white/5 dark:text-sky-400 dark:hover:bg-white/10"
+                                                            title="Bayar"
+                                                        >
+                                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                                                            </svg>
+                                                        </button>
+                                                    )}
+
+                                                    {/* Edit Payment (if paid) */}
+                                                    {item.jumlah_bayar > 0 && (
+                                                        <button
+                                                            onClick={() => openPaymentModal(item, true)}
+                                                            className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-slate-100 bg-white text-mint shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-mint dark:hover:bg-white/10"
+                                                            title="Edit Pembayaran"
+                                                        >
+                                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                            </svg>
+                                                        </button>
+                                                    )}
+
+                                                    {/* Edit STS info */}
+                                                    <button
+                                                        onClick={() => openEditModal(item)}
+                                                        className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-slate-100 bg-white text-amber-600 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 hover:text-amber-700 dark:border-white/10 dark:bg-white/5 dark:text-amber-400 dark:hover:bg-white/10"
+                                                        title="Edit Detail STS"
+                                                    >
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                                        </svg>
+                                                    </button>
+
+                                                    {/* Delete */}
+                                                    <button
+                                                        onClick={() => handleDeleteClick(item.id)}
+                                                        className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-slate-100 bg-white text-rose-600 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 hover:text-rose-700 dark:border-white/10 dark:bg-white/5 dark:text-rose-400 dark:hover:bg-white/10"
+                                                        title="Hapus"
+                                                    >
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                        </svg>
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan={7} className="p-0">
+                                            <EmptyState
+                                                className="border-0 bg-transparent py-9 dark:bg-transparent"
+                                                icon={
+                                                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                                    </svg>
+                                                }
+                                                title="Belum ada data STS yang ditambahkan."
+                                                description="Tambahkan STS baru untuk mulai mencatat sisa titipan sekolah."
+                                            />
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </DataTable>
                 </div>
             </div>
 
-            {/* CREATE MODAL */}
-            <Modal show={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} maxWidth="md">
-                <div className="p-6">
-                    <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Tambahkan STS Baru</h2>
-                    <form onSubmit={submitCreate} className="space-y-4">
-                        <div>
-                            <InputLabel htmlFor="penganggaran_id" value="Tahun Anggaran" />
-                            <Select
-                                id="penganggaran_id"
-                                className="mt-1"
-                                classNamePrefix="react-select"
-                                options={penganggaranList.map((p: any) => ({ value: p.id, label: p.tahun_anggaran }))}
-                                value={penganggaranList
-                                    .filter((p: any) => p.id == createForm.data[penganggaranFk])
-                                    .map((p: any) => ({ value: p.id, label: p.tahun_anggaran }))[0] || null
-                                }
-                                onChange={(val: any) => createForm.setData(penganggaranFk, val ? val.value : '')}
-                                placeholder="Pilih Tahun Anggaran..."
-                                isSearchable
-                                isClearable
-                                required
-                                styles={{
-                                    control: (baseStyles, state) => ({
-                                        ...baseStyles,
-                                        borderColor: state.isFocused ? '#6366f1' : '#d1d5db',
-                                        boxShadow: state.isFocused ? '0 0 0 1px #6366f1' : 'none',
-                                        '&:hover': { borderColor: state.isFocused ? '#6366f1' : '#9ca3af' },
-                                        borderRadius: '0.375rem',
-                                        padding: '0.125rem',
-                                    }),
-                                    singleValue: (base) => ({
-                                        ...base,
-                                        color: '#111827', // text-gray-900
-                                    }),
-                                    input: (base) => ({
-                                        ...base,
-                                        color: '#111827', // text-gray-900
-                                        'input': {
-                                            boxShadow: 'none !important',
-                                            border: 'none !important',
-                                            outline: 'none !important',
-                                        },
-                                        'input:focus': {
-                                            boxShadow: 'none !important',
-                                            border: 'none !important',
-                                        }
-                                    }),
-                                    option: (base, state) => ({
-                                        ...base,
-                                        color: '#111827',
-                                        backgroundColor: state.isSelected ? '#e5e7eb' : state.isFocused ? '#f3f4f6' : 'transparent',
-                                    }),
-                                    menu: (baseStyles) => ({
-                                        ...baseStyles,
-                                        zIndex: 9999,
-                                    })
-                                }}
-                            />
-                            <InputError message={(createForm.errors as any)[penganggaranFk]} className="mt-2" />
-                        </div>
-                        <div>
-                            <InputLabel htmlFor="nomor_sts" value="Nomor STS" />
-                            <TextInput
-                                id="nomor_sts"
-                                type="text"
-                                className="mt-1 block w-full text-gray-900"
-                                value={createForm.data.nomor_sts}
-                                onChange={(e) => createForm.setData('nomor_sts', e.target.value)}
-                                required
-                                placeholder="Contoh: 001/STS/2026"
-                            />
-                            <InputError message={createForm.errors.nomor_sts} className="mt-2" />
-                        </div>
-                        <div>
-                            <InputLabel htmlFor="jumlah_sts" value="Jumlah STS" />
-                            <TextInput
-                                id="jumlah_sts"
-                                type="text"
-                                className="mt-1 block w-full text-gray-900"
-                                value={createForm.data.jumlah_sts}
-                                onChange={(e) => handleCurrencyChange(e, createForm, 'jumlah_sts', 'jumlah_sts_raw')}
-                                required
-                                placeholder="Rp 0"
-                            />
-                            <InputError message={createForm.errors.jumlah_sts} className="mt-2" />
-                        </div>
-
-                        <div className="flex justify-end gap-3 mt-6">
-                            <SecondaryButton onClick={() => setIsCreateModalOpen(false)}>Batal</SecondaryButton>
-                            <PrimaryButton disabled={createForm.processing}>{createForm.processing ? 'Menyimpan...' : 'Simpan'}</PrimaryButton>
-                        </div>
-                    </form>
-                </div>
-            </Modal>
-
-            {/* EDIT MODAL */}
-            <Modal show={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} maxWidth="md">
-                <div className="p-6">
-                    <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Edit STS</h2>
-                    <form onSubmit={submitEdit} className="space-y-4">
-                        <div>
-                            <InputLabel htmlFor="edit_nomor_sts" value="Nomor STS" />
-                            <TextInput
-                                id="edit_nomor_sts"
-                                type="text"
-                                className="mt-1 block w-full text-gray-900"
-                                value={editForm.data.nomor_sts}
-                                onChange={(e) => editForm.setData('nomor_sts', e.target.value)}
-                                required
-                            />
-                            <InputError message={editForm.errors.nomor_sts} className="mt-2" />
-                        </div>
-                        <div>
-                            <InputLabel htmlFor="edit_jumlah_sts" value="Jumlah STS" />
-                            <TextInput
-                                id="edit_jumlah_sts"
-                                type="text"
-                                className="mt-1 block w-full text-gray-900"
-                                value={editForm.data.jumlah_sts}
-                                onChange={(e) => handleCurrencyChange(e, editForm, 'jumlah_sts', 'jumlah_sts_raw')}
-                                required
-                            />
-                            <InputError message={editForm.errors.jumlah_sts} className="mt-2" />
-                        </div>
-
-                        <div className="flex justify-end gap-3 mt-6">
-                            <SecondaryButton onClick={() => setIsEditModalOpen(false)}>Batal</SecondaryButton>
-                            <PrimaryButton disabled={editForm.processing}>{editForm.processing ? 'Menyimpan...' : 'Simpan Perubahan'}</PrimaryButton>
-                        </div>
-                    </form>
-                </div>
-            </Modal>
-
-            {/* PAYMENT MODAL */}
-            <Modal show={isPaymentModalOpen} onClose={() => setIsPaymentModalOpen(false)} maxWidth="md">
-                <div className="p-6">
-                    <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
-                        {paymentForm.data.is_edit ? 'Edit Pembayaran' : 'Proses Pembayaran'}
-                    </h2>
-
-                    <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg mb-4">
-                        <div className="flex justify-between text-sm mb-1">
-                            <span className="text-gray-600 dark:text-gray-400">Total STS</span>
-                            <span className="font-semibold text-gray-800 dark:text-gray-200">
-                                Rp {selectedSts ? new Intl.NumberFormat('id-ID').format(selectedSts.jumlah_sts) : 0}
-                            </span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                            <span className="text-gray-600 dark:text-gray-400">Sisa Tagihan</span>
-                            <span className="font-semibold text-red-600 dark:text-red-400">
-                                Rp {selectedSts ? new Intl.NumberFormat('id-ID').format(selectedSts.sisa + (paymentForm.data.is_edit ? 0 : 0)) : 0}
-                                {/* Note: Logic for showing remaining balance during edit is tricky without more data, keeping simple */}
-                            </span>
-                        </div>
-                    </div>
-
-                    <form onSubmit={submitPayment} className="space-y-4">
-                        <div>
-                            <InputLabel htmlFor="tanggal_bayar" value="Tanggal Bayar" />
-                            <DatePicker
-                                value={paymentForm.data.tanggal_bayar}
-                                onChange={(date) => paymentForm.setData('tanggal_bayar', date ? format(date, 'yyyy-MM-dd') : '')}
-                                className="mt-1 block w-full"
-                                placeholder="Pilih Tanggal Bayar"
-                            />
-                            <InputError message={paymentForm.errors.tanggal_bayar} className="mt-2" />
-                        </div>
-                        <div>
-                            <InputLabel htmlFor="jumlah_bayar" value="Jumlah Bayar" />
-                            <TextInput
-                                id="jumlah_bayar"
-                                type="text"
-                                className="mt-1 block w-full text-gray-900"
-                                value={paymentForm.data.jumlah_bayar}
-                                onChange={(e) => handleCurrencyChange(e, paymentForm, 'jumlah_bayar', 'jumlah_bayar_raw')}
-                                required
-                                placeholder="Rp 0"
-                            />
-                            <InputError message={paymentForm.errors.jumlah_bayar} className="mt-2" />
-                        </div>
-
-                        <div className="flex justify-end gap-3 mt-6">
-                            <SecondaryButton onClick={() => setIsPaymentModalOpen(false)}>Batal</SecondaryButton>
-                            <PrimaryButton disabled={paymentForm.processing}>{paymentForm.processing ? 'Menyimpan...' : 'Simpan Pembayaran'}</PrimaryButton>
-                        </div>
-                    </form>
-                </div>
-            </Modal>
-
-            {/* Delete Confirmation Modal */}
-            <Modal show={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} maxWidth="sm">
-                <div className="p-6">
-                    <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                        Hapus Data STS
-                    </h2>
-                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                        Apakah Anda yakin ingin menghapus data STS ini? Tindakan ini tidak dapat dibatalkan.
-                    </p>
-                    <div className="mt-6 flex justify-end gap-3">
-                        <SecondaryButton onClick={() => setIsDeleteModalOpen(false)}>Batal</SecondaryButton>
-                        <DangerButton onClick={confirmDelete} disabled={createForm.processing}>
-                            {createForm.processing ? 'Menghapus...' : 'Hapus'}
-                        </DangerButton>
-                    </div>
-                </div>
-            </Modal>
+            <StsModals
+                penganggaranList={penganggaranList}
+                penganggaranFk={penganggaranFk}
+                selectedSts={selectedSts}
+                stsToDelete={stsList?.find((s: any) => s.id === itemToDelete) || null}
+                handleCurrencyChange={handleCurrencyChange}
+                isCreateOpen={isCreateModalOpen}
+                onCloseCreate={() => setIsCreateModalOpen(false)}
+                createForm={createForm}
+                onSubmitCreate={submitCreate}
+                isEditOpen={isEditModalOpen}
+                onCloseEdit={() => setIsEditModalOpen(false)}
+                editForm={editForm}
+                onSubmitEdit={submitEdit}
+                isPaymentOpen={isPaymentModalOpen}
+                onClosePayment={() => setIsPaymentModalOpen(false)}
+                paymentForm={paymentForm}
+                onSubmitPayment={submitPayment}
+                isDeleteOpen={isDeleteModalOpen}
+                onCloseDelete={() => setIsDeleteModalOpen(false)}
+                onConfirmDelete={confirmDelete}
+                deleteProcessing={createForm.processing}
+            />
 
         </AuthenticatedLayout>
     );
