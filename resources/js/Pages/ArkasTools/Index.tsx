@@ -5,11 +5,16 @@ import TextInput from '@/Components/TextInput';
 import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
-import Modal from '@/Components/Modal';
 import ArkasDiagnosticModal from '@/Components/Ai/ArkasDiagnosticModal';
-import { Brain, Sparkles, Database, ShieldCheck, AlertTriangle, ArrowRight, Settings, RotateCw, FileSearch, CheckCircle2, ShieldAlert } from 'lucide-react';
-import axios from 'axios';
-import { Link } from '@inertiajs/react';
+import ArkasSyncModal, { ArkasSyncCompletePayload } from '@/Components/Arkas/ArkasSyncModal';
+import { Brain, Sparkles, Database, ShieldCheck, AlertTriangle, ArrowRight, RotateCw, FileSearch, CheckCircle2, ShieldAlert } from 'lucide-react';
+import PageHeader from '@/Components/ui/PageHeader';
+import Surface from '@/Components/ui/Surface';
+import DataTable from '@/Components/ui/DataTable';
+import EmptyState from '@/Components/ui/EmptyState';
+import IconTile from '@/Components/ui/IconTile';
+import StatusBadge from '@/Components/ui/StatusBadge';
+import PillTabs from '@/Components/ui/PillTabs';
 
 interface PaginatedData {
     data: any[];
@@ -37,7 +42,6 @@ export default function Index({ auth, initialData, defaultYear = '2026', localSt
     const [results, setResults] = useState<any[]>(initialData?.data || []);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-    const [dataSource, setDataSource] = useState<'local' | 'arkas'>('local');
 
     // Pagination state for local database
     const [currentPage, setCurrentPage] = useState(initialData?.current_page || 1);
@@ -47,25 +51,12 @@ export default function Index({ auth, initialData, defaultYear = '2026', localSt
     const [fromItem, setFromItem] = useState(initialData?.from || 0);
     const [toItem, setToItem] = useState(initialData?.to || 0);
 
-    // Summary counts for ARKAS fetch
-    const [summary, setSummary] = useState<{
-        total: number;
-        data_baru: number;
-        perlu_update: number;
-        sudah_ada: number;
-    } | null>(null);
-    const [canSync, setCanSync] = useState(false);
+    // Hasil sinkronisasi terakhir & status DB lokal
+    const [lastSyncResult, setLastSyncResult] = useState<ArkasSyncCompletePayload | null>(null);
     const [isEmptyDb, setIsEmptyDb] = useState(localStats ? localStats.total === 0 : false);
-
-    // Modal state for Fetch All from ARKAS
-    const [showFetchModal, setShowFetchModal] = useState(false);
-    const [fetchProgress, setFetchProgress] = useState(0);
-    const [isFetchingAll, setIsFetchingAll] = useState(false);
 
     // Modal state for Sync to Local Database
     const [showSyncModal, setShowSyncModal] = useState(false);
-    const [syncProgress, setSyncProgress] = useState(0);
-    const [isSyncing, setIsSyncing] = useState(false);
 
     // Loading export state
     const [isExporting, setIsExporting] = useState(false);
@@ -93,10 +84,7 @@ export default function Index({ auth, initialData, defaultYear = '2026', localSt
                 setTotalItems(data.total || 0);
                 setFromItem(data.from || 0);
                 setToItem(data.to || 0);
-                setDataSource('local');
                 setIsEmptyDb(data.is_empty_db || false);
-                setCanSync(false); // Data dari database lokal selalu berstatus 'Sudah Ada'
-                setSummary(null);
             } else {
                 setError(data.message || 'Gagal memuat data dari database.');
             }
@@ -125,120 +113,23 @@ export default function Index({ auth, initialData, defaultYear = '2026', localSt
         loadPage(1, year, keyword, newPerPage);
     };
 
-    // Trigger modal penarikan data dari file ARKAS
-    const triggerFetchAll = () => {
-        setShowFetchModal(true);
-        setFetchProgress(0);
-        setIsFetchingAll(false);
+    // Handler selesai sinkronisasi langsung dari modal Neo-Bento
+    const handleSyncComplete = (result: ArkasSyncCompletePayload) => {
+        setLastSyncResult(result);
+        setYear(result.targetYear);
+        setKeyword('');
+        loadPage(1, result.targetYear, '', perPage);
     };
 
-    // Konfirmasi penarikan data dari ARKAS
-    const confirmFetchAll = async () => {
-        setIsFetchingAll(true);
-        setLoading(true);
-        setError('');
-        setResults([]);
-        setKeyword(''); // Reset pencarian
-
-        let currentProgress = 0;
-        const interval = setInterval(() => {
-            currentProgress += 1;
-            if (currentProgress >= 95) currentProgress = 95;
-            setFetchProgress(currentProgress);
-        }, 50);
-
-        try {
-            const res = await fetch(`/arkas-tools/fetch-arkas?keyword=__ALL__&year=${encodeURIComponent(year)}`, {
-                headers: { 'Accept': 'application/json' }
-            });
-            const data = await res.json();
-
-            clearInterval(interval);
-            setFetchProgress(100);
-
-            await new Promise(r => setTimeout(r, 500));
-
-            if (data.status === 'success') {
-                setResults(data.data || []);
-                setDataSource('arkas');
-                setSummary(data.summary || null);
-                setCanSync(data.can_sync || false);
-                setIsEmptyDb(false);
-            } else {
-                setError(data.message || 'Terjadi kesalahan saat menarik data dari ARKAS');
-            }
-        } catch (err) {
-            clearInterval(interval);
-            setError('Gagal menghubungi engine ARKAS.');
-        } finally {
-            setLoading(false);
-            setShowFetchModal(false);
-            setIsFetchingAll(false);
-        }
-    };
-
-    // Trigger modal konfirmasi sinkronisasi ke database lokal
-    const triggerSync = () => {
-        setShowSyncModal(true);
-        setSyncProgress(0);
-        setIsSyncing(false);
-    };
-
-    // Konfirmasi eksekusi sinkronisasi ke database lokal
-    const confirmSync = async () => {
-        setIsSyncing(true);
-
-        let currentProgress = 0;
-        const interval = setInterval(() => {
-            currentProgress += 1;
-            if (currentProgress >= 95) currentProgress = 95;
-            setSyncProgress(currentProgress);
-        }, 60);
-
-        try {
-            const res = await axios.post('/arkas-tools/sync', {
-                year: year
-            });
-            const data = res.data;
-
-            clearInterval(interval);
-            setSyncProgress(100);
-
-            await new Promise(r => setTimeout(r, 500));
-
-            if (data.status === 'success') {
-                alert(data.message || 'Sinkronisasi ke database berhasil.');
-                // Muat ulang data terpaginasi dari database lokal
-                await loadPage(1, year, '', perPage);
-            } else {
-                alert(data.message || 'Gagal melakukan sinkronisasi database.');
-            }
-        } catch (err: any) {
-            clearInterval(interval);
-            const errMsg = err.response?.data?.message || 'Terjadi kesalahan saat menyinkronkan database.';
-            alert(errMsg);
-        } finally {
-            setIsSyncing(false);
-            setShowSyncModal(false);
-        }
-    };
-
-    // Export CSV lengkap
+    // Export CSV lengkap dari database lokal terindeks
     const exportToCSV = async () => {
         setIsExporting(true);
         try {
-            let exportData: any[] = [];
-
-            if (dataSource === 'arkas') {
-                exportData = results;
-            } else {
-                // Ambil seluruh data dari database lokal sesuai filter
-                const res = await fetch(`/arkas-tools/search?export=1&year=${encodeURIComponent(year)}&keyword=${encodeURIComponent(keyword)}`, {
-                    headers: { 'Accept': 'application/json' }
-                });
-                const json = await res.json();
-                exportData = json.data || [];
-            }
+            const res = await fetch(`/arkas-tools/search?export=1&year=${encodeURIComponent(year)}&keyword=${encodeURIComponent(keyword)}`, {
+                headers: { 'Accept': 'application/json' }
+            });
+            const json = await res.json();
+            const exportData: any[] = json.data || [];
 
             if (exportData.length === 0) {
                 alert('Tidak ada data yang dapat diekspor.');
@@ -317,7 +208,7 @@ export default function Index({ auth, initialData, defaultYear = '2026', localSt
                 <button
                     onClick={() => currentPage > 1 && loadPage(currentPage - 1)}
                     disabled={currentPage === 1 || loading}
-                    className="px-3 py-1.5 rounded text-xs font-medium border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                    className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-extrabold text-slate-600 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10"
                 >
                     &laquo; Sebelumnya
                 </button>
@@ -326,7 +217,7 @@ export default function Index({ auth, initialData, defaultYear = '2026', localSt
                 {pages.map((p, idx) => {
                     if (p === '...') {
                         return (
-                            <span key={`dots-${idx}`} className="px-2 py-1 text-xs text-gray-400">
+                            <span key={`dots-${idx}`} className="px-1 text-[10px] font-bold text-slate-300 dark:text-slate-600">
                                 ...
                             </span>
                         );
@@ -337,10 +228,10 @@ export default function Index({ auth, initialData, defaultYear = '2026', localSt
                             key={`page-${p}`}
                             onClick={() => typeof p === 'number' && loadPage(p)}
                             disabled={loading}
-                            className={`min-w-[32px] px-2 py-1.5 rounded text-xs font-semibold transition ${
+                            className={`flex h-7 min-w-7 items-center justify-center rounded-xl px-2 text-[10px] font-extrabold transition text-sikas-num ${
                                 isCurrent
-                                    ? 'bg-indigo-600 text-white shadow-sm'
-                                    : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                                    ? 'bg-lime-400 text-slate-950 shadow-lime'
+                                    : 'text-slate-500 hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-white/5'
                             }`}
                         >
                             {p}
@@ -352,7 +243,7 @@ export default function Index({ auth, initialData, defaultYear = '2026', localSt
                 <button
                     onClick={() => currentPage < lastPage && loadPage(currentPage + 1)}
                     disabled={currentPage === lastPage || loading}
-                    className="px-3 py-1.5 rounded text-xs font-medium border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                    className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-extrabold text-slate-600 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10"
                 >
                     Berikutnya &raquo;
                 </button>
@@ -361,210 +252,229 @@ export default function Index({ auth, initialData, defaultYear = '2026', localSt
     };
 
     return (
-        <AuthenticatedLayout
-            header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">Arkas Tools: Pencarian & Sinkronisasi Barang</h2>}
-        >
+        <AuthenticatedLayout>
             <Head title="Arkas Tools" />
 
-            <div className="py-12">
-                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
+            <div className="space-y-4">
+                <PageHeader
+                    className="animate-rise"
+                    breadcrumb={[
+                        { label: 'Dashboard' },
+                        { label: 'Arkas Tools' },
+                        { label: 'Katalog Barang' },
+                    ]}
+                    title="Arkas Tools"
+                    badge={<StatusBadge tone="violet" dot={false}>Integrasi ARKAS</StatusBadge>}
+                    subtitle="Pencarian dan sinkronisasi langsung referensi barang dari database ARKAS ke SIKAS."
+                />
 
-                    {/* Banner info jika database lokal masih kosong */}
-                    {isEmptyDb && (
-                        <div className="bg-amber-50 border-l-4 border-amber-400 p-4 mb-6 rounded-r-lg shadow-sm">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center">
-                                    <div className="flex-shrink-0">
-                                        <svg className="h-5 w-5 text-amber-400" viewBox="0 0 20 20" fill="currentColor">
-                                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                        </svg>
-                                    </div>
-                                    <div className="ml-3">
-                                        <p className="text-sm font-medium text-amber-800">
-                                            Database lokal SIKAS belum memiliki data referensi barang ARKAS.
-                                        </p>
-                                        <p className="text-xs text-amber-700 mt-0.5">
-                                            Silakan klik tombol <strong>"Tarik Data"</strong> untuk memeriksa data dari ARKAS, lalu klik <strong>"Sync Database"</strong> untuk menyimpannya ke database lokal.
-                                        </p>
-                                    </div>
-                                </div>
+                {/* Tab Switcher: Katalog Barang vs Diagnosa AI */}
+                <div className="animate-rise" style={{ animationDelay: '60ms' }}>
+                    <Surface padding="sm">
+                        <PillTabs
+                            ariaLabel="Tab Arkas Tools"
+                            variant="soft"
+                            value={activeMainTab}
+                            items={[
+                                {
+                                    key: 'katalog',
+                                    label: (
+                                        <span className="flex items-center gap-1.5">
+                                            <Database className="w-4 h-4" />
+                                            Katalog & Sinkronisasi Barang
+                                        </span>
+                                    ),
+                                },
+                                {
+                                    key: 'diagnosa',
+                                    label: (
+                                        <span className="flex items-center gap-1.5">
+                                            <Brain className="w-4 h-4" />
+                                            Pusat Diagnosa & Rekonsiliasi AI
+                                        </span>
+                                    ),
+                                    badge: <span className="ml-1.5 rounded-full bg-brand-500/10 px-2 py-0.5 text-[9px] font-extrabold text-brand-600 dark:text-brand-300">DeepSeek</span>,
+                                },
+                            ]}
+                            onChange={(key) => setActiveMainTab(key as 'katalog' | 'diagnosa')}
+                        />
+                    </Surface>
+                </div>
+
+                {/* Banner info jika database lokal masih kosong */}
+                {isEmptyDb && (
+                    <div className="animate-rise" style={{ animationDelay: '110ms' }}>
+                        <div className="flex items-start gap-3 rounded-[22px] border border-amber-300/60 bg-pastel-amber/70 p-4 dark:border-amber-400/20 dark:bg-amber-400/10">
+                            <IconTile tone="amber" size="sm">
+                                <AlertTriangle className="h-4 w-4" />
+                            </IconTile>
+                            <div>
+                                <p className="text-[11.5px] font-extrabold text-amber-800 dark:text-amber-200">
+                                    Database lokal SIKAS belum memiliki data referensi barang ARKAS.
+                                </p>
+                                <p className="mt-0.5 text-[10.5px] font-medium text-amber-700 dark:text-amber-300">
+                                    Silakan klik tombol <strong>"Sync Database"</strong> untuk langsung menyinkronkan referensi barang dari database ARKAS ke PostgreSQL lokal.
+                                </p>
                             </div>
                         </div>
-                    )}
-
-                    {/* Tab Switcher: Katalog Barang vs Diagnosa AI */}
-                    <div className="flex items-center gap-2 mb-6">
-                        <button
-                            type="button"
-                            onClick={() => setActiveMainTab('katalog')}
-                            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition shadow-sm ${
-                                activeMainTab === 'katalog'
-                                    ? 'bg-white dark:bg-gray-800 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shadow-indigo-100 dark:shadow-none'
-                                    : 'bg-gray-100 dark:bg-gray-800/50 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
-                            }`}
-                        >
-                            <Database className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                            Katalog & Sinkronisasi Barang
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setActiveMainTab('diagnosa')}
-                            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition shadow-sm ${
-                                activeMainTab === 'diagnosa'
-                                    ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/20'
-                                    : 'bg-gray-100 dark:bg-gray-800/50 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
-                            }`}
-                        >
-                            <Brain className="w-4 h-4 text-violet-400" />
-                            Pusat Diagnosa & Rekonsiliasi AI
-                            <span className="px-1.5 py-0.2 rounded-full bg-white/20 text-white text-[10px] font-bold">
-                                DeepSeek
-                            </span>
-                        </button>
                     </div>
+                )}
 
-                    {activeMainTab === 'katalog' ? (
-                    <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
+                {activeMainTab === 'katalog' ? (
+                    <div className="space-y-4">
+                        {/* Kartu ringkas ringkasan data */}
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                            <div className="sikas-card sikas-card-hover animate-rise p-4" style={{ animationDelay: '110ms' }}>
+                                <div className="flex items-center gap-2.5">
+                                    <IconTile tone="ink" size="md">
+                                        <Database className="h-5 w-5" />
+                                    </IconTile>
+                                    <div className="min-w-0">
+                                        <p className="text-[11.5px] font-extrabold tracking-tight text-slate-900 dark:text-white">Total Ditemukan</p>
+                                        <p className="text-[9.5px] font-medium text-slate-400 dark:text-slate-500">Referensi barang lokal</p>
+                                    </div>
+                                </div>
+                                <p className="mt-3 text-sikas-num text-[19px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                                    {totalItems.toLocaleString('id-ID')}
+                                </p>
+                            </div>
+                            <div className="sikas-card sikas-card-hover animate-rise p-4" style={{ animationDelay: '150ms' }}>
+                                <div className="flex items-center gap-2.5">
+                                    <IconTile tone="mint" size="md">
+                                        <Sparkles className="h-5 w-5" />
+                                    </IconTile>
+                                    <div className="min-w-0">
+                                        <p className="text-[11.5px] font-extrabold tracking-tight text-slate-900 dark:text-white">Data Baru</p>
+                                        <p className="text-[9.5px] font-medium text-slate-400 dark:text-slate-500">Hasil sync terakhir</p>
+                                    </div>
+                                </div>
+                                <p className="mt-3 text-sikas-num text-[19px] font-extrabold tracking-tight text-mint">
+                                    {(lastSyncResult ? lastSyncResult.synced : 0).toLocaleString('id-ID')}
+                                </p>
+                            </div>
+                            <div className="sikas-card sikas-card-hover animate-rise p-4" style={{ animationDelay: '190ms' }}>
+                                <div className="flex items-center gap-2.5">
+                                    <IconTile tone="amber" size="md">
+                                        <RotateCw className="h-5 w-5" />
+                                    </IconTile>
+                                    <div className="min-w-0">
+                                        <p className="text-[11.5px] font-extrabold tracking-tight text-slate-900 dark:text-white">Diperbarui</p>
+                                        <p className="text-[9.5px] font-medium text-slate-400 dark:text-slate-500">Hasil sync terakhir</p>
+                                    </div>
+                                </div>
+                                <p className="mt-3 text-sikas-num text-[19px] font-extrabold tracking-tight text-amber-600 dark:text-amber-300">
+                                    {(lastSyncResult ? lastSyncResult.updated : 0).toLocaleString('id-ID')}
+                                </p>
+                            </div>
+                            <div className="sikas-card sikas-card-hover animate-rise p-4" style={{ animationDelay: '230ms' }}>
+                                <div className="flex items-center gap-2.5">
+                                    <IconTile tone="slate" size="md">
+                                        <ShieldCheck className="h-5 w-5" />
+                                    </IconTile>
+                                    <div className="min-w-0">
+                                        <p className="text-[11.5px] font-extrabold tracking-tight text-slate-900 dark:text-white">Tersinkron Lokal</p>
+                                        <p className="text-[9.5px] font-medium text-slate-400 dark:text-slate-500">Siap digunakan RKAS</p>
+                                    </div>
+                                </div>
+                                <p className="mt-3 text-sikas-num text-[19px] font-extrabold tracking-tight text-slate-600 dark:text-slate-300">
+                                    {totalItems.toLocaleString('id-ID')}
+                                </p>
+                            </div>
+                        </div>
 
                         {/* Form Pencarian & Tombol Aksi */}
-                        <form onSubmit={handleSearch} className="flex flex-col lg:flex-row gap-4 items-end mb-6">
+                        <div className="animate-rise" style={{ animationDelay: '270ms' }}>
+                            <Surface padding="sm">
+                                <form onSubmit={handleSearch} className="flex flex-col items-end gap-3 lg:flex-row">
+                                    {/* Input Keyword */}
+                                    <div className="w-full flex-1">
+                                        <InputLabel value="Cari Uraian / Nama Barang" />
+                                        <TextInput
+                                            className="w-full mt-1"
+                                            placeholder="Ketik nama barang... (tekan enter atau klik Cari)"
+                                            value={keyword}
+                                            onChange={(e) => setKeyword(e.target.value)}
+                                            autoFocus
+                                        />
+                                    </div>
 
-                            {/* Input Keyword */}
-                            <div className="flex-1 w-full">
-                                <InputLabel value="Cari Uraian / Nama Barang" className="text-gray-700 font-medium" />
-                                <TextInput
-                                    className="w-full mt-1 text-gray-900"
-                                    placeholder="Ketik nama barang... (tekan enter atau klik Cari)"
-                                    value={keyword}
-                                    onChange={(e) => setKeyword(e.target.value)}
-                                    autoFocus
-                                />
-                            </div>
+                                    {/* Pilihan Tahun */}
+                                    <div className="w-full lg:w-44">
+                                        <InputLabel value="Tahun Anggaran" />
+                                        <select
+                                            value={year}
+                                            onChange={(e) => handleYearChange(e.target.value)}
+                                            className="mt-1 w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-[12px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-slate-900 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
+                                        >
+                                            <option value="2026">Tahun 2026</option>
+                                            <option value="2025">Tahun 2025</option>
+                                            <option value="2024">Tahun 2024</option>
+                                            <option value="ALL">Semua Tahun</option>
+                                        </select>
+                                    </div>
 
-                            {/* Pilihan Tahun */}
-                            <div className="w-full lg:w-44">
-                                <InputLabel value="Tahun Anggaran" className="text-gray-700 font-medium" />
-                                <select
-                                    value={year}
-                                    onChange={(e) => handleYearChange(e.target.value)}
-                                    className="w-full mt-1 border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm"
-                                >
-                                    <option value="2026">Tahun 2026</option>
-                                    <option value="2025">Tahun 2025</option>
-                                    <option value="2024">Tahun 2024</option>
-                                    <option value="ALL">Semua Tahun</option>
-                                </select>
-                            </div>
+                                    {/* Tombol-tombol Aksi */}
+                                    <div className="flex h-10 flex-wrap items-center gap-2">
+                                        {/* Tombol Cari */}
+                                        <PrimaryButton type="submit" disabled={loading}>
+                                            {loading ? 'Memuat...' : 'Cari'}
+                                        </PrimaryButton>
 
-                            {/* Tombol-tombol Aksi */}
-                            <div className="flex flex-wrap gap-2 h-10 items-center">
+                                        {/* Tombol Sync Database (Langsung tanpa tarik data ke browser) */}
+                                        <PrimaryButton
+                                            type="button"
+                                            onClick={() => setShowSyncModal(true)}
+                                            disabled={loading}
+                                            title="Sinkronkan langsung referensi ARKAS ke database lokal"
+                                        >
+                                            Sync Database
+                                        </PrimaryButton>
 
-                                {/* Tombol Cari */}
-                                <PrimaryButton type="submit" disabled={loading}>
-                                    {loading && !isFetchingAll ? 'Memuat...' : 'Cari'}
-                                </PrimaryButton>
-
-                                {/* Tombol Tarik Data dari ARKAS */}
-                                <PrimaryButton
-                                    type="button"
-                                    onClick={triggerFetchAll}
-                                    disabled={loading || isSyncing}
-                                    className="bg-indigo-600 hover:bg-indigo-700 focus:bg-indigo-700"
-                                >
-                                    {loading && isFetchingAll ? 'Menarik...' : 'Tarik Data'}
-                                </PrimaryButton>
-
-                                {/* Tombol Sync Database */}
-                                <PrimaryButton
-                                    type="button"
-                                    onClick={triggerSync}
-                                    disabled={loading || isSyncing || !canSync || results.length === 0}
-                                    className={canSync ? "bg-emerald-600 hover:bg-emerald-700 focus:bg-emerald-700 active:bg-emerald-800" : "bg-gray-400 cursor-not-allowed"}
-                                    title={!canSync ? "Semua data sudah tersinkron ke database lokal" : "Sinkronkan data ke database lokal"}
-                                >
-                                    {isSyncing ? 'Menyinkronkan...' : 'Sync Database'}
-                                </PrimaryButton>
-
-                                {/* Tombol Export CSV */}
-                                <SecondaryButton
-                                    type="button"
-                                    onClick={exportToCSV}
-                                    disabled={results.length === 0 || loading || isSyncing || isExporting}
-                                >
-                                    {isExporting ? 'Mengekspor...' : 'Export Excel (CSV)'}
-                                </SecondaryButton>
-                            </div>
-                        </form>
+                                        {/* Tombol Export CSV */}
+                                        <SecondaryButton
+                                            type="button"
+                                            onClick={exportToCSV}
+                                            disabled={results.length === 0 || loading || isExporting}
+                                        >
+                                            {isExporting ? 'Mengekspor...' : 'Export Excel (CSV)'}
+                                        </SecondaryButton>
+                                    </div>
+                                </form>
+                            </Surface>
+                        </div>
 
                         {/* Pesan Error */}
                         {error && (
-                            <div className="bg-red-50 text-red-600 p-3 rounded mb-4 text-sm border border-red-200">
+                            <div className="rounded-2xl border border-rose-200 bg-pastel-rose/70 p-3 text-[11px] font-semibold text-rose-600 dark:border-rose-400/20 dark:bg-rose-500/10 dark:text-rose-300">
                                 {error}
                             </div>
                         )}
 
-                        {/* Summary Badges jika data ditarik dari ARKAS */}
-                        {summary && (
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                                <div className="text-center p-2 bg-white rounded shadow-sm border border-gray-100">
-                                    <div className="text-xs text-gray-500 font-medium uppercase">Total Ditemukan</div>
-                                    <div className="text-xl font-bold text-gray-800">{summary.total.toLocaleString('id-ID')}</div>
-                                </div>
-                                <div className="text-center p-2 bg-white rounded shadow-sm border border-gray-100">
-                                    <div className="text-xs text-emerald-600 font-medium uppercase">Data Baru</div>
-                                    <div className="text-xl font-bold text-emerald-600">{summary.data_baru.toLocaleString('id-ID')}</div>
-                                </div>
-                                <div className="text-center p-2 bg-white rounded shadow-sm border border-gray-100">
-                                    <div className="text-xs text-amber-600 font-medium uppercase">Perlu Update</div>
-                                    <div className="text-xl font-bold text-amber-600">{summary.perlu_update.toLocaleString('id-ID')}</div>
-                                </div>
-                                <div className="text-center p-2 bg-white rounded shadow-sm border border-gray-100">
-                                    <div className="text-xs text-gray-500 font-medium uppercase">Sudah Ada</div>
-                                    <div className="text-xl font-bold text-gray-600">{summary.sudah_ada.toLocaleString('id-ID')}</div>
-                                </div>
-                            </div>
-                        )}
-
                         {/* Info Bar Jumlah Data & Status Sumber */}
-                        <div className="mb-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-sm text-gray-600 font-medium">
+                        <div className="flex flex-col items-start justify-between gap-2 text-[10.5px] font-semibold text-slate-500 sm:flex-row sm:items-center dark:text-slate-400">
                             <div>
-                                {dataSource === 'local' ? (
-                                    <>
-                                        Menampilkan <span className="font-bold text-indigo-600">{fromItem || 0} – {toItem || 0}</span> dari{' '}
-                                        <span className="font-bold text-indigo-600">{totalItems.toLocaleString('id-ID')}</span> data barang di database lokal
-                                        {year !== 'ALL' ? ` (Tahun ${year})` : ' (Semua Tahun)'}
-                                    </>
-                                ) : (
-                                    <>
-                                        Ditemukan <span className="font-bold text-indigo-600">{summary ? summary.total.toLocaleString('id-ID') : results.length.toLocaleString('id-ID')}</span> data dari ARKAS Engine
-                                        {summary && results.length < summary.total && (
-                                            <span className="text-xs text-gray-500 ml-1">
-                                                (Menampilkan {results.length} data prioritas baru/update & sampel)
-                                            </span>
-                                        )}
-                                    </>
-                                )}
+                                Menampilkan <span className="text-sikas-num font-extrabold text-brand-600 dark:text-brand-300">{fromItem || 0} – {toItem || 0}</span> dari{' '}
+                                <span className="text-sikas-num font-extrabold text-brand-600 dark:text-brand-300">{totalItems.toLocaleString('id-ID')}</span> data barang di database lokal
+                                {year !== 'ALL' ? ` (Tahun ${year})` : ' (Semua Tahun)'}
                             </div>
 
                             <div className="flex items-center gap-3">
-                                {dataSource === 'local' && (
-                                    <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                                        <span>Tampilkan:</span>
-                                        <select
-                                            value={perPage}
-                                            onChange={(e) => handlePerPageChange(Number(e.target.value))}
-                                            className="py-1 px-2 text-xs border-gray-300 rounded shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-                                        >
-                                            <option value={50}>50</option>
-                                            <option value={100}>100</option>
-                                            <option value={200}>200</option>
-                                        </select>
-                                        <span>baris</span>
-                                    </div>
-                                )}
+                                <div className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-400 dark:text-slate-500">
+                                    <span>Tampilkan:</span>
+                                    <select
+                                        value={perPage}
+                                        onChange={(e) => handlePerPageChange(Number(e.target.value))}
+                                        className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[10px] font-bold text-slate-600 shadow-sm focus:border-lime-400 focus:ring-2 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
+                                    >
+                                        <option value={50}>50</option>
+                                        <option value={100}>100</option>
+                                        <option value={200}>200</option>
+                                    </select>
+                                    <span>baris</span>
+                                </div>
 
-                                {!canSync && results.length > 0 && (
-                                    <span className="text-xs text-emerald-600 font-semibold flex items-center gap-1">
+                                {results.length > 0 && (
+                                    <span className="flex items-center gap-1 text-[10px] font-extrabold text-mint">
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
                                         </svg>
@@ -575,248 +485,193 @@ export default function Index({ auth, initialData, defaultYear = '2026', localSt
                         </div>
 
                         {/* Tabel Data Barang */}
-                        <div className="overflow-x-auto border rounded-lg border-gray-200 max-h-[600px] custom-scrollbar">
-                            <table className="min-w-full divide-y divide-gray-200 text-sm">
-                                <thead className="bg-gray-50 sticky top-0 shadow-sm z-10">
-                                    <tr>
-                                        <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase">ID Barang</th>
-                                        <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase">Nama Barang / Uraian</th>
-                                        <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase">Kode Rekening</th>
-                                        <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase">Rekening Belanja</th>
-                                        <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase">Satuan</th>
-                                        <th className="px-6 py-3 text-center font-medium text-gray-500 uppercase">Tahun</th>
-                                        <th className="px-6 py-3 text-right font-medium text-gray-500 uppercase">Batas Atas</th>
-                                        <th className="px-6 py-3 text-center font-medium text-gray-500 uppercase">Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="bg-white divide-y divide-gray-200">
-                                    {results.length > 0 ? (
-                                        results.map((item: any, i) => (
-                                            <tr key={i} className="hover:bg-gray-50">
-                                                <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-500 font-mono">{item.id_barang}</td>
-                                                <td className="px-6 py-4 text-gray-900 font-medium">{item.nama_barang}</td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-gray-700">
-                                                    {item.kode_rekening ? item.kode_rekening : <span className="text-gray-400 italic">none</span>}
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-gray-700">
-                                                    {item.rekening ? item.rekening : <span className="text-gray-400 italic">none</span>}
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-gray-700">{item.satuan}</td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-center font-medium text-indigo-600">{item.tahun}</td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-right font-semibold text-gray-900">
-                                                    {item.batas_atas ? new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(item.batas_atas) : 'Rp 0'}
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-center">
-                                                    {item.status === 'Data Baru' ? (
-                                                        <span className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                                                            Data Baru
-                                                        </span>
-                                                    ) : item.status === 'Perlu Update' ? (
-                                                        <span className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200">
-                                                            Perlu Update
-                                                        </span>
-                                                    ) : (
-                                                        <span className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 border border-gray-200">
-                                                            Sudah Ada
-                                                        </span>
-                                                    )}
-                                                </td>
+                        <div className="animate-rise" style={{ animationDelay: '310ms' }}>
+                            <DataTable
+                                title="Daftar Referensi Barang ARKAS"
+                                subtitle="Katalog barang, rekening belanja, dan batas atas harga."
+                                icon={
+                                    <IconTile tone="sky" size="sm">
+                                        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M4 6h16M4 12h16M4 18h10" />
+                                        </svg>
+                                    </IconTile>
+                                }
+                                actions={<StatusBadge tone="info" dot={false} className="text-sikas-num">{results.length}</StatusBadge>}
+                                contentClassName="bento-table-wrapper mx-4 mb-4"
+                                footer={
+                                    totalItems > 0 ? (
+                                        <>
+                                            <div className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">
+                                                Halaman <span className="text-sikas-num font-extrabold text-slate-700 dark:text-slate-200">{currentPage}</span> dari{' '}
+                                                <span className="text-sikas-num font-extrabold text-slate-700 dark:text-slate-200">{lastPage.toLocaleString('id-ID')}</span>
+                                            </div>
+                                            {renderPaginationButtons()}
+                                        </>
+                                    ) : undefined
+                                }
+                            >
+                                <div className="max-h-[600px] overflow-auto">
+                                    <table className="min-w-full">
+                                        <thead className="sticky top-0 z-10">
+                                            <tr>
+                                                <th className="text-left">ID Barang</th>
+                                                <th className="text-left">Nama Barang / Uraian</th>
+                                                <th className="text-left">Kode Rekening</th>
+                                                <th className="text-left">Rekening Belanja</th>
+                                                <th className="text-left">Satuan</th>
+                                                <th className="text-center">Tahun</th>
+                                                <th className="text-right">Batas Atas</th>
+                                                <th className="text-center">Status</th>
                                             </tr>
-                                        ))
-                                    ) : (
-                                        <tr>
-                                            <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
-                                                {loading ? 'Sedang memuat data...' : 'Tidak ada data barang yang ditemukan.'}
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-
-                        {/* Navigasi Paginasi Server-side jika di mode database lokal */}
-                        {dataSource === 'local' && totalItems > 0 && (
-                            <div className="mt-4 flex flex-col sm:flex-row justify-between items-center gap-3 pt-3 border-t border-gray-200">
-                                <div className="text-xs text-gray-500">
-                                    Halaman <span className="font-semibold text-gray-700">{currentPage}</span> dari{' '}
-                                    <span className="font-semibold text-gray-700">{lastPage.toLocaleString('id-ID')}</span>
+                                        </thead>
+                                        <tbody>
+                                            {results.length > 0 ? (
+                                                results.map((item: any, i) => (
+                                                    <tr key={i}>
+                                                        <td className="whitespace-nowrap font-mono font-bold text-slate-500 dark:text-slate-400">{item.id_barang}</td>
+                                                        <td className="font-bold text-slate-900 dark:text-white">{item.nama_barang}</td>
+                                                        <td className="whitespace-nowrap text-slate-600 dark:text-slate-300">
+                                                            {item.kode_rekening ? item.kode_rekening : <span className="italic text-slate-400 dark:text-slate-500">none</span>}
+                                                        </td>
+                                                        <td className="whitespace-nowrap text-slate-600 dark:text-slate-300">
+                                                            {item.rekening ? item.rekening : <span className="italic text-slate-400 dark:text-slate-500">none</span>}
+                                                        </td>
+                                                        <td className="whitespace-nowrap text-slate-600 dark:text-slate-300">{item.satuan}</td>
+                                                        <td className="whitespace-nowrap text-center text-sikas-num font-bold text-brand-600 dark:text-brand-300">{item.tahun}</td>
+                                                        <td className="whitespace-nowrap text-right text-sikas-num font-extrabold text-slate-900 dark:text-white">
+                                                            {item.batas_atas ? new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(item.batas_atas) : 'Rp 0'}
+                                                        </td>
+                                                        <td className="whitespace-nowrap text-center">
+                                                            {item.status === 'Data Baru' ? (
+                                                                <StatusBadge tone="success" dot={false}>Data Baru</StatusBadge>
+                                                            ) : item.status === 'Perlu Update' ? (
+                                                                <StatusBadge tone="warning" dot={false}>Perlu Update</StatusBadge>
+                                                            ) : (
+                                                                <StatusBadge tone="neutral" dot={false}>Sudah Ada</StatusBadge>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            ) : (
+                                                <tr>
+                                                    <td colSpan={8} className="p-0">
+                                                        <EmptyState
+                                                            className="border-0 bg-transparent py-10 dark:bg-transparent"
+                                                            icon={
+                                                                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                                                </svg>
+                                                            }
+                                                            title={loading ? 'Sedang memuat data...' : 'Tidak ada data barang yang ditemukan.'}
+                                                        />
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
                                 </div>
-                                {renderPaginationButtons()}
-                            </div>
-                        )}
+                            </DataTable>
+                        </div>
                     </div>
-                    ) : (
-                        <div className="space-y-6">
-                            {/* Hero Card Diagnosa AI */}
-                            <div className="bg-gradient-to-br from-indigo-900 via-indigo-950 to-slate-900 rounded-2xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden border border-indigo-700/50">
-                                <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-indigo-500/10 blur-3xl pointer-events-none"></div>
-                                <div className="relative z-10 max-w-2xl">
-                                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/20 text-indigo-200 border border-indigo-400/30 mb-4">
-                                        <Sparkles className="w-3.5 h-3.5 text-indigo-300" />
-                                        SIKAS AI DeepSeek Suite v1.3
-                                    </div>
-                                    <h3 className="text-2xl font-black tracking-tight text-white sm:text-3xl">
-                                        Pusat Diagnosa & Rekonsiliasi ARKAS
-                                    </h3>
-                                    <p className="mt-2 text-sm text-indigo-200 leading-relaxed">
-                                        Inspeksi otomatis antara database desktop resmi ARKAS (<code className="bg-black/30 px-1.5 py-0.5 rounded text-xs font-mono text-indigo-300">arkas.db</code>) dan pembukuan PostgreSQL SIKAS. Mencegah risiko penimpaan SPJ lokal yang tidak disengaja, mendeteksi selisih pagu RKAS, serta memandu langkah perbaikan terpadu.
-                                    </p>
-                                    <div className="mt-6 flex flex-wrap items-center gap-3">
-                                        <button
-                                            type="button"
-                                            onClick={() => setIsAiModalOpen(true)}
-                                            className="px-5 py-2.5 rounded-xl text-xs font-bold bg-white text-indigo-900 hover:bg-indigo-50 shadow-lg shadow-black/20 transition flex items-center gap-2"
-                                        >
-                                            <Brain className="w-4 h-4 text-indigo-600" />
-                                            Jalankan Audit & Diagnosa AI Penuh
-                                            <ArrowRight className="w-3.5 h-3.5 text-indigo-500" />
-                                        </button>
-                                    </div>
+                ) : (
+                    <div className="animate-rise space-y-4">
+                        {/* Hero Card Diagnosa AI */}
+                        <div className="relative overflow-hidden rounded-[26px] border border-white/10 bg-gradient-to-br from-[#252438] via-[#1E1D2E] to-[#15141E] p-6 text-white shadow-float sm:p-8">
+                            <div className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full bg-brand-500/20 blur-3xl"></div>
+                            <div className="pointer-events-none absolute -bottom-20 -left-10 h-52 w-52 rounded-full bg-lime-400/10 blur-3xl"></div>
+                            <div className="relative z-10 max-w-2xl">
+                                <div className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-lime-400/30 bg-lime-400/10 px-3 py-1 text-[9.5px] font-extrabold uppercase tracking-[0.14em] text-lime-300">
+                                    <Sparkles className="h-3.5 w-3.5" />
+                                    SIKAS AI DeepSeek Suite v1.3
                                 </div>
-                            </div>
-
-                            {/* 3 Pilar Diagnosa */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                                <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200/80 dark:border-gray-700 shadow-sm flex flex-col justify-between">
-                                    <div>
-                                        <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 flex items-center justify-center mb-3">
-                                            <FileSearch className="w-5 h-5" />
-                                        </div>
-                                        <h4 className="text-sm font-bold text-gray-900 dark:text-gray-100">
-                                            Integritas Pagu & RKAS
-                                        </h4>
-                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5 leading-relaxed">
-                                            Membandingkan pagu anggaran murni dan perubahan serta rincian kegiatan belanja agar tidak terjadi penolakan penarikan RKAS.
-                                        </p>
-                                    </div>
-                                    <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700/60 flex items-center justify-between text-xs text-purple-700 dark:text-purple-300 font-semibold">
-                                        <span>Deteksi Selisih Alokasi</span>
-                                        <CheckCircle2 className="w-4 h-4" />
-                                    </div>
-                                </div>
-
-                                <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200/80 dark:border-gray-700 shadow-sm flex flex-col justify-between">
-                                    <div>
-                                        <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300 flex items-center justify-center mb-3">
-                                            <ShieldAlert className="w-5 h-5" />
-                                        </div>
-                                        <h4 className="text-sm font-bold text-gray-900 dark:text-gray-100">
-                                            Proteksi Overwrite BKU
-                                        </h4>
-                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5 leading-relaxed">
-                                            Menghitung nominal dan jumlah transaksi lokal newSIKAS yang berpotensi terhapus sebelum Anda melakukan penarikan buku kas dari ARKAS.
-                                        </p>
-                                    </div>
-                                    <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700/60 flex items-center justify-between text-xs text-rose-700 dark:text-rose-300 font-semibold">
-                                        <span>Perlindungan Data SPJ</span>
-                                        <ShieldCheck className="w-4 h-4" />
-                                    </div>
-                                </div>
-
-                                <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200/80 dark:border-gray-700 shadow-sm flex flex-col justify-between">
-                                    <div>
-                                        <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 flex items-center justify-center mb-3">
-                                            <Database className="w-5 h-5" />
-                                        </div>
-                                        <h4 className="text-sm font-bold text-gray-900 dark:text-gray-100">
-                                            Standar Satuan Harga (SSH)
-                                        </h4>
-                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5 leading-relaxed">
-                                            Memastikan puluhan ribu referensi barang, rekening belanja, dan batas atas harga selalu sinkron dengan database acuan dinas.
-                                        </p>
-                                    </div>
-                                    <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700/60 flex items-center justify-between text-xs text-emerald-700 dark:text-emerald-300 font-semibold">
-                                        <span>23.000+ Acuan Barang</span>
-                                        <CheckCircle2 className="w-4 h-4" />
-                                    </div>
+                                <h3 className="text-[22px] font-extrabold leading-tight tracking-tight text-white sm:text-[26px]">
+                                    Pusat Diagnosa & Rekonsiliasi ARKAS
+                                </h3>
+                                <p className="mt-2 text-[11px] font-medium leading-relaxed text-slate-300">
+                                    Inspeksi otomatis antara database desktop resmi ARKAS (<code className="rounded bg-black/30 px-1.5 py-0.5 font-mono text-[10px] text-lime-300">arkas.db</code>) dan pembukuan PostgreSQL SIKAS. Mencegah risiko penimpaan SPJ lokal yang tidak disengaja, mendeteksi selisih pagu RKAS, serta memandu langkah perbaikan terpadu.
+                                </p>
+                                <div className="mt-6 flex flex-wrap items-center gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsAiModalOpen(true)}
+                                        className="flex items-center gap-2 rounded-2xl bg-lime-400 px-5 py-2.5 text-[11px] font-extrabold text-slate-950 shadow-lime transition hover:-translate-y-0.5 hover:bg-lime-300"
+                                    >
+                                        <Brain className="h-4 w-4 text-slate-950" />
+                                        Jalankan Audit & Diagnosa AI Penuh
+                                        <ArrowRight className="h-3.5 w-3.5 text-slate-950" />
+                                    </button>
                                 </div>
                             </div>
                         </div>
-                    )}
-                </div>
+
+                        {/* 3 Pilar Diagnosa */}
+                        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                            <div className="sikas-card flex flex-col justify-between p-5">
+                                <div>
+                                    <IconTile tone="violet" size="md" className="mb-3">
+                                        <FileSearch className="h-5 w-5" />
+                                    </IconTile>
+                                    <h4 className="text-[12.5px] font-extrabold text-slate-900 dark:text-white">
+                                        Integritas Pagu & RKAS
+                                    </h4>
+                                    <p className="mt-1.5 text-[10.5px] font-medium leading-relaxed text-slate-500 dark:text-slate-400">
+                                        Membandingkan pagu anggaran murni dan perubahan serta rincian kegiatan belanja agar tidak terjadi penolakan penarikan RKAS.
+                                    </p>
+                                </div>
+                                <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-[10px] font-extrabold text-brand-600 dark:border-white/5 dark:text-brand-300">
+                                    <span>Deteksi Selisih Alokasi</span>
+                                    <CheckCircle2 className="h-4 w-4" />
+                                </div>
+                            </div>
+
+                            <div className="sikas-card flex flex-col justify-between p-5">
+                                <div>
+                                    <IconTile tone="rose" size="md" className="mb-3">
+                                        <ShieldAlert className="h-5 w-5" />
+                                    </IconTile>
+                                    <h4 className="text-[12.5px] font-extrabold text-slate-900 dark:text-white">
+                                        Proteksi Overwrite BKU
+                                    </h4>
+                                    <p className="mt-1.5 text-[10.5px] font-medium leading-relaxed text-slate-500 dark:text-slate-400">
+                                        Menghitung nominal dan jumlah transaksi lokal newSIKAS yang berpotensi terhapus sebelum Anda melakukan penarikan buku kas dari ARKAS.
+                                    </p>
+                                </div>
+                                <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-[10px] font-extrabold text-rose-600 dark:border-white/5 dark:text-rose-300">
+                                    <span>Perlindungan Data SPJ</span>
+                                    <ShieldCheck className="h-4 w-4" />
+                                </div>
+                            </div>
+
+                            <div className="sikas-card flex flex-col justify-between p-5">
+                                <div>
+                                    <IconTile tone="mint" size="md" className="mb-3">
+                                        <Database className="h-5 w-5" />
+                                    </IconTile>
+                                    <h4 className="text-[12.5px] font-extrabold text-slate-900 dark:text-white">
+                                        Standar Satuan Harga (SSH)
+                                    </h4>
+                                    <p className="mt-1.5 text-[10.5px] font-medium leading-relaxed text-slate-500 dark:text-slate-400">
+                                        Memastikan puluhan ribu referensi barang, rekening belanja, dan batas atas harga selalu sinkron dengan database acuan dinas.
+                                    </p>
+                                </div>
+                                <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-[10px] font-extrabold text-mint dark:border-white/5">
+                                    <span>23.000+ Acuan Barang</span>
+                                    <CheckCircle2 className="h-4 w-4" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
 
-            {/* Modal Konfirmasi Tarik Data dari ARKAS */}
-            <Modal show={showFetchModal} onClose={() => !isFetchingAll && setShowFetchModal(false)} maxWidth="md">
-                <div className="p-6">
-                    {!isFetchingAll ? (
-                        <>
-                            <h2 className="text-lg font-medium text-gray-900">Konfirmasi Tarik Data ARKAS</h2>
-                            <p className="mt-2 text-sm text-gray-600">
-                                Anda akan menarik referensi barang ARKAS untuk <strong>{year === 'ALL' ? 'Semua Tahun (2024-2026, ~76.000 data)' : `Tahun ${year}`}</strong> langsung dari file database ARKAS lokal Anda.
-                            </p>
-                            <p className="mt-2 text-sm font-semibold text-indigo-600">
-                                Lanjutkan penarikan data?
-                            </p>
-                            <div className="mt-6 flex justify-end gap-3">
-                                <SecondaryButton onClick={() => setShowFetchModal(false)}>Batal</SecondaryButton>
-                                <PrimaryButton onClick={confirmFetchAll} className="bg-indigo-600 hover:bg-indigo-700">Ya, Tarik Data</PrimaryButton>
-                            </div>
-                        </>
-                    ) : (
-                        <div className="text-center py-4">
-                            <h2 className="text-lg font-medium text-gray-900 mb-4">Menarik Data dari ARKAS...</h2>
-                            <div className="w-full bg-gray-200 rounded-full h-4 mb-2 overflow-hidden">
-                                <div
-                                    className="bg-indigo-600 h-4 rounded-full transition-all duration-300 ease-out"
-                                    style={{ width: `${fetchProgress}%` }}
-                                >
-                                </div>
-                            </div>
-                            <p className="text-sm font-semibold text-indigo-600 mb-4">
-                                {fetchProgress}% Selesai
-                            </p>
-                            <p className="text-xs text-gray-500">
-                                Mohon tunggu sebentar, sedang membaca database ARKAS...
-                            </p>
-                        </div>
-                    )}
-                </div>
-            </Modal>
-
-            {/* Modal Konfirmasi Sinkronisasi Database */}
-            <Modal show={showSyncModal} onClose={() => !isSyncing && setShowSyncModal(false)} maxWidth="md">
-                <div className="p-6">
-                    {!isSyncing ? (
-                        <>
-                            <h2 className="text-lg font-medium text-gray-900">Konfirmasi Sinkronisasi Database</h2>
-                            <p className="mt-2 text-sm text-gray-600">
-                                Anda akan menyinkronkan seluruh data barang berstatus <strong>"Data Baru"</strong> dan <strong>"Perlu Update"</strong> ke database lokal PostgreSQL SIKAS.
-                            </p>
-                            {summary && (
-                                <div className="mt-3 p-3 bg-gray-50 rounded text-xs text-gray-700 space-y-1">
-                                    <div>• Data Baru yang akan ditambahkan: <strong>{summary.data_baru.toLocaleString('id-ID')}</strong></div>
-                                    <div>• Data yang akan diperbarui: <strong>{summary.perlu_update.toLocaleString('id-ID')}</strong></div>
-                                </div>
-                            )}
-                            <p className="mt-3 text-sm font-semibold text-emerald-600">
-                                Apakah Anda yakin ingin melanjutkan sinkronisasi?
-                            </p>
-                            <div className="mt-6 flex justify-end gap-3">
-                                <SecondaryButton onClick={() => setShowSyncModal(false)}>Batal</SecondaryButton>
-                                <PrimaryButton onClick={confirmSync} className="bg-emerald-600 hover:bg-emerald-700">Ya, Sinkronkan</PrimaryButton>
-                            </div>
-                        </>
-                    ) : (
-                        <div className="text-center py-4">
-                            <h2 className="text-lg font-medium text-gray-900 mb-4">Menyinkronkan ke Database Lokal...</h2>
-                            <div className="w-full bg-gray-200 rounded-full h-4 mb-2 overflow-hidden">
-                                <div
-                                    className="bg-emerald-600 h-4 rounded-full transition-all duration-300 ease-out"
-                                    style={{ width: `${syncProgress}%` }}
-                                >
-                                </div>
-                            </div>
-                            <p className="text-sm font-semibold text-emerald-600 mb-4">
-                                {syncProgress}% Selesai
-                            </p>
-                            <p className="text-xs text-gray-500">
-                                Mohon tunggu sebentar, sedang menyimpan puluhan ribu data ke PostgreSQL...
-                            </p>
-                        </div>
-                    )}
-                </div>
-            </Modal>
+            {/* Modal Sinkronisasi Database Langsung Neo-Bento */}
+            <ArkasSyncModal
+                show={showSyncModal}
+                onClose={() => setShowSyncModal(false)}
+                defaultYear={year}
+                localStats={localStats}
+                onSyncComplete={handleSyncComplete}
+            />
 
             {/* Modal Diagnosa & Rekonsiliasi AI */}
             <ArkasDiagnosticModal
