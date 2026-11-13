@@ -1457,256 +1457,238 @@ export default function Bku({
 
 
     const renderStep1 = () => (
-        <div className="space-y-2">
-            {/* <div className="p-2 bg-pastel-sky/50 dark:bg-sky/[0.06] rounded-lg flex items-start gap-3">
-                <input
-                    type="checkbox"
-                    checked={data.is_siplah}
-                    onChange={(e) => setData('is_siplah', e.target.checked)}
-                    className="mt-1 rounded border-slate-200/90 dark:border-white/10 text-brand-600 shadow-sm focus:ring-lime-200/60"
-                />
-                <div>
-                    <span className="text-slate-800 dark:text-white font-medium text-[10pt]">Centang</span>
-                    <span className="text-slate-500 dark:text-slate-400 text-[10pt]"> jika belanja dari SIPLah untuk ambil data pembelanjaan secara otomatis</span>
-                    <p className="text-[10pt] text-sky-500 dark:text-sky-300 mt-1">"Ambil Data" membutuhkan koneksi internet</p>
+        <div className="space-y-4">
+            {/* Panel 1: Waktu & Metode Transaksi */}
+            <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4 dark:border-white/5 dark:bg-white/[0.02]">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div>
+                        <InputLabel value="Tanggal Transaksi" />
+                        <DatePicker
+                            value={data.tanggal_transaksi}
+                            onChange={(date) => {
+                                const formattedDate = date ? format(date, 'yyyy-MM-dd') : '';
+                                setData((prevData) => ({
+                                    ...prevData,
+                                    tanggal_transaksi: formattedDate,
+                                    tanggal_nota: formattedDate // Auto-fill tanggal_nota
+                                }));
+                                if (formattedDate) setTanggalTransaksiError('');
+                            }}
+                            className="mt-1"
+                            placeholder={
+                                data.jenis_transaksi === 'Nontunai'
+                                    ? "Tanggal Transaksi"
+                                    : ((!penarikanTunais || penarikanTunais.length === 0) ? "Belum ada penarikan tunai" : "Tanggal Transaksi")
+                            }
+                            startMonth={startOfActiveMonth}
+                            endMonth={endOfActiveMonth}
+                            disabled={data.jenis_transaksi === 'Nontunai' ? disabledWithdrawalDates : disabledDepositDates}
+                            inputDisabled={data.jenis_transaksi === 'Nontunai' ? false : (!penarikanTunais || penarikanTunais.length === 0)}
+                            id="tanggal_transaksi"
+                        />
+                        <InputError message={tanggalTransaksiError} className="mt-1.5" />
+                    </div>
+                    <div>
+                        <InputLabel value="Jenis Transaksi" />
+                        <select
+                            id="jenis_transaksi"
+                            value={data.jenis_transaksi}
+                            onChange={(e) => {
+                                setData('jenis_transaksi', e.target.value);
+                                if (e.target.value) setJenisTransaksiError('');
+                            }}
+                            className={`mt-1 block w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-[12px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10 ${jenisTransaksiError ? 'border-rose-500 focus:border-rose-500 focus:ring-rose-200/60' : ''}`}
+                        >
+                            <option value=''>Pilih Jenis Transaksi</option>
+                            <option value="Tunai">Tunai ({formatCurrency(saldoTunai)})</option>
+                            <option value="Nontunai">Nontunai ({formatCurrency(saldoNonTunai)})</option>
+                        </select>
+                        <InputError message={jenisTransaksiError} className="mt-1.5" />
+                    </div>
                 </div>
-            </div> */}
+            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 ms-2 me-2">
-                <div>
-                    <InputLabel value="Tanggal Transaksi" className="!text-[10pt]" />
-                    <DatePicker
-                        value={data.tanggal_transaksi}
-                        onChange={(date) => {
-                            const formattedDate = date ? format(date, 'yyyy-MM-dd') : '';
-                            setData((prevData) => ({
-                                ...prevData,
-                                tanggal_transaksi: formattedDate,
-                                tanggal_nota: formattedDate // Auto-fill tanggal_nota
-                            }));
-                            if (formattedDate) setTanggalTransaksiError('');
-                        }}
-                        className="mt-1 block w-full text-slate-800 dark:text-white !text-[10pt]"
-                        placeholder={
-                            data.jenis_transaksi === 'Nontunai'
-                                ? "Tanggal Transaksi"
-                                : ((!penarikanTunais || penarikanTunais.length === 0) ? "Belum ada penarikan tunai" : "Tanggal Transaksi")
-                        }
-                        startMonth={startOfActiveMonth}
-                        endMonth={endOfActiveMonth}
-                        disabled={data.jenis_transaksi === 'Nontunai' ? disabledWithdrawalDates : disabledDepositDates}
-                        inputDisabled={data.jenis_transaksi === 'Nontunai' ? false : (!penarikanTunais || penarikanTunais.length === 0)}
-                        id="tanggal_transaksi"
+            {/* Panel 2: Informasi Toko / Penerima Pembayaran */}
+            <div className="space-y-3.5 rounded-2xl border border-slate-100 bg-slate-50/60 p-4 dark:border-white/5 dark:bg-white/[0.02]">
+                <label className="inline-flex cursor-pointer items-center gap-2.5">
+                    <input
+                        type="checkbox"
+                        checked={data.no_entity}
+                        onChange={(e) => setData('no_entity', e.target.checked)}
+                        className="h-4 w-4 rounded border-slate-300 text-brand-600 shadow-sm focus:ring-lime-200/60 dark:border-white/20 dark:bg-white/5"
                     />
-                    <InputError message={tanggalTransaksiError} className="mt-2" />
-                </div>
+                    <span className="text-[11.5px] font-semibold text-slate-600 dark:text-slate-300">
+                        Centang jika pembelanjaan ini tidak memiliki toko/badan usaha
+                    </span>
+                </label>
+
                 <div>
-                    <InputLabel value="Jenis Transaksi" className="!text-[10pt] ms-2 me-2" />
-                    <select
-                        id="jenis_transaksi"
-                        value={data.jenis_transaksi}
-                        onChange={(e) => {
-                            setData('jenis_transaksi', e.target.value);
-                            if (e.target.value) setJenisTransaksiError('');
-                        }}
-                        className={`mt-1 block w-full text-slate-800 border-slate-200/90 dark:border-white/10 dark:bg-black/30 dark:text-slate-300 focus:border-lime-400 dark:focus:border-lime-400/70 focus:ring-4 focus:ring-lime-200/60 dark:focus:ring-lime-400/10 rounded-md shadow-sm !text-[10pt] ${jenisTransaksiError ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
-                    >
-                        <option value=''>Pilih Jenis Transaksi</option>
-                        <option value="Tunai">Tunai ({formatCurrency(saldoTunai)})</option>
-                        <option value="Nontunai">Nontunai ({formatCurrency(saldoNonTunai)})</option>
-                    </select>
-                    <InputError message={jenisTransaksiError} className="mt-2" />
-                </div>
-            </div>
-
-            <div className="mt-2 flex items-center gap-2 ms-2">
-                <input
-                    type="checkbox"
-                    checked={data.no_entity}
-                    onChange={(e) => setData('no_entity', e.target.checked)}
-                    className="rounded border-slate-200/90 dark:border-white/10 text-brand-600 shadow-sm focus:ring-lime-200/60"
-                />
-                <span className="text-slate-500 dark:text-slate-400 text-[10pt]">Centang jika pembelanjaan ini tidak memiliki toko/badan usaha</span>
-            </div>
-
-            <div className="ms-2 me-2">
-                {data.no_entity ? (
-                    <>
-                        <InputLabel value="Nama Penerima Pembayaran" className="!text-[10pt]" />
-                        <div className="relative mt-1">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
-                                {isSearchingPenerima ? (
-                                    <svg className="animate-spin h-4 w-4 text-sky-500 dark:text-sky-300" fill="none" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                                    </svg>
-                                ) : (
-                                    <svg className="h-4 w-4 text-slate-400 dark:text-slate-500" viewBox="0 0 20 20" fill="currentColor">
-                                        <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                                    </svg>
-                                )}
-                            </div>
-                            <TextInput
-                                className="pl-9 block w-full text-slate-800 dark:text-white !text-[10pt]"
-                                value={data.nama_penerima_pembayaran}
-                                onChange={(e) => handleSearchPenerima(e.target.value)}
-                                onFocus={() => { if (data.nama_penerima_pembayaran.trim().length >= 2) setShowPenerimaDropdown(true); }}
-                                onBlur={() => setTimeout(() => setShowPenerimaDropdown(false), 200)}
-                                placeholder="Cari atau ketik nama penerima pembayaran"
-                                autoComplete="off"
-                            />
-
-                            {/* Dropdown Results */}
-                            {showPenerimaDropdown && (
-                                <div className="absolute z-50 mt-1 w-full bg-white dark:bg-[#15131F] border border-slate-200 dark:border-white/10 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                    {data.no_entity ? (
+                        <>
+                            <InputLabel value="Nama Penerima Pembayaran" />
+                            <div className="relative mt-1">
+                                <div className="pointer-events-none absolute inset-y-0 left-0 z-10 flex items-center pl-3.5">
                                     {isSearchingPenerima ? (
-                                        <div className="p-3 text-center text-[10pt] text-slate-400 dark:text-slate-500">Mencari...</div>
-                                    ) : penerimaResults.length > 0 ? (
-                                        <>
-                                            {penerimaResults.map((penerima, idx) => (
-                                                <button
-                                                    key={idx}
-                                                    type="button"
-                                                    onMouseDown={(e) => { e.preventDefault(); selectPenerima(penerima); }}
-                                                    className="w-full text-left px-3 py-2 hover:bg-sky/10 dark:hover:bg-white/10 border-b border-slate-100 dark:border-white/10 last:border-b-0 transition-colors"
-                                                >
-                                                    <div className="font-medium text-slate-800 dark:text-white text-[10pt]">
-                                                        {penerima.nama_penerima_pembayaran}
-                                                    </div>
-                                                </button>
-                                            ))}
-                                        </>
-                                    ) : data.nama_penerima_pembayaran.trim().length >= 2 ? (
-                                        <button
-                                            type="button"
-                                            onMouseDown={(e) => { e.preventDefault(); addNewPenerima(); }}
-                                            className="w-full text-left px-3 py-2 hover:bg-sky/10 dark:hover:bg-white/10 transition-colors"
-                                        >
-                                            <div className="text-[10pt] text-brand-600 dark:text-brand-300 font-medium flex items-center gap-2">
-                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                                                </svg>
-                                                Gunakan "{data.nama_penerima_pembayaran}"
-                                            </div>
-                                            <div className="text-[9pt] text-slate-400 dark:text-slate-500 mt-0.5">
-                                                Penerima baru akan disimpan
-                                            </div>
-                                        </button>
+                                        <svg className="h-4 w-4 animate-spin text-brand-500 dark:text-brand-300" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                        </svg>
                                     ) : (
-                                        <div className="p-3 text-center text-[10pt] text-slate-400 dark:text-slate-500">
-                                            Ketik minimal 2 huruf untuk mencari
-                                        </div>
+                                        <svg className="h-4 w-4 text-slate-400 dark:text-slate-500" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                                        </svg>
                                     )}
                                 </div>
-                            )}
-                        </div>
-                    </>
-                ) : (
-                    <>
-                        <InputLabel value="Nama Toko/Badan Usaha" className="!text-[10pt]" />
-                        <div className="relative mt-1">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
-                                {isSearchingToko ? (
-                                    <svg className="animate-spin h-4 w-4 text-sky-500 dark:text-sky-300" fill="none" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                                    </svg>
-                                ) : (
-                                    <svg className="h-4 w-4 text-slate-400 dark:text-slate-500" viewBox="0 0 20 20" fill="currentColor">
-                                        <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
-                                    </svg>
+                                <TextInput
+                                    className="!pl-10"
+                                    value={data.nama_penerima_pembayaran}
+                                    onChange={(e) => handleSearchPenerima(e.target.value)}
+                                    onFocus={() => { if (data.nama_penerima_pembayaran.trim().length >= 2) setShowPenerimaDropdown(true); }}
+                                    onBlur={() => setTimeout(() => setShowPenerimaDropdown(false), 200)}
+                                    placeholder="Cari atau ketik nama penerima pembayaran"
+                                    autoComplete="off"
+                                />
+
+                                {/* Dropdown Results */}
+                                {showPenerimaDropdown && (
+                                    <div className="absolute z-50 mt-1.5 max-h-60 w-full overflow-y-auto rounded-2xl border border-slate-100 bg-white shadow-float dark:border-white/10 dark:bg-[#15131F]">
+                                        {isSearchingPenerima ? (
+                                            <div className="p-3 text-center text-[11.5px] font-medium text-slate-400 dark:text-slate-500">Mencari...</div>
+                                        ) : penerimaResults.length > 0 ? (
+                                            <>
+                                                {penerimaResults.map((penerima, idx) => (
+                                                    <button
+                                                        key={idx}
+                                                        type="button"
+                                                        onMouseDown={(e) => { e.preventDefault(); selectPenerima(penerima); }}
+                                                        className="w-full border-b border-slate-100 px-3.5 py-2.5 text-left transition-colors last:border-b-0 hover:bg-pastel-sky/60 dark:border-white/10 dark:hover:bg-white/10"
+                                                    >
+                                                        <div className="text-[12px] font-bold text-slate-800 dark:text-white">
+                                                            {penerima.nama_penerima_pembayaran}
+                                                        </div>
+                                                    </button>
+                                                ))}
+                                            </>
+                                        ) : data.nama_penerima_pembayaran.trim().length >= 2 ? (
+                                            <button
+                                                type="button"
+                                                onMouseDown={(e) => { e.preventDefault(); addNewPenerima(); }}
+                                                className="w-full px-3.5 py-2.5 text-left transition-colors hover:bg-pastel-lavender/60 dark:hover:bg-white/10"
+                                            >
+                                                <div className="flex items-center gap-2 text-[12px] font-bold text-brand-600 dark:text-brand-300">
+                                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                                    </svg>
+                                                    Gunakan "{data.nama_penerima_pembayaran}"
+                                                </div>
+                                                <div className="mt-0.5 text-[10.5px] text-slate-400 dark:text-slate-500">
+                                                    Penerima baru akan disimpan
+                                                </div>
+                                            </button>
+                                        ) : (
+                                            <div className="p-3 text-center text-[11.5px] text-slate-400 dark:text-slate-500">
+                                                Ketik minimal 2 huruf untuk mencari
+                                            </div>
+                                        )}
+                                    </div>
                                 )}
                             </div>
-                            <TextInput
-                                className="pl-9 block w-full text-slate-800 dark:text-white !text-[10pt]"
-                                value={data.nama_toko}
-                                onChange={(e) => handleSearchToko(e.target.value)}
-                                onFocus={() => { if (data.nama_toko.trim().length >= 2) setShowTokoDropdown(true); }}
-                                onBlur={() => setTimeout(() => setShowTokoDropdown(false), 200)}
-                                placeholder="Cari atau ketik nama toko/badan usaha"
-                                autoComplete="off"
-                            />
-
-                            {/* Dropdown Results */}
-                            {showTokoDropdown && (
-                                <div className="absolute z-50 mt-1 w-full bg-white dark:bg-[#15131F] border border-slate-200 dark:border-white/10 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                        </>
+                    ) : (
+                        <>
+                            <InputLabel value="Nama Toko/Badan Usaha" />
+                            <div className="relative mt-1">
+                                <div className="pointer-events-none absolute inset-y-0 left-0 z-10 flex items-center pl-3.5">
                                     {isSearchingToko ? (
-                                        <div className="p-3 text-center text-[10pt] text-slate-400 dark:text-slate-500">Mencari...</div>
-                                    ) : tokoResults.length > 0 ? (
-                                        <>
-                                            {tokoResults.map((toko, idx) => (
-                                                <button
-                                                    key={idx}
-                                                    type="button"
-                                                    onMouseDown={(e) => { e.preventDefault(); selectToko(toko); }}
-                                                    className="w-full text-left px-3 py-2 hover:bg-sky/10 dark:hover:bg-white/10 border-b border-slate-100 dark:border-white/10 last:border-b-0 transition-colors"
-                                                >
-                                                    <div className="text-[10pt] font-medium text-slate-800 dark:text-white">{toko.nama_toko}</div>
-                                                    {toko.alamat_toko && (
-                                                        <div className="text-[9pt] text-slate-500 dark:text-slate-400 truncate">{toko.alamat_toko}</div>
-                                                    )}
-                                                </button>
-                                            ))}
-                                            {/* Tambah opsi baru di bawah */}
-                                            <button
-                                                type="button"
-                                                onMouseDown={(e) => { e.preventDefault(); addNewToko(); }}
-                                                className="w-full text-left px-3 py-2 hover:bg-mint/10 dark:hover:bg-mint/10 border-t border-slate-200 dark:border-white/10 transition-colors"
-                                            >
-                                                <span className="text-[10pt] text-mint dark:text-mint font-semibold">+ Tambah "{data.nama_toko}"</span>
-                                            </button>
-                                        </>
+                                        <svg className="h-4 w-4 animate-spin text-brand-500 dark:text-brand-300" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                        </svg>
                                     ) : (
-                                        <div className="p-3">
-                                            <p className="text-[10pt] text-slate-500 dark:text-slate-400 mb-2">
-                                                Kata kunci "<span className="font-medium">{data.nama_toko}</span>" tidak ditemukan.
-                                            </p>
-                                            <button
-                                                type="button"
-                                                onMouseDown={(e) => { e.preventDefault(); addNewToko(); }}
-                                                className="w-full text-left px-3 py-2 hover:bg-mint/10 dark:hover:bg-mint/10 rounded-md transition-colors"
-                                            >
-                                                <span className="text-[10pt] text-mint dark:text-mint font-semibold">+ Tambah "{data.nama_toko}"</span>
-                                            </button>
-                                        </div>
+                                        <svg className="h-4 w-4 text-slate-400 dark:text-slate-500" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+                                        </svg>
                                     )}
                                 </div>
-                            )}
-                        </div>
-                    </>
-                )}
-            </div>
+                                <TextInput
+                                    className="!pl-10"
+                                    value={data.nama_toko}
+                                    onChange={(e) => handleSearchToko(e.target.value)}
+                                    onFocus={() => { if (data.nama_toko.trim().length >= 2) setShowTokoDropdown(true); }}
+                                    onBlur={() => setTimeout(() => setShowTokoDropdown(false), 200)}
+                                    placeholder="Cari atau ketik nama toko/badan usaha"
+                                    autoComplete="off"
+                                />
 
-            <div className="ms-2 me-2">
-                <InputLabel value="Alamat Toko/Badan Usaha" className="!text-[10pt]" />
-                <TextInput
-                    className="mt-1 block w-full text-slate-800 dark:text-white !text-[10pt]"
-                    value={data.alamat_toko}
-                    onChange={(e) => {
-                        setData('alamat_toko', e.target.value);
-                        if (e.target.value) setAlamatTokoError('');
-                    }}
-                    placeholder="Alamat lengkap toko/badan usaha"
-                    id="alamat_toko"
-                />
-                <InputError message={alamatTokoError} className="mt-2" />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-1 gap-3 ms-2 me-2">
-                {/* <div>
-                    <InputLabel value="Nomor Telepon" className="!text-[10pt]" />
-                    <TextInput
-                        className="mt-1 block w-full text-slate-800 dark:text-white !text-[10pt]"
-                        value={data.nomor_telepon}
-                        onChange={(e) => setData('nomor_telepon', e.target.value)}
-                        placeholder="Nomor kontak (Opsional)"
-                    />
-                </div> */}
+                                {/* Dropdown Results */}
+                                {showTokoDropdown && (
+                                    <div className="absolute z-50 mt-1.5 max-h-60 w-full overflow-y-auto rounded-2xl border border-slate-100 bg-white shadow-float dark:border-white/10 dark:bg-[#15131F]">
+                                        {isSearchingToko ? (
+                                            <div className="p-3 text-center text-[11.5px] font-medium text-slate-400 dark:text-slate-500">Mencari...</div>
+                                        ) : tokoResults.length > 0 ? (
+                                            <>
+                                                {tokoResults.map((toko, idx) => (
+                                                    <button
+                                                        key={idx}
+                                                        type="button"
+                                                        onMouseDown={(e) => { e.preventDefault(); selectToko(toko); }}
+                                                        className="w-full border-b border-slate-100 px-3.5 py-2.5 text-left transition-colors last:border-b-0 hover:bg-pastel-sky/60 dark:border-white/10 dark:hover:bg-white/10"
+                                                    >
+                                                        <div className="text-[12px] font-bold text-slate-800 dark:text-white">{toko.nama_toko}</div>
+                                                        {toko.alamat_toko && (
+                                                            <div className="truncate text-[10.5px] text-slate-500 dark:text-slate-400">{toko.alamat_toko}</div>
+                                                        )}
+                                                    </button>
+                                                ))}
+                                                {/* Tambah opsi baru di bawah */}
+                                                <button
+                                                    type="button"
+                                                    onMouseDown={(e) => { e.preventDefault(); addNewToko(); }}
+                                                    className="w-full border-t border-slate-100 px-3.5 py-2.5 text-left transition-colors hover:bg-pastel-mint/60 dark:border-white/10 dark:hover:bg-mint/10"
+                                                >
+                                                    <span className="text-[12px] font-bold text-mint">+ Tambah "{data.nama_toko}"</span>
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <div className="p-3">
+                                                <p className="mb-2 text-[11.5px] text-slate-500 dark:text-slate-400">
+                                                    Kata kunci "<span className="font-semibold text-slate-700 dark:text-slate-200">{data.nama_toko}</span>" tidak ditemukan.
+                                                </p>
+                                                <button
+                                                    type="button"
+                                                    onMouseDown={(e) => { e.preventDefault(); addNewToko(); }}
+                                                    className="w-full rounded-xl px-3 py-2 text-left transition-colors hover:bg-pastel-mint/60 dark:hover:bg-mint/10"
+                                                >
+                                                    <span className="text-[12px] font-bold text-mint">+ Tambah "{data.nama_toko}"</span>
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        </>
+                    )}
+                </div>
 
                 <div>
-                    <InputLabel value="NPWP Toko/Badan Usaha" className="!text-[10pt]" />
+                    <InputLabel value="Alamat Toko/Badan Usaha" />
                     <TextInput
-                        className={`mt-1 block w-full text-slate-800 disabled:bg-slate-100 disabled:text-slate-400 dark:text-slate-500 !text-[10pt] ${npwpError ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
+                        className="mt-1"
+                        value={data.alamat_toko}
+                        onChange={(e) => {
+                            setData('alamat_toko', e.target.value);
+                            if (e.target.value) setAlamatTokoError('');
+                        }}
+                        placeholder="Alamat lengkap toko/badan usaha"
+                        id="alamat_toko"
+                    />
+                    <InputError message={alamatTokoError} className="mt-1.5" />
+                </div>
+
+                <div>
+                    <InputLabel value="NPWP Toko/Badan Usaha" />
+                    <TextInput
+                        className={`mt-1 text-sikas-num disabled:bg-slate-100 disabled:text-slate-400 dark:disabled:bg-white/[0.03] dark:disabled:text-slate-500 ${npwpError ? 'border-rose-500 focus:border-rose-500 focus:ring-rose-200/60' : ''}`}
                         value={data.npwp}
                         onChange={(e) => {
                             const value = e.target.value.replace(/\D/g, '').slice(0, 16);
@@ -1717,8 +1699,8 @@ export default function Bku({
                         disabled={data.no_npwp}
                         maxLength={16}
                     />
-                    <InputError message={npwpError} className="mt-1" />
-                    <div className="mt-1 flex items-center gap-2">
+                    <InputError message={npwpError} className="mt-1.5" />
+                    <label className="mt-2 inline-flex cursor-pointer items-center gap-2">
                         <input
                             type="checkbox"
                             checked={data.no_npwp}
@@ -1726,10 +1708,10 @@ export default function Bku({
                                 setData('no_npwp', e.target.checked);
                                 if (e.target.checked) setNpwpError('');
                             }}
-                            className="rounded border-slate-200/90 dark:border-white/10 text-brand-600 shadow-sm focus:ring-lime-200/60 h-3 w-3"
+                            className="h-3.5 w-3.5 rounded border-slate-300 text-brand-600 shadow-sm focus:ring-lime-200/60 dark:border-white/20 dark:bg-white/5"
                         />
-                        <span className="text-slate-500 dark:text-slate-400 text-[9pt]">Tidak punya NPWP</span>
-                    </div>
+                        <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Tidak punya NPWP</span>
+                    </label>
                 </div>
             </div>
         </div>
@@ -1798,57 +1780,66 @@ export default function Bku({
 
         return (
             <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-                    <div>
-                        <InputLabel value="Nomor Nota (Opsional)" className="!text-[10pt]" />
-                        <TextInput
-                            className="mt-1 block w-full text-slate-800 dark:text-white !text-[10pt]"
-                            value={data.nomor_nota}
-                            onChange={(e) => setData('nomor_nota', e.target.value)}
-                            placeholder="Kosongkan untuk auto-generate (BPU-XXX)"
-                        />
-                        <span className="text-[9pt] text-slate-400 dark:text-slate-500 mt-1 flex items-center gap-1">
-                            Nomor Nota Terakhir: <span className="font-semibold text-slate-700 dark:text-slate-300">{lastNoteNumber}</span>
-                            {lastNoteNumber && lastNoteNumber !== '-' && (
-                                <button
-                                    type="button"
-                                    onClick={() => setData('nomor_nota', lastNoteNumber)}
-                                    className="p-1 hover:bg-slate-100 dark:hover:bg-white/10 rounded transition-colors text-brand-600 dark:text-brand-300"
-                                    title="Salin nomor nota terakhir"
-                                >
-                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
-                                    </svg>
-                                </button>
-                            )}
-                        </span>
-                    </div>
-                    <div>
-                        <InputLabel value="Tanggal Belanja/Nota" className="!text-[10pt]" />
-                        <DatePicker
-                            value={data.tanggal_nota}
-                            onChange={(date) => setData('tanggal_nota', date ? format(date, 'yyyy-MM-dd') : '')}
-                            className="mt-1 block w-full text-slate-800 dark:text-white !text-[10pt]"
-                            placeholder={(!penarikanTunais || penarikanTunais.length === 0) ? "Belum ada penarikan tunai" : "Pilih Tanggal"}
-                            startMonth={startOfActiveMonth}
-                            endMonth={endOfActiveMonth}
-                            disabled={disabledDepositDates}
-                            inputDisabled={!penarikanTunais || penarikanTunais.length === 0}
-                        />
+                {/* Panel Nota & Tanggal */}
+                <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4 dark:border-white/5 dark:bg-white/[0.02]">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <div>
+                            <InputLabel value="Nomor Nota (Opsional)" />
+                            <TextInput
+                                className="mt-1"
+                                value={data.nomor_nota}
+                                onChange={(e) => setData('nomor_nota', e.target.value)}
+                                placeholder="Kosongkan untuk auto-generate (BPU-XXX)"
+                            />
+                            <span className="mt-1.5 flex items-center gap-1.5 text-[10.5px] font-medium text-slate-400 dark:text-slate-500">
+                                Nomor Nota Terakhir: <span className="font-bold text-slate-700 dark:text-slate-300">{lastNoteNumber}</span>
+                                {lastNoteNumber && lastNoteNumber !== '-' && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setData('nomor_nota', lastNoteNumber)}
+                                        className="rounded-lg p-1 text-brand-600 transition-colors hover:bg-pastel-lavender dark:text-brand-300 dark:hover:bg-brand-500/20"
+                                        title="Salin nomor nota terakhir"
+                                    >
+                                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
+                                        </svg>
+                                    </button>
+                                )}
+                            </span>
+                        </div>
+                        <div>
+                            <InputLabel value="Tanggal Belanja/Nota" />
+                            <DatePicker
+                                value={data.tanggal_nota}
+                                onChange={(date) => setData('tanggal_nota', date ? format(date, 'yyyy-MM-dd') : '')}
+                                className="mt-1"
+                                placeholder={(!penarikanTunais || penarikanTunais.length === 0) ? "Belum ada penarikan tunai" : "Pilih Tanggal"}
+                                startMonth={startOfActiveMonth}
+                                endMonth={endOfActiveMonth}
+                                disabled={disabledDepositDates}
+                                inputDisabled={!penarikanTunais || penarikanTunais.length === 0}
+                            />
+                        </div>
                     </div>
                 </div>
 
-                {/* Main Card */}
-                <div className="border border-slate-200 dark:border-white/10 rounded-lg bg-white dark:bg-[#15131F] shadow-sm">
-                    {/* Cyan Header */}
-                    <div className="bg-cyan-400 p-4 rounded-t-lg">
-                        <h3 className="text-white font-bold text-lg">Kegiatan 1</h3>
+                {/* Main Card Kegiatan */}
+                <div className="rounded-2xl border border-slate-200/80 bg-white dark:border-white/10 dark:bg-white/[0.02]">
+                    {/* Neo-Bento Pastel Lavender Header */}
+                    <div className="flex items-center justify-between gap-3 rounded-t-2xl border-b border-brand-500/10 bg-pastel-lavender/65 px-5 py-3.5 dark:border-brand-400/20 dark:bg-brand-500/10">
+                        <div className="flex items-center gap-2.5">
+                            <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-white text-[11px] font-extrabold text-brand-600 shadow-sm dark:bg-brand-500/20 dark:text-brand-300">
+                                1
+                            </span>
+                            <h3 className="text-[13px] font-extrabold tracking-tight text-slate-900 dark:text-white">Kegiatan 1</h3>
+                        </div>
+                        <StatusBadge tone="violet" dot={false}>Rincian RKAS</StatusBadge>
                     </div>
 
-                    <div className="p-6 space-y-6">
+                    <div className="space-y-4 p-5">
                         {/* Kegiatan Select */}
                         <div>
-                            <InputLabel value="Kegiatan" className="!text-[10pt] mb-1" />
+                            <InputLabel value="Kegiatan" />
                             <SearchableSelect
                                 value={selectedActivityId}
                                 onChange={(val) => {
@@ -1868,7 +1859,7 @@ export default function Bku({
 
                         {/* Rekening Belanja Select */}
                         <div>
-                            <InputLabel value="Rekening Belanja" className="!text-[10pt] mb-1" />
+                            <InputLabel value="Rekening Belanja" />
                             <SearchableSelect
                                 value={selectedAccountId}
                                 onChange={(val) => setSelectedAccountId(String(val))}
@@ -1880,25 +1871,25 @@ export default function Bku({
                                 ]}
                                 labelRenderer={(opt) => `${opt.kode_rekening} - ${opt.rincian_objek}`}
                                 placeholder={selectedActivityId ? "Pilih Rekening Belanja" : "Pilih kegiatan terlebih dahulu"}
-                                className={!selectedActivityId ? 'opacity-50 pointer-events-none' : ''}
+                                className={!selectedActivityId ? 'pointer-events-none opacity-50' : ''}
                             />
                         </div>
 
                         {/* Uraian Belanja (Opsional) */}
                         <div>
-                            <div className="flex items-center justify-between mb-1">
-                                <InputLabel value="Uraian Belanja (Opsional)" className="!text-[10pt]" />
+                            <div className="mb-1.5 flex items-center justify-between gap-2">
+                                <InputLabel value="Uraian Belanja (Opsional)" className="!mb-0" />
                                 <div className="flex items-center gap-1.5">
                                     <button
                                         type="button"
                                         onClick={() => handleGenerateAiUraian(false)}
                                         disabled={isGeneratingAiUraian}
-                                        className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[8.5pt] font-semibold text-white bg-gradient-to-r from-brand-500 via-brand-600 to-brand-700 hover:from-brand-600 hover:via-brand-700 hover:to-brand-800 rounded-md shadow-sm transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+                                        className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-gradient-to-r from-brand-500 via-brand-600 to-brand-700 px-3 py-1.5 text-[10.5px] font-bold text-white shadow-sm transition-all duration-150 hover:from-brand-600 hover:via-brand-700 hover:to-brand-800 disabled:cursor-not-allowed disabled:opacity-60"
                                         title="Buat uraian belanja otomatis menggunakan Asisten AI"
                                     >
                                         {isGeneratingAiUraian ? (
                                             <>
-                                                <svg className="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
+                                                <svg className="h-3.5 w-3.5 animate-spin text-white" fill="none" viewBox="0 0 24 24">
                                                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                                                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
                                                 </svg>
@@ -1906,7 +1897,7 @@ export default function Bku({
                                             </>
                                         ) : (
                                             <>
-                                                <svg className="w-3.5 h-3.5 text-amber-300" fill="currentColor" viewBox="0 0 20 20">
+                                                <svg className="h-3.5 w-3.5 text-amber-300" fill="currentColor" viewBox="0 0 20 20">
                                                     <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                                                 </svg>
                                                 <span>Asisten AI</span>
@@ -1918,10 +1909,10 @@ export default function Bku({
                                             type="button"
                                             onClick={() => handleGenerateAiUraian(true)}
                                             disabled={isGeneratingAiUraian}
-                                            className="inline-flex items-center gap-1 px-2 py-1 text-[8.5pt] font-medium text-slate-700 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 rounded-md border border-slate-200/90 dark:border-white/10 transition-colors disabled:opacity-50 cursor-pointer"
+                                            className="inline-flex cursor-pointer items-center gap-1 rounded-xl border border-slate-200/90 bg-slate-100 px-2.5 py-1.5 text-[10.5px] font-bold text-slate-700 transition-colors hover:bg-slate-200 disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10"
                                             title="Buat variasi redaksi kalimat alternatif"
                                         >
-                                            <svg className="w-3 h-3 text-cyan-600 dark:text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <svg className="h-3 w-3 text-brand-600 dark:text-brand-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                                             </svg>
                                             <span>Variasi</span>
@@ -1932,12 +1923,12 @@ export default function Bku({
                             <textarea
                                 value={detailUraian}
                                 onChange={(e) => setDetailUraian(e.target.value)}
-                                className="w-full border-slate-200/90 dark:border-white/10 dark:bg-black/30 dark:text-slate-300 focus:border-lime-400 focus:ring-lime-200/60 rounded-md shadow-sm text-[10pt]"
+                                className="w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-[12px] font-medium text-slate-800 shadow-sm transition placeholder:text-slate-400 focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:placeholder:text-slate-500 dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
                                 rows={2}
                                 placeholder="Detail uraian belanja (jika ada)"
                             />
-                            <p className="text-red-500 text-[9pt] mt-1 flex items-center">
-                                <svg className="w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <p className="mt-1.5 flex items-center text-[10.5px] font-medium text-rose-500 dark:text-rose-400">
+                                <svg className="mr-1.5 h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
                                 Uraian akan otomatis oleh sistem menggunakan uraian rekening belanja jika uraian belanja tidak diisi
@@ -1946,77 +1937,85 @@ export default function Bku({
 
                         {/* Items Section (Only show if Account selected) */}
                         {selectedAccountId && (
-                            <div className="border-t border-slate-200 dark:border-white/10 pt-6">
-                                <div className="flex justify-between items-center mb-4">
-                                    <h4 className="font-bold text-slate-800 dark:text-white">Uraian</h4>
-                                    {/* Select All Checkbox could go here */}
-                                    <div className="flex items-center">
+                            <div className="border-t border-slate-100 pt-5 dark:border-white/5">
+                                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                                    <h4 className="text-[12.5px] font-extrabold text-slate-900 dark:text-white">Uraian</h4>
+                                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200/80 bg-slate-50 px-3 py-1.5 dark:border-white/10 dark:bg-white/5">
                                         <input
                                             type="checkbox"
-                                            className="rounded border-slate-200/90 dark:border-white/10 text-brand-600 shadow-sm focus:ring-lime-200/60 mr-2"
+                                            className="h-3.5 w-3.5 rounded border-slate-300 text-brand-600 shadow-sm focus:ring-lime-200/60 dark:border-white/20"
                                             checked={availableRkasItems.length > 0 && availableRkasItems.every(item => data.items.some(i => Number(i.rkas_id) === Number(item.id)))}
                                             onChange={(e) => handleSelectAll(e.target.checked)}
                                         />
-                                        <span className="text-[10pt] font-bold">Pilih semua uraian</span>
-                                    </div>
+                                        <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200">Pilih semua uraian</span>
+                                    </label>
                                 </div>
 
-                                <p className="text-[10pt] text-slate-400 dark:text-slate-500 mb-4">Total RKAS: {availableRkasItems.length} | Sudah: 0 | Sisa: {availableRkasItems.length}</p>
+                                <p className="mb-4 text-[11px] font-medium text-slate-400 dark:text-slate-500">
+                                    Total RKAS: {availableRkasItems.length} | Sudah: 0 | Sisa: {availableRkasItems.length}
+                                </p>
 
-                                <div className="space-y-4">
+                                <div className="space-y-3">
                                     {availableRkasItems.map((item: any) => (
-                                        <div key={item.id} className="border border-slate-200 dark:border-white/10 rounded-lg p-4 bg-white dark:bg-[#15131F]">
-                                            <div className="flex items-start gap-3 mb-4">
+                                        <div
+                                            key={item.id}
+                                            className={`rounded-2xl border p-4 transition-colors ${
+                                                isSelected(item.id)
+                                                    ? 'border-brand-300 bg-pastel-lavender/35 dark:border-brand-500/30 dark:bg-brand-500/[0.06]'
+                                                    : 'border-slate-100 bg-slate-50/50 dark:border-white/5 dark:bg-white/[0.02]'
+                                            }`}
+                                        >
+                                            <div className="flex items-start gap-3">
                                                 <input
                                                     type="checkbox"
                                                     checked={isSelected(item.id)}
                                                     onChange={(e) => handleItemSelection(item, e.target.checked)}
-                                                    className="mt-1 rounded border-slate-200/90 dark:border-white/10 text-brand-600 shadow-sm focus:ring-lime-200/60 w-5 h-5"
+                                                    className="mt-0.5 h-4 w-4 rounded border-slate-300 text-brand-600 shadow-sm focus:ring-lime-200/60 dark:border-white/20 dark:bg-white/5"
                                                 />
-                                                <span className="text-[10pt] font-bold text-slate-800 dark:text-white pt-0.5">{item.uraian}</span>
+                                                <span className="text-[12px] font-bold text-slate-800 dark:text-white">{item.uraian}</span>
                                             </div>
 
                                             {isSelected(item.id) && (
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-8">
+                                                <div className="mt-3.5 grid grid-cols-1 gap-4 pl-7 md:grid-cols-2">
                                                     <div>
-                                                        <InputLabel value="Jumlah yang akan dibelanjakan" className="!text-[10pt] mb-1" />
-                                                        <div className="relative rounded-md shadow-sm">
+                                                        <InputLabel value="Jumlah yang akan dibelanjakan" />
+                                                        <div className="relative mt-1">
                                                             <TextInput
                                                                 type="number"
-                                                                className="block w-full pr-24 text-slate-800 dark:text-white dark:bg-white/5 !text-[10pt]"
+                                                                className="pr-24 text-sikas-num font-bold"
                                                                 value={getItem(item.id)?.volume}
                                                                 onChange={(e) => updateItemField(item.id, 'volume', parseFloat(e.target.value) || 0)}
                                                                 placeholder="0"
                                                             />
-                                                            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                                                                <span className="text-slate-500 dark:text-slate-400 sm:text-xs bg-slate-100 dark:bg-white/10 px-2 py-1 rounded">
+                                                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2.5">
+                                                                <span className="rounded-lg bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-600 dark:bg-white/10 dark:text-slate-300">
                                                                     Maks: {item.sisa_volume}
                                                                 </span>
                                                             </div>
                                                         </div>
                                                         {(getItem(item.id)?.volume || 0) > item.sisa_volume && (
-                                                            <p className="text-red-500 text-[9pt] mt-1">
+                                                            <p className="mt-1 text-[10.5px] font-semibold text-rose-500">
                                                                 Jumlah melebihi volume yang tersedia!
                                                             </p>
                                                         )}
-                                                        <p className="text-[9pt] text-slate-500 dark:text-slate-400 mt-1">
-                                                            Sisa volume kumulatif: <span className="font-semibold">{item.sisa_volume} {item.satuan}</span>
+                                                        <p className="mt-1.5 text-[10.5px] font-medium text-slate-500 dark:text-slate-400">
+                                                            Sisa volume kumulatif: <span className="font-bold text-slate-700 dark:text-slate-200">{item.sisa_volume} {item.satuan}</span>
                                                         </p>
                                                     </div>
 
                                                     <div>
-                                                        <InputLabel value="Harga Satuan" className="!text-[10pt]" />
+                                                        <InputLabel value="Harga Satuan" />
                                                         <div className="relative mt-1">
-                                                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                                <span className="text-slate-400 dark:text-slate-500 text-[10pt]">Rp</span>
+                                                            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
+                                                                <span className="text-[12px] font-bold text-slate-400 dark:text-slate-500">Rp</span>
                                                             </div>
                                                             <TextInput
-                                                                className="pl-8 block w-full text-slate-800 dark:text-white !text-[10pt] bg-slate-50"
+                                                                className="!pl-10 bg-slate-100/80 text-sikas-num font-bold dark:bg-white/[0.04]"
                                                                 value={formatCurrency(item.harga_satuan).replace('Rp', '').trim()}
                                                                 readOnly
                                                             />
                                                         </div>
-                                                        <p className="text-[9pt] text-slate-400 dark:text-slate-500 mt-1">Harga tetap sesuai RKAS</p>
+                                                        <p className="mt-1.5 text-[10.5px] font-medium text-slate-400 dark:text-slate-500">Harga tetap sesuai RKAS</p>
                                                     </div>
                                                 </div>
                                             )}
@@ -2024,7 +2023,7 @@ export default function Bku({
                                     ))}
 
                                     {availableRkasItems.length === 0 && (
-                                        <p className="text-center text-slate-400 dark:text-slate-500 py-4 italic">Tidak ada uraian tersedia untuk rekening ini.</p>
+                                        <p className="py-4 text-center text-[11.5px] font-medium italic text-slate-400 dark:text-slate-500">Tidak ada uraian tersedia untuk rekening ini.</p>
                                     )}
                                 </div>
                             </div>
@@ -2036,17 +2035,7 @@ export default function Bku({
     };
 
     const renderStep3 = () => (
-        <div className="space-y-2">
-            {/* <div className="p-2 bg-pastel-sky/50 dark:bg-sky/[0.06] rounded-lg flex items-start gap-3">
-                <input
-                    type="checkbox"
-                    checked={data.bebas_pajak}
-                    onChange={(e) => setData('bebas_pajak', e.target.checked)}
-                    className="mt-1 rounded border-slate-200/90 dark:border-white/10 text-brand-600 shadow-sm focus:ring-lime-200/60"
-                />
-                <span className="text-slate-800 dark:text-white font-medium text-[10pt]">Centang jika belanja dari SIPLah untuk bebas lapor pajak secara otomatis</span>
-            </div> */}
-
+        <div className="space-y-4">
             {/* Dynamic Activity Cards */}
             {(() => {
                 // Group selected items by Activity and Account
@@ -2074,38 +2063,51 @@ export default function Bku({
                 });
 
                 return groups.map((group, idx) => (
-                    <div key={group.key} className="bg-white dark:bg-[#15131F] rounded-lg overflow-hidden border border-slate-200 dark:border-white/10 shadow-sm mb-4">
-                        <div className="bg-cyan-100 dark:bg-cyan-900/50 px-4 py-3 border-b border-cyan-200 dark:border-cyan-800">
-                            <h4 className="font-bold text-cyan-900 dark:text-cyan-100 text-[10pt]">
-                                Kegiatan {idx + 1}
-                            </h4>
+                    <div key={group.key} className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white dark:border-white/10 dark:bg-white/[0.02]">
+                        <div className="flex items-center justify-between border-b border-brand-500/10 bg-pastel-lavender/65 px-5 py-3 dark:border-brand-400/20 dark:bg-brand-500/10">
+                            <div className="flex items-center gap-2.5">
+                                <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-white text-[11px] font-extrabold text-brand-600 shadow-sm dark:bg-brand-500/20 dark:text-brand-300">
+                                    {idx + 1}
+                                </span>
+                                <h4 className="text-[12.5px] font-extrabold text-slate-900 dark:text-white">
+                                    Kegiatan {idx + 1}
+                                </h4>
+                            </div>
+                            <StatusBadge tone="violet" dot={false}>Ringkasan Item</StatusBadge>
                         </div>
 
-                        <div className="p-4 space-y-3">
-                            <div>
-                                <div className="text-[10pt] font-bold text-slate-800 dark:text-white">
-                                    Kegiatan: <span className="font-normal">{group.activity?.kode} - {group.activity?.uraian}</span>
+                        <div className="space-y-3.5 p-5">
+                            <div className="space-y-1 text-[11.5px] text-slate-600 dark:text-slate-300">
+                                <div>
+                                    <span className="font-bold text-slate-800 dark:text-white">Kegiatan:</span> {group.activity?.kode} - {group.activity?.uraian}
                                 </div>
-                                <div className="text-[10pt] font-bold text-slate-800 dark:text-white mt-1">
-                                    Rekening: <span className="font-normal">{group.account?.kode_rekening} - {group.account?.rincian_objek}</span>
+                                <div>
+                                    <span className="font-bold text-slate-800 dark:text-white">Rekening:</span> {group.account?.kode_rekening} - {group.account?.rincian_objek}
                                 </div>
                             </div>
 
-                            <div className="pt-2">
-                                <div className="text-[10pt] font-bold text-slate-800 dark:text-white mb-2">Uraian yang dipilih:</div>
-                                <div className="space-y-3">
+                            <div className="pt-1">
+                                <div className="mb-2 text-[10.5px] font-extrabold uppercase tracking-[0.12em] text-slate-400 dark:text-slate-500">
+                                    Uraian yang dipilih
+                                </div>
+                                <div className="space-y-2.5">
                                     {group.items.map((item: any, i: number) => (
-                                        <div key={i} className="pl-4 border-l-4 border-lime-400 bg-slate-50 dark:bg-white/[0.04] py-2 pr-2 rounded-r">
-                                            <div className="font-bold text-[10pt] text-slate-800 dark:text-white">{item.uraian}</div>
-                                            <div className="text-[9pt] text-slate-500 dark:text-slate-400 mt-1">
-                                                Jumlah: {item.volume} | Harga: {formatCurrency(item.harga_satuan)} | Subtotal: {formatCurrency(item.total)}
+                                        <div key={i} className="rounded-xl border border-slate-100 bg-slate-50/70 px-3.5 py-2.5 dark:border-white/5 dark:bg-white/[0.03]">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div className="text-[12px] font-bold text-slate-800 dark:text-white">{item.uraian}</div>
+                                                <span className="text-sikas-num shrink-0 text-[12px] font-extrabold text-slate-900 dark:text-white">
+                                                    {formatCurrency(item.total)}
+                                                </span>
+                                            </div>
+                                            <div className="mt-1 text-[10.5px] font-medium text-slate-400 dark:text-slate-500">
+                                                Jumlah: <span className="text-sikas-num font-semibold text-slate-600 dark:text-slate-300">{item.volume}</span> • Harga: <span className="text-sikas-num font-semibold text-slate-600 dark:text-slate-300">{formatCurrency(item.harga_satuan)}</span>
                                             </div>
                                         </div>
                                     ))}
                                 </div>
-                                <div className="mt-3 pt-2 border-t border-slate-100 dark:border-white/10 flex justify-end items-center">
-                                    <span className="text-[10pt] font-bold text-slate-700 dark:text-slate-300 mr-2">Total Transaksi Kotor:</span>
-                                    <span className="text-[11pt] font-bold text-brand-600 dark:text-brand-300">
+                                <div className="mt-3.5 flex items-center justify-end gap-2 border-t border-slate-100 pt-3 dark:border-white/5">
+                                    <span className="text-[11.5px] font-bold text-slate-500 dark:text-slate-400">Total Transaksi Kotor:</span>
+                                    <span className="text-sikas-num text-[14px] font-extrabold text-brand-600 dark:text-brand-300">
                                         {formatCurrency(group.items.reduce((sum: number, item: any) => sum + (item.total || 0), 0))}
                                     </span>
                                 </div>
@@ -2116,43 +2118,25 @@ export default function Bku({
             })()}
 
             {/* Tax Inputs - Auto Detection */}
-            <div className="mt-4 space-y-4">
-
-                {/* Detected Taxes Banner */}
-                {/* {(detectedTaxes.is_ppn || detectedTaxes.is_pph21 || detectedTaxes.is_pph22 || detectedTaxes.is_pph23 || detectedTaxes.is_pph4) && (
-                    <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg p-3">
-                        <div className="flex items-center gap-2 mb-2">
-                            <svg className="w-5 h-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                            <span className="text-amber-800 dark:text-amber-200 text-[10pt] font-bold">Pajak Terdeteksi dari Rekening Belanja</span>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                            {detectedTaxes.is_ppn && <span className="inline-flex py-0.5 px-2 rounded-full text-[9pt] font-semibold bg-pastel-sky text-sky-800 dark:text-sky-200 border border-sky/15">PPN</span>}
-                            {detectedTaxes.is_pph21 && <span className="inline-flex py-0.5 px-2 rounded-full text-[9pt] font-semibold bg-green-100 text-green-800 border border-green-200">PPh 21</span>}
-                            {detectedTaxes.is_pph22 && <span className="inline-flex py-0.5 px-2 rounded-full text-[9pt] font-semibold bg-brand-100 text-brand-800 border border-brand-200">PPh 22</span>}
-                            {detectedTaxes.is_pph23 && <span className="inline-flex py-0.5 px-2 rounded-full text-[9pt] font-semibold bg-orange-100 text-orange-800 border border-orange-200">PPh 23</span>}
-                            {detectedTaxes.is_pph4 && <span className="inline-flex py-0.5 px-2 rounded-full text-[9pt] font-semibold bg-red-100 text-red-800 border border-red-200">PPh 4(2)</span>}
-                        </div>
-                    </div>
-                )} */}
-
+            <div className="space-y-3.5 rounded-2xl border border-slate-100 bg-slate-50/60 p-4 dark:border-white/5 dark:bg-white/[0.02]">
                 {/* Main Tax Checkbox */}
-                <div className="flex items-center gap-2">
+                <label className="inline-flex cursor-pointer items-center gap-2.5">
                     <input
                         type="checkbox"
                         checked={data.has_tax}
                         onChange={(e) => setData('has_tax', e.target.checked)}
-                        className="rounded border-slate-200/90 dark:border-white/10 text-brand-600 shadow-sm focus:ring-lime-200/60"
+                        className="h-4 w-4 rounded border-slate-300 text-brand-600 shadow-sm focus:ring-lime-200/60 dark:border-white/20 dark:bg-white/5"
                     />
-                    <span className="text-slate-700 dark:text-slate-300 text-[10pt] font-medium">Kenakan pajak pada pembelanjaan ini</span>
-                </div>
+                    <span className="text-[12px] font-bold text-slate-800 dark:text-white">Kenakan pajak pada pembelanjaan ini</span>
+                </label>
 
                 {/* Tax Card */}
                 {data.has_tax && (
-                    <div className="bg-white dark:bg-[#15131F] p-3 rounded-lg border border-slate-200 dark:border-white/10 space-y-4">
+                    <div className="space-y-4 rounded-2xl border border-slate-200/80 bg-white p-4 dark:border-white/10 dark:bg-white/[0.02]">
                         {/* Row: Jenis Pajak + Persen + Total */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                            <div className="space-y-1">
-                                <InputLabel value="Jenis Pajak" className="!text-[10pt]" />
+                        <div className="grid grid-cols-1 gap-3.5 md:grid-cols-3">
+                            <div>
+                                <InputLabel value="Jenis Pajak" />
                                 <select
                                     value={data.pajak}
                                     onChange={(e) => {
@@ -2163,7 +2147,7 @@ export default function Bku({
                                             setGolonganASN('');
                                         }
                                     }}
-                                    className="w-full text-slate-800 border-slate-200/90 dark:border-white/10 dark:bg-black/30 dark:text-slate-300 rounded-md shadow-sm focus:ring-4 focus:ring-lime-200/60 !text-[10pt]"
+                                    className="mt-1 block w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-[12px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white"
                                 >
                                     <option value="PPN">PPN</option>
                                     <option value="PPh 21">PPh 21</option>
@@ -2172,8 +2156,8 @@ export default function Bku({
                                     <option value="PPh 4(2)">PPh 4(2)</option>
                                 </select>
                             </div>
-                            <div className="space-y-1">
-                                <InputLabel value="Persen (%)" className="!text-[10pt]" />
+                            <div>
+                                <InputLabel value="Persen (%)" />
                                 <TextInput
                                     type="number"
                                     min="0"
@@ -2181,51 +2165,51 @@ export default function Bku({
                                     step="0.01"
                                     value={data.persen_pajak}
                                     onChange={(e) => setData('persen_pajak', e.target.value)}
-                                    className="w-full text-slate-800 dark:text-white !text-[10pt] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                    className="mt-1 text-sikas-num font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                     placeholder="Isi persen pajak"
                                 />
                             </div>
-                            <div className="space-y-1">
-                                <InputLabel value="Total Pajak" className="!text-[10pt]" />
+                            <div>
+                                <InputLabel value="Total Pajak" />
                                 <TextInput
                                     value={formatCurrency(data.total_pajak)}
                                     disabled
-                                    className="w-full bg-slate-100 text-slate-800 dark:text-white !text-[10pt]"
+                                    className="mt-1 bg-slate-100/80 text-sikas-num font-bold dark:bg-white/[0.04]"
                                 />
                             </div>
                         </div>
 
                         {/* PPh 21 Specific: ASN / Non-ASN */}
                         {data.pajak === 'PPh 21' && detectedTaxes.is_pph21 && (
-                            <div className="border-t border-slate-200 dark:border-white/10 pt-3">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
-                                    <div className="space-y-1">
-                                        <InputLabel value="Status Penerima Honor" className="!text-[10pt]" />
+                            <div className="border-t border-slate-100 pt-3.5 dark:border-white/5">
+                                <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
+                                    <div>
+                                        <InputLabel value="Status Penerima Honor" />
                                         <select
                                             value={statusPegawai}
                                             onChange={(e) => {
                                                 setStatusPegawai(e.target.value as 'ASN' | 'Non-ASN' | '');
                                                 setGolonganASN('');
                                             }}
-                                            className="w-full text-slate-800 border-slate-200/90 dark:border-white/10 dark:bg-black/30 dark:text-slate-300 rounded-md shadow-sm focus:ring-4 focus:ring-lime-200/60 !text-[10pt]"
+                                            className="mt-1 block w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-[12px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white"
                                         >
                                             <option value="">-- Pilih Status --</option>
                                             <option value="ASN">ASN (PNS)</option>
                                             <option value="Non-ASN">Non-ASN</option>
                                         </select>
 
-                                        {/* Non-ASN: Info card + tarif (Sekarang di bawah select) */}
+                                        {/* Non-ASN: Info card + tarif */}
                                         {statusPegawai === 'Non-ASN' && (
-                                            <div className="mt-2 bg-orange-50 dark:bg-orange-900/20 p-3 rounded-lg border border-orange-200 dark:border-orange-700 space-y-2">
-                                                <div className="flex items-center justify-between">
-                                                    <p className="text-[9pt] text-orange-700 dark:text-orange-300">
+                                            <div className="mt-2.5 rounded-xl border border-amber-200/70 bg-pastel-amber/70 p-3 dark:border-amber-400/20 dark:bg-amber-400/10">
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <p className="text-[11px] font-medium text-amber-800 dark:text-amber-200">
                                                         Tarif: <strong>{data.persen_pajak}%</strong>
                                                         {data.npwp && !data.no_npwp ? ' (NPWP)' : ' (Non-NPWP — 2x)'}
                                                     </p>
                                                     <button
                                                         type="button"
                                                         onClick={() => setShowTarifModal(true)}
-                                                        className="text-[9pt] font-semibold text-brand-600 hover:text-brand-700 dark:text-brand-300 dark:hover:text-brand-200 underline"
+                                                        className="text-[11px] font-bold text-brand-600 underline hover:text-brand-700 dark:text-brand-300 dark:hover:text-brand-200"
                                                     >
                                                         Info Pajak
                                                     </button>
@@ -2234,14 +2218,14 @@ export default function Bku({
                                         )}
                                     </div>
 
-                                    {/* ASN: Pilih Golongan (Tetap di samping di kolom ke-2) */}
+                                    {/* ASN: Pilih Golongan */}
                                     {statusPegawai === 'ASN' && (
-                                        <div className="bg-pastel-sky/50 dark:bg-sky/[0.06] p-3 rounded-lg border border-sky/15 dark:border-sky/20">
-                                            <InputLabel value="Golongan PNS" className="!text-[10pt] mb-1" />
+                                        <div className="rounded-xl border border-sky/20 bg-pastel-sky/60 p-3.5 dark:border-sky/20 dark:bg-sky/[0.08]">
+                                            <InputLabel value="Golongan PNS" />
                                             <select
                                                 value={golonganASN}
                                                 onChange={(e) => setGolonganASN(e.target.value)}
-                                                className="w-full text-slate-800 border-slate-200/90 dark:border-white/10 dark:bg-black/30 dark:text-slate-300 rounded-md shadow-sm focus:ring-4 focus:ring-lime-200/60 !text-[10pt]"
+                                                className="mt-1 block w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-[12px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white"
                                             >
                                                 <option value="">-- Pilih Golongan --</option>
                                                 <option value="Golongan I">Golongan I (0%)</option>
@@ -2250,7 +2234,7 @@ export default function Bku({
                                                 <option value="Golongan IV">Golongan IV (15%)</option>
                                             </select>
                                             {golonganASN && (
-                                                <p className="text-[9pt] text-sky-700 dark:text-sky-300 mt-2">
+                                                <p className="mt-2 text-[11px] font-medium text-blue-700 dark:text-blue-300">
                                                     Tarif PPh 21 untuk {golonganASN}: <strong>{data.persen_pajak}%</strong>
                                                 </p>
                                             )}
@@ -2263,33 +2247,35 @@ export default function Bku({
                 )}
 
                 {/* Local Tax Checkbox */}
-                <div className="flex items-center gap-2 pt-2">
-                    <input
-                        type="checkbox"
-                        checked={data.has_local_tax}
-                        onChange={(e) => setData('has_local_tax', e.target.checked)}
-                        className="rounded border-slate-200/90 dark:border-white/10 text-brand-600 shadow-sm focus:ring-lime-200/60"
-                    />
-                    <span className="text-slate-700 dark:text-slate-300 text-[10pt] font-medium">Kenakan pajak daerah pada pembelanjaan ini</span>
+                <div className="border-t border-slate-100 pt-3 dark:border-white/5">
+                    <label className="inline-flex cursor-pointer items-center gap-2.5">
+                        <input
+                            type="checkbox"
+                            checked={data.has_local_tax}
+                            onChange={(e) => setData('has_local_tax', e.target.checked)}
+                            className="h-4 w-4 rounded border-slate-300 text-brand-600 shadow-sm focus:ring-lime-200/60 dark:border-white/20 dark:bg-white/5"
+                        />
+                        <span className="text-[12px] font-bold text-slate-800 dark:text-white">Kenakan pajak daerah pada pembelanjaan ini</span>
+                    </label>
                 </div>
 
                 {/* Local Tax Card */}
                 {data.has_local_tax && (
-                    <div className="bg-white dark:bg-[#15131F] p-3 rounded-lg border border-slate-200 dark:border-white/10 space-y-3">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                            <div className="space-y-1">
-                                <InputLabel value="Jenis Pajak Daerah" className="!text-[10pt]" />
+                    <div className="rounded-2xl border border-slate-200/80 bg-white p-4 dark:border-white/10 dark:bg-white/[0.02]">
+                        <div className="grid grid-cols-1 gap-3.5 md:grid-cols-3">
+                            <div>
+                                <InputLabel value="Jenis Pajak Daerah" />
                                 <select
                                     value={data.pajak_daerah}
                                     onChange={(e) => setData('pajak_daerah', e.target.value)}
-                                    className="w-full text-slate-800 border-slate-200/90 dark:border-white/10 dark:bg-black/30 dark:text-slate-300 rounded-md shadow-sm focus:ring-4 focus:ring-lime-200/60 !text-[10pt]"
+                                    className="mt-1 block w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-[12px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white"
                                 >
                                     <option value="SPPD">SPPD</option>
                                     <option value="PB1">PB1</option>
                                 </select>
                             </div>
-                            <div className="space-y-1">
-                                <InputLabel value="Persen (%)" className="!text-[10pt]" />
+                            <div>
+                                <InputLabel value="Persen (%)" />
                                 <TextInput
                                     type="number"
                                     min="0"
@@ -2297,15 +2283,15 @@ export default function Bku({
                                     step="0.01"
                                     value={data.persen_pajak_daerah}
                                     onChange={(e) => setData('persen_pajak_daerah', e.target.value)}
-                                    className="w-full text-slate-800 dark:text-white !text-[10pt] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                    className="mt-1 text-sikas-num font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 />
                             </div>
-                            <div className="space-y-1">
-                                <InputLabel value="Total Pajak Daerah" className="!text-[10pt]" />
+                            <div>
+                                <InputLabel value="Total Pajak Daerah" />
                                 <TextInput
                                     value={formatCurrency(data.total_pajak_daerah)}
                                     disabled
-                                    className="w-full bg-slate-100 text-slate-800 dark:text-white !text-[10pt]"
+                                    className="mt-1 bg-slate-100/80 text-sikas-num font-bold dark:bg-white/[0.04]"
                                 />
                             </div>
                         </div>
@@ -2843,55 +2829,91 @@ export default function Bku({
 
             {/* Modal Tambah Pembelanjaan */}
             <Modal show={isModalOpen} onClose={closeModal} closeable={false} maxWidth="4xl">
-                <div className="relative bg-white dark:bg-[#15131F] rounded-lg">
-                    {/* Beautiful Header Background */}
-                    <div className="rounded-t-[26px] bg-gradient-to-br from-[#2B2940] via-[#232135] to-[#191826] p-5">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-white/20 rounded-lg">
-                                <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                <div className="relative overflow-visible rounded-[26px] bg-white dark:bg-[#15131F]">
+                    {/* Layer efek blur dekoratif terpisah agar popover DatePicker tidak terpotong */}
+                    <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[26px]">
+                        <div className="absolute -right-10 -top-16 h-40 w-40 rounded-full bg-brand-500/10 blur-3xl" />
+                    </div>
+
+                    {/* Header Neo-Bento */}
+                    <div className="relative flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5 dark:border-white/5">
+                        <div className="flex items-center gap-3.5">
+                            <IconTile tone="violet" size="lg">
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                                 </svg>
-                            </div>
-                            <div>
-                                <h2 className="text-[15px] font-extrabold tracking-tight text-white">
-                                    {isEditMode ? 'UPDATE Detail Pembelanjaan' : 'Isi Detail Pembelanjaan'}
-                                </h2>
-                                <p className="mt-0.5 text-[10px] font-medium text-white/50">
+                            </IconTile>
+                            <div className="min-w-0 flex-1">
+                                <div className="flex flex-wrap items-center gap-2.5">
+                                    <h2 className="text-[15px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                                        {isEditMode ? 'UPDATE Detail Pembelanjaan' : 'Isi Detail Pembelanjaan'}
+                                    </h2>
+                                    <StatusBadge tone="violet" dot={false}>
+                                        Step {currentStep} / 3
+                                    </StatusBadge>
+                                </div>
+                                <p className="mt-1 text-[11px] font-medium leading-relaxed text-slate-400 dark:text-slate-500">
                                     Isi detail barang atau jasa yang Anda belanjakan yang terdapat dalam 1 nota.
                                 </p>
                             </div>
                         </div>
+                        <button
+                            type="button"
+                            onClick={closeModal}
+                            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-500 dark:hover:bg-white/5 dark:hover:text-white"
+                            aria-label="Tutup"
+                        >
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
                     </div>
 
-                    <div className="p-6">
+                    <div className="px-6 py-5">
+                        {/* Stepper Header - Neo-Bento Pill-Bar (tetap 3 step) */}
+                        <div className="relative flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3 dark:border-white/5 dark:bg-white/[0.03]">
+                            <div className="pointer-events-none absolute left-10 right-10 top-1/2 hidden h-0.5 -translate-y-1/2 bg-slate-200/80 sm:block dark:bg-white/10" />
+                            {steps.map((step) => {
+                                const isDone = currentStep > step.number;
+                                const isActive = currentStep === step.number;
 
-                        {/* Stepper Header */}
-                        <div className="flex items-center justify-between mb-4 relative">
-                            {/* ... */}
-                            <div className="absolute top-1/2 left-0 w-full h-0.5 bg-slate-200 dark:bg-white/5 -z-10" />
-                            {steps.map((step) => (
-                                <div key={step.number} className="flex flex-row items-center gap-2 bg-white dark:bg-[#15131F] px-2 group">
-                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-colors shadow-sm
-                                    ${currentStep >= step.number
-                                            ? 'bg-lime-400 text-slate-950 border-transparent shadow-lime'
-                                            : 'bg-white text-slate-400 border-slate-200/90 dark:bg-white/5 dark:border-white/10'
-                                        }`}
-                                    >
-                                        {currentStep > step.number ? (
-                                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                            </svg>
-                                        ) : step.number}
+                                return (
+                                    <div key={step.number} className="relative z-10 flex items-center gap-2.5 bg-transparent pr-2">
+                                        <div
+                                            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11.5px] font-extrabold transition-all ${
+                                                isDone
+                                                    ? 'bg-pastel-mint text-mint ring-1 ring-mint/20 dark:bg-mint/15 dark:text-mint'
+                                                    : isActive
+                                                      ? 'bg-lime-400 text-slate-950 shadow-lime'
+                                                      : 'border border-slate-200/90 bg-white text-slate-400 dark:border-white/10 dark:bg-[#15131F] dark:text-slate-500'
+                                            }`}
+                                        >
+                                            {isDone ? (
+                                                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                                </svg>
+                                            ) : (
+                                                step.number
+                                            )}
+                                        </div>
+                                        <span
+                                            className={`text-[12px] tracking-tight transition-colors ${
+                                                isDone
+                                                    ? 'font-bold text-emerald-700 dark:text-emerald-300'
+                                                    : isActive
+                                                      ? 'font-extrabold text-slate-900 dark:text-white'
+                                                      : 'font-semibold text-slate-400 dark:text-slate-500'
+                                            }`}
+                                        >
+                                            {step.title}
+                                        </span>
                                     </div>
-                                    <span className={`text-sm ${currentStep >= step.number ? 'text-sky-600 dark:text-sky-300 font-bold' : 'text-slate-400 dark:text-slate-500 font-medium'}`}>
-                                        {step.title}
-                                    </span>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
 
                         {/* Dynamic Form Content */}
-                        <div className="mt-4 max-h-[60vh] overflow-y-auto pr-2">
+                        <div className={`mt-4 ${currentStep === 1 ? 'overflow-visible' : 'max-h-[62vh] overflow-y-auto pr-1'}`}>
                             {currentStep === 1 && renderStep1()}
                             {currentStep === 2 && renderStep2()}
                             {currentStep === 3 && renderStep3()}
@@ -2909,13 +2931,13 @@ export default function Bku({
                                 <PrimaryButton
                                     onClick={nextStep}
                                     disabled={currentStep === 2 && (hasVolumeError || data.items.length === 0)}
-                                    className={(currentStep === 2 && (hasVolumeError || data.items.length === 0)) ? 'opacity-50 cursor-not-allowed' : ''}
+                                    className={(currentStep === 2 && (hasVolumeError || data.items.length === 0)) ? 'cursor-not-allowed opacity-50' : ''}
                                 >
                                     Lanjut
                                 </PrimaryButton>
                             ) : (
                                 <PrimaryButton
-                                    className={processing ? 'opacity-75 cursor-wait' : ''}
+                                    className={processing ? 'cursor-wait opacity-75' : ''}
                                     onClick={submitBku}
                                     disabled={processing}
                                 >
