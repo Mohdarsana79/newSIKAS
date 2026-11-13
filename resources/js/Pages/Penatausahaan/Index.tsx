@@ -428,23 +428,21 @@ export default function Index({ tahunList, penganggaranList, statusPerTahun, tah
                         <div className="absolute -right-10 -top-16 h-40 w-40 rounded-full bg-brand-500/10 blur-3xl" />
                     </div>
 
-                    <div className="relative flex items-start justify-between gap-3 border-b border-slate-100 px-6 py-4.5 dark:border-white/5">
-                        <div className="flex items-center gap-3">
+                    <div className="relative flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5 dark:border-white/5">
+                        <div className="flex items-center gap-3.5">
                             <IconTile tone="violet" size="lg">
                                 <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                                 </svg>
                             </IconTile>
-                            <div className="min-w-0">
-                                <div className="flex items-center gap-2">
+                            <div className="min-w-0 flex-1">
+                                <div className="flex flex-wrap items-center gap-2.5">
                                     <h2 className="text-[15px] font-extrabold tracking-tight text-slate-900 dark:text-white">
                                         {showCreateForm ? 'Catat Penerimaan Dana' : 'Daftar Penerimaan Dana'}
                                     </h2>
-                                    <span className="rounded-md bg-brand-50 px-2 py-0.5 text-[9.5px] font-extrabold text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
-                                        Buku Kas Umum
-                                    </span>
+                                    <StatusBadge tone="violet" dot={false}>Buku Kas Umum</StatusBadge>
                                 </div>
-                                <p className="mt-0.5 text-[11px] font-medium leading-relaxed text-slate-400 dark:text-slate-500">
+                                <p className="mt-1 text-[11px] font-medium leading-relaxed text-slate-400 dark:text-slate-500">
                                     {showCreateForm
                                         ? 'Silakan lengkapi formulir di bawah ini untuk mencatat penerimaan dana BOSP.'
                                         : 'Histori dan pencatatan penerimaan dana BOSP pada tahun anggaran aktif.'}
