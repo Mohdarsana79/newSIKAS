@@ -21,10 +21,11 @@
 
 ### 2.1 Modal Tambah STS Baru (`Create`)
 - **Header (`maxWidth="md"`)**: `IconTile` `tone="violet"` (`Plus`) + judul **"Tambahkan STS Baru"** + `StatusBadge` `tone="violet"` `"STS Baru"` + tombol tutup `X`.
-- **Pemilih Tahun Anggaran Neo-Bento (Pengganti `react-select` Putih)**:
-  - Adaptif penuh di light & dark mode:
-    - Jika `penganggaranList.length <= 4`: tampil sebagai **grid pill button Neo-Bento** (`rounded-2xl`, item terpilih beraksen `bg-pastel-lavender border-brand-400 text-brand-800 dark:bg-brand-500/20 dark:border-brand-400/50 dark:text-brand-200`) dengan ikon kalender/centang.
-    - Jika `penganggaranList.length > 4`: tampil sebagai **searchable dropdown Neo-Bento** buatan internal (`dark:bg-white/5`, menu `dark:bg-[#15131F]`, pencarian inline tanpa CSS `react-select` hardcoded putih).
+- **Pemilih Tahun Anggaran Select2 Neo-Bento (`react-select` `unstyled`)**:
+  - Menggunakan `<Select unstyled isSearchable isClearable ... />` dengan prop `classNames` Tailwind v3 yang adaptif di light & dark mode (menggantikan `YearBudgetPicker` pill maupun `react-select` putih hardcoded):
+    - Kotak input `min-h-[42px] rounded-2xl border bg-white text-slate-900 dark:bg-white/5 dark:text-white` dengan ring fokus lime konsisten.
+    - Menekan ring bawaan `@tailwindcss/forms` pada `<input>` di dalam `react-select` agar ketikan langsung terasa rapi tanpa kotak ganda.
+    - Menu dropdown `rounded-2xl bg-white dark:bg-[#1A1728] border shadow-float z-50` dengan opsi terpilih beraksen `pastel-lavender` / `brand`.
 - **Input Nomor STS & Jumlah STS**:
   - `Nomor STS`: placeholder `"Contoh: 001/STS/2026"`.
   - `Jumlah STS`: input moneter `text-sikas-num` dengan handler `handleCurrencyChange` yang sudah ada.
@@ -60,3 +61,4 @@
 - Menghapus import `Select from 'react-select'` yang tidak terpakai lagi di `Sts/Index.tsx` (bila tidak dipakai di bagian tabel lainnya).
 - Seluruh kelas memakai token valid `tailwind.config.js` (`pastel-lavender`, `pastel-mint`, `pastel-sky`, `pastel-rose`, `pastel-amber`, `brand-200..900`, `mint`, `sky`).
 - Verifikasi dijalankan dengan `npm run build` (`tsc && vite build`).
+

@@ -11,9 +11,7 @@
 - **File:** `resources/js/Pages/Penatausahaan/Sts/Partials/StsModals.tsx`
 - **Detail:**
   - Definisikan komponen shell/header modal bersama `StsModalHeader` dan wrapper panel `relative overflow-visible rounded-[26px] bg-white dark:bg-[#15131F]` dengan dekorasi glow terisolasi di dalam `overflow-hidden rounded-[26px]`.
-  - Buat komponen internal `YearBudgetPicker` (pengganti `react-select` putih):
-    - Menampilkan grid pill Neo-Bento bila opsi tahun anggaran `<= 4`.
-    - Menampilkan dropdown searchable Neo-Bento (`dark:bg-white/5`, panel `dark:bg-[#15131F]`) bila opsi tahun `> 4`.
+  - Ganti `YearBudgetPicker` dengan `<Select unstyled isSearchable isClearable />` (`react-select`) menggunakan `classNames` Tailwind Neo-Bento yang adaptif penuh untuk Light Mode & Dark Mode (tanpa inline style putih).
   - Implementasikan keempat modal:
     1. **Create Modal** (`IconTile` `violet`, `StatusBadge` `"STS Baru"`, `YearBudgetPicker`, input `Nomor STS`, input `Jumlah STS`).
     2. **Edit Modal** (`IconTile` `amber`, `StatusBadge` nomor STS, input `Nomor STS`, input `Jumlah STS`).
@@ -28,3 +26,4 @@
 ### Task 3: Verifikasi & Commit
 - Jalankan `npm run build` (`tsc && vite build`) hingga exit code 0.
 - Commit `StsModals.tsx` dan `Sts/Index.tsx` ke `main`.
+
