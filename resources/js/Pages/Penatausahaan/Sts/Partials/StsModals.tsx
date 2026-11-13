@@ -1,13 +1,10 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React from 'react';
 import { format } from 'date-fns';
+import Select from 'react-select';
 import {
     AlertTriangle,
-    Calendar,
-    Check,
-    ChevronDown,
     Pencil,
     Plus,
-    Search,
     Sparkles,
     Trash2,
     Wallet,
@@ -131,144 +128,9 @@ function StsModalHeader({ tone, icon, title, subtitle, badge, onClose }: StsModa
     );
 }
 
-interface YearBudgetPickerProps {
-    options: PenganggaranOption[];
+interface YearSelectOption {
     value: number | string;
-    onChange: (val: number | string) => void;
-    error?: string;
-}
-
-function YearBudgetPicker({ options, value, onChange, error }: YearBudgetPickerProps) {
-    const [open, setOpen] = useState(false);
-    const [query, setQuery] = useState('');
-    const wrapperRef = useRef<HTMLDivElement>(null);
-
-    const selected = useMemo(
-        () => options.find((opt) => String(opt.id) === String(value)) || null,
-        [options, value]
-    );
-
-    const filtered = useMemo(() => {
-        if (!query.trim()) return options;
-        const lower = query.trim().toLowerCase();
-        return options.filter((opt) => String(opt.tahun_anggaran).toLowerCase().includes(lower));
-    }, [options, query]);
-
-    useEffect(() => {
-        if (!open) return;
-        const handleOutside = (e: MouseEvent) => {
-            if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
-                setOpen(false);
-            }
-        };
-        document.addEventListener('mousedown', handleOutside);
-        return () => document.removeEventListener('mousedown', handleOutside);
-    }, [open]);
-
-    if (options.length <= 4 && options.length > 0) {
-        return (
-            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-                {options.map((opt) => {
-                    const isSelected = String(opt.id) === String(value);
-                    return (
-                        <button
-                            key={opt.id}
-                            type="button"
-                            onClick={() => onChange(opt.id)}
-                            className={cn(
-                                'flex items-center justify-between gap-2 rounded-2xl border px-3.5 py-2.5 text-left text-xs font-extrabold transition-all',
-                                isSelected
-                                    ? 'border-brand-400 bg-pastel-lavender/75 text-brand-800 shadow-sm dark:border-brand-400/60 dark:bg-brand-500/20 dark:text-brand-200'
-                                    : 'border-slate-200/90 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10'
-                            )}
-                        >
-                            <span className="inline-flex items-center gap-1.5 text-sikas-num">
-                                <Calendar className="h-3.5 w-3.5 opacity-70" />
-                                {opt.tahun_anggaran}
-                            </span>
-                            {isSelected && (
-                                <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-brand-600 text-white dark:bg-brand-400 dark:text-slate-950">
-                                    <Check className="h-2.5 w-2.5" strokeWidth={3} />
-                                </span>
-                            )}
-                        </button>
-                    );
-                })}
-            </div>
-        );
-    }
-
-    return (
-        <div ref={wrapperRef} className="relative">
-            <button
-                type="button"
-                onClick={() => setOpen((prev) => !prev)}
-                className={cn(
-                    'flex min-h-[42px] w-full items-center justify-between rounded-2xl border bg-white px-3.5 py-2.5 text-left text-xs font-bold shadow-sm transition dark:bg-white/5',
-                    error
-                        ? 'border-rose-400 ring-4 ring-rose-100 dark:border-rose-500/50 dark:ring-rose-500/10'
-                        : open
-                            ? 'border-brand-400 ring-4 ring-brand-200/60 dark:border-brand-400/70 dark:ring-brand-500/15'
-                            : 'border-slate-200/90 hover:border-slate-300 dark:border-white/10 dark:hover:border-white/20'
-                )}
-            >
-                <span className={cn('inline-flex items-center gap-2', selected ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500')}>
-                    <Calendar className="h-3.5 w-3.5 text-brand-500 dark:text-brand-300" />
-                    {selected ? selected.tahun_anggaran : 'Pilih Tahun Anggaran...'}
-                </span>
-                <ChevronDown className={cn('h-4 w-4 text-slate-400 transition-transform', open && 'rotate-180')} />
-            </button>
-
-            {open && (
-                <div className="absolute left-0 right-0 z-50 mt-1.5 overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-float dark:border-white/10 dark:bg-[#1A1728]">
-                    <div className="border-b border-slate-100 bg-slate-50/80 p-2 dark:border-white/10 dark:bg-white/[0.03]">
-                        <div className="relative">
-                            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                            <input
-                                type="text"
-                                value={query}
-                                onChange={(e) => setQuery(e.target.value)}
-                                placeholder="Cari tahun anggaran..."
-                                autoFocus
-                                className="w-full rounded-xl border border-slate-200/90 bg-white py-1.5 pl-8 pr-3 text-xs font-semibold text-slate-800 placeholder:text-slate-400 focus:border-brand-400 focus:outline-none dark:border-white/10 dark:bg-white/5 dark:text-white dark:placeholder:text-slate-500"
-                            />
-                        </div>
-                    </div>
-                    <div className="sikas-scroll max-h-48 overflow-y-auto p-1.5">
-                        {filtered.length > 0 ? (
-                            filtered.map((opt) => {
-                                const isSelected = String(opt.id) === String(value);
-                                return (
-                                    <button
-                                        key={opt.id}
-                                        type="button"
-                                        onClick={() => {
-                                            onChange(opt.id);
-                                            setOpen(false);
-                                            setQuery('');
-                                        }}
-                                        className={cn(
-                                            'flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs font-bold transition',
-                                            isSelected
-                                                ? 'bg-pastel-lavender/80 text-brand-800 dark:bg-brand-500/20 dark:text-brand-200'
-                                                : 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/5'
-                                        )}
-                                    >
-                                        <span className="text-sikas-num">{opt.tahun_anggaran}</span>
-                                        {isSelected && <Check className="h-3.5 w-3.5 text-brand-600 dark:text-brand-300" />}
-                                    </button>
-                                );
-                            })
-                        ) : (
-                            <p className="px-3 py-3 text-center text-xs text-slate-400 dark:text-slate-500">
-                                Tahun anggaran tidak ditemukan.
-                            </p>
-                        )}
-                    </div>
-                </div>
-            )}
-        </div>
-    );
+    label: string;
 }
 
 export default function StsModals({
@@ -331,11 +193,64 @@ export default function StsModals({
                                         value="Tahun Anggaran"
                                         className="mb-1.5 !text-[11px] !font-bold !uppercase !tracking-wider !text-slate-600 dark:!text-slate-300"
                                     />
-                                    <YearBudgetPicker
-                                        options={penganggaranList}
-                                        value={createForm.data[penganggaranFk]}
-                                        onChange={(val) => createForm.setData(penganggaranFk, val)}
-                                        error={(createForm.errors as any)[penganggaranFk]}
+                                    <Select<YearSelectOption, false>
+                                        inputId="penganggaran_id"
+                                        unstyled
+                                        isSearchable
+                                        isClearable
+                                        required
+                                        placeholder="Pilih Tahun Anggaran..."
+                                        noOptionsMessage={() => 'Tahun anggaran tidak ditemukan'}
+                                        options={penganggaranList.map((p) => ({
+                                            value: p.id,
+                                            label: String(p.tahun_anggaran),
+                                        }))}
+                                        value={
+                                            penganggaranList
+                                                .filter((p) => String(p.id) === String(createForm.data[penganggaranFk]))
+                                                .map((p) => ({
+                                                    value: p.id,
+                                                    label: String(p.tahun_anggaran),
+                                                }))[0] || null
+                                        }
+                                        onChange={(val) => createForm.setData(penganggaranFk, val ? val.value : '')}
+                                        classNames={{
+                                            container: () => 'relative',
+                                            control: ({ isFocused }) =>
+                                                cn(
+                                                    'min-h-[42px] rounded-2xl border bg-white px-3.5 py-1.5 text-xs font-bold shadow-sm transition dark:bg-white/5',
+                                                    (createForm.errors as any)[penganggaranFk]
+                                                        ? 'border-rose-400 ring-4 ring-rose-100 dark:border-rose-500/50 dark:ring-rose-500/10'
+                                                        : isFocused
+                                                            ? 'border-lime-400 ring-4 ring-lime-200/60 dark:border-lime-400/70 dark:ring-lime-400/10'
+                                                            : 'border-slate-200/90 hover:border-slate-300 dark:border-white/10 dark:hover:border-white/20'
+                                                ),
+                                            valueContainer: () => 'gap-1 py-0.5',
+                                            placeholder: () => 'text-xs font-medium text-slate-400 dark:text-slate-500',
+                                            singleValue: () => 'text-xs font-bold text-slate-900 text-sikas-num dark:text-white',
+                                            input: () =>
+                                                'text-xs font-semibold text-slate-900 dark:text-white [&_input]:!border-0 [&_input]:!outline-none [&_input]:!ring-0 [&_input]:!shadow-none',
+                                            indicatorsContainer: () => 'gap-1.5 pl-2',
+                                            clearIndicator: () =>
+                                                'cursor-pointer rounded-lg p-0.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-white/10 dark:hover:text-white',
+                                            indicatorSeparator: () => 'my-1.5 w-px bg-slate-200 dark:bg-white/10',
+                                            dropdownIndicator: () =>
+                                                'cursor-pointer rounded-lg p-0.5 text-slate-400 transition hover:text-slate-700 dark:text-slate-500 dark:hover:text-white',
+                                            menu: () =>
+                                                'z-50 mt-1.5 overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-1.5 shadow-float dark:border-white/10 dark:bg-[#1A1728]',
+                                            menuList: () => 'sikas-scroll max-h-48 space-y-0.5 overflow-y-auto',
+                                            option: ({ isSelected, isFocused }) =>
+                                                cn(
+                                                    'cursor-pointer rounded-xl px-3 py-2 text-xs font-bold text-sikas-num transition',
+                                                    isSelected
+                                                        ? 'bg-pastel-lavender/85 text-brand-800 dark:bg-brand-500/25 dark:text-brand-200'
+                                                        : isFocused
+                                                            ? 'bg-slate-100 text-slate-900 dark:bg-white/10 dark:text-white'
+                                                            : 'text-slate-700 dark:text-slate-300'
+                                                ),
+                                            noOptionsMessage: () =>
+                                                'px-3 py-3 text-center text-xs text-slate-400 dark:text-slate-500',
+                                        }}
                                     />
                                     <InputError message={(createForm.errors as any)[penganggaranFk]} className="mt-1.5" />
                                 </div>
