@@ -274,8 +274,7 @@ export default function ModalFormBast({ show, onClose, onSuccess, tahun, years, 
                                                 unstyled
                                                 isSearchable
                                                 isClearable={false}
-                                                menuPosition="fixed"
-                                                menuPlacement="auto"
+                                                menuPlacement="bottom"
                                                 options={tahunOptions}
                                                 value={
                                                     tahunOptions.find((opt) => opt.value === String(modalTahun)) ?? null
@@ -291,8 +290,7 @@ export default function ModalFormBast({ show, onClose, onSuccess, tahun, years, 
                                                 unstyled
                                                 isSearchable={false}
                                                 isClearable={false}
-                                                menuPosition="fixed"
-                                                menuPlacement="auto"
+                                                menuPlacement="bottom"
                                                 options={TAHAP_OPTIONS}
                                                 value={TAHAP_OPTIONS.find((opt) => opt.value === modalTahap) ?? null}
                                                 onChange={(opt) => setModalTahap(opt ? opt.value : '')}
