@@ -151,18 +151,19 @@ export default function ModalFormSuratPesanan({ show, onClose, onSuccess, tahun,
     const handleBkuChange = (id: string | number) => {
         const selected = bkuOptions.find(b => b.id == id);
         if (selected) {
-            setData({
-                ...data,
+            setData((prev) => ({
+                ...prev,
                 bku_id: id.toString(),
                 tanggal_sp: selected.tanggal,
                 pihak_kesatu_nama: selected.pihak_kesatu_nama,
+                pihak_kesatu_nip: selected.pihak_kesatu_nip ?? '',
                 pihak_kesatu_instansi: selected.pihak_kesatu_instansi,
                 pihak_kesatu_alamat: selected.pihak_kesatu_alamat,
                 pihak_kedua_nama_perusahaan: selected.pihak_kedua_nama_perusahaan,
                 pihak_kedua_alamat: selected.pihak_kedua_alamat
-            });
+            }));
         } else {
-            setData({ ...data, bku_id: id.toString() });
+            setData((prev) => ({ ...prev, bku_id: id.toString() }));
         }
     };
 

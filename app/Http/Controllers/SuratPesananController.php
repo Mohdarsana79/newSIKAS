@@ -190,7 +190,9 @@ class SuratPesananController extends Controller
             $sp->tanggal_sp = $validated['tanggal_sp'] ?? null;
 
             $sp->pihak_kesatu_nama = $validated['pihak_kesatu_nama'] ?? null;
-            $sp->pihak_kesatu_nip = $validated['pihak_kesatu_nip'] ?? null;
+            $sp->pihak_kesatu_nip = array_key_exists('pihak_kesatu_nip', $validated)
+                ? $validated['pihak_kesatu_nip']
+                : ($bukuKasUmum->penganggaran->nip_kepala_sekolah ?? null);
             $sp->pihak_kesatu_jabatan = $validated['pihak_kesatu_jabatan'] ?? null;
             $sp->pihak_kesatu_instansi = $validated['pihak_kesatu_instansi'] ?? null;
             $sp->pihak_kesatu_alamat = $validated['pihak_kesatu_alamat'] ?? null;
@@ -316,6 +318,7 @@ class SuratPesananController extends Controller
                     'pihak_kedua_nama_perusahaan' => $bku->nama_toko ?? $bku->nama_penerima_pembayaran ?? '',
                     'pihak_kedua_alamat' => $bku->alamat_toko ?? '',
                     'pihak_kesatu_nama' => $bku->penganggaran->kepala_sekolah ?? '',
+                    'pihak_kesatu_nip' => $bku->penganggaran->nip_kepala_sekolah ?? '',
                     'pihak_kesatu_instansi' => $bku->penganggaran->sekolah->nama_sekolah ?? 'Sekolah',
                     'pihak_kesatu_alamat' => $bku->penganggaran->sekolah->alamat ?? '',
                 ];
