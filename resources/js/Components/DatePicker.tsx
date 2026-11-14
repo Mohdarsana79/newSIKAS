@@ -47,16 +47,20 @@ export default function DatePicker({ value, onChange, placeholder = "Pilih tangg
                 id={elementId}
                 disabled={inputDisabled}
                 className={cn(
-                    "w-full justify-start text-left font-normal flex items-center px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500",
-                    !dateValue && "text-muted-foreground",
-                    inputDisabled && "opacity-50 cursor-not-allowed bg-gray-100 dark:bg-gray-800",
+                    "flex w-full items-center justify-start rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-left text-[12px] font-semibold text-slate-800 shadow-sm transition focus:outline-none focus-visible:border-lime-400 focus-visible:ring-4 focus-visible:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white",
+                    !dateValue && "text-slate-400 dark:text-slate-500",
+                    inputDisabled && "cursor-not-allowed bg-slate-100 opacity-60 dark:bg-white/5",
                     className
                 )}>
-                <CalendarIcon className="mr-2 h-4 w-4 text-gray-500" />
-                {dateValue ? format(dateValue, "PPP", { locale: id }) : <span className="text-gray-500">{placeholder}</span>}
+                <CalendarIcon className="mr-2 h-4 w-4 text-slate-400 dark:text-slate-500" />
+                {dateValue ? format(dateValue, "PPP", { locale: id }) : <span className="text-slate-400 dark:text-slate-500">{placeholder}</span>}
             </PopoverButton>
 
-            <PopoverPanel className="absolute z-50 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg p-0 w-auto">
+            <PopoverPanel
+                portal
+                anchor={{ to: 'bottom start', gap: 6, padding: 12 }}
+                className="z-[9999] w-auto rounded-2xl border border-slate-200/90 bg-white p-1.5 shadow-float dark:border-white/10 dark:bg-[#15131F]"
+            >
                 {({ close }) => (
                     <Calendar
                         mode="single"
