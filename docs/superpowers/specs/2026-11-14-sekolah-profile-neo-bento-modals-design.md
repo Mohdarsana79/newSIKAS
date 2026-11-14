@@ -37,7 +37,7 @@ Keempat modal diekstrak dari [SekolahProfile/Index.tsx](file:///c:/laragon/www/n
   1. **Kartu Bento 1 — Identitas Satuan Pendidikan** (`rounded-[20px] border border-slate-200/80 bg-slate-50/70 p-4 dark:border-white/10 dark:bg-white/[0.03]`):
      - `Nama Sekolah` (`md:col-span-2`, `TextInput` full width).
      - `NPSN` (`readOnly`, tampilan monospace/tabular + `StatusBadge tone="success"` *"Lisensi Terverifikasi"* + keterangan lisensi).
-     - `Status Sekolah` (`Negeri`, `Swasta`) dan `Jenjang` (`SD`, `SMP`, `SMA`, `SMK`): menggunakan **`react-select`** (`unstyled`, `isSearchable`, default `menuPosition="absolute"` agar menu menempel presisi di bawah input tanpa terdampak `transform` pada `DialogPanel`). Styling `classNames` seragam dengan `StsModals.tsx` (focus ring lime, dark menu `#1A1728`, fix `[&_input]:!ring-0`).
+     - `Status Sekolah` (`Negeri`, `Swasta`) dan `Jenjang` (`PAUD`, `TK`, `SD`, `SMP`, `SMA`, `SMK`): menggunakan **`react-select`** (`unstyled`, `isSearchable`, default `menuPosition="absolute"` agar menu menempel presisi di bawah input tanpa terdampak `transform` pada `DialogPanel`). Styling `classNames` seragam dengan `StsModals.tsx` (focus ring lime, dark menu `#1A1728`, fix `[&_input]:!ring-0`).
      - Menjaga validasi nilai jika data lama berisi nilai di luar daftar standar dengan fallback opsi bila cocok, atau mapping langsung string value.
   2. **Kartu Bento 2 — Lokasi & Alamat Sekolah** (`rounded-[20px]`):
      - Grid 2 kolom: `Provinsi`, `Kabupaten/Kota`, `Kecamatan`, `Kelurahan/Desa`.

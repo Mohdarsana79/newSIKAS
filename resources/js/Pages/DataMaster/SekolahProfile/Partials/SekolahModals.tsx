@@ -81,6 +81,8 @@ const STATUS_OPTIONS: SelectOption[] = [
 ];
 
 const JENJANG_OPTIONS: SelectOption[] = [
+    { value: 'PAUD', label: 'PAUD' },
+    { value: 'TK', label: 'TK' },
     { value: 'SD', label: 'SD' },
     { value: 'SMP', label: 'SMP' },
     { value: 'SMA', label: 'SMA' },
