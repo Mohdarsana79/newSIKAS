@@ -33,11 +33,11 @@ Keempat modal diekstrak dari [SekolahProfile/Index.tsx](file:///c:/laragon/www/n
 
 ### 3.1 Modal Update / Input Data Sekolah (`maxWidth="2xl"`)
 - Header: `IconTile tone="violet"` (`Building2`), judul dinamis (`Update Data Sekolah` / `Input Data Sekolah`), badge `Data Master` / `Identitas Baru`.
-- Body (`sikas-scroll max-h-[72vh] overflow-y-auto px-6 py-5 space-y-4`):
+- Shell & Body: Outer shell `overflow-visible rounded-[26px]` (glow terisolasi tetap `overflow-hidden rounded-[26px]`, header `rounded-t-[26px]`) dengan body `overflow-visible px-6 py-4 space-y-3.5` (scroll ditangani oleh `<Dialog>` pada `Modal.tsx`):
   1. **Kartu Bento 1 — Identitas Satuan Pendidikan** (`rounded-[20px] border border-slate-200/80 bg-slate-50/70 p-4 dark:border-white/10 dark:bg-white/[0.03]`):
      - `Nama Sekolah` (`md:col-span-2`, `TextInput` full width).
      - `NPSN` (`readOnly`, tampilan monospace/tabular + `StatusBadge tone="success"` *"Lisensi Terverifikasi"* + keterangan lisensi).
-     - `Status Sekolah` (`Negeri`, `Swasta`) dan `Jenjang` (`SD`, `SMP`, `SMA`, `SMK`): menggunakan **`react-select`** (`unstyled`, `isSearchable`, `menuPosition="fixed"` agar dropdown tidak terpotong area scroll modal dan tetap bekerja lancar di dalam HeadlessUI `Dialog`). Styling `classNames` seragam dengan `StsModals.tsx` (focus ring lime, dark menu `#1A1728`, fix `[&_input]:!ring-0`).
+     - `Status Sekolah` (`Negeri`, `Swasta`) dan `Jenjang` (`SD`, `SMP`, `SMA`, `SMK`): menggunakan **`react-select`** (`unstyled`, `isSearchable`, default `menuPosition="absolute"` agar menu menempel presisi di bawah input tanpa terdampak `transform` pada `DialogPanel`). Styling `classNames` seragam dengan `StsModals.tsx` (focus ring lime, dark menu `#1A1728`, fix `[&_input]:!ring-0`).
      - Menjaga validasi nilai jika data lama berisi nilai di luar daftar standar dengan fallback opsi bila cocok, atau mapping langsung string value.
   2. **Kartu Bento 2 — Lokasi & Alamat Sekolah** (`rounded-[20px]`):
      - Grid 2 kolom: `Provinsi`, `Kabupaten/Kota`, `Kecamatan`, `Kelurahan/Desa`.
@@ -69,3 +69,4 @@ Keempat modal diekstrak dari [SekolahProfile/Index.tsx](file:///c:/laragon/www/n
 - Mematuhi token Tailwind v3 SIKAS (tanpa `brand-50`, `brand-100`, `sky-100..950`, `gray-850/750`, `py-4.5`).
 - Tidak mengubah kontrak endpoint controller (`sekolah-profile.store`, `sekolah-profile.update`, `sekolah-profile.upload-kop`, `sekolah-profile.delete-kop`).
 - Verifikasi akhir: `npm run build` (`tsc && vite build`) harus lulus tanpa error TypeScript maupun Vite.
+

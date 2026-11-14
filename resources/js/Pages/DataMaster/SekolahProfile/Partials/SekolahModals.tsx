@@ -165,7 +165,7 @@ function SekolahModalHeader({
     disabledClose = false,
 }: SekolahModalHeaderProps) {
     return (
-        <div className="relative flex flex-none items-start justify-between gap-3 border-b border-slate-100 px-6 py-4 dark:border-white/10">
+        <div className="relative flex flex-none items-start justify-between gap-3 rounded-t-[26px] border-b border-slate-100 px-6 py-4 dark:border-white/10">
             <div className="flex min-w-0 items-center gap-3.5">
                 <IconTile tone={tone} size="md">
                     {icon}
@@ -260,13 +260,13 @@ export default function SekolahModals({
         <>
             {/* 1. MODAL INPUT / UPDATE DATA SEKOLAH */}
             <Modal show={isModalOpen} onClose={() => !processing && onCloseModal()} maxWidth="2xl">
-                <div className="relative overflow-hidden rounded-[26px] bg-white dark:bg-[#15131F]">
+                <div className="relative overflow-visible rounded-[26px] bg-white dark:bg-[#15131F]">
                     <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[26px]">
                         <div className={cn('absolute -right-14 -top-14 h-44 w-44 rounded-full blur-3xl', GLOW_TONES.violet.primary)} />
                         <div className={cn('absolute -bottom-16 -left-14 h-40 w-40 rounded-full blur-3xl', GLOW_TONES.violet.secondary)} />
                     </div>
 
-                    <form onSubmit={onSubmit} className="relative flex max-h-[85vh] flex-col">
+                    <form onSubmit={onSubmit} className="relative flex flex-col overflow-visible">
                         <SekolahModalHeader
                             tone="violet"
                             icon={<Building2 className="h-5 w-5" />}
@@ -281,9 +281,9 @@ export default function SekolahModals({
                             disabledClose={processing}
                         />
 
-                        <div className="sikas-scroll flex-1 space-y-4 overflow-y-auto px-6 py-5">
+                        <div className="space-y-3.5 overflow-visible px-6 py-4">
                             {/* Bento Grup 1: Identitas Satuan Pendidikan */}
-                            <div className="space-y-4 rounded-[20px] border border-slate-200/80 bg-slate-50/75 p-4 dark:border-white/10 dark:bg-white/[0.03]">
+                            <div className="space-y-3.5 overflow-visible rounded-[20px] border border-slate-200/80 bg-slate-50/75 p-4 dark:border-white/10 dark:bg-white/[0.03]">
                                 <div className="flex items-center gap-2 border-b border-slate-200/70 pb-2.5 dark:border-white/10">
                                     <Building2 className="h-3.5 w-3.5 text-brand-500 dark:text-brand-300" />
                                     <span className="text-[10.5px] font-extrabold uppercase tracking-[0.14em] text-slate-600 dark:text-slate-300">
@@ -346,7 +346,6 @@ export default function SekolahModals({
                                                 unstyled
                                                 isSearchable
                                                 isClearable={false}
-                                                menuPosition="fixed"
                                                 placeholder="Pilih status..."
                                                 noOptionsMessage={() => 'Status tidak ditemukan'}
                                                 options={resolvedStatusOptions}
@@ -374,7 +373,6 @@ export default function SekolahModals({
                                                 unstyled
                                                 isSearchable
                                                 isClearable={false}
-                                                menuPosition="fixed"
                                                 placeholder="Pilih jenjang..."
                                                 noOptionsMessage={() => 'Jenjang tidak ditemukan'}
                                                 options={resolvedJenjangOptions}
@@ -479,7 +477,7 @@ export default function SekolahModals({
                                             value={data.alamat}
                                             onChange={(e) => setData('alamat', e.target.value)}
                                             className="block w-full rounded-2xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:placeholder:text-slate-500 dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
-                                            rows={3}
+                                            rows={2}
                                             placeholder="Jalan, nomor, RT/RW..."
                                             required
                                         />
