@@ -1,71 +1,141 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
+import Select from 'react-select';
+import { Printer, SlidersHorizontal, X } from 'lucide-react';
 import Modal from '@/Components/Modal';
+import PrimaryButton from '@/Components/PrimaryButton';
+import SecondaryButton from '@/Components/SecondaryButton';
+import IconTile from '@/Components/ui/IconTile';
+import StatusBadge from '@/Components/ui/StatusBadge';
+import InputLabel from '@/Components/InputLabel';
+import { BAST_SELECT_CLASS_NAMES, SelectOption } from './bastModalTheme';
 
-export default function ModalPrintSettings({ show, onClose, pdfUrl }: { show: boolean, onClose: () => void, pdfUrl: string }) {
+const PAPER_SIZE_OPTIONS: SelectOption[] = [
+    { value: 'A4', label: 'A4 (210 x 297 mm)' },
+    { value: 'F4', label: 'F4 / Folio (8.5 x 13 in)' },
+    { value: 'Letter', label: 'Letter (8.5 x 11 in)' },
+    { value: 'Legal', label: 'Legal (8.5 x 14 in)' },
+];
+
+const FONT_SIZE_OPTIONS: SelectOption[] = [
+    { value: '8pt', label: '8pt' },
+    { value: '9pt', label: '9pt' },
+    { value: '10pt', label: '10pt' },
+    { value: '11pt', label: '11pt (Standar)' },
+];
+
+export default function ModalPrintSettings({
+    show,
+    onClose,
+    pdfUrl,
+}: {
+    show: boolean;
+    onClose: () => void;
+    pdfUrl: string;
+}) {
     const [paperSize, setPaperSize] = useState('A4');
     const [fontSize, setFontSize] = useState('11pt');
 
     const handlePrint = () => {
-        // Construct URL with query parameters
-        const url = new URL(pdfUrl);
-        url.searchParams.append('paperSize', paperSize);
-        url.searchParams.append('fontSize', fontSize);
-        
+        if (!pdfUrl) return;
+        const url = new URL(pdfUrl, window.location.origin);
+        url.searchParams.set('paperSize', paperSize);
+        url.searchParams.set('fontSize', fontSize);
+
         window.open(url.toString(), '_blank');
         onClose();
     };
 
     return (
         <Modal show={show} onClose={onClose} maxWidth="sm">
-            <div className="p-6">
-                <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                        Pengaturan Cetak PDF
-                    </h2>
-                    <button onClick={onClose} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">✕</button>
+            <div className="relative rounded-[26px] bg-white shadow-card-light dark:bg-[#15131F] dark:shadow-card-dark">
+                <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[26px]">
+                    <div className="absolute -right-12 -top-16 h-44 w-44 rounded-full bg-pastel-lavender/75 blur-3xl dark:bg-brand-500/15" />
+                    <div className="absolute -bottom-16 -left-10 h-36 w-36 rounded-full bg-lime-200/60 blur-3xl dark:bg-lime-400/10" />
                 </div>
 
-                <div className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            Ukuran Kertas
-                        </label>
-                        <select 
-                            value={paperSize} 
-                            onChange={(e) => setPaperSize(e.target.value)}
-                            className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                <div className="relative">
+                    {/* Header Neo-Bento */}
+                    <div className="flex items-start justify-between gap-3 rounded-t-[26px] border-b border-slate-100 px-6 py-4 dark:border-white/10">
+                        <div className="flex min-w-0 items-center gap-3.5">
+                            <IconTile tone="ink" size="md">
+                                <Printer />
+                            </IconTile>
+                            <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <h2 className="text-[15.5px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                                        Pengaturan Cetak PDF
+                                    </h2>
+                                    <StatusBadge tone="violet" dot={false}>
+                                        Cetak PDF
+                                    </StatusBadge>
+                                </div>
+                                <p className="mt-0.5 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                                    Atur ukuran kertas dan font sebelum mencetak BAST.
+                                </p>
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-500 dark:hover:bg-white/10 dark:hover:text-white"
+                            aria-label="Tutup pengaturan cetak"
                         >
-                            <option value="A4">A4 (210 x 297 mm)</option>
-                            <option value="F4">F4 / Folio (8.5 x 13 in)</option>
-                            <option value="Letter">Letter (8.5 x 11 in)</option>
-                            <option value="Legal">Legal (8.5 x 14 in)</option>
-                        </select>
+                            <X className="h-4 w-4" />
+                        </button>
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            Ukuran Font
-                        </label>
-                        <select 
-                            value={fontSize} 
-                            onChange={(e) => setFontSize(e.target.value)}
-                            className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                        >
-                            <option value="8pt">8pt</option>
-                            <option value="9pt">9pt</option>
-                            <option value="10pt">10pt</option>
-                            <option value="11pt">11pt (Standar)</option>
-                        </select>
-                    </div>
-                </div>
+                    {/* Isi Bento */}
+                    <div className="px-6 py-5">
+                        <div className="rounded-[20px] border border-slate-200/80 bg-slate-50/75 p-4 dark:border-white/10 dark:bg-white/[0.03]">
+                            <div className="mb-3.5 flex items-center gap-2 text-[10.5px] font-extrabold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+                                <SlidersHorizontal className="h-3.5 w-3.5 text-brand-500 dark:text-brand-300" />
+                                Tata Letak Halaman
+                            </div>
 
-                <div className="mt-6 flex justify-end gap-3">
-                    <button onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">
-                        Batal
-                    </button>
-                    <button onClick={handlePrint} className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
-                        Cetak PDF
-                    </button>
+                            <div className="space-y-4">
+                                <div>
+                                    <InputLabel htmlFor="bast-print-paper" value="Ukuran Kertas" className="mb-1.5" />
+                                    <Select<SelectOption, false>
+                                        inputId="bast-print-paper"
+                                        unstyled
+                                        isSearchable={false}
+                                        isClearable={false}
+                                        menuPlacement="auto"
+                                        options={PAPER_SIZE_OPTIONS}
+                                        value={PAPER_SIZE_OPTIONS.find((opt) => opt.value === paperSize) ?? null}
+                                        onChange={(opt) => setPaperSize(opt ? opt.value : 'A4')}
+                                        classNames={BAST_SELECT_CLASS_NAMES}
+                                    />
+                                </div>
+
+                                <div>
+                                    <InputLabel htmlFor="bast-print-font" value="Ukuran Font" className="mb-1.5" />
+                                    <Select<SelectOption, false>
+                                        inputId="bast-print-font"
+                                        unstyled
+                                        isSearchable={false}
+                                        isClearable={false}
+                                        menuPlacement="auto"
+                                        options={FONT_SIZE_OPTIONS}
+                                        value={FONT_SIZE_OPTIONS.find((opt) => opt.value === fontSize) ?? null}
+                                        onChange={(opt) => setFontSize(opt ? opt.value : '11pt')}
+                                        classNames={BAST_SELECT_CLASS_NAMES}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Footer */}
+                    <div className="flex flex-wrap items-center justify-end gap-2.5 rounded-b-[26px] border-t border-slate-100 bg-slate-50/70 px-6 py-4 dark:border-white/5 dark:bg-white/[0.02]">
+                        <SecondaryButton type="button" onClick={onClose}>
+                            Batal
+                        </SecondaryButton>
+                        <PrimaryButton type="button" onClick={handlePrint} disabled={!pdfUrl}>
+                            <Printer className="h-4 w-4" />
+                            Cetak PDF
+                        </PrimaryButton>
+                    </div>
                 </div>
             </div>
         </Modal>
