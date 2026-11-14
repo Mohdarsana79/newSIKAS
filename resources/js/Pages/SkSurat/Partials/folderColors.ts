@@ -21,21 +21,25 @@ export interface FolderTheme {
     cardStyle?: CSSProperties;
 }
 
+const BRAND_PRESET_STYLE = {
+    bg: 'bg-pastel-lavender dark:bg-brand-500/15',
+    text: 'text-brand-600 dark:text-brand-300',
+    border: 'border-brand-500/15 dark:border-brand-400/20',
+    glow: 'hover:border-brand-400/60 dark:hover:border-brand-300/40',
+} as const;
+
 export const PRESET_FOLDER_COLORS: readonly PresetFolderColor[] = [
     {
         name: 'Indigo',
         value: 'indigo',
         hex: '#5B3DF5',
-        bg: 'bg-pastel-lavender',
-        text: 'text-brand-600 dark:text-brand-300',
-        border: 'border-brand-500/15 dark:border-brand-400/20',
-        glow: 'hover:border-brand-400/60 dark:hover:border-brand-300/40',
+        ...BRAND_PRESET_STYLE,
     },
     {
         name: 'Emerald',
         value: 'emerald',
         hex: '#10B981',
-        bg: 'bg-pastel-mint',
+        bg: 'bg-pastel-mint dark:bg-emerald-500/15',
         text: 'text-emerald-600 dark:text-emerald-300',
         border: 'border-mint/25 dark:border-mint/20',
         glow: 'hover:border-emerald-400/60 dark:hover:border-emerald-300/40',
@@ -44,7 +48,7 @@ export const PRESET_FOLDER_COLORS: readonly PresetFolderColor[] = [
         name: 'Amber',
         value: 'amber',
         hex: '#D97706',
-        bg: 'bg-pastel-amber',
+        bg: 'bg-pastel-amber dark:bg-amber-500/15',
         text: 'text-amber-600 dark:text-amber-300',
         border: 'border-amber-300/50 dark:border-amber-400/20',
         glow: 'hover:border-amber-400/60 dark:hover:border-amber-300/40',
@@ -53,7 +57,7 @@ export const PRESET_FOLDER_COLORS: readonly PresetFolderColor[] = [
         name: 'Rose',
         value: 'rose',
         hex: '#E11D48',
-        bg: 'bg-pastel-rose',
+        bg: 'bg-pastel-rose dark:bg-rose-500/15',
         text: 'text-rose-600 dark:text-rose-300',
         border: 'border-rose-200 dark:border-rose-400/20',
         glow: 'hover:border-rose-400/60 dark:hover:border-rose-300/40',
@@ -62,7 +66,7 @@ export const PRESET_FOLDER_COLORS: readonly PresetFolderColor[] = [
         name: 'Sky',
         value: 'sky',
         hex: '#0284C7',
-        bg: 'bg-pastel-sky',
+        bg: 'bg-pastel-sky dark:bg-sky/15',
         text: 'text-sky dark:text-sky',
         border: 'border-sky/20 dark:border-sky/20',
         glow: 'hover:border-sky/50 dark:hover:border-sky/40',
@@ -71,10 +75,7 @@ export const PRESET_FOLDER_COLORS: readonly PresetFolderColor[] = [
         name: 'Purple',
         value: 'purple',
         hex: '#A38CFF',
-        bg: 'bg-pastel-lavender',
-        text: 'text-brand-600 dark:text-brand-300',
-        border: 'border-brand-500/15 dark:border-brand-400/20',
-        glow: 'hover:border-brand-400/60 dark:hover:border-brand-300/40',
+        ...BRAND_PRESET_STYLE,
     },
 ];
 
@@ -96,6 +97,12 @@ export function normalizeHexColor(value?: string | null): string | null {
         return withHash.toLowerCase();
     }
     return null;
+}
+
+/** Check whether a value is either a supported preset key or a valid hex color string. */
+export function isValidFolderColor(value?: string | null): boolean {
+    const key = (value || '').trim();
+    return Boolean(PRESET_MAP[key] || normalizeHexColor(key));
 }
 
 function hexToRgba(hex: string, alpha: number): string {
@@ -128,8 +135,8 @@ export function resolveFolderTheme(warna?: string | null): FolderTheme {
             hex: customHex,
             bg: '',
             text: '',
-            border: 'border-[color:var(--folder-border)]',
-            glow: 'hover:border-[color:var(--folder-glow)]',
+            border: '[border-color:var(--folder-border)]',
+            glow: 'hover:[border-color:var(--folder-glow)]',
             tileStyle: {
                 backgroundColor: hexToRgba(customHex, 0.15),
                 color: customHex,

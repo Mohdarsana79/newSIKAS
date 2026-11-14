@@ -22,6 +22,8 @@ class SkSuratController extends Controller
         'purple',
     ];
 
+    private const HEX_COLOR_PATTERN = '/^#(?:([0-9a-fA-F]{3})|([0-9a-fA-F]{6}))$/';
+
     protected SkSuratService $skSuratService;
 
     public function __construct(SkSuratService $skSuratService)
@@ -81,7 +83,7 @@ class SkSuratController extends Controller
                         return;
                     }
 
-                    if (! preg_match('/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/', $trimmed)) {
+                    if (! preg_match(self::HEX_COLOR_PATTERN, $trimmed)) {
                         $fail('Warna folder harus berupa preset yang tersedia atau kode hex yang valid (contoh: #5b3df5).');
                     }
                 },
@@ -103,13 +105,13 @@ class SkSuratController extends Controller
             return $trimmed;
         }
 
-        if (preg_match('/^#([0-9a-fA-F]{3})$/', $trimmed, $matches)) {
-            [$r, $g, $b] = str_split($matches[1]);
+        if (preg_match(self::HEX_COLOR_PATTERN, $trimmed, $matches)) {
+            if (! empty($matches[1])) {
+                [$r, $g, $b] = str_split($matches[1]);
 
-            return strtolower("#{$r}{$r}{$g}{$g}{$b}{$b}");
-        }
+                return strtolower("#{$r}{$r}{$g}{$g}{$b}{$b}");
+            }
 
-        if (preg_match('/^#[0-9a-fA-F]{6}$/', $trimmed)) {
             return strtolower($trimmed);
         }
 

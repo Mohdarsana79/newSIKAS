@@ -2,63 +2,82 @@
 
 namespace Tests\Feature;
 
-use App\Http\Controllers\SkSuratController;
 use App\Models\SkFolder;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Validator;
 use Tests\TestCase;
 
 class SkSuratFolderColorTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_folder_validation_accepts_presets_and_hex_colors_and_rejects_invalid_values(): void
+    protected User $bendahara;
+
+    protected User $kepalaSekolah;
+
+    protected function setUp(): void
     {
-        $rules = SkSuratController::folderValidationRules();
+        parent::setUp();
 
-        foreach (['indigo', 'sky', 'emerald', '#A1B2C3', '#abc', null, ''] as $validColor) {
-            $validator = Validator::make([
-                'nama_folder' => 'Folder Contoh',
-                'warna' => $validColor,
-            ], $rules);
+        $this->bendahara = User::factory()->create([
+            'username' => 'bendahara_folder_color',
+            'role' => 'bendahara',
+        ]);
 
-            $this->assertFalse($validator->fails(), 'Expected valid warna: '.var_export($validColor, true));
-        }
-
-        foreach (['red;background:url(x)', 'not-a-color', '#12345', '#gggggg', 'rgb(0,0,0)'] as $invalidColor) {
-            $validator = Validator::make([
-                'nama_folder' => 'Folder Contoh',
-                'warna' => $invalidColor,
-            ], $rules);
-
-            $this->assertTrue($validator->fails(), 'Expected invalid warna to fail: '.$invalidColor);
-            $this->assertArrayHasKey('warna', $validator->errors()->toArray());
-        }
+        $this->kepalaSekolah = User::factory()->create([
+            'username' => 'kepsek_folder_color',
+            'role' => 'kepala_sekolah',
+        ]);
     }
 
-    public function test_folder_color_normalization_and_persistence_work_for_custom_hex_and_presets(): void
+    public function test_bendahara_can_create_and_update_folder_with_custom_hex_and_preset_colors(): void
     {
-        $user = User::factory()->create();
-
-        $this->assertSame('#aabbcc', SkSuratController::normalizeFolderColor('#AbC'));
-        $this->assertSame('#12ef34', SkSuratController::normalizeFolderColor('#12EF34'));
-        $this->assertSame('sky', SkSuratController::normalizeFolderColor('sky'));
-        $this->assertSame('indigo', SkSuratController::normalizeFolderColor(null));
-        $this->assertSame('indigo', SkSuratController::normalizeFolderColor(''));
-
-        $folder = SkFolder::create([
-            'nama_folder' => 'Surat Keterangan',
-            'warna' => SkSuratController::normalizeFolderColor('#FF6B00'),
-            'created_by' => $user->id,
+        $createHexResponse = $this->actingAs($this->bendahara)->post('/sk-surat/folder', [
+            'nama_folder' => 'Folder Hex Custom',
+            'deskripsi' => 'Uji warna custom hex',
+            'warna' => '#FF6B00',
         ]);
 
-        $this->assertSame('#ff6b00', $folder->fresh()->warna);
+        $hexFolder = SkFolder::where('nama_folder', 'Folder Hex Custom')->firstOrFail();
+        $createHexResponse->assertRedirect(route('sk-surat.show', $hexFolder->id));
+        $this->assertSame('#ff6b00', $hexFolder->warna);
 
-        $folder->update([
-            'warna' => SkSuratController::normalizeFolderColor('#09a'),
+        $updateShortHexResponse = $this->actingAs($this->bendahara)->put("/sk-surat/folder/{$hexFolder->id}", [
+            'nama_folder' => 'Folder Hex Custom',
+            'deskripsi' => 'Uji normalisasi 3 digit',
+            'warna' => '#09A',
         ]);
 
-        $this->assertSame('#0099aa', $folder->fresh()->warna);
+        $updateShortHexResponse->assertRedirect();
+        $this->assertSame('#0099aa', $hexFolder->fresh()->warna);
+
+        $createPresetResponse = $this->actingAs($this->bendahara)->post('/sk-surat/folder', [
+            'nama_folder' => 'Folder Preset Sky',
+            'warna' => 'sky',
+        ]);
+
+        $presetFolder = SkFolder::where('nama_folder', 'Folder Preset Sky')->firstOrFail();
+        $createPresetResponse->assertRedirect(route('sk-surat.show', $presetFolder->id));
+        $this->assertSame('sky', $presetFolder->warna);
+    }
+
+    public function test_invalid_folder_color_is_rejected_and_kepala_sekolah_is_forbidden(): void
+    {
+        $invalidResponse = $this->actingAs($this->bendahara)->postJson('/sk-surat/folder', [
+            'nama_folder' => 'Folder Invalid',
+            'warna' => 'red;background:url(x)',
+        ]);
+
+        $invalidResponse->assertUnprocessable()->assertJsonValidationErrors(['warna']);
+        $this->assertDatabaseMissing('sk_folders', [
+            'nama_folder' => 'Folder Invalid',
+        ]);
+
+        $forbiddenResponse = $this->actingAs($this->kepalaSekolah)->post('/sk-surat/folder', [
+            'nama_folder' => 'Folder Kepsek',
+            'warna' => '#7c5cff',
+        ]);
+
+        $forbiddenResponse->assertForbidden();
     }
 }

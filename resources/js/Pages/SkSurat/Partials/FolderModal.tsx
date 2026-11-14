@@ -5,9 +5,11 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import IconTile from '@/Components/ui/IconTile';
 import { router } from '@inertiajs/react';
-import { AlertCircle, Folder as FolderIcon, FolderPlus, Palette, Pencil } from 'lucide-react';
+import { AlertCircle, FolderPlus, Palette, Pencil } from 'lucide-react';
+import FolderIconTile from './FolderIconTile';
 import {
     PRESET_FOLDER_COLORS,
+    isValidFolderColor,
     normalizeHexColor,
     resolveFolderTheme,
 } from './folderColors';
@@ -92,11 +94,26 @@ export default function FolderModal({ show, onClose, folder }: Props) {
             return;
         }
 
+        let resolvedColor = warna;
+        const normalizedHexInput = normalizeHexColor(hexInput);
+        const hasPendingCustomHex = hexInput.trim().toLowerCase() !== activeTheme.hex.toLowerCase();
+
+        if (hasPendingCustomHex) {
+            if (!normalizedHexInput) {
+                setErrorMsg('Kode warna hex tidak valid. Gunakan format #RGB atau #RRGGBB.');
+                return;
+            }
+            resolvedColor = normalizedHexInput;
+        } else if (!isValidFolderColor(resolvedColor)) {
+            setErrorMsg('Warna folder tidak valid.');
+            return;
+        }
+
         setLoading(true);
         if (isEditing && folder?.id) {
             router.put(
                 route('sk-surat.folder.update', folder.id),
-                { nama_folder: namaFolder, deskripsi, warna },
+                { nama_folder: namaFolder, deskripsi, warna: resolvedColor },
                 {
                     onSuccess: () => {
                         onClose();
@@ -110,7 +127,7 @@ export default function FolderModal({ show, onClose, folder }: Props) {
         } else {
             router.post(
                 route('sk-surat.folder.store'),
-                { nama_folder: namaFolder, deskripsi, warna },
+                { nama_folder: namaFolder, deskripsi, warna: resolvedColor },
                 {
                     onSuccess: () => {
                         onClose();
@@ -238,12 +255,7 @@ export default function FolderModal({ show, onClose, folder }: Props) {
 
                         {/* Pratinjau Tile Ikon Folder */}
                         <div className="mt-3 flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/70 px-3.5 py-2.5 dark:border-white/10 dark:bg-white/[0.03]">
-                            <div
-                                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border ${activeTheme.bg} ${activeTheme.text} ${activeTheme.border}`}
-                                style={activeTheme.tileStyle}
-                            >
-                                <FolderIcon className="h-4 w-4" />
-                            </div>
+                            <FolderIconTile theme={activeTheme} size="sm" />
                             <div className="min-w-0">
                                 <p className="truncate text-[11.5px] font-extrabold text-slate-800 dark:text-white">
                                     {namaFolder.trim() || 'Pratinjau Kartu Folder'}

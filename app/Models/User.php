@@ -22,6 +22,7 @@ class User extends Authenticatable
         'name',
         'username',
         'email',
+        'role',
         'password',
         'security_code',
         'is_security_code_enabled',
@@ -60,6 +61,16 @@ class User extends Authenticatable
     public function hasDeepSeekKey(): bool
     {
         return ! empty($this->deepseek_api_key);
+    }
+
+    public function isKepalaSekolah(): bool
+    {
+        return $this->role === 'kepala_sekolah';
+    }
+
+    public function isBendahara(): bool
+    {
+        return $this->role === 'bendahara' || empty($this->role);
     }
 
     public function bkuAuditLogs()

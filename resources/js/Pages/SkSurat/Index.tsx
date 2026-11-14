@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import FolderModal from './Partials/FolderModal';
 import ConfirmModal from './Partials/ConfirmModal';
+import FolderIconTile from './Partials/FolderIconTile';
 import { resolveFolderTheme } from './Partials/folderColors';
 import IconTile from '@/Components/ui/IconTile';
 import PageHeader from '@/Components/ui/PageHeader';
@@ -229,12 +230,7 @@ export default function Index({
                                                 href={route('sk-surat.show', folder.id)}
                                                 className="flex min-w-0 items-center gap-3 transition-opacity group-hover:opacity-90"
                                             >
-                                                <div
-                                                    style={color.tileStyle}
-                                                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border ${color.bg} ${color.text} ${color.border}`}
-                                                >
-                                                    <Folder className="w-5 h-5" />
-                                                </div>
+                                                <FolderIconTile theme={color} size="lg" />
                                                 <div className="min-w-0">
                                                     <h4 className="line-clamp-1 text-[13px] font-extrabold tracking-tight text-slate-900 transition-colors group-hover:text-brand-600 dark:text-white dark:group-hover:text-brand-300">
                                                         {folder.nama_folder}

@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
-    Folder,
     FileText,
     Download,
     FileCheck,
@@ -20,6 +19,7 @@ import ManageTemplatesModal from './Partials/ManageTemplatesModal';
 import GenerateDokumenModal from './Partials/GenerateDokumenModal';
 import UploadArsipModal from './Partials/UploadArsipModal';
 import ConfirmModal from './Partials/ConfirmModal';
+import FolderIconTile from './Partials/FolderIconTile';
 import { resolveFolderTheme } from './Partials/folderColors';
 import PageHeader from '@/Components/ui/PageHeader';
 import StatusBadge from '@/Components/ui/StatusBadge';
@@ -168,14 +168,7 @@ export default function Show({ folder, schoolData = {}, filters = {} }: Props) {
                         { label: 'SK & Surat', href: route('sk-surat.index') },
                         { label: folder.nama_folder },
                     ]}
-                    icon={
-                        <div
-                            style={folderTheme.tileStyle}
-                            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border ${folderTheme.bg} ${folderTheme.text} ${folderTheme.border}`}
-                        >
-                            <Folder className="w-5 h-5" />
-                        </div>
-                    }
+                    icon={<FolderIconTile theme={folderTheme} size="lg" />}
                     title={folder.nama_folder}
                     badge={<StatusBadge tone="neutral" dot={false}>{folder.templates.length} template</StatusBadge>}
                     subtitle={folder.deskripsi || 'Ruang kerja pengelolaan dokumen surat dan SK sekolah.'}
