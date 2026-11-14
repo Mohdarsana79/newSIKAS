@@ -15,6 +15,12 @@ import {
 } from 'lucide-react';
 import FolderModal from './Partials/FolderModal';
 import ConfirmModal from './Partials/ConfirmModal';
+import { resolveFolderTheme } from './Partials/folderColors';
+import IconTile from '@/Components/ui/IconTile';
+import PageHeader from '@/Components/ui/PageHeader';
+import StatusBadge from '@/Components/ui/StatusBadge';
+import Surface from '@/Components/ui/Surface';
+import EmptyState from '@/Components/ui/EmptyState';
 
 interface SkFolderItem {
     id: number;
@@ -41,45 +47,6 @@ interface Props {
     totalGenerated: number;
     totalUploaded: number;
 }
-
-const COLOR_MAP: Record<string, { bg: string; text: string; border: string; glow: string }> = {
-    indigo: {
-        bg: 'bg-indigo-50 dark:bg-indigo-500/10',
-        text: 'text-indigo-600 dark:text-indigo-400',
-        border: 'border-indigo-200 dark:border-indigo-500/20',
-        glow: 'hover:border-indigo-400 dark:hover:border-indigo-500/50',
-    },
-    emerald: {
-        bg: 'bg-emerald-50 dark:bg-emerald-500/10',
-        text: 'text-emerald-600 dark:text-emerald-400',
-        border: 'border-emerald-200 dark:border-emerald-500/20',
-        glow: 'hover:border-emerald-400 dark:hover:border-emerald-500/50',
-    },
-    amber: {
-        bg: 'bg-amber-50 dark:bg-amber-500/10',
-        text: 'text-amber-600 dark:text-amber-400',
-        border: 'border-amber-200 dark:border-amber-500/20',
-        glow: 'hover:border-amber-400 dark:hover:border-amber-500/50',
-    },
-    rose: {
-        bg: 'bg-rose-50 dark:bg-rose-500/10',
-        text: 'text-rose-600 dark:text-rose-400',
-        border: 'border-rose-200 dark:border-rose-500/20',
-        glow: 'hover:border-rose-400 dark:hover:border-rose-500/50',
-    },
-    sky: {
-        bg: 'bg-sky-50 dark:bg-sky-500/10',
-        text: 'text-sky-600 dark:text-sky-400',
-        border: 'border-sky-200 dark:border-sky-500/20',
-        glow: 'hover:border-sky-400 dark:hover:border-sky-500/50',
-    },
-    purple: {
-        bg: 'bg-purple-50 dark:bg-purple-500/10',
-        text: 'text-purple-600 dark:text-purple-400',
-        border: 'border-purple-200 dark:border-purple-500/20',
-        glow: 'hover:border-purple-400 dark:hover:border-purple-500/50',
-    },
-};
 
 export default function Index({
     folders,
@@ -135,141 +102,144 @@ export default function Index({
     };
 
     return (
-        <AuthenticatedLayout
-            header={
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                    <div>
-                        <h2 className="font-bold text-2xl text-gray-900 dark:text-slate-100 flex items-center gap-2.5">
-                            <span className="p-2 bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 rounded-xl text-indigo-600 dark:text-indigo-400">
-                                <FileText className="w-6 h-6" />
-                            </span>
-                            SK & Dokumen Surat Sekolah
-                        </h2>
-                        <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
-                            Kelola folder SK, buat surat dinamis dengan generator PHPWord, dan arsipkan dokumen fisik sekolah.
-                        </p>
-                    </div>
-
-                    {!isKepalaSekolah && (
-                        <button
-                            onClick={handleOpenCreateModal}
-                            className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white rounded-xl text-sm font-semibold shadow-lg shadow-indigo-500/20 transition-all duration-200"
-                        >
-                            <Plus className="w-4 h-4" />
-                            Buat Folder Baru
-                        </button>
-                    )}
-                </div>
-            }
-        >
+        <AuthenticatedLayout>
             <Head title="SK & Dokumen Surat" />
 
-            <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-6">
+            <div className="space-y-4">
+                <PageHeader
+                    className="animate-rise"
+                    breadcrumb={[
+                        { label: 'Dashboard' },
+                        { label: 'SK & Surat' },
+                    ]}
+                    title="SK & Dokumen Surat Sekolah"
+                    badge={<StatusBadge tone="violet">SK &amp; Surat</StatusBadge>}
+                    subtitle="Kelola folder SK, buat surat dinamis dengan generator PHPWord, dan arsipkan dokumen fisik sekolah."
+                    actions={
+                        !isKepalaSekolah ? (
+                            <button
+                                onClick={handleOpenCreateModal}
+                                className="inline-flex items-center gap-1.5 rounded-2xl bg-lime-400 px-4 py-2.5 text-[11.5px] font-extrabold text-slate-950 shadow-lime transition hover:-translate-y-0.5 hover:bg-lime-300"
+                            >
+                                <Plus className="w-4 h-4" />
+                                Buat Folder Baru
+                            </button>
+                        ) : undefined
+                    }
+                />
+
                 {/* Statistik Cepat */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="p-4 bg-white dark:bg-slate-900 border border-gray-200/80 dark:border-slate-800 rounded-2xl flex items-center gap-3.5 shadow-sm">
-                        <div className="p-3 bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 rounded-xl text-indigo-600 dark:text-indigo-400">
-                            <Folder className="w-5 h-5" />
-                        </div>
-                        <div>
-                            <div className="text-2xl font-bold text-gray-900 dark:text-slate-100">{totalFolders}</div>
-                            <div className="text-xs text-gray-500 dark:text-slate-400 font-medium">Total Folder</div>
-                        </div>
-                    </div>
-
-                    <div className="p-4 bg-white dark:bg-slate-900 border border-gray-200/80 dark:border-slate-800 rounded-2xl flex items-center gap-3.5 shadow-sm">
-                        <div className="p-3 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 rounded-xl text-emerald-600 dark:text-emerald-400">
-                            <FileText className="w-5 h-5" />
-                        </div>
-                        <div>
-                            <div className="text-2xl font-bold text-gray-900 dark:text-slate-100">{totalDokumens}</div>
-                            <div className="text-xs text-gray-500 dark:text-slate-400 font-medium">Total Dokumen</div>
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                    <div className="group sikas-card sikas-card-hover animate-rise relative flex items-center gap-3 overflow-hidden p-4" style={{ animationDelay: '60ms' }}>
+                        <IconTile tone="violet" size="md" className="transition-transform duration-300 group-hover:scale-110">
+                            <Folder className="w-4 h-4" />
+                        </IconTile>
+                        <div className="min-w-0">
+                            <div className="text-sikas-num text-[19px] font-extrabold tracking-tight text-slate-900 dark:text-white">{totalFolders}</div>
+                            <div className="text-[9.5px] font-extrabold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">Total Folder</div>
                         </div>
                     </div>
 
-                    <div className="p-4 bg-white dark:bg-slate-900 border border-gray-200/80 dark:border-slate-800 rounded-2xl flex items-center gap-3.5 shadow-sm">
-                        <div className="p-3 bg-sky-50 dark:bg-sky-500/10 border border-sky-200 dark:border-sky-500/20 rounded-xl text-sky-600 dark:text-sky-400">
-                            <Sparkles className="w-5 h-5" />
-                        </div>
-                        <div>
-                            <div className="text-2xl font-bold text-gray-900 dark:text-slate-100">{totalGenerated}</div>
-                            <div className="text-xs text-gray-500 dark:text-slate-400 font-medium">Surat PHPWord</div>
+                    <div className="group sikas-card sikas-card-hover animate-rise relative flex items-center gap-3 overflow-hidden p-4" style={{ animationDelay: '100ms' }}>
+                        <IconTile tone="mint" size="md" className="transition-transform duration-300 group-hover:scale-110">
+                            <FileText className="w-4 h-4" />
+                        </IconTile>
+                        <div className="min-w-0">
+                            <div className="text-sikas-num text-[19px] font-extrabold tracking-tight text-slate-900 dark:text-white">{totalDokumens}</div>
+                            <div className="text-[9.5px] font-extrabold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">Total Dokumen</div>
                         </div>
                     </div>
 
-                    <div className="p-4 bg-white dark:bg-slate-900 border border-gray-200/80 dark:border-slate-800 rounded-2xl flex items-center gap-3.5 shadow-sm">
-                        <div className="p-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-xl text-amber-600 dark:text-amber-400">
-                            <UploadCloud className="w-5 h-5" />
+                    <div className="group sikas-card sikas-card-hover animate-rise relative flex items-center gap-3 overflow-hidden p-4" style={{ animationDelay: '140ms' }}>
+                        <IconTile tone="sky" size="md" className="transition-transform duration-300 group-hover:scale-110">
+                            <Sparkles className="w-4 h-4" />
+                        </IconTile>
+                        <div className="min-w-0">
+                            <div className="text-sikas-num text-[19px] font-extrabold tracking-tight text-slate-900 dark:text-white">{totalGenerated}</div>
+                            <div className="text-[9.5px] font-extrabold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">Surat PHPWord</div>
                         </div>
-                        <div>
-                            <div className="text-2xl font-bold text-gray-900 dark:text-slate-100">{totalUploaded}</div>
-                            <div className="text-xs text-gray-500 dark:text-slate-400 font-medium">Arsip Scan / Fisik</div>
+                    </div>
+
+                    <div className="group sikas-card sikas-card-hover animate-rise relative flex items-center gap-3 overflow-hidden p-4" style={{ animationDelay: '180ms' }}>
+                        <IconTile tone="amber" size="md" className="transition-transform duration-300 group-hover:scale-110">
+                            <UploadCloud className="w-4 h-4" />
+                        </IconTile>
+                        <div className="min-w-0">
+                            <div className="text-sikas-num text-[19px] font-extrabold tracking-tight text-slate-900 dark:text-white">{totalUploaded}</div>
+                            <div className="text-[9.5px] font-extrabold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">Arsip Scan / Fisik</div>
                         </div>
                     </div>
                 </div>
 
                 {/* Filter & Search Bar */}
-                <div className="p-4 bg-white dark:bg-slate-900 border border-gray-200/80 dark:border-slate-800 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
-                    <form onSubmit={handleSearch} className="w-full sm:w-80 relative">
-                        <Search className="w-4 h-4 text-gray-400 dark:text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                        <input
-                            type="text"
-                            placeholder="Cari nama folder..."
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-slate-950 border border-gray-300 dark:border-slate-800 rounded-xl text-sm text-gray-900 dark:text-slate-200 placeholder:text-gray-400 dark:placeholder:text-slate-600 focus:border-indigo-500 focus:ring-indigo-500/20"
-                        />
-                    </form>
+                <div className="animate-rise" style={{ animationDelay: '220ms' }}>
+                    <Surface padding="sm">
+                        <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
+                            <form onSubmit={handleSearch} className="relative w-full sm:w-80">
+                                <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+                                <input
+                                    type="text"
+                                    placeholder="Cari nama folder..."
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                    className="w-full rounded-xl border border-slate-200/90 bg-white py-2 pl-10 pr-4 text-[11.5px] font-semibold text-slate-800 shadow-sm transition placeholder:text-slate-400 focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:placeholder:text-slate-500 dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
+                                />
+                            </form>
 
-                    <div className="text-xs text-gray-500 dark:text-slate-400 self-start sm:self-auto">
-                        Menampilkan <span className="font-semibold text-gray-800 dark:text-slate-200">{folders.data.length}</span> folder
-                    </div>
+                            <div className="self-start text-[10.5px] font-semibold text-slate-400 dark:text-slate-500 sm:self-auto">
+                                Menampilkan <span className="font-extrabold text-slate-700 dark:text-slate-200">{folders.data.length}</span> folder
+                            </div>
+                        </div>
+                    </Surface>
                 </div>
 
                 {/* Grid Folder */}
                 {folders.data.length === 0 ? (
-                    <div className="py-16 text-center border-2 border-dashed border-gray-300 dark:border-slate-800 rounded-3xl bg-white dark:bg-slate-900/40 p-8 shadow-sm">
-                        <div className="p-4 bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 rounded-2xl w-16 h-16 mx-auto mb-4 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
-                            <FolderPlus className="w-8 h-8" />
-                        </div>
-                        <h3 className="text-base font-bold text-gray-900 dark:text-slate-200">Belum Ada Folder SK & Surat</h3>
-                        <p className="text-xs text-gray-500 dark:text-slate-400 mt-1.5 max-w-md mx-auto">
-                            Buat folder pertama Anda (misal: "SK Tim Manajemen BOSP", "Surat Perjalanan Dinas") untuk mulai menyusun dokumen surat resmi sekolah.
-                        </p>
-                        {!isKepalaSekolah && (
-                            <button
-                                onClick={handleOpenCreateModal}
-                                className="mt-5 inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-lg shadow-indigo-500/20"
-                            >
-                                <Plus className="w-4 h-4" />
-                                Buat Folder Pertama
-                            </button>
-                        )}
-                    </div>
+                    <EmptyState
+                        className="animate-rise"
+                        icon={<FolderPlus className="w-6 h-6" />}
+                        title="Belum Ada Folder SK & Surat"
+                        description={'Buat folder pertama Anda (misal: "SK Tim Manajemen BOSP", "Surat Perjalanan Dinas") untuk mulai menyusun dokumen surat resmi sekolah.'}
+                        action={
+                            !isKepalaSekolah ? (
+                                <button
+                                    onClick={handleOpenCreateModal}
+                                    className="inline-flex items-center gap-1.5 rounded-2xl bg-lime-400 px-4 py-2.5 text-[11px] font-extrabold text-slate-950 shadow-lime transition hover:-translate-y-0.5 hover:bg-lime-300"
+                                >
+                                    <Plus className="w-4 h-4" />
+                                    Buat Folder Pertama
+                                </button>
+                            ) : undefined
+                        }
+                    />
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
                         {folders.data.map((folder) => {
-                            const color = COLOR_MAP[folder.warna || 'indigo'] || COLOR_MAP.indigo;
+                            const color = resolveFolderTheme(folder.warna);
 
                             return (
                                 <div
                                     key={folder.id}
-                                    className={`group relative bg-white dark:bg-slate-900 border ${color.border} ${color.glow} rounded-2xl p-5 transition-all duration-300 shadow-sm hover:shadow-xl dark:hover:shadow-indigo-500/5 flex flex-col justify-between`}
+                                    style={color.cardStyle}
+                                    className={`group sikas-card sikas-card-hover relative flex flex-col justify-between overflow-hidden p-4 ${color.border} ${color.glow}`}
                                 >
                                     <div>
-                                        <div className="flex items-start justify-between gap-3 mb-3">
+                                        <div className="mb-3 flex items-start justify-between gap-3">
                                             <Link
                                                 href={route('sk-surat.show', folder.id)}
-                                                className="flex items-center gap-3 group-hover:opacity-90 transition-opacity"
+                                                className="flex min-w-0 items-center gap-3 transition-opacity group-hover:opacity-90"
                                             >
-                                                <div className={`p-3 rounded-2xl ${color.bg} ${color.text} border ${color.border}`}>
-                                                    <Folder className="w-6 h-6" />
+                                                <div
+                                                    style={color.tileStyle}
+                                                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border ${color.bg} ${color.text} ${color.border}`}
+                                                >
+                                                    <Folder className="w-5 h-5" />
                                                 </div>
-                                                <div>
-                                                    <h4 className="font-bold text-gray-900 dark:text-slate-100 text-base group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors line-clamp-1">
+                                                <div className="min-w-0">
+                                                    <h4 className="line-clamp-1 text-[13px] font-extrabold tracking-tight text-slate-900 transition-colors group-hover:text-brand-600 dark:text-white dark:group-hover:text-brand-300">
                                                         {folder.nama_folder}
                                                     </h4>
-                                                    <span className="text-[11px] text-gray-500 dark:text-slate-500">
+                                                    <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">
                                                         {folder.templates_count} master template
                                                     </span>
                                                 </div>
@@ -277,29 +247,29 @@ export default function Index({
 
                                             {/* Action Menu (Khusus Bendahara) */}
                                             {!isKepalaSekolah && (
-                                                <div className="relative">
+                                                <div className="relative shrink-0">
                                                     <button
                                                         type="button"
                                                         onClick={() => setActiveDropdown(activeDropdown === folder.id ? null : folder.id)}
-                                                        className="p-1.5 text-gray-400 dark:text-slate-500 hover:text-gray-700 dark:hover:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                                                        className="inline-flex h-7 w-7 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-white/5 dark:hover:text-white"
                                                     >
                                                         <MoreVertical className="w-4 h-4" />
                                                     </button>
 
                                                     {activeDropdown === folder.id && (
-                                                        <div className="absolute right-0 mt-1 w-36 bg-white dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-xl shadow-xl py-1 z-20">
+                                                        <div className="absolute right-0 z-20 mt-1 w-36 rounded-2xl border border-white bg-white py-1 shadow-float dark:border-white/10 dark:bg-[#15131F]">
                                                             <button
                                                                 type="button"
                                                                 onClick={() => handleOpenEditModal(folder)}
-                                                                className="w-full px-3 py-2 text-left text-xs text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-white flex items-center gap-2"
+                                                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-white/5 dark:hover:text-white"
                                                             >
-                                                                <Edit2 className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" />
+                                                                <Edit2 className="w-3.5 h-3.5 text-brand-500 dark:text-brand-300" />
                                                                 Ubah Info
                                                             </button>
                                                             <button
                                                                 type="button"
                                                                 onClick={() => handleRequestDelete(folder)}
-                                                                className="w-full px-3 py-2 text-left text-xs text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 flex items-center gap-2"
+                                                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] font-semibold text-rose-600 transition hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-500/10"
                                                             >
                                                                 <Trash2 className="w-3.5 h-3.5 text-rose-500 dark:text-rose-400" />
                                                                 Hapus Folder
@@ -310,20 +280,20 @@ export default function Index({
                                             )}
                                         </div>
 
-                                        <p className="text-xs text-gray-600 dark:text-slate-400 line-clamp-2 min-h-[32px] mb-4">
-                                            {folder.deskripsi || <span className="italic text-gray-400 dark:text-slate-600">Tidak ada keterangan.</span>}
+                                        <p className="mb-3 line-clamp-2 min-h-[30px] text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                                            {folder.deskripsi || <span className="italic text-slate-400 dark:text-slate-600">Tidak ada keterangan.</span>}
                                         </p>
                                     </div>
 
-                                    <div className="pt-3 border-t border-gray-100 dark:border-slate-800/80 flex items-center justify-between text-xs">
-                                        <div className="flex items-center gap-1.5 text-gray-500 dark:text-slate-400 font-medium">
-                                            <FileText className="w-3.5 h-3.5 text-gray-400 dark:text-slate-500" />
-                                            <span>{folder.dokumens_count} Dokumen</span>
+                                    <div className="flex items-center justify-between border-t border-slate-100 pt-3 text-[10.5px] dark:border-white/5">
+                                        <div className="flex items-center gap-1.5 font-semibold text-slate-500 dark:text-slate-400">
+                                            <FileText className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
+                                            <span className="text-sikas-num">{folder.dokumens_count} Dokumen</span>
                                         </div>
 
                                         <Link
                                             href={route('sk-surat.show', folder.id)}
-                                            className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:underline flex items-center gap-1"
+                                            className="inline-flex items-center gap-1 rounded-xl bg-lime-200 px-2.5 py-1 text-[10px] font-extrabold text-slate-900 ring-1 ring-lime-300/70 transition hover:bg-lime-300 dark:bg-lime-400/15 dark:text-lime-300 dark:ring-lime-400/25 dark:hover:bg-lime-400/20"
                                         >
                                             Buka Folder &rarr;
                                         </Link>

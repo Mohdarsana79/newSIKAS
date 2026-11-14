@@ -13,6 +13,15 @@ use Inertia\Inertia;
 
 class SkSuratController extends Controller
 {
+    public const PRESET_FOLDER_COLORS = [
+        'indigo',
+        'emerald',
+        'amber',
+        'rose',
+        'sky',
+        'purple',
+    ];
+
     protected SkSuratService $skSuratService;
 
     public function __construct(SkSuratService $skSuratService)
@@ -49,19 +58,74 @@ class SkSuratController extends Controller
     }
 
     /**
+     * Validation rules for folder creation/update, allowing preset keys or hex colors.
+     *
+     * @return array<string, mixed>
+     */
+    public static function folderValidationRules(): array
+    {
+        return [
+            'nama_folder' => 'required|string|max:255',
+            'deskripsi' => 'nullable|string|max:1000',
+            'warna' => [
+                'nullable',
+                'string',
+                'max:50',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if ($value === null || $value === '') {
+                        return;
+                    }
+
+                    $trimmed = trim((string) $value);
+                    if (in_array($trimmed, self::PRESET_FOLDER_COLORS, true)) {
+                        return;
+                    }
+
+                    if (! preg_match('/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/', $trimmed)) {
+                        $fail('Warna folder harus berupa preset yang tersedia atau kode hex yang valid (contoh: #5b3df5).');
+                    }
+                },
+            ],
+        ];
+    }
+
+    /**
+     * Normalize preset tokens and 3/6-digit hex color strings to canonical #rrggbb or preset key.
+     */
+    public static function normalizeFolderColor(?string $warna): string
+    {
+        $trimmed = trim((string) ($warna ?? ''));
+        if ($trimmed === '') {
+            return 'indigo';
+        }
+
+        if (in_array($trimmed, self::PRESET_FOLDER_COLORS, true)) {
+            return $trimmed;
+        }
+
+        if (preg_match('/^#([0-9a-fA-F]{3})$/', $trimmed, $matches)) {
+            [$r, $g, $b] = str_split($matches[1]);
+
+            return strtolower("#{$r}{$r}{$g}{$g}{$b}{$b}");
+        }
+
+        if (preg_match('/^#[0-9a-fA-F]{6}$/', $trimmed)) {
+            return strtolower($trimmed);
+        }
+
+        return 'indigo';
+    }
+
+    /**
      * Create a new folder.
      */
     public function storeFolder(Request $request)
     {
         abort_if(auth()->user()->isKepalaSekolah(), 403, 'Akses ditolak untuk Kepala Sekolah.');
 
-        $validated = $request->validate([
-            'nama_folder' => 'required|string|max:255',
-            'deskripsi' => 'nullable|string|max:1000',
-            'warna' => 'nullable|string|max:50',
-        ]);
+        $validated = $request->validate(self::folderValidationRules());
 
-        $validated['warna'] = $validated['warna'] ?? 'indigo';
+        $validated['warna'] = self::normalizeFolderColor($validated['warna'] ?? null);
         $validated['created_by'] = auth()->id();
 
         $folder = SkFolder::create($validated);
@@ -78,11 +142,8 @@ class SkSuratController extends Controller
 
         $folder = SkFolder::findOrFail($id);
 
-        $validated = $request->validate([
-            'nama_folder' => 'required|string|max:255',
-            'deskripsi' => 'nullable|string|max:1000',
-            'warna' => 'nullable|string|max:50',
-        ]);
+        $validated = $request->validate(self::folderValidationRules());
+        $validated['warna'] = self::normalizeFolderColor($validated['warna'] ?? null);
 
         $folder->update($validated);
 

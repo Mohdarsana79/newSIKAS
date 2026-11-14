@@ -20,6 +20,11 @@ import ManageTemplatesModal from './Partials/ManageTemplatesModal';
 import GenerateDokumenModal from './Partials/GenerateDokumenModal';
 import UploadArsipModal from './Partials/UploadArsipModal';
 import ConfirmModal from './Partials/ConfirmModal';
+import { resolveFolderTheme } from './Partials/folderColors';
+import PageHeader from '@/Components/ui/PageHeader';
+import StatusBadge from '@/Components/ui/StatusBadge';
+import Surface from '@/Components/ui/Surface';
+import EmptyState from '@/Components/ui/EmptyState';
 
 interface SkTemplate {
     id: number;
@@ -70,6 +75,7 @@ interface Props {
 export default function Show({ folder, schoolData = {}, filters = {} }: Props) {
     const { auth } = usePage<any>().props;
     const isKepalaSekolah = auth?.user?.is_kepala_sekolah ?? false;
+    const folderTheme = resolveFolderTheme(folder.warna);
 
     const [search, setSearch] = useState(filters.search || '');
     const [tipeFilter, setTipeFilter] = useState(filters.tipe || '');
@@ -151,41 +157,35 @@ export default function Show({ folder, schoolData = {}, filters = {} }: Props) {
     };
 
     return (
-        <AuthenticatedLayout
-            header={
-                <div className="space-y-3">
-                    {/* Breadcrumb */}
-                    <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-slate-400">
-                        <Link href={route('sk-surat.index')} className="hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center gap-1 transition-colors">
-                            <ArrowLeft className="w-3.5 h-3.5" />
-                            SK & Dokumen Surat
-                        </Link>
-                        <span>/</span>
-                        <span className="text-gray-800 dark:text-slate-200 font-medium">{folder.nama_folder}</span>
-                    </div>
+        <AuthenticatedLayout>
+            <Head title={`Folder: ${folder.nama_folder}`} />
 
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                        <div className="flex items-center gap-3">
-                            <div className="p-3 bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 rounded-2xl text-indigo-600 dark:text-indigo-400">
-                                <Folder className="w-7 h-7" />
-                            </div>
-                            <div>
-                                <h2 className="font-bold text-2xl text-gray-900 dark:text-slate-100 flex items-center gap-2">
-                                    {folder.nama_folder}
-                                </h2>
-                                <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
-                                    {folder.deskripsi || 'Ruang kerja pengelolaan dokumen surat dan SK sekolah.'}
-                                </p>
-                            </div>
+            <div className="space-y-4">
+                <PageHeader
+                    className="animate-rise"
+                    breadcrumb={[
+                        { label: 'Dashboard' },
+                        { label: 'SK & Surat', href: route('sk-surat.index') },
+                        { label: folder.nama_folder },
+                    ]}
+                    icon={
+                        <div
+                            style={folderTheme.tileStyle}
+                            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border ${folderTheme.bg} ${folderTheme.text} ${folderTheme.border}`}
+                        >
+                            <Folder className="w-5 h-5" />
                         </div>
-
-                        {/* Action Buttons */}
-                        <div className="flex flex-wrap items-center gap-2.5">
+                    }
+                    title={folder.nama_folder}
+                    badge={<StatusBadge tone="neutral" dot={false}>{folder.templates.length} template</StatusBadge>}
+                    subtitle={folder.deskripsi || 'Ruang kerja pengelolaan dokumen surat dan SK sekolah.'}
+                    actions={
+                        <>
                             <button
                                 onClick={() => setShowManageTemplates(true)}
-                                className="inline-flex items-center gap-2 px-3.5 py-2 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-200 rounded-xl text-xs font-semibold border border-gray-300 dark:border-slate-700 shadow-sm transition-all"
+                                className="inline-flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-3.5 py-2.5 text-[11px] font-extrabold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10"
                             >
-                                <Settings className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
+                                <Settings className="w-4 h-4 text-brand-500 dark:text-brand-300" />
                                 Kelola Master Template ({folder.templates.length})
                             </button>
 
@@ -193,268 +193,271 @@ export default function Show({ folder, schoolData = {}, filters = {} }: Props) {
                                 <>
                                     <button
                                         onClick={() => setShowUploadArsip(true)}
-                                        className="inline-flex items-center gap-2 px-3.5 py-2 bg-emerald-50 dark:bg-emerald-600/20 hover:bg-emerald-100 dark:hover:bg-emerald-600/30 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/30 rounded-xl text-xs font-semibold shadow-sm transition-all"
+                                        className="inline-flex items-center gap-1.5 rounded-2xl border border-emerald-200 bg-pastel-mint px-3.5 py-2.5 text-[11px] font-extrabold text-emerald-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-100 dark:border-emerald-400/20 dark:bg-mint/10 dark:text-emerald-300 dark:hover:bg-mint/15"
                                     >
-                                        <UploadCloud className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                                        <UploadCloud className="w-4 h-4" />
                                         Upload Arsip Fisik
                                     </button>
 
                                     <button
                                         onClick={handleOpenCreateDokumen}
-                                        className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-lg shadow-indigo-500/20 transition-all"
+                                        className="inline-flex items-center gap-1.5 rounded-2xl bg-lime-400 px-4 py-2.5 text-[11px] font-extrabold text-slate-950 shadow-lime transition hover:-translate-y-0.5 hover:bg-lime-300"
                                     >
                                         <Plus className="w-4 h-4" />
                                         Buat Surat dari Word
                                     </button>
                                 </>
                             )}
-                        </div>
-                    </div>
-                </div>
-            }
-        >
-            <Head title={`Folder: ${folder.nama_folder}`} />
+                        </>
+                    }
+                />
 
-            <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-6">
                 {/* Search & Filter Bar */}
-                <div className="p-4 bg-white dark:bg-slate-900 border border-gray-200/80 dark:border-slate-800 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
-                    <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
-                        <div className="relative w-full sm:w-72">
-                            <Search className="w-4 h-4 text-gray-400 dark:text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                            <input
-                                type="text"
-                                placeholder="Cari nomor atau perihal surat..."
-                                value={search}
-                                onChange={(e) => {
-                                    setSearch(e.target.value);
-                                    handleFilter(e.target.value, tipeFilter);
-                                }}
-                                className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-slate-950 border border-gray-300 dark:border-slate-800 rounded-xl text-xs text-gray-900 dark:text-slate-200 placeholder:text-gray-400 dark:placeholder:text-slate-600 focus:border-indigo-500"
-                            />
-                        </div>
+                <div className="animate-rise" style={{ animationDelay: '60ms' }}>
+                    <Surface padding="sm">
+                        <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
+                            <div className="flex w-full flex-col items-center gap-3 sm:w-auto sm:flex-row">
+                                <div className="relative w-full sm:w-72">
+                                    <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+                                    <input
+                                        type="text"
+                                        placeholder="Cari nomor atau perihal surat..."
+                                        value={search}
+                                        onChange={(e) => {
+                                            setSearch(e.target.value);
+                                            handleFilter(e.target.value, tipeFilter);
+                                        }}
+                                        className="w-full rounded-xl border border-slate-200/90 bg-white py-2 pl-10 pr-4 text-[11.5px] font-semibold text-slate-800 shadow-sm transition placeholder:text-slate-400 focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:placeholder:text-slate-500 dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
+                                    />
+                                </div>
 
-                        {/* Filter Tipe Dokumen */}
-                        <div className="flex items-center gap-1.5 w-full sm:w-auto overflow-x-auto">
-                            <button
-                                onClick={() => {
-                                    setTipeFilter('');
-                                    handleFilter(search, '');
-                                }}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                                    tipeFilter === ''
-                                        ? 'bg-indigo-600 text-white shadow-sm'
-                                        : 'bg-gray-100 dark:bg-slate-950 text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white border border-gray-200 dark:border-slate-800'
-                                }`}
-                            >
-                                Semua ({folder.dokumens.length})
-                            </button>
-                            <button
-                                onClick={() => {
-                                    setTipeFilter('generated');
-                                    handleFilter(search, 'generated');
-                                }}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${
-                                    tipeFilter === 'generated'
-                                        ? 'bg-indigo-600 text-white shadow-sm'
-                                        : 'bg-gray-100 dark:bg-slate-950 text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white border border-gray-200 dark:border-slate-800'
-                                }`}
-                            >
-                                <Sparkles className="w-3 h-3 text-sky-500 dark:text-sky-400" />
-                                Surat PHPWord
-                            </button>
-                            <button
-                                onClick={() => {
-                                    setTipeFilter('uploaded');
-                                    handleFilter(search, 'uploaded');
-                                }}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${
-                                    tipeFilter === 'uploaded'
-                                        ? 'bg-indigo-600 text-white shadow-sm'
-                                        : 'bg-gray-100 dark:bg-slate-950 text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white border border-gray-200 dark:border-slate-800'
-                                }`}
-                            >
-                                <UploadCloud className="w-3 h-3 text-emerald-500 dark:text-emerald-400" />
-                                Arsip Fisik
-                            </button>
-                        </div>
-                    </div>
+                                {/* Filter Tipe Dokumen */}
+                                <div className="flex w-full items-center gap-1 overflow-x-auto sm:w-auto">
+                                    <button
+                                        onClick={() => {
+                                            setTipeFilter('');
+                                            handleFilter(search, '');
+                                        }}
+                                        className={`shrink-0 rounded-xl px-3 py-1.5 text-[10.5px] font-extrabold transition ${
+                                            tipeFilter === ''
+                                                ? 'bg-slate-900 text-white shadow-pill dark:bg-white dark:text-slate-900'
+                                                : 'bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:bg-white/5 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white'
+                                        }`}
+                                    >
+                                        Semua ({folder.dokumens.length})
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setTipeFilter('generated');
+                                            handleFilter(search, 'generated');
+                                        }}
+                                        className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-1.5 text-[10.5px] font-extrabold transition ${
+                                            tipeFilter === 'generated'
+                                                ? 'bg-slate-900 text-white shadow-pill dark:bg-white dark:text-slate-900'
+                                                : 'bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:bg-white/5 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white'
+                                        }`}
+                                    >
+                                        <Sparkles className="w-3 h-3 text-sky dark:text-sky" />
+                                        Surat PHPWord
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setTipeFilter('uploaded');
+                                            handleFilter(search, 'uploaded');
+                                        }}
+                                        className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-1.5 text-[10.5px] font-extrabold transition ${
+                                            tipeFilter === 'uploaded'
+                                                ? 'bg-slate-900 text-white shadow-pill dark:bg-white dark:text-slate-900'
+                                                : 'bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:bg-white/5 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white'
+                                        }`}
+                                    >
+                                        <UploadCloud className="w-3 h-3 text-mint dark:text-emerald-300" />
+                                        Arsip Fisik
+                                    </button>
+                                </div>
+                            </div>
 
-                    <div className="text-xs text-gray-500 dark:text-slate-400">
-                        {folder.dokumens.length} dokumen tersimpan
-                    </div>
+                            <div className="self-start text-[10.5px] font-semibold text-slate-400 dark:text-slate-500 sm:self-auto">
+                                <span className="text-sikas-num font-extrabold text-slate-700 dark:text-slate-200">{folder.dokumens.length}</span> dokumen tersimpan
+                            </div>
+                        </div>
+                    </Surface>
                 </div>
 
                 {/* Tabel Daftar Dokumen */}
-                <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
-                    {folder.dokumens.length === 0 ? (
-                        <div className="py-16 text-center p-8">
-                            <FileCheck className="w-12 h-12 text-gray-300 dark:text-slate-700 mx-auto mb-3" />
-                            <h4 className="text-sm font-semibold text-gray-800 dark:text-slate-300">Belum Ada Dokumen di Folder Ini</h4>
-                            <p className="text-xs text-gray-500 dark:text-slate-500 mt-1 max-w-sm mx-auto">
-                                Mulai dengan membuat surat baru dari template Word atau unggah berkas fisik/scan bertanda tangan basah.
-                            </p>
-                            {!isKepalaSekolah && (
-                                <div className="mt-4 flex justify-center gap-3">
-                                    <button
-                                        onClick={handleOpenCreateDokumen}
-                                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-medium shadow-md shadow-indigo-500/20"
-                                    >
-                                        Buat Surat dari Word
-                                    </button>
-                                    <button
-                                        onClick={() => setShowUploadArsip(true)}
-                                        className="px-4 py-2 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-200 border border-gray-300 dark:border-slate-700 rounded-xl text-xs font-medium shadow-sm"
-                                    >
-                                        Upload Arsip Fisik
-                                    </button>
-                                </div>
-                            )}
-                        </div>
-                    ) : (
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left text-xs text-gray-700 dark:text-slate-300">
-                                <thead className="bg-gray-50 dark:bg-slate-950/70 text-gray-500 dark:text-slate-400 uppercase tracking-wider text-[11px] border-b border-gray-200 dark:border-slate-800">
-                                    <tr>
-                                        <th className="py-3.5 px-4 font-semibold">Tipe</th>
-                                        <th className="py-3.5 px-4 font-semibold">Nomor & Tanggal</th>
-                                        <th className="py-3.5 px-4 font-semibold">Perihal / Judul Dokumen</th>
-                                        <th className="py-3.5 px-4 font-semibold">Template / Berkas Asli</th>
-                                        <th className="py-3.5 px-4 font-semibold">Dibuat Oleh</th>
-                                        <th className="py-3.5 px-4 font-semibold text-right">Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100 dark:divide-slate-800/60">
-                                    {folder.dokumens.map((doc) => {
-                                        const displayNomor = resolveNomorSurat(doc);
-                                        const displayTanggal = resolveTanggalSurat(doc);
+                <div className="animate-rise" style={{ animationDelay: '120ms' }}>
+                    <div className="sikas-card overflow-hidden">
+                        {folder.dokumens.length === 0 ? (
+                            <EmptyState
+                                className="m-4 border-0 bg-transparent dark:bg-transparent"
+                                icon={<FileCheck className="w-6 h-6" />}
+                                title="Belum Ada Dokumen di Folder Ini"
+                                description="Mulai dengan membuat surat baru dari template Word atau unggah berkas fisik/scan bertanda tangan basah."
+                                action={
+                                    !isKepalaSekolah ? (
+                                        <div className="flex flex-wrap justify-center gap-2">
+                                            <button
+                                                onClick={handleOpenCreateDokumen}
+                                                className="inline-flex items-center gap-1.5 rounded-2xl bg-lime-400 px-4 py-2.5 text-[11px] font-extrabold text-slate-950 shadow-lime transition hover:-translate-y-0.5 hover:bg-lime-300"
+                                            >
+                                                Buat Surat dari Word
+                                            </button>
+                                            <button
+                                                onClick={() => setShowUploadArsip(true)}
+                                                className="inline-flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-[11px] font-bold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10"
+                                            >
+                                                Upload Arsip Fisik
+                                            </button>
+                                        </div>
+                                    ) : undefined
+                                }
+                            />
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left text-[11px]">
+                                    <thead>
+                                        <tr className="border-b border-slate-100 bg-slate-50/70 dark:border-white/5 dark:bg-white/[0.03]">
+                                            <th className="whitespace-nowrap px-4 py-3.5 text-[9px] font-extrabold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">Tipe</th>
+                                            <th className="whitespace-nowrap px-4 py-3.5 text-[9px] font-extrabold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">Nomor &amp; Tanggal</th>
+                                            <th className="whitespace-nowrap px-4 py-3.5 text-[9px] font-extrabold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">Perihal / Judul Dokumen</th>
+                                            <th className="whitespace-nowrap px-4 py-3.5 text-[9px] font-extrabold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">Template / Berkas Asli</th>
+                                            <th className="whitespace-nowrap px-4 py-3.5 text-[9px] font-extrabold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">Dibuat Oleh</th>
+                                            <th className="whitespace-nowrap px-4 py-3.5 text-right text-[9px] font-extrabold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {folder.dokumens.map((doc) => {
+                                            const displayNomor = resolveNomorSurat(doc);
+                                            const displayTanggal = resolveTanggalSurat(doc);
 
-                                        return (
-                                            <tr key={doc.id} className="hover:bg-gray-50/70 dark:hover:bg-slate-800/30 transition-colors">
-                                                {/* Tipe Badge */}
-                                                <td className="py-3.5 px-4 whitespace-nowrap">
-                                                    {doc.tipe === 'generated' ? (
-                                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-sky-50 dark:bg-sky-950/80 text-sky-700 dark:text-sky-400 border border-sky-200 dark:border-sky-500/30">
-                                                            <Sparkles className="w-3 h-3" />
-                                                            Generator Word
-                                                        </span>
-                                                    ) : (
-                                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30">
-                                                            <UploadCloud className="w-3 h-3" />
-                                                            Arsip Fisik
-                                                        </span>
-                                                    )}
-                                                </td>
-
-                                                {/* Nomor & Tanggal */}
-                                                <td className="py-3.5 px-4 whitespace-nowrap">
-                                                    <div className="font-mono font-medium text-gray-900 dark:text-slate-200">
-                                                        {displayNomor || <span className="text-gray-400 dark:text-slate-600 italic">Tanpa nomor</span>}
-                                                    </div>
-                                                    <div className="text-[11px] text-gray-500 dark:text-slate-500 mt-0.5">
-                                                        {displayTanggal || '-'}
-                                                    </div>
-                                                </td>
-
-                                                {/* Perihal */}
-                                                <td className="py-3.5 px-4">
-                                                    <div className="font-semibold text-gray-900 dark:text-slate-100 text-sm">
-                                                        {doc.perihal}
-                                                    </div>
-                                                    {doc.keterangan && (
-                                                        <div className="text-[11px] text-gray-500 dark:text-slate-400 mt-0.5 line-clamp-1">
-                                                            {doc.keterangan}
-                                                        </div>
-                                                    )}
-                                                </td>
-
-                                                {/* Template / File */}
-                                                <td className="py-3.5 px-4 whitespace-nowrap text-gray-600 dark:text-slate-400">
-                                                    {doc.tipe === 'generated' ? (
-                                                        <div className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-300">
-                                                            <FileText className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" />
-                                                            {doc.template?.judul || 'Template'}
-                                                        </div>
-                                                    ) : (
-                                                        <div className="font-mono text-[11px] text-gray-500 dark:text-slate-400 truncate max-w-[180px]">
-                                                            {doc.file_name_original || 'Berkas arsip'}
-                                                        </div>
-                                                    )}
-                                                </td>
-
-                                                {/* Dibuat Oleh */}
-                                                <td className="py-3.5 px-4 whitespace-nowrap text-gray-500 dark:text-slate-400 text-xs">
-                                                    {doc.user?.name || 'Sistem'}
-                                                </td>
-
-                                                {/* Aksi */}
-                                                <td className="py-3.5 px-4 whitespace-nowrap text-right">
-                                                    <div className="flex items-center justify-end gap-2">
+                                            return (
+                                                <tr key={doc.id} className="border-b border-slate-50 transition last:border-0 hover:bg-lime-50/50 dark:border-white/5 dark:hover:bg-white/[0.04]">
+                                                    {/* Tipe Badge */}
+                                                    <td className="whitespace-nowrap px-4 py-3.5">
                                                         {doc.tipe === 'generated' ? (
-                                                            <>
-                                                                {/* Download DOCX */}
-                                                                <a
-                                                                    href={route('sk-surat.dokumen.download-docx', doc.id)}
-                                                                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-indigo-50 dark:bg-indigo-600/20 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-600/30 border border-indigo-200 dark:border-indigo-500/30 transition-colors shadow-sm"
-                                                                    title="Unduh File Asli Word (.docx)"
-                                                                >
-                                                                    <FileDown className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                                                                    DOCX
-                                                                </a>
-
-                                                                {/* Export PDF */}
-                                                                <a
-                                                                    href={route('sk-surat.dokumen.export-pdf', doc.id)}
-                                                                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-rose-50 dark:bg-rose-600/20 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-600/30 border border-rose-200 dark:border-rose-500/30 transition-colors shadow-sm"
-                                                                    title="Ekspor Siap Cetak (.pdf)"
-                                                                >
-                                                                    <Download className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
-                                                                    PDF
-                                                                </a>
-
-                                                                {/* Edit Form - Khusus Bendahara */}
-                                                                {!isKepalaSekolah && (
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => handleEditDokumen(doc)}
-                                                                        className="p-1.5 rounded-lg text-gray-500 dark:text-slate-400 hover:text-gray-800 dark:hover:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
-                                                                        title="Ubah Isian Variabel"
-                                                                    >
-                                                                        <Edit2 className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" />
-                                                                    </button>
-                                                                )}
-                                                            </>
+                                                            <StatusBadge tone="info">
+                                                                <Sparkles className="w-3 h-3" />
+                                                                Generator Word
+                                                            </StatusBadge>
                                                         ) : (
-                                                            /* Download Arsip Fisik */
-                                                            <a
-                                                                href={route('sk-surat.dokumen.download-archive', doc.id)}
-                                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-50 dark:bg-emerald-600/20 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-600/30 border border-emerald-200 dark:border-emerald-500/30 transition-colors shadow-sm"
-                                                                title="Unduh Berkas Fisik"
-                                                            >
-                                                                <Download className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                                                                Unduh Berkas
-                                                            </a>
+                                                            <StatusBadge tone="success">
+                                                                <UploadCloud className="w-3 h-3" />
+                                                                Arsip Fisik
+                                                            </StatusBadge>
                                                         )}
+                                                    </td>
 
-                                                        {/* Hapus Dokumen - Khusus Bendahara */}
-                                                        {!isKepalaSekolah && (
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => setDocToDelete(doc)}
-                                                                className="p-1.5 rounded-lg text-gray-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors"
-                                                                title="Hapus Dokumen"
-                                                            >
-                                                                <Trash2 className="w-3.5 h-3.5" />
-                                                            </button>
+                                                    {/* Nomor & Tanggal */}
+                                                    <td className="whitespace-nowrap px-4 py-3.5">
+                                                        <div className="font-mono text-[11px] font-semibold text-slate-800 text-sikas-num dark:text-slate-200">
+                                                            {displayNomor || <span className="italic text-slate-400 dark:text-slate-600">Tanpa nomor</span>}
+                                                        </div>
+                                                        <div className="mt-0.5 text-[10px] font-semibold text-slate-400 text-sikas-num dark:text-slate-500">
+                                                            {displayTanggal || '-'}
+                                                        </div>
+                                                    </td>
+
+                                                    {/* Perihal */}
+                                                    <td className="px-4 py-3.5">
+                                                        <div className="text-[12px] font-extrabold text-slate-900 dark:text-slate-100">
+                                                            {doc.perihal}
+                                                        </div>
+                                                        {doc.keterangan && (
+                                                            <div className="mt-0.5 line-clamp-1 text-[10px] font-medium text-slate-400 dark:text-slate-500">
+                                                                {doc.keterangan}
+                                                            </div>
                                                         )}
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
+                                                    </td>
+
+                                                    {/* Template / File */}
+                                                    <td className="whitespace-nowrap px-4 py-3.5">
+                                                        {doc.tipe === 'generated' ? (
+                                                            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-brand-600 dark:text-brand-300">
+                                                                <FileText className="w-3.5 h-3.5 text-brand-500 dark:text-brand-300" />
+                                                                {doc.template?.judul || 'Template'}
+                                                            </div>
+                                                        ) : (
+                                                            <div className="max-w-[180px] truncate font-mono text-[10px] font-medium text-slate-400 dark:text-slate-500">
+                                                                {doc.file_name_original || 'Berkas arsip'}
+                                                            </div>
+                                                        )}
+                                                    </td>
+
+                                                    {/* Dibuat Oleh */}
+                                                    <td className="whitespace-nowrap px-4 py-3.5 text-[10.5px] font-medium text-slate-400 dark:text-slate-500">
+                                                        {doc.user?.name || 'Sistem'}
+                                                    </td>
+
+                                                    {/* Aksi */}
+                                                    <td className="whitespace-nowrap px-4 py-3.5 text-right">
+                                                        <div className="flex items-center justify-end gap-1.5">
+                                                            {doc.tipe === 'generated' ? (
+                                                                <>
+                                                                    {/* Download DOCX */}
+                                                                    <a
+                                                                        href={route('sk-surat.dokumen.download-docx', doc.id)}
+                                                                        className="inline-flex items-center gap-1 rounded-xl bg-lime-200 px-2.5 py-1.5 text-[10px] font-extrabold text-slate-900 ring-1 ring-lime-300/70 transition hover:-translate-y-0.5 hover:bg-lime-300 dark:bg-lime-400/15 dark:text-lime-300 dark:ring-lime-400/25 dark:hover:bg-lime-400/20"
+                                                                        title="Unduh File Asli Word (.docx)"
+                                                                    >
+                                                                        <FileDown className="w-3.5 h-3.5" />
+                                                                        DOCX
+                                                                    </a>
+
+                                                                    {/* Export PDF */}
+                                                                    <a
+                                                                        href={route('sk-surat.dokumen.export-pdf', doc.id)}
+                                                                        className="inline-flex items-center gap-1 rounded-xl bg-pastel-rose px-2.5 py-1.5 text-[10px] font-extrabold text-rose-600 ring-1 ring-rose-200 transition hover:-translate-y-0.5 hover:bg-rose-100 dark:bg-rose-500/10 dark:text-rose-300 dark:ring-rose-400/20 dark:hover:bg-rose-500/15"
+                                                                        title="Ekspor Siap Cetak (.pdf)"
+                                                                    >
+                                                                        <Download className="w-3.5 h-3.5" />
+                                                                        PDF
+                                                                    </a>
+
+                                                                    {/* Edit Form - Khusus Bendahara */}
+                                                                    {!isKepalaSekolah && (
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => handleEditDokumen(doc)}
+                                                                            className="inline-flex h-7 w-7 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-white/5 dark:hover:text-white"
+                                                                            title="Ubah Isian Variabel"
+                                                                        >
+                                                                            <Edit2 className="w-3.5 h-3.5" />
+                                                                        </button>
+                                                                    )}
+                                                                </>
+                                                            ) : (
+                                                                /* Download Arsip Fisik */
+                                                                <a
+                                                                    href={route('sk-surat.dokumen.download-archive', doc.id)}
+                                                                    className="inline-flex items-center gap-1 rounded-xl bg-pastel-mint px-3 py-1.5 text-[10px] font-extrabold text-emerald-700 ring-1 ring-mint/20 transition hover:-translate-y-0.5 hover:bg-emerald-100 dark:bg-mint/10 dark:text-emerald-300 dark:ring-mint/20 dark:hover:bg-mint/15"
+                                                                    title="Unduh Berkas Fisik"
+                                                                >
+                                                                    <Download className="w-3.5 h-3.5" />
+                                                                    Unduh Berkas
+                                                                </a>
+                                                            )}
+
+                                                            {/* Hapus Dokumen - Khusus Bendahara */}
+                                                            {!isKepalaSekolah && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setDocToDelete(doc)}
+                                                                    className="inline-flex h-7 w-7 items-center justify-center rounded-xl text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 dark:text-slate-500 dark:hover:bg-rose-500/10 dark:hover:text-rose-300"
+                                                                    title="Hapus Dokumen"
+                                                                >
+                                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
