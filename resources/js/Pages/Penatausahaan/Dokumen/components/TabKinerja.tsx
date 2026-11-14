@@ -6,6 +6,10 @@ import TextInput from '@/Components/TextInput';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import DangerButton from '@/Components/DangerButton';
+import DataTable from '@/Components/ui/DataTable';
+import EmptyState from '@/Components/ui/EmptyState';
+import IconTile from '@/Components/ui/IconTile';
+import Surface from '@/Components/ui/Surface';
 import SearchableSelect from '@/Components/SearchableSelect';
 import axios from 'axios';
 
@@ -155,110 +159,200 @@ export default function TabKinerja({ auth, kinerjaPenganggarans }: Props) {
     };
 
     return (
-        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="space-y-4">
+            {/* Filters */}
+            <div className="relative z-20 animate-rise" style={{ animationDelay: '60ms' }}>
+                <Surface padding="sm" overflowVisible>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        <div>
+                            <InputLabel value="Tahun Anggaran" />
+                            <SearchableSelect
+                                value={selectedTahun}
+                                onChange={(value) => {
+                                    setSelectedTahun(value.toString());
+                                    setSelectedBulan('');
+                                }}
+                                options={kinerjaPenganggarans}
+                                searchFields={['tahun_anggaran']}
+                                displayColumns={[
+                                    { header: 'Tahun Anggaran', field: 'tahun_anggaran' }
+                                ]}
+                                placeholder="Pilih Tahun Anggaran"
+                                labelRenderer={(option) => option.tahun_anggaran}
+                            />
+                        </div>
 
-            <div className="py-12">
-                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                    <div className="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6">
+                        <div>
+                            <InputLabel value="Bulan" />
+                            <select
+                                className="w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-[12px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
+                                value={selectedBulan}
+                                onChange={(e) => setSelectedBulan(e.target.value)}
+                                disabled={!selectedTahun}
+                            >
+                                <option value="">Pilih Bulan</option>
+                                {months.map((m) => (
+                                    <option key={m.value} value={m.value}>{m.label}</option>
+                                ))}
+                            </select>
+                        </div>
 
-                        {/* Filters */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                            <div>
-                                <InputLabel value="Tahun Anggaran" className="mb-2" />
-                                <SearchableSelect
-                                    value={selectedTahun}
-                                    onChange={(value) => {
-                                        setSelectedTahun(value.toString());
-                                        setSelectedBulan('');
-                                    }}
-                                    options={kinerjaPenganggarans}
-                                    searchFields={['tahun_anggaran']}
-                                    displayColumns={[
-                                        { header: 'Tahun Anggaran', field: 'tahun_anggaran' }
-                                    ]}
-                                    placeholder="Pilih Tahun Anggaran"
-                                    labelRenderer={(option) => option.tahun_anggaran}
-                                />
-                            </div>
-
-                            <div>
-                                <InputLabel value="Bulan" className="mb-2" />
-                                <select
-                                    className="w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm disabled:opacity-50"
-                                    value={selectedBulan}
-                                    onChange={(e) => setSelectedBulan(e.target.value)}
-                                    disabled={!selectedTahun}
-                                >
-                                    <option value="">Pilih Bulan</option>
-                                    {months.map((m) => (
-                                        <option key={m.value} value={m.value}>{m.label}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div>
-                                <InputLabel value="Cari Data" className="mb-2" />
+                        <div>
+                            <InputLabel value="Cari Data" />
+                            <div className="relative">
+                                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
+                                    <svg className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round">
+                                        <circle cx="11" cy="11" r="7" />
+                                        <path d="m21 21-4.3-4.3" />
+                                    </svg>
+                                </div>
                                 <TextInput
                                     type="text"
-                                    className="w-full text-black"
+                                    className="pl-9"
                                     placeholder="Cari Uraian..."
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
                                 />
                             </div>
                         </div>
+                    </div>
+                </Surface>
+            </div>
 
-                        {/* Table */}
-                        <div className="overflow-x-auto">
-                            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                                <thead className="bg-gray-50 dark:bg-gray-700">
+            {/* Table */}
+            <div className="animate-rise" style={{ animationDelay: '120ms' }}>
+                <DataTable
+                    title="Daftar Transaksi"
+                    icon={
+                        <IconTile tone="sky" size="sm">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M4 7h16M4 12h16M4 17h10" />
+                            </svg>
+                        </IconTile>
+                    }
+                    contentClassName="px-3 pb-1 sm:px-4"
+                    footer={
+                        pagination && pagination.links && pagination.links.length > 3 && (
+                            <>
+                                <div className="flex flex-1 justify-between sm:hidden">
+                                    <button
+                                        onClick={() => handlePageChange(pagination.prev_page_url)}
+                                        disabled={!pagination.prev_page_url}
+                                        className="inline-flex items-center rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-[10.5px] font-bold text-slate-600 shadow-pill transition hover:-translate-y-0.5 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10"
+                                    >
+                                        Previous
+                                    </button>
+                                    <button
+                                        onClick={() => handlePageChange(pagination.next_page_url)}
+                                        disabled={!pagination.next_page_url}
+                                        className="ml-2 inline-flex items-center rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-[10.5px] font-bold text-slate-600 shadow-pill transition hover:-translate-y-0.5 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10"
+                                    >
+                                        Next
+                                    </button>
+                                </div>
+                                <div className="hidden flex-1 flex-wrap items-center justify-between gap-3 sm:flex">
+                                    <p className="text-[10.5px] font-semibold text-slate-400 dark:text-slate-500">
+                                        Menampilkan <span className="text-sikas-num font-extrabold text-slate-700 dark:text-slate-200">{pagination.from || 0}</span> sampai <span className="text-sikas-num font-extrabold text-slate-700 dark:text-slate-200">{pagination.to || 0}</span> dari <span className="text-sikas-num font-extrabold text-slate-700 dark:text-slate-200">{pagination.total}</span> hasil
+                                    </p>
+                                    <nav className="inline-flex items-center gap-1" aria-label="Pagination">
+                                        {pagination.links.map((link: any, index: number) => {
+                                            // Clean up standard Label HTML entities
+                                            const label = link.label.replace('&laquo; Previous', 'Sebelumnya').replace('Next &raquo;', 'Selanjutnya');
+
+                                            return (
+                                                <button
+                                                    key={index}
+                                                    onClick={() => handlePageChange(link.url)}
+                                                    disabled={!link.url || link.active}
+                                                    className={`inline-flex h-7 min-w-[28px] items-center justify-center rounded-xl px-2 text-[10px] text-sikas-num transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50 ${link.active
+                                                        ? 'bg-lime-400 font-extrabold text-slate-950 shadow-lime'
+                                                        : 'font-bold text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white'
+                                                        }`}
+                                                    dangerouslySetInnerHTML={{ __html: label }}
+                                                />
+                                            );
+                                        })}
+                                    </nav>
+                                </div>
+                            </>
+                        )
+                    }
+                >
+                    <div className="bento-table-wrapper" style={{ overflowX: 'auto' }}>
+                        <table className="w-full min-w-[640px]">
+                            <thead>
+                                <tr>
+                                    <th className="text-left">No</th>
+                                    <th className="text-left">Buku Kas (Uraian)</th>
+                                    <th className="text-left">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {loading ? (
                                     <tr>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">No</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Buku Kas (Uraian)</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Aksi</th>
+                                        <td colSpan={3}>
+                                            <div className="flex items-center justify-center gap-2 py-6">
+                                                <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-200 border-t-slate-400 dark:border-white/10 dark:border-t-lime-400" />
+                                                Loading...
+                                            </div>
+                                        </td>
                                     </tr>
-                                </thead>
-                                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                    {loading ? (
-                                        <tr>
-                                            <td colSpan={3} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">Loading...</td>
-                                        </tr>
-                                    ) : bkuList.length === 0 ? (
-                                        <tr>
-                                            <td colSpan={3} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
-                                                {!selectedTahun || !selectedBulan
-                                                    ? 'Silahkan pilih Tahun Anggaran dan Bulan terlebih dahulu'
-                                                    : 'Tidak ada data ditemukan'}
-                                            </td>
-                                        </tr>
-                                    ) : (
-                                        bkuList.map((item, index) => (
-                                            <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                ) : bkuList.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={3}>
+                                            <EmptyState
+                                                icon={
+                                                    <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                                                        <path d="M4 7h16M4 12h16M4 17h10" />
+                                                    </svg>
+                                                }
+                                                title={
+                                                    !selectedTahun || !selectedBulan
+                                                        ? 'Silahkan pilih Tahun Anggaran dan Bulan terlebih dahulu'
+                                                        : 'Tidak ada data ditemukan'
+                                                }
+                                            />
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    bkuList.map((item, index) => (
+                                        <tr key={item.id}>
+                                            <td>
+                                                <span className="text-sikas-num text-slate-400 dark:text-slate-500">
                                                     {(pagination?.from || 1) + index}
-                                                </td>
-                                                <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div className="text-[12px] font-semibold text-slate-900 dark:text-white">
                                                     {item.uraian_opsional || item.uraian}
                                                     {item.dokumen && (
-                                                        <div className="text-xs text-indigo-500 mt-1 font-medium">
+                                                        <div className="mt-1 flex items-center gap-1.5 text-[9.5px] font-extrabold text-brand-600 dark:text-brand-300">
+                                                            <span className="inline-flex h-4 w-4 items-center justify-center rounded-md bg-pastel-lavender dark:bg-brand-500/15">
+                                                                <svg className="h-2.5 w-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                                                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                                                    <path d="M14 2v6h6" />
+                                                                </svg>
+                                                            </span>
                                                             Dokumen: {item.dokumen.nama_dokumen}
                                                         </div>
                                                     )}
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div className="flex items-center gap-1.5">
                                                     {item.dokumen ? (
                                                         <>
                                                             <a
                                                                 href={item.dokumen.link_drive}
                                                                 target="_blank"
                                                                 rel="noopener noreferrer"
-                                                                className="inline-flex items-center px-3 py-1 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 rounded-md hover:bg-green-200 dark:hover:bg-green-800 transition-colors"
+                                                                className="inline-flex items-center gap-1 rounded-xl bg-pastel-mint px-2.5 py-1.5 text-[9.5px] font-extrabold text-mint ring-1 ring-mint/15 transition hover:-translate-y-0.5 hover:bg-mint/15 dark:bg-mint/10 dark:hover:bg-mint/20 dark:text-mint dark:ring-mint/20"
                                                             >
                                                                 Lihat
                                                             </a>
                                                             <button
                                                                 onClick={() => openDeleteModal(item.dokumen!.id)}
-                                                                className="inline-flex items-center px-3 py-1 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 rounded-md hover:bg-red-200 dark:hover:bg-red-800 transition-colors"
+                                                                className="inline-flex items-center gap-1 rounded-xl bg-pastel-rose px-2.5 py-1.5 text-[9.5px] font-extrabold text-rose-500 ring-1 ring-rose-500/15 transition hover:-translate-y-0.5 hover:bg-rose-500/15 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 dark:text-rose-300 dark:ring-rose-400/20"
                                                             >
                                                                 Hapus
                                                             </button>
@@ -267,154 +361,123 @@ export default function TabKinerja({ auth, kinerjaPenganggarans }: Props) {
                                                         (item.uraian_opsional || item.uraian) && (
                                                             <button
                                                                 onClick={() => openAddModal(item)}
-                                                                className="inline-flex items-center px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-md hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
+                                                                className="inline-flex items-center gap-1 rounded-xl bg-lime-400 px-2.5 py-1.5 text-[9.5px] font-extrabold text-slate-950 shadow-lime transition hover:-translate-y-0.5 hover:bg-lime-300 dark:bg-lime-400 dark:text-slate-950"
                                                             >
                                                                 Tambah
                                                             </button>
                                                         )
                                                     )}
-                                                </td>
-                                            </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-
-                        {/* Pagination */}
-                        {pagination && pagination.links && pagination.links.length > 3 && (
-                            <div className="flex items-center justify-between border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-3 sm:px-6 mt-4">
-                                <div className="flex flex-1 justify-between sm:hidden">
-                                    <button
-                                        onClick={() => handlePageChange(pagination.prev_page_url)}
-                                        disabled={!pagination.prev_page_url}
-                                        className="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-                                    >
-                                        Previous
-                                    </button>
-                                    <button
-                                        onClick={() => handlePageChange(pagination.next_page_url)}
-                                        disabled={!pagination.next_page_url}
-                                        className="relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-                                    >
-                                        Next
-                                    </button>
-                                </div>
-                                <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
-                                    <div>
-                                        <p className="text-sm text-gray-700 dark:text-gray-300">
-                                            Menampilkan <span className="font-medium">{pagination.from || 0}</span> sampai <span className="font-medium">{pagination.to || 0}</span> dari <span className="font-medium">{pagination.total}</span> hasil
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
-                                            {pagination.links.map((link: any, index: number) => {
-                                                // Clean up standard Label HTML entities
-                                                const label = link.label.replace('&laquo; Previous', 'Sebelumnya').replace('Next &raquo;', 'Selanjutnya');
-
-                                                return (
-                                                    <button
-                                                        key={index}
-                                                        onClick={() => handlePageChange(link.url)}
-                                                        disabled={!link.url || link.active}
-                                                        className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold focus:z-20 focus:outline-offset-0 transition-all duration-200 ${link.active
-                                                            ? 'z-10 bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md scale-105'
-                                                            : 'text-gray-900 dark:text-gray-200 ring-1 ring-inset ring-gray-300 dark:ring-gray-700 hover:bg-purple-50 dark:hover:bg-gray-700 hover:text-purple-700 dark:hover:text-purple-400 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed'
-                                                            } ${index === 0 ? 'rounded-l-md' : ''} ${index === pagination.links.length - 1 ? 'rounded-r-md' : ''}`}
-                                                        dangerouslySetInnerHTML={{ __html: label }}
-                                                    />
-                                                );
-                                            })}
-                                        </nav>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
                     </div>
-                </div>
+                </DataTable>
             </div>
 
             {/* Modal Tambah Dokumen */}
-            <Modal show={isModalOpen} onClose={closeModal}>
-                <div className="flex flex-col h-full bg-white dark:bg-gray-800 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 shadow-xl">
-                    <div className="bg-gradient-to-r from-purple-600 to-indigo-600 p-6">
-                        <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 01-2-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            <Modal show={isModalOpen} onClose={closeModal} maxWidth="lg">
+                <div className="flex flex-col">
+                    <div className="flex items-start gap-3 border-b border-slate-100 px-5 py-4 dark:border-white/10">
+                        <IconTile tone="violet" size="lg">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
-                            Tambah Dokumen
-                        </h2>
-                        <p className="mt-2 text-purple-100 text-sm">
-                            Silahkan lengkapi detail dokumen untuk transaksi di bawah ini.
-                        </p>
+                        </IconTile>
+                        <div className="min-w-0 flex-1">
+                            <h2 className="text-[15px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                                Tambah Dokumen
+                            </h2>
+                            <p className="mt-0.5 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                                Silahkan lengkapi detail dokumen untuk transaksi di bawah ini.
+                            </p>
+                        </div>
+                        <button type="button" onClick={closeModal} aria-label="Tutup" className="sikas-icon-btn h-8 w-8 shrink-0">
+                            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+                                <path d="M6 18 18 6M6 6l12 12" />
+                            </svg>
+                        </button>
                     </div>
 
-                    <form onSubmit={handleSubmit} className="flex-1">
-                        <div className="p-6 space-y-6">
-                            <div className="bg-purple-50 dark:bg-gray-700 p-4 rounded-lg border border-purple-100 dark:border-gray-600">
-                                <div className="text-xs text-purple-600 dark:text-purple-300 font-semibold uppercase tracking-wide">Uraian Transaksi</div>
-                                <div className="mt-1 text-gray-900 dark:text-gray-100 font-medium text-lg leading-relaxed">
+                    <form onSubmit={handleSubmit}>
+                        <div className="space-y-4 px-5 py-4">
+                            <div className="rounded-2xl bg-slate-50 p-3.5 ring-1 ring-slate-100 dark:bg-white/[0.04] dark:ring-white/10">
+                                <div className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                                    Uraian Transaksi
+                                </div>
+                                <div className="mt-1 text-[13px] font-bold leading-relaxed text-slate-900 dark:text-white">
                                     {selectedBku?.uraian_opsional || selectedBku?.uraian}
                                 </div>
                             </div>
 
                             <div className="space-y-4">
                                 <div>
-                                    <InputLabel htmlFor="nama_dokumen" value="Nama Dokumen" className="text-gray-700 dark:text-gray-300 font-medium" />
+                                    <InputLabel htmlFor="nama_dokumen" value="Nama Dokumen" />
                                     <TextInput
                                         id="nama_dokumen"
                                         type="text"
-                                        className="mt-1 block w-full border-gray-300 dark:border-gray-600 focus:border-purple-500 focus:ring-purple-500 rounded-lg shadow-sm"
+                                        className="mt-1"
                                         value={data.nama_dokumen}
                                         onChange={(e) => setData('nama_dokumen', e.target.value)}
                                         required
                                         placeholder="Contoh: Bukti Pembayaran / Nota Dinas"
                                     />
-                                    {errors.nama_dokumen && <div className="text-red-500 text-sm mt-1 animate-pulse">{errors.nama_dokumen}</div>}
+                                    {errors.nama_dokumen && (
+                                        <div className="mt-1.5 text-[11px] font-semibold text-rose-500 dark:text-rose-400">
+                                            {errors.nama_dokumen}
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div>
-                                    <InputLabel htmlFor="link_drive" value="Link Drive Dokumen" className="text-gray-700 dark:text-gray-300 font-medium" />
-                                    <div className="mt-1 relative rounded-md shadow-sm">
-                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                            <span className="text-gray-500 sm:text-sm">
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                                    <InputLabel htmlFor="link_drive" value="Link Drive Dokumen" />
+                                    <div className="relative mt-1">
+                                        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
+                                            <span className="text-slate-400 dark:text-slate-500">
+                                                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+                                                    <path d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                                                 </svg>
                                             </span>
                                         </div>
                                         <TextInput
                                             id="link_drive"
                                             type="url"
-                                            className="block w-full pl-10 border-gray-300 dark:border-gray-600 focus:border-purple-500 focus:ring-purple-500 rounded-lg shadow-sm"
+                                            className="pl-9"
                                             value={data.link_drive}
                                             onChange={(e) => setData('link_drive', e.target.value)}
                                             required
                                             placeholder="https://drive.google.com/..."
                                         />
                                     </div>
-                                    {errors.link_drive && <div className="text-red-500 text-sm mt-1 animate-pulse">{errors.link_drive}</div>}
+                                    {errors.link_drive && (
+                                        <div className="mt-1.5 text-[11px] font-semibold text-rose-500 dark:text-rose-400">
+                                            {errors.link_drive}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
 
-                        <div className="px-6 py-4 bg-gray-50 dark:bg-gray-750 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-3 rounded-b-lg">
-                            <SecondaryButton onClick={closeModal} disabled={processing} className="hover:bg-gray-100 dark:hover:bg-gray-600">
+                        <div className="flex items-center justify-end gap-2 border-t border-slate-100 px-5 py-3.5 dark:border-white/10">
+                            <SecondaryButton onClick={closeModal} disabled={processing}>
                                 Batal
                             </SecondaryButton>
-                            <PrimaryButton disabled={processing} className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 border-none shadow-md hover:shadow-lg transition-all duration-200">
+                            <PrimaryButton disabled={processing}>
                                 {processing ? (
                                     <div className="flex items-center gap-2">
-                                        <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" strokeWidth="4"></circle>
                                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                         </svg>
                                         Menyimpan...
                                     </div>
                                 ) : (
                                     <div className="flex items-center gap-2">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M5 13l4 4L19 7" />
                                         </svg>
                                         Simpan
                                     </div>
@@ -426,15 +489,25 @@ export default function TabKinerja({ auth, kinerjaPenganggarans }: Props) {
             </Modal>
 
             {/* Delete Confirmation Modal */}
-            <Modal show={isDeleteModalOpen} onClose={closeDeleteModal}>
-                <div className="p-6">
-                    <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                        Konfirmasi Hapus
-                    </h2>
-                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                        Apakah Anda yakin ingin menghapus dokumen ini? Tindakan ini tidak dapat dibatalkan.
-                    </p>
-                    <div className="mt-6 flex justify-end gap-3">
+            <Modal show={isDeleteModalOpen} onClose={closeDeleteModal} maxWidth="md">
+                <div className="flex flex-col">
+                    <div className="flex items-start gap-3 px-5 pt-5">
+                        <IconTile tone="rose" size="lg">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2m-9 0v14a2 2 0 002 2h6a2 2 0 002-2V6" />
+                                <path d="M10 11v6M14 11v6" />
+                            </svg>
+                        </IconTile>
+                        <div className="min-w-0 flex-1">
+                            <h2 className="text-[15px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                                Konfirmasi Hapus
+                            </h2>
+                            <p className="mt-1 text-[11.5px] font-medium leading-relaxed text-slate-500 dark:text-slate-400">
+                                Apakah Anda yakin ingin menghapus dokumen ini? Tindakan ini tidak dapat dibatalkan.
+                            </p>
+                        </div>
+                    </div>
+                    <div className="mt-5 flex items-center justify-end gap-2 border-t border-slate-100 px-5 py-3.5 dark:border-white/10">
                         <SecondaryButton onClick={closeDeleteModal}>
                             Batal
                         </SecondaryButton>
