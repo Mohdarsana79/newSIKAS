@@ -1,27 +1,19 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, useForm, router, Link } from '@inertiajs/react';
+import { Head, useForm } from '@inertiajs/react';
 import { PageProps } from '@/types';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
-import Modal from '@/Components/Modal';
-import { useState, useEffect, Fragment } from 'react';
-import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
-import InputError from '@/Components/InputError';
+import { Fragment, useEffect, useState } from 'react';
+import PageHeader from '@/Components/ui/PageHeader';
+import Surface from '@/Components/ui/Surface';
+import DataTable from '@/Components/ui/DataTable';
+import EmptyState from '@/Components/ui/EmptyState';
+import IconTile from '@/Components/ui/IconTile';
+import StatusBadge from '@/Components/ui/StatusBadge';
+import RekeningBelanjaModals, { RekeningBelanjaItem } from './Partials/RekeningBelanjaModals';
 
-interface RekeningBelanja {
-    id: number;
-    kode_rekening: string;
-    rincian_objek: string;
-    kategori: string;
-    is_ppn: boolean;
-    is_pph21: boolean;
-    is_pph22: boolean;
-    is_pph23: boolean;
-    is_pph4: boolean;
-}
-
-export default function Index({ auth, rekening_belanja }: PageProps<{ rekening_belanja: RekeningBelanja[] }>) {
+export default function Index({ auth, rekening_belanja }: PageProps<{ rekening_belanja: RekeningBelanjaItem[] }>) {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -29,10 +21,10 @@ export default function Index({ auth, rekening_belanja }: PageProps<{ rekening_b
     const [search, setSearch] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const [editingId, setEditingId] = useState<number | null>(null);
-    const [deleteId, setDeleteId] = useState<number | null>(null);
+    const [deleteTarget, setDeleteTarget] = useState<RekeningBelanjaItem | null>(null);
     const ITEMS_PER_PAGE = 10;
 
-    const { data, setData, post, put, delete: destroy, processing, errors, reset } = useForm({
+    const { data, setData, post, put, delete: destroy, processing, errors, reset, clearErrors } = useForm({
         kode_rekening: '',
         rincian_objek: '',
         kategori: '',
@@ -69,12 +61,38 @@ export default function Index({ auth, rekening_belanja }: PageProps<{ rekening_b
         setCurrentPage(1);
     }, [search]);
 
+    const resetForm = () => {
+        reset();
+        clearErrors();
+        setEditingId(null);
+    };
+
+    const closeAddModal = () => {
+        setIsAddModalOpen(false);
+        resetForm();
+    };
+
+    const closeEditModal = () => {
+        setIsEditModalOpen(false);
+        resetForm();
+    };
+
+    const closeImportModal = () => {
+        setIsImportModalOpen(false);
+        resetImport();
+        clearImportErrors();
+    };
+
+    const closeDeleteModal = () => {
+        setIsDeleteModalOpen(false);
+        setDeleteTarget(null);
+    };
+
     const submitAdd = (e: React.FormEvent) => {
         e.preventDefault();
         post(route('rekening-belanja.store'), {
             onSuccess: () => {
-                setIsAddModalOpen(false);
-                reset();
+                closeAddModal();
             },
         });
     };
@@ -84,15 +102,23 @@ export default function Index({ auth, rekening_belanja }: PageProps<{ rekening_b
         if (editingId) {
             put(route('rekening-belanja.update', editingId), {
                 onSuccess: () => {
-                    setIsEditModalOpen(false);
-                    reset();
-                    setEditingId(null);
+                    closeEditModal();
                 },
             });
         }
     };
 
-    const handleEdit = (item: RekeningBelanja) => {
+    const submitImport = (e: React.FormEvent) => {
+        e.preventDefault();
+        postImport(route('rekening-belanja.import'), {
+            onSuccess: () => {
+                closeImportModal();
+            },
+        });
+    };
+
+    const handleEdit = (item: RekeningBelanjaItem) => {
+        clearErrors();
         setEditingId(item.id);
         setData({
             kode_rekening: item.kode_rekening,
@@ -107,17 +133,16 @@ export default function Index({ auth, rekening_belanja }: PageProps<{ rekening_b
         setIsEditModalOpen(true);
     };
 
-    const handleDelete = (id: number) => {
-        setDeleteId(id);
+    const handleDelete = (item: RekeningBelanjaItem) => {
+        setDeleteTarget(item);
         setIsDeleteModalOpen(true);
     };
 
     const confirmDelete = () => {
-        if (deleteId) {
-            destroy(route('rekening-belanja.destroy', deleteId), {
+        if (deleteTarget) {
+            destroy(route('rekening-belanja.destroy', deleteTarget.id), {
                 onSuccess: () => {
-                    setIsDeleteModalOpen(false);
-                    setDeleteId(null);
+                    closeDeleteModal();
                 },
             });
         }
@@ -125,70 +150,221 @@ export default function Index({ auth, rekening_belanja }: PageProps<{ rekening_b
 
     const renderTaxBadge = (isTaxed: boolean) => (
         isTaxed ? 
-        <span className="inline-flex py-0.5 px-2 rounded-md bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-bold shadow-sm">TRUE</span> : 
-        <span className="inline-flex py-0.5 px-2 rounded-md bg-gray-50 text-gray-400 border border-gray-200 text-[10px] shadow-sm">FALSE</span>
+        <span className="inline-flex rounded-full border border-rose-200 bg-pastel-rose px-2 py-0.5 text-[9.5px] font-extrabold text-rose-600 shadow-sm dark:border-rose-400/20 dark:bg-rose-500/10 dark:text-rose-300">TRUE</span> : 
+        <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[9.5px] font-extrabold text-slate-400 shadow-sm dark:border-white/10 dark:bg-white/5 dark:text-slate-500">FALSE</span>
     );
 
     return (
-        <AuthenticatedLayout
-            header={<h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">Data Rekening Belanja</h2>}
-        >
+        <AuthenticatedLayout>
             <Head title="Rekening Belanja" />
 
-            <div className="py-6">
-                <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6">
-                    {/* Toolbar */}
-                    <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-                        <div className="w-full md:w-1/3">
-                            <TextInput
-                                placeholder="Cari Kode atau Rincian..."
-                                className="w-full text-gray-900 bg-white"
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                            />
+            <div className="space-y-4">
+                <PageHeader
+                    className="animate-rise"
+                    breadcrumb={[
+                        { label: 'Dashboard' },
+                        { label: 'Data Master' },
+                        { label: 'Rekening Belanja' },
+                    ]}
+                    title="Data Rekening Belanja"
+                    badge={<StatusBadge tone="violet" dot={false}>Data Master</StatusBadge>}
+                    subtitle="Referensi kode rekening, rincian objek, dan pengaturan pajak belanja."
+                    actions={
+                        <>
+                            <SecondaryButton onClick={() => setIsImportModalOpen(true)}>
+                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                </svg>
+                                Import Excel
+                            </SecondaryButton>
+                            <PrimaryButton onClick={() => { resetForm(); setIsAddModalOpen(true); }}>
+                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                </svg>
+                                Tambah Data
+                            </PrimaryButton>
+                        </>
+                    }
+                />
+
+                {/* Kartu ringkas dari data existing */}
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <div className="sikas-card sikas-card-hover animate-rise p-4" style={{ animationDelay: '60ms' }}>
+                        <div className="flex items-center gap-2.5">
+                            <IconTile tone="violet" size="md">
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M4 6h16M4 12h16M4 18h10" />
+                                </svg>
+                            </IconTile>
+                            <div className="min-w-0">
+                                <p className="text-[11.5px] font-extrabold tracking-tight text-slate-900 dark:text-white">Total Rekening</p>
+                                <p className="text-[9.5px] font-medium text-slate-400 dark:text-slate-500">Baris data</p>
+                            </div>
                         </div>
-                        <div className="flex gap-2">
-                            <SecondaryButton onClick={() => setIsImportModalOpen(true)}>Import Excel</SecondaryButton>
-                            <PrimaryButton onClick={() => { reset(); setIsAddModalOpen(true); }}>Tambah Data</PrimaryButton>
-                        </div>
+                        <p className="mt-3 text-sikas-num text-[19px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                            {rekening_belanja.length}
+                        </p>
                     </div>
 
-                    {/* Table */}
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                            <thead className="bg-gray-50 dark:bg-gray-700">
+                    <div className="sikas-card sikas-card-hover animate-rise p-4" style={{ animationDelay: '110ms' }}>
+                        <div className="flex items-center gap-2.5">
+                            <IconTile tone="sky" size="md">
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
+                                    <path d="M9 3h6v4H9z" />
+                                    <path d="M9 12h6M9 16h4" />
+                                </svg>
+                            </IconTile>
+                            <div className="min-w-0">
+                                <p className="text-[11.5px] font-extrabold tracking-tight text-slate-900 dark:text-white">Kategori</p>
+                                <p className="text-[9.5px] font-medium text-slate-400 dark:text-slate-500">Kategori unik</p>
+                            </div>
+                        </div>
+                        <p className="mt-3 text-sikas-num text-[19px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                            {new Set(rekening_belanja.map((item) => item.kategori)).size}
+                        </p>
+                    </div>
+
+                    <div className="sikas-card sikas-card-hover animate-rise p-4" style={{ animationDelay: '160ms' }}>
+                        <div className="flex items-center gap-2.5">
+                            <IconTile tone="amber" size="md">
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M9 14l6-6" />
+                                    <path d="M9 8h.01M15 14h.01" />
+                                    <circle cx="12" cy="12" r="9" />
+                                </svg>
+                            </IconTile>
+                            <div className="min-w-0">
+                                <p className="text-[11.5px] font-extrabold tracking-tight text-slate-900 dark:text-white">Terkena Pajak</p>
+                                <p className="text-[9.5px] font-medium text-slate-400 dark:text-slate-500">Rekening berpajak</p>
+                            </div>
+                        </div>
+                        <p className="mt-3 text-sikas-num text-[19px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                            {rekening_belanja.filter((item) => item.is_ppn || item.is_pph21 || item.is_pph22 || item.is_pph23 || item.is_pph4).length}
+                        </p>
+                    </div>
+                </div>
+
+                {/* Toolbar pencarian */}
+                <div className="animate-rise" style={{ animationDelay: '210ms' }}>
+                    <Surface padding="sm">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div className="flex w-full items-center gap-3 md:w-auto">
+                                <IconTile tone="ink" size="sm">
+                                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                                        <circle cx="11" cy="11" r="7" />
+                                        <path d="m21 21-4.3-4.3" />
+                                    </svg>
+                                </IconTile>
+                                <div className="w-full md:w-80">
+                                    <TextInput
+                                        placeholder="Cari Kode atau Rincian..."
+                                        className="w-full"
+                                        value={search}
+                                        onChange={(e) => setSearch(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+                            <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">
+                                <span className="text-sikas-num font-extrabold text-slate-700 dark:text-slate-200">{filteredData.length}</span> data ditemukan
+                            </span>
+                        </div>
+                    </Surface>
+                </div>
+
+                {/* Tabel */}
+                <div className="animate-rise" style={{ animationDelay: '260ms' }}>
+                    <DataTable
+                        title="Daftar Rekening Belanja"
+                        subtitle="Referensi rekening belanja beserta pengaturan pajaknya."
+                        icon={
+                            <IconTile tone="violet" size="sm">
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M4 6h16M4 12h16M4 18h10" />
+                                </svg>
+                            </IconTile>
+                        }
+                        actions={<StatusBadge tone="info" dot={false} className="text-sikas-num">{filteredData.length}</StatusBadge>}
+                        contentClassName="bento-table-wrapper mx-4 mb-4"
+                        footer={
+                            <>
+                                <div className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">
+                                    Menampilkan <span className="text-sikas-num font-extrabold text-slate-700 dark:text-slate-200">{filteredData.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}</span> sampai <span className="text-sikas-num font-extrabold text-slate-700 dark:text-slate-200">{Math.min(currentPage * ITEMS_PER_PAGE, filteredData.length)}</span> dari <span className="text-sikas-num font-extrabold text-slate-700 dark:text-slate-200">{filteredData.length}</span> data
+                                </div>
+                                <div className="flex items-center gap-1">
+                                    <button
+                                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                        disabled={currentPage === 1}
+                                        className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-extrabold text-slate-600 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:border-slate-100 disabled:bg-slate-50 disabled:text-slate-300 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10 dark:disabled:border-white/5 dark:disabled:bg-white/5 dark:disabled:text-slate-600"
+                                    >
+                                        Previous
+                                    </button>
+                                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                                        .filter(page => page === 1 || page === totalPages || (page >= currentPage - 1 && page <= currentPage + 1))
+                                        .map((page, index, array) => (
+                                            <Fragment key={page}>
+                                                {index > 0 && array[index - 1] !== page - 1 && <span className="px-1 text-[10px] font-bold text-slate-300 dark:text-slate-600">...</span>}
+                                                <button
+                                                    onClick={() => setCurrentPage(page)}
+                                                    className={`flex h-7 min-w-7 items-center justify-center rounded-xl px-2 text-[10px] font-extrabold transition text-sikas-num ${currentPage === page ? 'bg-lime-400 text-slate-950 shadow-lime' : 'text-slate-500 hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-white/5'}`}
+                                                >
+                                                    {page}
+                                                </button>
+                                            </Fragment>
+                                        ))}
+                                    <button
+                                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                                        disabled={currentPage === totalPages || totalPages === 0}
+                                        className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-extrabold text-slate-600 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:border-slate-100 disabled:bg-slate-50 disabled:text-slate-300 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10 dark:disabled:border-white/5 dark:disabled:bg-white/5 dark:disabled:text-slate-600"
+                                    >
+                                        Next
+                                    </button>
+                                </div>
+                            </>
+                        }
+                    >
+                        <table className="min-w-full">
+                            <thead>
                                 <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Kode Rekening</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Rincian Objek</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Kategori</th>
-                                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">PPN</th>
-                                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">PPh 21</th>
-                                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">PPh 22</th>
-                                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">PPh 23</th>
-                                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">PPh 4(2)</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Aksi</th>
+                                    <th className="text-left">Kode Rekening</th>
+                                    <th className="text-left">Rincian Objek</th>
+                                    <th className="text-left">Kategori</th>
+                                    <th className="text-center">PPN</th>
+                                    <th className="text-center">PPh 21</th>
+                                    <th className="text-center">PPh 22</th>
+                                    <th className="text-center">PPh 23</th>
+                                    <th className="text-center">PPh 4(2)</th>
+                                    <th className="text-center">Aksi</th>
                                 </tr>
                             </thead>
-                            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                            <tbody>
                                 {currentData.length > 0 ? (
                                     currentData.map((item) => (
-                                        <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition">
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200 font-medium">{item.kode_rekening}</td>
-                                            <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">{item.rincian_objek}</td>
-                                            <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">{item.kategori}</td>
-                                            <td className="px-2 py-4 text-center">{renderTaxBadge(item.is_ppn)}</td>
-                                            <td className="px-2 py-4 text-center">{renderTaxBadge(item.is_pph21)}</td>
-                                            <td className="px-2 py-4 text-center">{renderTaxBadge(item.is_pph22)}</td>
-                                            <td className="px-2 py-4 text-center">{renderTaxBadge(item.is_pph23)}</td>
-                                            <td className="px-2 py-4 text-center">{renderTaxBadge(item.is_pph4)}</td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                <div className="flex gap-2">
-                                                    <button onClick={() => handleEdit(item)} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">
+                                        <tr key={item.id}>
+                                            <td className="whitespace-nowrap font-extrabold text-slate-900 dark:text-white">{item.kode_rekening}</td>
+                                            <td className="text-slate-600 dark:text-slate-300">{item.rincian_objek}</td>
+                                            <td className="text-slate-500 dark:text-slate-400">{item.kategori}</td>
+                                            <td className="text-center">{renderTaxBadge(item.is_ppn)}</td>
+                                            <td className="text-center">{renderTaxBadge(item.is_pph21)}</td>
+                                            <td className="text-center">{renderTaxBadge(item.is_pph22)}</td>
+                                            <td className="text-center">{renderTaxBadge(item.is_pph23)}</td>
+                                            <td className="text-center">{renderTaxBadge(item.is_pph4)}</td>
+                                            <td className="whitespace-nowrap text-center">
+                                                <div className="flex items-center justify-center gap-1">
+                                                    <button
+                                                        onClick={() => handleEdit(item)}
+                                                        className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-slate-100 bg-white text-brand-600 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 hover:text-brand-700 dark:border-white/10 dark:bg-white/5 dark:text-brand-300 dark:hover:bg-white/10"
+                                                        title="Edit"
+                                                    >
                                                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                                         </svg>
                                                     </button>
-                                                    <button onClick={() => handleDelete(item.id)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">
+                                                    <button
+                                                        onClick={() => handleDelete(item)}
+                                                        className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-slate-100 bg-white text-rose-600 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 hover:text-rose-700 dark:border-white/10 dark:bg-white/5 dark:text-rose-400 dark:hover:bg-white/10"
+                                                        title="Hapus"
+                                                    >
                                                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                                         </svg>
@@ -199,404 +375,52 @@ export default function Index({ auth, rekening_belanja }: PageProps<{ rekening_b
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan={9} className="px-6 py-4 text-center text-gray-500">
-                                            {search ? 'Data tidak ditemukan untuk pencarian tersebut.' : 'Tidak ada data ditemukan.'}
+                                        <td colSpan={9} className="p-0">
+                                            <EmptyState
+                                                className="border-0 bg-transparent py-9 dark:bg-transparent"
+                                                icon={
+                                                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                                    </svg>
+                                                }
+                                                title={search ? 'Data tidak ditemukan untuk pencarian tersebut.' : 'Tidak ada data ditemukan.'}
+                                                description="Coba ubah kata kunci pencarian atau tambahkan data rekening belanja baru."
+                                            />
                                         </td>
                                     </tr>
                                 )}
                             </tbody>
                         </table>
-                    </div>
-
-                    {/* Pagination */}
-                    <div className="mt-4 flex flex-col sm:flex-row justify-between items-center gap-4">
-                        <div className="text-sm text-gray-600 dark:text-gray-400">
-                            Menampilkan {filteredData.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0} sampai {Math.min(currentPage * ITEMS_PER_PAGE, filteredData.length)} dari {filteredData.length} data
-                        </div>
-                        <div className="flex gap-1">
-                            <button
-                                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                                disabled={currentPage === 1}
-                                className="px-3 py-1 text-sm rounded-md bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                Previous
-                            </button>
-                            {Array.from({ length: totalPages }, (_, i) => i + 1)
-                                .filter(page => page === 1 || page === totalPages || (page >= currentPage - 1 && page <= currentPage + 1))
-                                .map((page, index, array) => (
-                                    <Fragment key={page}>
-                                        {index > 0 && array[index - 1] !== page - 1 && <span className="px-2">...</span>}
-                                        <button
-                                            onClick={() => setCurrentPage(page)}
-                                            className={`px-3 py-1 text-sm rounded-md ${currentPage === page ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50'}`}
-                                        >
-                                            {page}
-                                        </button>
-                                    </Fragment>
-                                ))}
-                            <button
-                                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                                disabled={currentPage === totalPages || totalPages === 0}
-                                className="px-3 py-1 text-sm rounded-md bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                Next
-                            </button>
-                        </div>
-                    </div>
+                    </DataTable>
                 </div>
             </div>
 
-            {/* Modal Tambah */}
-            <Modal show={isAddModalOpen} onClose={() => setIsAddModalOpen(false)}>
-                <div className="flex flex-col bg-white dark:bg-gray-800 rounded-lg overflow-hidden">
-                    <div className="px-6 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 border-b border-gray-100 dark:border-gray-700">
-                        <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                            <svg className="w-6 h-6 text-white/90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            Input Rekening Belanja
-                        </h2>
-                        <p className="text-indigo-100 text-sm mt-1">
-                            Tambahkan rekening belanja baru ke dalam sistem.
-                        </p>
-                    </div>
-
-                    <form onSubmit={submitAdd} className="p-6 space-y-6">
-                        <div>
-                            <InputLabel htmlFor="kode_rekening" value="Kode Rekening" />
-                            <TextInput
-                                id="kode_rekening"
-                                value={data.kode_rekening}
-                                onChange={(e) => setData('kode_rekening', e.target.value)}
-                                className="mt-1 block w-full text-gray-900 dark:text-gray-900"
-                                placeholder="Contoh: 5.1.02..."
-                                required
-                            />
-                            <InputError message={errors.kode_rekening} className="mt-2" />
-                        </div>
-                        <div>
-                            <InputLabel htmlFor="rincian_objek" value="Rincian Objek" />
-                            <TextInput
-                                id="rincian_objek"
-                                value={data.rincian_objek}
-                                onChange={(e) => setData('rincian_objek', e.target.value)}
-                                className="mt-1 block w-full text-gray-900 dark:text-gray-900"
-                                placeholder="Nama Rincian Objek"
-                                required
-                            />
-                            <InputError message={errors.rincian_objek} className="mt-2" />
-                        </div>
-                        <div>
-                            <InputLabel htmlFor="kategori" value="Kategori" />
-                            <select
-                                id="kategori"
-                                value={data.kategori}
-                                onChange={(e) => setData('kategori', e.target.value)}
-                                className="mt-1 block w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm"
-                                required
-                            >
-                                <option value="">Pilih Kategori</option>
-                                <option value="Operasi">Operasi</option>
-                                <option value="Modal Peralatan dan Mesin">Modal Peralatan dan Mesin</option>
-                                <option value="Modal Jalan, Jaringan, dan Irigasi">Modal Jalan, Jaringan, dan Irigasi</option>
-                                <option value="Modal Aset Tetap Lainnya">Modal Aset Tetap Lainnya</option>
-                            </select>
-                            <InputError message={errors.kategori} className="mt-2" />
-                        </div>
-                        <div className="pt-2">
-                            <InputLabel value="Pengaturan Pajak" className="mb-3" />
-                            <div className="flex flex-wrap gap-4">
-                                <label className="flex items-center cursor-pointer">
-                                    <input type="checkbox" checked={data.is_ppn} onChange={(e) => setData('is_ppn', e.target.checked)} className="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" />
-                                    <span className="ml-2 text-sm text-gray-700 dark:text-gray-300 font-medium">PPN</span>
-                                </label>
-                                <label className="flex items-center cursor-pointer">
-                                    <input type="checkbox" checked={data.is_pph21} onChange={(e) => setData('is_pph21', e.target.checked)} className="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" />
-                                    <span className="ml-2 text-sm text-gray-700 dark:text-gray-300 font-medium">PPh 21</span>
-                                </label>
-                                <label className="flex items-center cursor-pointer">
-                                    <input type="checkbox" checked={data.is_pph22} onChange={(e) => setData('is_pph22', e.target.checked)} className="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" />
-                                    <span className="ml-2 text-sm text-gray-700 dark:text-gray-300 font-medium">PPh 22</span>
-                                </label>
-                                <label className="flex items-center cursor-pointer">
-                                    <input type="checkbox" checked={data.is_pph23} onChange={(e) => setData('is_pph23', e.target.checked)} className="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" />
-                                    <span className="ml-2 text-sm text-gray-700 dark:text-gray-300 font-medium">PPh 23</span>
-                                </label>
-                                <label className="flex items-center cursor-pointer">
-                                    <input type="checkbox" checked={data.is_pph4} onChange={(e) => setData('is_pph4', e.target.checked)} className="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" />
-                                    <span className="ml-2 text-sm text-gray-700 dark:text-gray-300 font-medium">PPh 4(2)</span>
-                                </label>
-                            </div>
-                        </div>
-                        <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
-                            <SecondaryButton
-                                onClick={() => setIsAddModalOpen(false)}
-                                type="button"
-                            >
-                                Batal
-                            </SecondaryButton>
-                            <PrimaryButton disabled={processing} className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 border-0">
-                                {processing ? (
-                                    <>
-                                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                        </svg>
-                                        Menyimpan...
-                                    </>
-                                ) : (
-                                    'Simpan Data'
-                                )}
-                            </PrimaryButton>
-                        </div>
-                    </form>
-                </div>
-            </Modal>
-
-            {/* Modal Edit */}
-            <Modal show={isEditModalOpen} onClose={() => setIsEditModalOpen(false)}>
-                <div className="flex flex-col bg-white dark:bg-gray-800 rounded-lg overflow-hidden">
-                    <div className="px-6 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 border-b border-gray-100 dark:border-gray-700">
-                        <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                            <svg className="w-6 h-6 text-white/90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                            Edit Rekening Belanja
-                        </h2>
-                        <p className="text-indigo-100 text-sm mt-1">
-                            Perbarui informasi rekening belanja.
-                        </p>
-                    </div>
-
-                    <form onSubmit={submitEdit} className="p-6 space-y-6">
-                        <div>
-                            <InputLabel htmlFor="kode_rekening" value="Kode Rekening" />
-                            <TextInput
-                                id="kode_rekening"
-                                value={data.kode_rekening}
-                                onChange={(e) => setData('kode_rekening', e.target.value)}
-                                className="mt-1 block w-full text-gray-900 dark:text-gray-900"
-                                placeholder="Contoh: 5.1.02..."
-                                required
-                            />
-                            <InputError message={errors.kode_rekening} className="mt-2" />
-                        </div>
-                        <div>
-                            <InputLabel htmlFor="rincian_objek" value="Rincian Objek" />
-                            <TextInput
-                                id="rincian_objek"
-                                value={data.rincian_objek}
-                                onChange={(e) => setData('rincian_objek', e.target.value)}
-                                className="mt-1 block w-full text-gray-900 dark:text-gray-900"
-                                placeholder="Nama Rincian Objek"
-                                required
-                            />
-                            <InputError message={errors.rincian_objek} className="mt-2" />
-                        </div>
-                        <div>
-                            <InputLabel htmlFor="kategori" value="Kategori" />
-                            <select
-                                id="kategori"
-                                value={data.kategori}
-                                onChange={(e) => setData('kategori', e.target.value)}
-                                className="mt-1 block w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm"
-                                required
-                            >
-                                <option value="">Pilih Kategori</option>
-                                <option value="Operasi">Operasi</option>
-                                <option value="Modal Peralatan dan Mesin">Modal Peralatan dan Mesin</option>
-                                <option value="Modal Jalan, Jaringan, dan Irigasi">Modal Jalan, Jaringan, dan Irigasi</option>
-                                <option value="Modal Aset Tetap Lainnya">Modal Aset Tetap Lainnya</option>
-                            </select>
-                            <InputError message={errors.kategori} className="mt-2" />
-                        </div>
-                        <div className="pt-2">
-                            <InputLabel value="Pengaturan Pajak" className="mb-3" />
-                            <div className="flex flex-wrap gap-4">
-                                <label className="flex items-center cursor-pointer">
-                                    <input type="checkbox" checked={data.is_ppn} onChange={(e) => setData('is_ppn', e.target.checked)} className="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" />
-                                    <span className="ml-2 text-sm text-gray-700 dark:text-gray-300 font-medium">PPN</span>
-                                </label>
-                                <label className="flex items-center cursor-pointer">
-                                    <input type="checkbox" checked={data.is_pph21} onChange={(e) => setData('is_pph21', e.target.checked)} className="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" />
-                                    <span className="ml-2 text-sm text-gray-700 dark:text-gray-300 font-medium">PPh 21</span>
-                                </label>
-                                <label className="flex items-center cursor-pointer">
-                                    <input type="checkbox" checked={data.is_pph22} onChange={(e) => setData('is_pph22', e.target.checked)} className="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" />
-                                    <span className="ml-2 text-sm text-gray-700 dark:text-gray-300 font-medium">PPh 22</span>
-                                </label>
-                                <label className="flex items-center cursor-pointer">
-                                    <input type="checkbox" checked={data.is_pph23} onChange={(e) => setData('is_pph23', e.target.checked)} className="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" />
-                                    <span className="ml-2 text-sm text-gray-700 dark:text-gray-300 font-medium">PPh 23</span>
-                                </label>
-                                <label className="flex items-center cursor-pointer">
-                                    <input type="checkbox" checked={data.is_pph4} onChange={(e) => setData('is_pph4', e.target.checked)} className="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" />
-                                    <span className="ml-2 text-sm text-gray-700 dark:text-gray-300 font-medium">PPh 4(2)</span>
-                                </label>
-                            </div>
-                        </div>
-                        <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
-                            <SecondaryButton
-                                onClick={() => setIsEditModalOpen(false)}
-                                type="button"
-                            >
-                                Batal
-                            </SecondaryButton>
-                            <PrimaryButton disabled={processing} className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 border-0">
-                                {processing ? (
-                                    <>
-                                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                        </svg>
-                                        Menyimpan...
-                                    </>
-                                ) : (
-                                    'Simpan Perubahan'
-                                )}
-                            </PrimaryButton>
-                        </div>
-                    </form>
-                </div>
-            </Modal>
-
-            {/* Modal Import */}
-            <Modal show={isImportModalOpen} onClose={() => { setIsImportModalOpen(false); resetImport(); clearImportErrors(); }}>
-                <div className="flex flex-col bg-white dark:bg-gray-800 rounded-lg overflow-hidden">
-                    <div className="px-6 py-4 bg-gradient-to-r from-emerald-500 to-teal-600 border-b border-gray-100 dark:border-gray-700">
-                        <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                            <svg className="w-6 h-6 text-white/90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                            Import Data Excel
-                        </h2>
-                        <p className="text-emerald-100 text-sm mt-1">
-                            Upload file Excel (.xlsx) untuk import data massal.
-                        </p>
-                    </div>
-
-                    <div className="p-6">
-                        <form onSubmit={(e) => {
-                            e.preventDefault();
-                            postImport(route('rekening-belanja.import'), {
-                                onSuccess: () => {
-                                    setIsImportModalOpen(false);
-                                    resetImport();
-                                },
-                            });
-                        }} className="space-y-6">
-
-                            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg p-4 flex items-start gap-3">
-                                <svg className="w-6 h-6 text-blue-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                                <div>
-                                    <p className="text-sm text-blue-800 dark:text-blue-200 font-medium">Petunjuk Import</p>
-                                    <p className="text-sm text-blue-600 dark:text-blue-300 mt-1">
-                                        Pastikan Anda menggunakan template yang sesuai.
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div className="flex justify-center">
-                                <SecondaryButton
-                                    type="button"
-                                    className="w-full justify-center border-emerald-500 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-600 dark:text-emerald-400 dark:hover:bg-emerald-900/30"
-                                    onClick={() => { window.open(route('rekening-belanja.download-template'), '_blank'); }}
-                                >
-                                    <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                    </svg>
-                                    Download Template Excel
-                                </SecondaryButton>
-                            </div>
-
-                            <div className={`border-2 border-dashed p-8 rounded-xl text-center transition-all duration-200 ${importErrors.file ? 'border-red-400 bg-red-50 dark:bg-red-900/10' : 'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/30 hover:bg-gray-100 dark:hover:bg-gray-700/50'}`}>
-                                <div className="flex flex-col items-center">
-                                    <div className="p-3 bg-white dark:bg-gray-800 rounded-full shadow-sm mb-3">
-                                        <svg className="w-8 h-8 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                                        </svg>
-                                    </div>
-                                    <p className="text-gray-900 dark:text-white font-medium">Klik untuk upload file</p>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Format: .xlsx, .xls (Max 5MB)</p>
-                                    <input
-                                        type="file"
-                                        className="mt-4 block w-full text-sm text-gray-500
-                                            file:mr-4 file:py-2 file:px-4
-                                            file:rounded-full file:border-0
-                                            file:text-sm file:font-semibold
-                                            file:bg-emerald-50 file:text-emerald-700
-                                            hover:file:bg-emerald-100
-                                            dark:file:bg-emerald-900/30 dark:file:text-emerald-300
-                                            cursor-pointer mx-auto max-w-xs"
-                                        accept=".xlsx, .xls"
-                                        onChange={(e) => setImportData('file', e.target.files ? e.target.files[0] : null)}
-                                        required
-                                    />
-                                    {importErrors.file && <p className="text-red-500 text-sm mt-2 font-medium">{importErrors.file}</p>}
-                                </div>
-                            </div>
-
-                            {importProgress && (
-                                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
-                                    <div
-                                        className="bg-emerald-500 h-full rounded-full transition-all duration-300 flex items-center justify-center text-[10px] text-white font-bold"
-                                        style={{ width: `${importProgress.percentage || 0}%` }}
-                                    >
-                                        {(importProgress.percentage || 0) > 10 && `${importProgress.percentage}%`}
-                                    </div>
-                                </div>
-                            )}
-
-                            <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
-                                <SecondaryButton
-                                    onClick={() => { setIsImportModalOpen(false); resetImport(); }}
-                                    type="button"
-                                >
-                                    Batal
-                                </SecondaryButton>
-                                <PrimaryButton disabled={importProcessing} className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 border-0">
-                                    {importProcessing ? (
-                                        <>
-                                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                            </svg>
-                                            Proses Import...
-                                        </>
-                                    ) : (
-                                        'Mulai Import'
-                                    )}
-                                </PrimaryButton>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </Modal>
-
-            {/* Modal Konfirmasi Hapus */}
-            <Modal show={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)}>
-                <div className="p-6 bg-gray-800 text-white rounded-lg">
-                    <h2 className="text-lg font-medium text-white mb-4">Konfirmasi Hapus</h2>
-                    <p className="text-gray-300 mb-6">Apakah Anda yakin ingin menghapus data Rekening Belanja ini? Tindakan ini tidak dapat dibatalkan.</p>
-                    <div className="flex justify-end gap-2">
-                        <SecondaryButton
-                            onClick={() => setIsDeleteModalOpen(false)}
-                            className="bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600 focus:ring-gray-500"
-                        >
-                            Batal
-                        </SecondaryButton>
-                        <PrimaryButton
-                            className="bg-red-600 hover:bg-red-700 focus:ring-red-500 border-transparent"
-                            onClick={confirmDelete}
-                            disabled={processing}
-                        >
-                            {processing ? 'Menghapus...' : 'Hapus'}
-                        </PrimaryButton>
-                    </div>
-                </div>
-            </Modal>
+            <RekeningBelanjaModals
+                isAddOpen={isAddModalOpen}
+                onCloseAdd={closeAddModal}
+                onSubmitAdd={submitAdd}
+                isEditOpen={isEditModalOpen}
+                onCloseEdit={closeEditModal}
+                onSubmitEdit={submitEdit}
+                data={data}
+                setData={setData}
+                errors={errors}
+                processing={processing}
+                isImportOpen={isImportModalOpen}
+                onCloseImport={closeImportModal}
+                importFile={importData.file}
+                onChangeImportFile={(file) => setImportData('file', file)}
+                importProgress={importProgress}
+                importErrors={importErrors}
+                importProcessing={importProcessing}
+                onSubmitImport={submitImport}
+                downloadTemplateUrl={route('rekening-belanja.download-template')}
+                isDeleteOpen={isDeleteModalOpen}
+                deleteTarget={deleteTarget}
+                deleteProcessing={processing}
+                onCloseDelete={closeDeleteModal}
+                onConfirmDelete={confirmDelete}
+            />
         </AuthenticatedLayout>
     );
 }
