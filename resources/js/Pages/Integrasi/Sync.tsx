@@ -8,6 +8,12 @@ import InputError from '@/Components/InputError';
 import Modal from '@/Components/Modal';
 import { FormEventHandler, useState, useEffect } from 'react';
 import axios from 'axios';
+import PageHeader from '@/Components/ui/PageHeader';
+import Surface from '@/Components/ui/Surface';
+import DataTable from '@/Components/ui/DataTable';
+import EmptyState from '@/Components/ui/EmptyState';
+import IconTile from '@/Components/ui/IconTile';
+import StatusBadge from '@/Components/ui/StatusBadge';
 
 interface Sekolah {
     id: number;
@@ -133,299 +139,317 @@ export default function Sync({ auth, sekolah, availableYears, syncLogs }: PagePr
     };
 
     return (
-        <AuthenticatedLayout
-            header={<h2 className="font-outfit font-black text-xl text-gray-800 dark:text-gray-200 leading-tight">Integrasi & Sinkronisasi</h2>}
-        >
+        <AuthenticatedLayout>
             <Head title="Sinkronisasi Data" />
 
-            <div className="py-12 bg-gray-50/50 dark:bg-gray-950 min-h-screen" style={{ fontSize: '10pt' }}>
-                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-8">
-                    {/* Main Card */}
-                    <div className="bg-white dark:bg-gray-900 overflow-hidden shadow-xl shadow-gray-200/50 dark:shadow-none sm:rounded-[2.5rem] border border-gray-100 dark:border-gray-800">
-                        <div className="p-8 md:p-12">
-                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
-                                <div className="max-w-2xl">
-                                    <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full ${isOnline ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400' : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'} font-bold uppercase tracking-wider mb-6`} style={{ fontSize: '9pt' }}>
-                                        <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
-                                        Status jaringan: {isOnline ? 'Online' : 'Offline'}
-                                    </div>
-                                    <h3 className="text-2xl font-outfit font-black text-gray-900 dark:text-gray-100">
-                                        Kirim Data ke Website
-                                    </h3>
-                                    <p className="mt-4 text-gray-600 dark:text-gray-400 leading-relaxed">
-                                        Singkronisasikan data penganggaran (RKAS) dan realisasi (BKU) ke website publik sekolah untuk menjaga transparansi informasi publik.
-                                    </p>
+            <div className="space-y-4">
+                <PageHeader
+                    className="animate-rise"
+                    breadcrumb={[
+                        { label: 'Dashboard' },
+                        { label: 'Integrasi' },
+                        { label: 'Sinkronisasi' },
+                    ]}
+                    title="Integrasi & Sinkronisasi"
+                    badge={<StatusBadge tone={isOnline ? 'success' : 'danger'}>{isOnline ? 'Online' : 'Offline'}</StatusBadge>}
+                    subtitle="Singkronisasikan data penganggaran (RKAS) dan realisasi (BKU) ke website publik sekolah."
+                />
 
-                                    {sekolah?.website_sync_url && (
-                                        <div className="mt-6 flex items-center gap-2 text-gray-400 font-mono italic" style={{ fontSize: '9pt' }}>
-                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                                            </svg>
-                                            {sekolah.website_sync_url}
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div className="bg-gray-50 dark:bg-gray-800/50 p-8 rounded-[2rem] border border-gray-100 dark:border-gray-700 min-w-[320px]">
-                                    <form onSubmit={handleSync} className="space-y-6">
-                                        <div>
-                                            <label className="font-bold text-gray-500 dark:text-gray-400 mb-2 block">Tahun Anggaran</label>
-                                            <select
-                                                id="tahun"
-                                                value={data.tahun}
-                                                onChange={(e) => setData('tahun', parseInt(e.target.value))}
-                                                className="w-full bg-white dark:bg-gray-900 border-2 border-gray-100 dark:border-gray-800 rounded-2xl px-4 py-3 font-bold text-gray-700 dark:text-gray-300 focus:border-indigo-500 focus:ring-0 transition-all cursor-pointer"
-                                                style={{ fontSize: '10pt' }}
-                                                disabled={!sekolah?.website_sync_url || availableYears.length === 0}
-                                            >
-                                                {availableYears.length > 0 ? (
-                                                    availableYears.map(year => (
-                                                        <option key={year} value={year}>Tahun Anggaran {year}</option>
-                                                    ))
-                                                ) : (
-                                                    <option value="">Tidak ada data</option>
-                                                )}
-                                            </select>
-                                        </div>
-
-                                        <button 
-                                            type="submit"
-                                            disabled={isSyncing || !sekolah?.website_sync_url || availableYears.length === 0}
-                                            className="w-full py-4 px-6 rounded-2xl bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-200 dark:disabled:bg-gray-800 text-white font-bold transition-all shadow-lg shadow-indigo-200 dark:shadow-none flex items-center justify-center gap-3 active:scale-[0.98]"
-                                            style={{ fontSize: '10pt' }}
-                                        >
-                                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                            </svg>
-                                            Singkronkan Data
-                                        </button>
-                                    </form>
-                                </div>
+                {/* Main Card */}
+                <Surface className="animate-rise" padding="lg">
+                    <div className="flex flex-col justify-between gap-6 md:flex-row md:items-center">
+                        <div className="max-w-2xl">
+                            <div className={`mb-4 inline-flex items-center gap-2 rounded-full px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] ${isOnline ? 'bg-pastel-mint text-mint dark:bg-mint/10 dark:text-mint' : 'bg-pastel-rose text-rose-600 dark:bg-rose-500/10 dark:text-rose-300'}`}>
+                                <div className={`h-2 w-2 rounded-full ${isOnline ? 'bg-mint animate-pulse-soft' : 'bg-rose-500'}`}></div>
+                                Status jaringan: {isOnline ? 'Online' : 'Offline'}
                             </div>
+                            <h3 className="text-[18px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                                Kirim Data ke Website
+                            </h3>
+                            <p className="mt-3 text-[11.5px] font-medium leading-relaxed text-slate-500 dark:text-slate-400">
+                                Singkronisasikan data penganggaran (RKAS) dan realisasi (BKU) ke website publik sekolah untuk menjaga transparansi informasi publik.
+                            </p>
+
+                            {sekolah?.website_sync_url && (
+                                <div className="mt-4 flex items-center gap-2 font-mono text-[10px] italic text-slate-400 dark:text-slate-500">
+                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                                    </svg>
+                                    {sekolah.website_sync_url}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="min-w-[320px] rounded-[22px] border border-slate-100 bg-slate-50/60 p-6 dark:border-white/5 dark:bg-white/[0.02]">
+                            <form onSubmit={handleSync} className="space-y-5">
+                                <div>
+                                    <label className="mb-2 block text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">Tahun Anggaran</label>
+                                    <select
+                                        id="tahun"
+                                        value={data.tahun}
+                                        onChange={(e) => setData('tahun', parseInt(e.target.value))}
+                                        className="w-full cursor-pointer rounded-2xl border-2 border-slate-100 bg-white px-4 py-3 text-[11.5px] font-extrabold text-slate-700 transition-all focus:border-lime-400 focus:ring-0 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:focus:border-lime-400/70"
+                                        disabled={!sekolah?.website_sync_url || availableYears.length === 0}
+                                    >
+                                        {availableYears.length > 0 ? (
+                                            availableYears.map(year => (
+                                                <option key={year} value={year}>Tahun Anggaran {year}</option>
+                                            ))
+                                        ) : (
+                                            <option value="">Tidak ada data</option>
+                                        )}
+                                    </select>
+                                </div>
+
+                                <button
+                                    type="submit"
+                                    disabled={isSyncing || !sekolah?.website_sync_url || availableYears.length === 0}
+                                    className="flex w-full items-center justify-center gap-3 rounded-2xl bg-lime-400 px-6 py-4 text-[11.5px] font-extrabold text-slate-950 shadow-lime transition-all hover:-translate-y-0.5 hover:bg-lime-300 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 disabled:hover:translate-y-0 dark:disabled:bg-white/10 dark:disabled:text-slate-500"
+                                >
+                                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                    </svg>
+                                    Singkronkan Data
+                                </button>
+                            </form>
                         </div>
                     </div>
+                </Surface>
 
-                    {/* History Section */}
-                    <div className="bg-white dark:bg-gray-900 shadow-xl shadow-gray-200/50 dark:shadow-none sm:rounded-[2.5rem] border border-gray-100 dark:border-gray-800 overflow-hidden">
-                        <div className="p-8 border-b border-gray-50 dark:border-gray-800 flex items-center justify-between">
-                            <div>
-                                <h4 className="font-outfit font-black text-xl text-gray-900 dark:text-gray-100">Riwayat Sinkronisasi</h4>
-                                <p className="text-gray-500 mt-1 font-medium">Log aktivitas pengiriman data ke server luar.</p>
-                            </div>
-                            <div className="bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 px-4 py-2 rounded-xl font-black uppercase tracking-widest" style={{ fontSize: '9pt' }}>
-                                {syncLogs.length} Total Log
-                            </div>
-                        </div>
-                        
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left">
-                                <thead>
-                                    <tr className="bg-gray-50/50 dark:bg-gray-800/50 text-gray-400 font-black uppercase tracking-widest" style={{ fontSize: '9pt' }}>
-                                        <th className="px-8 py-4">ID</th>
-                                        <th className="px-8 py-4">Waktu Eksekusi</th>
-                                        <th className="px-8 py-4">Tahun</th>
-                                        <th className="px-8 py-4">Status</th>
-                                        <th className="px-8 py-4">Respon Server</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
-                                    {paginatedLogs.length > 0 ? (
-                                        paginatedLogs.map((log) => (
-                                            <tr key={log.id} className="hover:bg-gray-50/30 dark:hover:bg-gray-800/30 transition-colors">
-                                                <td className="px-8 py-5 text-gray-400 font-mono" style={{ fontSize: '9pt' }}>#{log.id}</td>
-                                                <td className="px-8 py-5 text-gray-600 dark:text-gray-400 font-medium">
-                                                    {new Date(log.created_at).toLocaleString('id-ID', { 
-                                                        dateStyle: 'medium', 
-                                                        timeStyle: 'short' 
-                                                    })}
-                                                </td>
-                                                <td className="px-8 py-5 font-black text-gray-900 dark:text-gray-100">
-                                                    {log.tahun}
-                                                </td>
-                                                <td className="px-8 py-5">
-                                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-black uppercase tracking-wider" style={{ fontSize: '8pt', backgroundColor: log.status === 'success' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)', color: log.status === 'success' ? '#15803d' : '#b91c1c' }}>
-                                                        <div className={`w-1 h-1 rounded-full ${log.status === 'success' ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                                                        {log.status === 'success' ? 'Berhasil' : 'Gagal'}
-                                                    </span>
-                                                </td>
-                                                <td className="px-8 py-5 text-gray-500 dark:text-gray-400 italic leading-relaxed max-w-xs truncate">
-                                                    {log.message}
-                                                </td>
-                                            </tr>
-                                        ))
-                                    ) : (
-                                        <tr>
-                                            <td colSpan={5} className="px-8 py-20 text-center">
-                                                <div className="flex flex-col items-center justify-center text-gray-300 dark:text-gray-600">
-                                                    <svg className="w-12 h-12 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                    </svg>
-                                                    <p className="font-bold uppercase tracking-widest" style={{ fontSize: '9pt' }}>Belum ada riwayat aktivitas</p>
-                                                </div>
+                {/* History Section */}
+                <div className="animate-rise" style={{ animationDelay: '110ms' }}>
+                    <DataTable
+                        title="Riwayat Sinkronisasi"
+                        subtitle="Log aktivitas pengiriman data ke server luar."
+                        icon={
+                            <IconTile tone="sky" size="sm">
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </IconTile>
+                        }
+                        actions={<StatusBadge tone="info" dot={false} className="text-sikas-num">{syncLogs.length} Total Log</StatusBadge>}
+                        contentClassName="bento-table-wrapper mx-4 mb-4"
+                        footer={
+                            totalLogs >= itemsPerPage ? (
+                                <>
+                                    <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">
+                                        Halaman <span className="text-sikas-num font-extrabold text-slate-700 dark:text-slate-200">{currentPage}</span> dari <span className="text-sikas-num font-extrabold text-slate-700 dark:text-slate-200">{totalPages}</span>
+                                    </span>
+                                    <div className="flex items-center gap-1">
+                                        <button
+                                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                            disabled={currentPage === 1}
+                                            className="flex h-7 w-7 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-400 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:bg-white/5 dark:text-slate-500"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                            </svg>
+                                        </button>
+
+                                        {[...Array(totalPages)].map((_, i) => (
+                                            <button
+                                                key={i + 1}
+                                                onClick={() => setCurrentPage(i + 1)}
+                                                className={`flex h-7 min-w-7 items-center justify-center rounded-xl px-2 text-[10px] font-extrabold transition text-sikas-num ${
+                                                    currentPage === i + 1
+                                                        ? 'bg-lime-400 text-slate-950 shadow-lime'
+                                                        : 'text-slate-500 hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-white/5'
+                                                }`}
+                                            >
+                                                {i + 1}
+                                            </button>
+                                        ))}
+
+                                        <button
+                                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                            disabled={currentPage === totalPages}
+                                            className="flex h-7 w-7 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-400 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:bg-white/5 dark:text-slate-500"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </>
+                            ) : undefined
+                        }
+                    >
+                        <table className="min-w-full">
+                            <thead>
+                                <tr>
+                                    <th className="text-left">ID</th>
+                                    <th className="text-left">Waktu Eksekusi</th>
+                                    <th className="text-left">Tahun</th>
+                                    <th className="text-left">Status</th>
+                                    <th className="text-left">Respon Server</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {paginatedLogs.length > 0 ? (
+                                    paginatedLogs.map((log) => (
+                                        <tr key={log.id}>
+                                            <td className="whitespace-nowrap font-mono text-slate-400 dark:text-slate-500">#{log.id}</td>
+                                            <td className="whitespace-nowrap font-semibold text-slate-600 dark:text-slate-300">
+                                                {new Date(log.created_at).toLocaleString('id-ID', {
+                                                    dateStyle: 'medium',
+                                                    timeStyle: 'short'
+                                                })}
+                                            </td>
+                                            <td className="whitespace-nowrap text-sikas-num font-extrabold text-slate-900 dark:text-white">
+                                                {log.tahun}
+                                            </td>
+                                            <td className="whitespace-nowrap">
+                                                <StatusBadge tone={log.status === 'success' ? 'success' : 'danger'}>
+                                                    {log.status === 'success' ? 'Berhasil' : 'Gagal'}
+                                                </StatusBadge>
+                                            </td>
+                                            <td className="max-w-xs truncate font-medium italic text-slate-500 dark:text-slate-400">
+                                                {log.message}
                                             </td>
                                         </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-
-                        {/* Pagination Buttons */}
-                        {totalLogs >= itemsPerPage && (
-                            <div className="p-8 border-t border-gray-50 dark:border-gray-800 flex items-center justify-center gap-2">
-                                <button 
-                                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                                    disabled={currentPage === 1}
-                                    className="p-2 rounded-xl border border-gray-100 dark:border-gray-800 text-gray-500 disabled:opacity-30 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all"
-                                >
-                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                                    </svg>
-                                </button>
-                                
-                                <div className="flex items-center gap-1">
-                                    {[...Array(totalPages)].map((_, i) => (
-                                        <button
-                                            key={i + 1}
-                                            onClick={() => setCurrentPage(i + 1)}
-                                            className={`w-8 h-8 rounded-xl font-black transition-all ${
-                                                currentPage === i + 1 
-                                                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100 dark:shadow-none' 
-                                                : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800'
-                                            }`}
-                                            style={{ fontSize: '9pt' }}
-                                        >
-                                            {i + 1}
-                                        </button>
-                                    ))}
-                                </div>
-
-                                <button 
-                                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                                    disabled={currentPage === totalPages}
-                                    className="p-2 rounded-xl border border-gray-100 dark:border-gray-800 text-gray-500 disabled:opacity-30 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all"
-                                >
-                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                    </svg>
-                                </button>
-                            </div>
-                        )}
-                    </div>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan={5} className="p-0">
+                                            <EmptyState
+                                                className="border-0 bg-transparent py-10 dark:bg-transparent"
+                                                icon={
+                                                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                    </svg>
+                                                }
+                                                title="Belum ada riwayat aktivitas"
+                                            />
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </DataTable>
                 </div>
             </div>
 
             <Modal show={isModalOpen} onClose={closeModal} maxWidth="2xl">
-                <div className="p-8" style={{ fontSize: '10pt' }}>
-                    <div className="flex items-center justify-between mb-8">
-                        <div>
-                            <h3 className="text-xl font-outfit font-black text-gray-900 dark:text-gray-100">
-                                Sinkronisasi Aktif
-                            </h3>
-                            <p className="font-medium text-gray-500">Tahun Anggaran {data.tahun}</p>
+                <div className="relative overflow-hidden bg-white dark:bg-[#15131F]">
+                    <div className="pointer-events-none absolute -right-12 -top-20 h-52 w-52 rounded-full bg-brand-500/10 blur-3xl" />
+                    <div className="relative flex items-start justify-between gap-3 border-b border-slate-100 px-6 py-4 dark:border-white/5">
+                        <div className="flex items-center gap-3">
+                            <IconTile tone="violet" size="lg">
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                            </IconTile>
+                            <div className="min-w-0">
+                                <h3 className="text-[14px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                                    Sinkronisasi Aktif
+                                </h3>
+                                <p className="mt-0.5 text-[10px] font-medium text-slate-400 dark:text-slate-500">Tahun Anggaran {data.tahun}</p>
+                            </div>
                         </div>
                         {!isSyncing || syncFinished ? (
-                            <button onClick={closeModal} className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                                <svg className="w-6 h-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <button onClick={closeModal} className="inline-flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-slate-100 dark:text-slate-500 dark:hover:bg-white/5">
+                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                 </svg>
                             </button>
                         ) : null}
                     </div>
 
-                    {/* Progress Bar */}
-                    <div className="mb-10">
-                        <div className="flex justify-between mb-3 font-black uppercase tracking-wider" style={{ fontSize: '9pt' }}>
-                            <span className="text-gray-400">{syncFinished ? 'Selesai' : 'Sedang Mengirim...'}</span>
-                            <span className="text-indigo-600 dark:text-indigo-400">{progress}%</span>
-                        </div>
-                        <div className="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-4 overflow-hidden p-1">
-                            <div 
-                                className="bg-gradient-to-r from-indigo-500 to-indigo-600 h-2 rounded-full transition-all duration-300 ease-out shadow-sm" 
-                                style={{ width: `${progress}%` }}
-                            ></div>
-                        </div>
-                    </div>
-
-                    {syncFinished ? (
-                        <div className="flex flex-col items-center justify-center py-12 bg-indigo-50/50 dark:bg-indigo-900/10 rounded-[2rem] border border-indigo-100 dark:border-indigo-800/50 mb-8">
-                            <div className="w-20 h-20 bg-white dark:bg-indigo-900 rounded-full flex items-center justify-center mb-6 text-indigo-600 dark:text-indigo-400 shadow-xl shadow-indigo-100 dark:shadow-none">
-                                <svg className="w-12 h-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                </svg>
+                    <div className="px-6 py-5">
+                        {/* Progress Bar */}
+                        <div className="mb-8">
+                            <div className="mb-3 flex justify-between text-[10px] font-extrabold uppercase tracking-[0.14em]">
+                                <span className="text-slate-400 dark:text-slate-500">{syncFinished ? 'Selesai' : 'Sedang Mengirim...'}</span>
+                                <span className="text-sikas-num text-brand-600 dark:text-brand-300">{progress}%</span>
                             </div>
-                            <h4 className="text-xl font-outfit font-black text-indigo-900 dark:text-indigo-300">Berhasil!</h4>
-                            <p className="mt-2 font-medium text-indigo-600 dark:text-indigo-400">Data telah sinkron dengan website sekolah.</p>
+                            <div className="h-4 w-full overflow-hidden rounded-full bg-slate-100 p-1 dark:bg-white/10">
+                                <div
+                                    className="h-2 rounded-full bg-gradient-to-r from-brand-500 to-brand-600 shadow-sm transition-all duration-300 ease-out"
+                                    style={{ width: `${progress}%` }}
+                                ></div>
+                            </div>
                         </div>
-                    ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 h-[420px] mb-8">
-                            {/* Logs */}
-                            <div className="bg-gray-50/50 dark:bg-gray-950 p-6 rounded-[2rem] border border-gray-100 dark:border-gray-800 overflow-y-auto custom-scrollbar">
-                                <h4 className="font-black text-gray-400 uppercase tracking-widest mb-4" style={{ fontSize: '8pt' }}>System Console</h4>
-                                <div className="space-y-3">
-                                    {logs.map((log, index) => (
-                                        <div key={index} className="font-mono text-gray-600 dark:text-gray-400 flex gap-3" style={{ fontSize: '9pt' }}>
-                                            <span className="text-indigo-400 opacity-50 shrink-0">{new Date().toLocaleTimeString([], { hour12: false })}</span>
-                                            <span className="break-words leading-relaxed">{log}</span>
+
+                        {syncFinished ? (
+                            <div className="mb-8 flex flex-col items-center justify-center rounded-[22px] border border-mint/20 bg-pastel-mint/60 py-12 dark:border-mint/20 dark:bg-mint/10">
+                                <div className="mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-white text-mint shadow-float dark:bg-[#15131F]">
+                                    <svg className="w-12 h-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                </div>
+                                <h4 className="text-[18px] font-extrabold text-slate-900 dark:text-white">Berhasil!</h4>
+                                <p className="mt-2 text-[11.5px] font-semibold text-mint">Data telah sinkron dengan website sekolah.</p>
+                            </div>
+                        ) : (
+                            <div className="mb-8 grid h-[420px] grid-cols-1 gap-4 md:grid-cols-2">
+                                {/* Logs */}
+                                <div className="sikas-scroll overflow-y-auto rounded-[22px] border border-slate-100 bg-slate-50/60 p-4 dark:border-white/5 dark:bg-white/[0.02]">
+                                    <h4 className="mb-4 text-[9px] font-extrabold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">System Console</h4>
+                                    <div className="space-y-2.5">
+                                        {logs.map((log, index) => (
+                                            <div key={index} className="flex gap-3 font-mono text-[10px] font-medium text-slate-600 dark:text-slate-400">
+                                                <span className="shrink-0 text-brand-500 opacity-60">{new Date().toLocaleTimeString([], { hour12: false })}</span>
+                                                <span className="break-words leading-relaxed">{log}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Data Preview */}
+                                <div className="flex flex-col overflow-hidden rounded-[22px] border border-slate-100 bg-slate-50/60 p-4 dark:border-white/5 dark:bg-white/[0.02]">
+                                    <h4 className="mb-4 text-[9px] font-extrabold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">Payload Preview</h4>
+                                    {payloadPreview ? (
+                                        <div className="sikas-scroll flex-1 overflow-y-auto pr-2">
+                                            <div className="space-y-4">
+                                                <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm dark:border-white/5 dark:bg-white/5">
+                                                    <p className="mb-3 text-[9px] font-extrabold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">Snapshot</p>
+                                                    <div className="space-y-3">
+                                                        <div className="flex items-center justify-between">
+                                                            <span className="text-[10.5px] font-medium text-slate-500 dark:text-slate-400">Pagu:</span>
+                                                            <span className="text-sikas-num text-[11px] font-extrabold text-slate-900 dark:text-white">Rp {payloadPreview.data.summary.pagu_anggaran.toLocaleString()}</span>
+                                                        </div>
+                                                        <div className="flex items-center justify-between">
+                                                            <span className="text-[10.5px] font-medium text-slate-500 dark:text-slate-400">Realisasi:</span>
+                                                            <span className="text-sikas-num text-[11px] font-extrabold text-brand-600 dark:text-brand-300">Rp {payloadPreview.data.summary.total_realisasi.toLocaleString()}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm dark:border-white/5 dark:bg-white/5">
+                                                    <p className="mb-4 text-[9px] font-extrabold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">Program Details ({payloadPreview.data.details.length})</p>
+                                                    <div className="space-y-4">
+                                                        {payloadPreview.data.details.map((item: any, i: number) => (
+                                                            <div key={i} className="border-b border-slate-100 pb-3 last:border-0 last:pb-0 dark:border-white/5">
+                                                                <p className="mb-2 text-[10.5px] font-extrabold leading-tight text-slate-700 dark:text-slate-300">{item.nama_kegiatan}</p>
+                                                                <div className="grid grid-cols-2 gap-2 text-[9.5px]">
+                                                                    <div className="font-medium italic text-slate-400 dark:text-slate-500">Angg: {item.anggaran.toLocaleString()}</div>
+                                                                    <div className="text-sikas-num text-right font-extrabold text-brand-500 dark:text-brand-300">Real: {item.realisasi.toLocaleString()}</div>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
-                                    ))}
+                                    ) : (
+                                        <div className="flex flex-1 flex-col items-center justify-center text-slate-300 dark:text-slate-600">
+                                            <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-slate-100 border-t-brand-500 dark:border-white/10 dark:border-t-brand-400"></div>
+                                            <p className="text-[9px] font-extrabold uppercase tracking-[0.18em]">Processing Data</p>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
+                        )}
 
-                            {/* Data Preview */}
-                            <div className="bg-gray-50/50 dark:bg-gray-950 p-6 rounded-[2rem] border border-gray-100 dark:border-gray-800 flex flex-col overflow-hidden">
-                                <h4 className="font-black text-gray-400 uppercase tracking-widest mb-4" style={{ fontSize: '8pt' }}>Payload Preview</h4>
-                                {payloadPreview ? (
-                                    <div className="overflow-y-auto flex-1 pr-2 custom-scrollbar">
-                                        <div className="space-y-6">
-                                            <div className="p-5 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm">
-                                                <p className="font-black text-gray-400 uppercase tracking-widest mb-3" style={{ fontSize: '8pt' }}>Snapshot</p>
-                                                <div className="space-y-3">
-                                                    <div className="flex justify-between items-center">
-                                                        <span className="text-gray-500">Pagu:</span>
-                                                        <span className="font-black text-gray-900 dark:text-white">Rp {payloadPreview.data.summary.pagu_anggaran.toLocaleString()}</span>
-                                                    </div>
-                                                    <div className="flex justify-between items-center">
-                                                        <span className="text-gray-500">Realisasi:</span>
-                                                        <span className="font-black text-indigo-600">Rp {payloadPreview.data.summary.total_realisasi.toLocaleString()}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            
-                                            <div className="p-5 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm">
-                                                <p className="font-black text-gray-400 uppercase tracking-widest mb-4" style={{ fontSize: '8pt' }}>Program Details ({payloadPreview.data.details.length})</p>
-                                                <div className="space-y-4">
-                                                    {payloadPreview.data.details.map((item: any, i: number) => (
-                                                        <div key={i} className="pb-4 border-b border-gray-50 dark:border-gray-800 last:border-0 last:pb-0">
-                                                            <p className="font-bold text-gray-700 dark:text-gray-300 leading-tight mb-2" style={{ fontSize: '9pt' }}>{item.nama_kegiatan}</p>
-                                                            <div className="grid grid-cols-2 gap-2" style={{ fontSize: '8pt' }}>
-                                                                <div className="text-gray-400 italic">Angg: {item.anggaran.toLocaleString()}</div>
-                                                                <div className="text-indigo-400 font-bold text-right">Real: {item.realisasi.toLocaleString()}</div>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="flex-1 flex flex-col items-center justify-center text-gray-300 dark:text-gray-700">
-                                        <div className="w-12 h-12 border-4 border-gray-100 dark:border-gray-800 border-t-indigo-500 rounded-full animate-spin mb-4"></div>
-                                        <p className="font-black uppercase tracking-widest" style={{ fontSize: '8pt' }}>Processing Data</p>
-                                    </div>
-                                )}
-                            </div>
+                        <div className="flex justify-end gap-2 border-t border-slate-100 pt-4 dark:border-white/5">
+                            <SecondaryButton
+                                onClick={closeModal}
+                                disabled={isSyncing && !syncFinished}
+                            >
+                                {syncFinished ? 'Selesai' : 'Batalkan'}
+                            </SecondaryButton>
                         </div>
-                    )}
-
-                    <div className="flex justify-end gap-3">
-                        <SecondaryButton 
-                            onClick={closeModal} 
-                            disabled={isSyncing && !syncFinished}
-                            className="rounded-xl px-8 border-none bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200"
-                            style={{ fontSize: '10pt' }}
-                        >
-                            {syncFinished ? 'Selesai' : 'Batalkan'}
-                        </SecondaryButton>
                     </div>
                 </div>
             </Modal>

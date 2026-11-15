@@ -6,6 +6,13 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import Modal from '@/Components/Modal';
 import axios from 'axios';
+import PageHeader from '@/Components/ui/PageHeader';
+import Surface from '@/Components/ui/Surface';
+import DataTable from '@/Components/ui/DataTable';
+import EmptyState from '@/Components/ui/EmptyState';
+import IconTile from '@/Components/ui/IconTile';
+import StatusBadge from '@/Components/ui/StatusBadge';
+import PillTabs from '@/Components/ui/PillTabs';
 
 export default function ReferensiKode() {
     const [activeTab, setActiveTab] = useState<'kegiatan' | 'rekening'>('kegiatan');
@@ -182,284 +189,316 @@ export default function ReferensiKode() {
     };
 
     return (
-        <AuthenticatedLayout
-            header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">Referensi Kode ARKAS</h2>}
-        >
+        <AuthenticatedLayout>
             <Head title="Referensi Kode ARKAS" />
 
-            <div className="py-12">
-                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                    
-                    {/* Tabs */}
-                    <div className="bg-white rounded-t-lg border-b border-gray-200">
-                        <nav className="flex -mb-px" aria-label="Tabs">
-                            <button
-                                onClick={() => setActiveTab('kegiatan')}
-                                className={`w-1/2 py-4 px-1 text-center border-b-2 font-medium text-sm transition-colors ${
-                                    activeTab === 'kegiatan'
-                                        ? 'border-indigo-500 text-indigo-600'
-                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                }`}
-                            >
-                                Kode Kegiatan
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('rekening')}
-                                className={`w-1/2 py-4 px-1 text-center border-b-2 font-medium text-sm transition-colors ${
-                                    activeTab === 'rekening'
-                                        ? 'border-indigo-500 text-indigo-600'
-                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                }`}
-                            >
-                                Rekening Belanja
-                            </button>
-                        </nav>
-                    </div>
+            <div className="space-y-4">
+                <PageHeader
+                    className="animate-rise"
+                    breadcrumb={[
+                        { label: 'Dashboard' },
+                        { label: 'Arkas Tools' },
+                        { label: 'Referensi Kode' },
+                    ]}
+                    title="Referensi Kode ARKAS"
+                    badge={<StatusBadge tone="violet" dot={false}>ARKAS</StatusBadge>}
+                    subtitle="Referensi kode kegiatan dan rekening belanja dari database ARKAS lokal."
+                />
 
-                    <div className="bg-white shadow-sm sm:rounded-b-lg p-6">
-                        
-                        {/* Tab Content: Kegiatan */}
-                        <div className={activeTab === 'kegiatan' ? 'block' : 'hidden'}>
-                            <div className="flex justify-between items-center mb-6">
-                                <div>
-                                    <h3 className="text-lg font-medium text-gray-900">Referensi Kode Kegiatan</h3>
-                                    <p className="text-sm text-gray-500 mt-1">
-                                        Data ini ditarik langsung dari database ARKAS lokal Anda.
-                                    </p>
-                                </div>
-                                <div className="flex gap-2">
-                                    <PrimaryButton onClick={() => triggerSync('kegiatan')} disabled={kegiatanData.length === 0 || kegiatanLoading || kegiatanSyncing || !kegiatanData.some((i: any) => i.status === 'Data Baru' || i.status === 'Perlu Update')} className="bg-emerald-600 hover:bg-emerald-700 focus:bg-emerald-700 active:bg-emerald-900">
-                                        {kegiatanSyncing ? 'Menyinkronkan...' : 'Sync Database'}
-                                    </PrimaryButton>
-                                    <PrimaryButton onClick={() => fetchData('kegiatan')} disabled={kegiatanLoading || kegiatanSyncing}>
-                                        {kegiatanLoading ? 'Menarik Data...' : 'Tarik Data'}
-                                    </PrimaryButton>
-                                    <SecondaryButton onClick={() => exportToCSV('kegiatan')} disabled={kegiatanData.length === 0 || kegiatanLoading || kegiatanSyncing}>
-                                        Export Excel (CSV)
-                                    </SecondaryButton>
-                                </div>
+                {/* Tab */}
+                <div className="animate-rise" style={{ animationDelay: '60ms' }}>
+                    <Surface padding="sm">
+                        <PillTabs
+                            ariaLabel="Tab referensi kode"
+                            variant="soft"
+                            value={activeTab}
+                            items={[
+                                { key: 'kegiatan', label: 'Kode Kegiatan' },
+                                { key: 'rekening', label: 'Rekening Belanja' },
+                            ]}
+                            onChange={(key) => setActiveTab(key as 'kegiatan' | 'rekening')}
+                        />
+                    </Surface>
+                </div>
+
+                {/* Tab Content: Kegiatan */}
+                <div className={activeTab === 'kegiatan' ? 'block animate-rise' : 'hidden'} style={{ animationDelay: '110ms' }}>
+                    <Surface
+                        title="Referensi Kode Kegiatan"
+                        subtitle="Data ini ditarik langsung dari database ARKAS lokal Anda."
+                        icon={
+                            <IconTile tone="violet" size="md">
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M4 6h16M4 12h16M4 18h10" />
+                                </svg>
+                            </IconTile>
+                        }
+                        actions={
+                            <>
+                                <PrimaryButton
+                                    onClick={() => triggerSync('kegiatan')}
+                                    disabled={kegiatanData.length === 0 || kegiatanLoading || kegiatanSyncing || !kegiatanData.some((i: any) => i.status === 'Data Baru' || i.status === 'Perlu Update')}
+                                    className="text-[11px]"
+                                >
+                                    {kegiatanSyncing ? 'Menyinkronkan...' : 'Sync Database'}
+                                </PrimaryButton>
+                                <PrimaryButton onClick={() => fetchData('kegiatan')} disabled={kegiatanLoading || kegiatanSyncing} className="text-[11px]">
+                                    {kegiatanLoading ? 'Menarik Data...' : 'Tarik Data'}
+                                </PrimaryButton>
+                                <SecondaryButton onClick={() => exportToCSV('kegiatan')} disabled={kegiatanData.length === 0 || kegiatanLoading || kegiatanSyncing} className="text-[11px]">
+                                    Export Excel (CSV)
+                                </SecondaryButton>
+                            </>
+                        }
+                    >
+                        {kegiatanError && (
+                            <div className="mb-4 rounded-2xl border border-rose-200 bg-pastel-rose/70 p-3 text-[11px] font-semibold text-rose-600 dark:border-rose-400/20 dark:bg-rose-500/10 dark:text-rose-300">
+                                {kegiatanError}
                             </div>
+                        )}
 
-                            {kegiatanError && (
-                                <div className="bg-red-50 text-red-600 p-3 rounded mb-4 text-sm border border-red-200">
-                                    {kegiatanError}
+                        {kegiatanData.length > 0 && (
+                            <div className="mb-4 flex flex-col items-center justify-between gap-3 sm:flex-row">
+                                <div className="text-[10.5px] font-semibold text-slate-400 dark:text-slate-500">
+                                    Menampilkan <span className="text-sikas-num font-extrabold text-slate-700 dark:text-slate-200">{filteredKegiatan.length}</span> dari {kegiatanData.length} data kegiatan.
                                 </div>
-                            )}
-
-                            {kegiatanData.length > 0 && (
-                                <div className="mb-4 flex flex-col sm:flex-row gap-4 items-center justify-between">
-                                    <div className="text-sm text-gray-600 font-medium">
-                                        Menampilkan <span className="font-bold text-indigo-600">{filteredKegiatan.length}</span> dari {kegiatanData.length} data kegiatan.
-                                    </div>
+                                <div className="w-full sm:w-1/3">
                                     <TextInput
-                                        className="w-full sm:w-1/3 text-sm"
                                         placeholder="Cari kode, program, atau uraian..."
                                         value={searchKegiatan}
                                         onChange={(e) => setSearchKegiatan(e.target.value)}
                                     />
                                 </div>
-                            )}
+                            </div>
+                        )}
 
-                            <div className="overflow-x-auto border rounded-lg border-gray-200">
-                                <div className="max-h-[600px] overflow-y-auto custom-scrollbar">
-                                    <table className="min-w-full divide-y divide-gray-200 text-sm">
-                                        <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
-                                            <tr>
-                                                <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase w-1/6">Kode Kegiatan</th>
-                                                <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase w-1/6">Program</th>
-                                                <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase w-1/4">Sub Program</th>
-                                                <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase w-1/4">Uraian Kegiatan</th>
-                                                <th className="px-6 py-3 text-center font-medium text-gray-500 uppercase w-1/6">Keterangan</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="bg-white divide-y divide-gray-200">
-                                            {filteredKegiatan.length > 0 ? (
-                                                filteredKegiatan.map((item: any, i) => (
-                                                    <tr key={i} className="hover:bg-gray-50">
-                                                        <td className="px-6 py-3 whitespace-nowrap text-xs text-gray-600 font-mono">{item.id_kode}</td>
-                                                        <td className="px-6 py-3 text-gray-800">{item.program}</td>
-                                                        <td className="px-6 py-3 text-gray-800">{item.sub_program}</td>
-                                                        <td className="px-6 py-3 text-gray-800">{item.uraian_kode}</td>
-                                                        <td className="px-6 py-3 text-center">
-                                                            {item.status === 'Data Baru' ? (
-                                                                <span className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
-                                                                    Data Baru
-                                                                </span>
-                                                            ) : item.status === 'Perlu Update' ? (
-                                                                <span className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                                                                    Perlu Update
-                                                                </span>
-                                                            ) : (
-                                                                <span className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
-                                                                    Sudah Ada
-                                                                </span>
-                                                            )}
-                                                        </td>
-                                                    </tr>
-                                                ))
-                                            ) : (
-                                                <tr>
-                                                    <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
-                                                        {kegiatanLoading ? 'Sedang menarik data dari ARKAS...' : (searchKegiatan ? 'Tidak ada data yang cocok dengan pencarian.' : 'Klik "Tarik Data" untuk memuat daftar kegiatan.')}
+                        <div className="bento-table-wrapper mt-3 overflow-x-auto">
+                            <div className="max-h-[600px] overflow-y-auto">
+                                <table className="min-w-full">
+                                    <thead className="sticky top-0 z-10">
+                                        <tr>
+                                            <th className="text-left">Kode Kegiatan</th>
+                                            <th className="text-left">Program</th>
+                                            <th className="text-left">Sub Program</th>
+                                            <th className="text-left">Uraian Kegiatan</th>
+                                            <th className="text-center">Keterangan</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {filteredKegiatan.length > 0 ? (
+                                            filteredKegiatan.map((item: any, i) => (
+                                                <tr key={i}>
+                                                    <td className="whitespace-nowrap font-mono font-bold text-slate-700 dark:text-slate-200">{item.id_kode}</td>
+                                                    <td className="text-slate-600 dark:text-slate-300">{item.program}</td>
+                                                    <td className="text-slate-600 dark:text-slate-300">{item.sub_program}</td>
+                                                    <td className="text-slate-600 dark:text-slate-300">{item.uraian_kode}</td>
+                                                    <td className="text-center">
+                                                        {item.status === 'Data Baru' ? (
+                                                            <StatusBadge tone="success" dot={false}>Data Baru</StatusBadge>
+                                                        ) : item.status === 'Perlu Update' ? (
+                                                            <StatusBadge tone="warning" dot={false}>Perlu Update</StatusBadge>
+                                                        ) : (
+                                                            <StatusBadge tone="neutral" dot={false}>Sudah Ada</StatusBadge>
+                                                        )}
                                                     </td>
                                                 </tr>
-                                            )}
-                                        </tbody>
-                                    </table>
-                                </div>
+                                            ))
+                                        ) : (
+                                            <tr>
+                                                <td colSpan={5} className="p-0">
+                                                    <EmptyState
+                                                        className="border-0 bg-transparent py-9 dark:bg-transparent"
+                                                        icon={
+                                                            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                                            </svg>
+                                                        }
+                                                        title={kegiatanLoading ? 'Sedang menarik data dari ARKAS...' : (searchKegiatan ? 'Tidak ada data yang cocok dengan pencarian.' : 'Klik "Tarik Data" untuk memuat daftar kegiatan.')}
+                                                    />
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
+                    </Surface>
+                </div>
 
-                        {/* Tab Content: Rekening */}
-                        <div className={activeTab === 'rekening' ? 'block' : 'hidden'}>
-                            <div className="flex justify-between items-center mb-6">
-                                <div>
-                                    <h3 className="text-lg font-medium text-gray-900">Referensi Rekening Belanja</h3>
-                                    <p className="text-sm text-gray-500 mt-1">
-                                        Data ini ditarik langsung dari database ARKAS lokal Anda.
-                                    </p>
-                                </div>
-                                <div className="flex gap-2">
-                                    <PrimaryButton onClick={() => triggerSync('rekening')} disabled={rekeningData.length === 0 || rekeningLoading || rekeningSyncing || !rekeningData.some((i: any) => i.status === 'Data Baru' || i.status === 'Perlu Update')} className="bg-emerald-600 hover:bg-emerald-700 focus:bg-emerald-700 active:bg-emerald-900">
-                                        {rekeningSyncing ? 'Menyinkronkan...' : 'Sync Database'}
-                                    </PrimaryButton>
-                                    <PrimaryButton onClick={() => fetchData('rekening')} disabled={rekeningLoading || rekeningSyncing}>
-                                        {rekeningLoading ? 'Menarik Data...' : 'Tarik Data'}
-                                    </PrimaryButton>
-                                    <SecondaryButton onClick={() => exportToCSV('rekening')} disabled={rekeningData.length === 0 || rekeningLoading || rekeningSyncing}>
-                                        Export Excel (CSV)
-                                    </SecondaryButton>
-                                </div>
+                {/* Tab Content: Rekening */}
+                <div className={activeTab === 'rekening' ? 'block animate-rise' : 'hidden'} style={{ animationDelay: '110ms' }}>
+                    <Surface
+                        title="Referensi Rekening Belanja"
+                        subtitle="Data ini ditarik langsung dari database ARKAS lokal Anda."
+                        icon={
+                            <IconTile tone="sky" size="md">
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                                </svg>
+                            </IconTile>
+                        }
+                        actions={
+                            <>
+                                <PrimaryButton
+                                    onClick={() => triggerSync('rekening')}
+                                    disabled={rekeningData.length === 0 || rekeningLoading || rekeningSyncing || !rekeningData.some((i: any) => i.status === 'Data Baru' || i.status === 'Perlu Update')}
+                                    className="text-[11px]"
+                                >
+                                    {rekeningSyncing ? 'Menyinkronkan...' : 'Sync Database'}
+                                </PrimaryButton>
+                                <PrimaryButton onClick={() => fetchData('rekening')} disabled={rekeningLoading || rekeningSyncing} className="text-[11px]">
+                                    {rekeningLoading ? 'Menarik Data...' : 'Tarik Data'}
+                                </PrimaryButton>
+                                <SecondaryButton onClick={() => exportToCSV('rekening')} disabled={rekeningData.length === 0 || rekeningLoading || rekeningSyncing} className="text-[11px]">
+                                    Export Excel (CSV)
+                                </SecondaryButton>
+                            </>
+                        }
+                    >
+                        {rekeningError && (
+                            <div className="mb-4 rounded-2xl border border-rose-200 bg-pastel-rose/70 p-3 text-[11px] font-semibold text-rose-600 dark:border-rose-400/20 dark:bg-rose-500/10 dark:text-rose-300">
+                                {rekeningError}
                             </div>
+                        )}
 
-                            {rekeningError && (
-                                <div className="bg-red-50 text-red-600 p-3 rounded mb-4 text-sm border border-red-200">
-                                    {rekeningError}
+                        {rekeningData.length > 0 && (
+                            <div className="mb-4 flex flex-col items-center justify-between gap-3 sm:flex-row">
+                                <div className="text-[10.5px] font-semibold text-slate-400 dark:text-slate-500">
+                                    Menampilkan <span className="text-sikas-num font-extrabold text-slate-700 dark:text-slate-200">{filteredRekening.length}</span> dari {rekeningData.length} data rekening belanja.
                                 </div>
-                            )}
-
-                            {rekeningData.length > 0 && (
-                                <div className="mb-4 flex flex-col sm:flex-row gap-4 items-center justify-between">
-                                    <div className="text-sm text-gray-600 font-medium">
-                                        Menampilkan <span className="font-bold text-indigo-600">{filteredRekening.length}</span> dari {rekeningData.length} data rekening belanja.
-                                    </div>
+                                <div className="w-full sm:w-1/3">
                                     <TextInput
-                                        className="w-full sm:w-1/3 text-sm"
                                         placeholder="Cari kode atau uraian rekening..."
                                         value={searchRekening}
                                         onChange={(e) => setSearchRekening(e.target.value)}
                                     />
                                 </div>
-                            )}
+                            </div>
+                        )}
 
-                            <div className="overflow-x-auto border rounded-lg border-gray-200">
-                                <div className="max-h-[600px] overflow-y-auto custom-scrollbar">
-                                    <table className="min-w-full divide-y divide-gray-200 text-sm">
-                                        <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
-                                            <tr>
-                                                <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase w-1/4">Kode Rekening</th>
-                                                <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase w-1/3">Uraian Rekening</th>
-                                                <th className="px-2 py-3 text-center font-medium text-gray-500 uppercase">PPN</th>
-                                                <th className="px-2 py-3 text-center font-medium text-gray-500 uppercase">PPh 21</th>
-                                                <th className="px-2 py-3 text-center font-medium text-gray-500 uppercase">PPh 22</th>
-                                                <th className="px-2 py-3 text-center font-medium text-gray-500 uppercase">PPh 23</th>
-                                                <th className="px-2 py-3 text-center font-medium text-gray-500 uppercase">PPh 4(2)</th>
-                                                <th className="px-6 py-3 text-center font-medium text-gray-500 uppercase w-1/6">Keterangan</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="bg-white divide-y divide-gray-200">
-                                            {filteredRekening.length > 0 ? (
-                                                filteredRekening.map((item: any, i) => (
-                                                    <tr key={i} className="hover:bg-gray-50">
-                                                        <td className="px-6 py-3 whitespace-nowrap text-xs text-gray-600 font-mono">{item.kode_rekening}</td>
-                                                        <td className="px-6 py-3 text-gray-800">{item.rekening}</td>
-                                                        <td className="px-2 py-3 text-center">
-                                                            {item.is_ppn ? <span className="inline-flex py-1 px-2 rounded bg-rose-50 text-rose-700 border border-rose-200 text-xs font-bold">TRUE</span> : <span className="inline-flex py-1 px-2 rounded bg-gray-50 text-gray-400 border border-gray-200 text-xs">FALSE</span>}
+                        <div className="bento-table-wrapper mt-3 overflow-x-auto">
+                            <div className="max-h-[600px] overflow-y-auto">
+                                <table className="min-w-full">
+                                    <thead className="sticky top-0 z-10">
+                                        <tr>
+                                            <th className="text-left">Kode Rekening</th>
+                                            <th className="text-left">Uraian Rekening</th>
+                                            <th className="text-center">PPN</th>
+                                            <th className="text-center">PPh 21</th>
+                                            <th className="text-center">PPh 22</th>
+                                            <th className="text-center">PPh 23</th>
+                                            <th className="text-center">PPh 4(2)</th>
+                                            <th className="text-center">Keterangan</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {filteredRekening.length > 0 ? (
+                                            filteredRekening.map((item: any, i) => (
+                                                <tr key={i}>
+                                                    <td className="whitespace-nowrap font-mono font-bold text-slate-700 dark:text-slate-200">{item.kode_rekening}</td>
+                                                    <td className="text-slate-600 dark:text-slate-300">{item.rekening}</td>
+                                                    {[item.is_ppn, item.is_pph21, item.is_pph22, item.is_pph23, item.is_pph4].map((flag: any, taxIndex: number) => (
+                                                        <td key={taxIndex} className="text-center">
+                                                            {flag ? <StatusBadge tone="danger" dot={false}>TRUE</StatusBadge> : <StatusBadge tone="neutral" dot={false}>FALSE</StatusBadge>}
                                                         </td>
-                                                        <td className="px-2 py-3 text-center">
-                                                            {item.is_pph21 ? <span className="inline-flex py-1 px-2 rounded bg-rose-50 text-rose-700 border border-rose-200 text-xs font-bold">TRUE</span> : <span className="inline-flex py-1 px-2 rounded bg-gray-50 text-gray-400 border border-gray-200 text-xs">FALSE</span>}
-                                                        </td>
-                                                        <td className="px-2 py-3 text-center">
-                                                            {item.is_pph22 ? <span className="inline-flex py-1 px-2 rounded bg-rose-50 text-rose-700 border border-rose-200 text-xs font-bold">TRUE</span> : <span className="inline-flex py-1 px-2 rounded bg-gray-50 text-gray-400 border border-gray-200 text-xs">FALSE</span>}
-                                                        </td>
-                                                        <td className="px-2 py-3 text-center">
-                                                            {item.is_pph23 ? <span className="inline-flex py-1 px-2 rounded bg-rose-50 text-rose-700 border border-rose-200 text-xs font-bold">TRUE</span> : <span className="inline-flex py-1 px-2 rounded bg-gray-50 text-gray-400 border border-gray-200 text-xs">FALSE</span>}
-                                                        </td>
-                                                        <td className="px-2 py-3 text-center">
-                                                            {item.is_pph4 ? <span className="inline-flex py-1 px-2 rounded bg-rose-50 text-rose-700 border border-rose-200 text-xs font-bold">TRUE</span> : <span className="inline-flex py-1 px-2 rounded bg-gray-50 text-gray-400 border border-gray-200 text-xs">FALSE</span>}
-                                                        </td>
-                                                        <td className="px-6 py-3 text-center">
-                                                            {item.status === 'Data Baru' ? (
-                                                                <span className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
-                                                                    Data Baru
-                                                                </span>
-                                                            ) : item.status === 'Perlu Update' ? (
-                                                                <span className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                                                                    Perlu Update
-                                                                </span>
-                                                            ) : (
-                                                                <span className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
-                                                                    Sudah Ada
-                                                                </span>
-                                                            )}
-                                                        </td>
-                                                    </tr>
-                                                ))
-                                            ) : (
-                                                <tr>
-                                                    <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
-                                                        {rekeningLoading ? 'Sedang menarik data dari ARKAS...' : (searchRekening ? 'Tidak ada data yang cocok dengan pencarian.' : 'Klik "Tarik Data" untuk memuat daftar rekening belanja.')}
+                                                    ))}
+                                                    <td className="text-center">
+                                                        {item.status === 'Data Baru' ? (
+                                                            <StatusBadge tone="success" dot={false}>Data Baru</StatusBadge>
+                                                        ) : item.status === 'Perlu Update' ? (
+                                                            <StatusBadge tone="warning" dot={false}>Perlu Update</StatusBadge>
+                                                        ) : (
+                                                            <StatusBadge tone="neutral" dot={false}>Sudah Ada</StatusBadge>
+                                                        )}
                                                     </td>
                                                 </tr>
-                                            )}
-                                        </tbody>
-                                    </table>
-                                </div>
+                                            ))
+                                        ) : (
+                                            <tr>
+                                                <td colSpan={8} className="p-0">
+                                                    <EmptyState
+                                                        className="border-0 bg-transparent py-9 dark:bg-transparent"
+                                                        icon={
+                                                            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                                            </svg>
+                                                        }
+                                                        title={rekeningLoading ? 'Sedang menarik data dari ARKAS...' : (searchRekening ? 'Tidak ada data yang cocok dengan pencarian.' : 'Klik "Tarik Data" untuk memuat daftar rekening belanja.')}
+                                                    />
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
-
-                    </div>
+                    </Surface>
                 </div>
             </div>
 
             {/* Modal Konfirmasi & Progress untuk Sync */}
             <Modal show={showSyncModal} onClose={() => !isSyncingConfirm && setShowSyncModal(false)} maxWidth="md">
-                <div className="p-6">
-                    {!isSyncingConfirm ? (
-                        <>
-                            <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">Konfirmasi Sinkronisasi</h2>
-                            <p className="mt-2 text-sm text-gray-600 dark:text-gray-100">
-                                Anda akan menyimpan seluruh data {syncTipe === 'kegiatan' ? 'Kegiatan' : 'Rekening Belanja'} ARKAS yang berstatus "Data Baru" ke dalam database SIKAS lokal Anda.
-                            </p>
-                            <p className="mt-2 text-sm font-semibold text-amber-600">
-                                Lanjutkan sinkronisasi?
-                            </p>
-                            <div className="mt-6 flex justify-end gap-3">
-                                <SecondaryButton onClick={() => setShowSyncModal(false)}>Batal</SecondaryButton>
-                                <PrimaryButton onClick={confirmSync} className="bg-emerald-600 hover:bg-emerald-700">Ya, Sinkronkan</PrimaryButton>
+                <div className="relative overflow-hidden bg-white dark:bg-[#15131F]">
+                    <div className="pointer-events-none absolute -right-10 -top-16 h-40 w-40 rounded-full bg-mint/10 blur-3xl" />
+                    <div className="relative flex items-start justify-between gap-3 border-b border-slate-100 px-6 py-4 dark:border-white/5">
+                        <div className="flex items-center gap-3">
+                            <IconTile tone="mint" size="lg">
+                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                            </IconTile>
+                            <div className="min-w-0">
+                                <h2 className="text-[14px] font-extrabold tracking-tight text-slate-900 dark:text-white">Konfirmasi Sinkronisasi</h2>
+                                <p className="mt-0.5 text-[10px] font-medium text-slate-400 dark:text-slate-500">Simpan referensi ARKAS ke database lokal.</p>
                             </div>
-                        </>
-                    ) : (
-                        <div className="text-center py-4">
-                            <h2 className="text-lg font-medium text-gray-900 mb-4">Menyinkronkan ke Database...</h2>
-                            
-                            {/* Progress Bar Container */}
-                            <div className="w-full bg-gray-200 rounded-full h-4 mb-2 overflow-hidden">
-                                <div 
-                                    className="bg-emerald-600 h-4 rounded-full transition-all duration-300 ease-out flex items-center justify-center"
-                                    style={{ width: `${syncProgress}%` }}
-                                >
-                                </div>
-                            </div>
-                            
-                            <p className="text-sm font-semibold text-emerald-600 mb-4">
-                                {syncProgress}% Selesai
-                            </p>
-                            <p className="text-xs text-gray-500">
-                                Mohon tunggu sebentar, sedang menyimpan data...
-                            </p>
                         </div>
-                    )}
+                        <button
+                            type="button"
+                            onClick={() => !isSyncingConfirm && setShowSyncModal(false)}
+                            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-500 dark:hover:bg-white/5 dark:hover:text-white"
+                            aria-label="Tutup"
+                        >
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div className="px-6 py-5">
+                        {!isSyncingConfirm ? (
+                            <>
+                                <p className="text-[11.5px] font-medium leading-relaxed text-slate-500 dark:text-slate-400">
+                                    Anda akan menyimpan seluruh data {syncTipe === 'kegiatan' ? 'Kegiatan' : 'Rekening Belanja'} ARKAS yang berstatus "Data Baru" ke dalam database SIKAS lokal Anda.
+                                </p>
+                                <p className="mt-2 text-[11.5px] font-extrabold text-amber-600 dark:text-amber-300">
+                                    Lanjutkan sinkronisasi?
+                                </p>
+                                <div className="mt-5 flex justify-end gap-2 border-t border-slate-100 pt-4 dark:border-white/5">
+                                    <SecondaryButton onClick={() => setShowSyncModal(false)}>Batal</SecondaryButton>
+                                    <PrimaryButton onClick={confirmSync}>Ya, Sinkronkan</PrimaryButton>
+                                </div>
+                            </>
+                        ) : (
+                            <div className="py-4 text-center">
+                                <h2 className="mb-4 text-[13px] font-extrabold text-slate-900 dark:text-white">Menyinkronkan ke Database...</h2>
+
+                                {/* Progress Bar Container */}
+                                <div className="mb-2 h-4 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
+                                    <div
+                                        className="flex h-4 items-center justify-center rounded-full bg-gradient-to-r from-mint to-emerald-500 transition-all duration-300 ease-out"
+                                        style={{ width: `${syncProgress}%` }}
+                                    >
+                                    </div>
+                                </div>
+
+                                <p className="mb-4 text-[12px] font-extrabold text-mint">
+                                    {syncProgress}% Selesai
+                                </p>
+                                <p className="text-[10.5px] font-medium text-slate-400 dark:text-slate-500">
+                                    Mohon tunggu sebentar, sedang menyimpan data...
+                                </p>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </Modal>
         </AuthenticatedLayout>

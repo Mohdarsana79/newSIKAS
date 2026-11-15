@@ -1,20 +1,30 @@
 import React, { useState, useEffect } from 'react';
-import DatePicker from 'react-datepicker';
-import "react-datepicker/dist/react-datepicker.css";
-import { registerLocale } from "react-datepicker";
-import { id } from 'date-fns/locale/id';
-import { useForm, usePage } from '@inertiajs/react';
+import { format } from 'date-fns';
+import { ArrowDownLeft, ArrowUpRight, Wallet } from 'lucide-react';
+import { usePage } from '@inertiajs/react';
 import axios from 'axios';
-import Select from 'react-select';
-import Modal from '@/Components/Modal';
+import DatePicker from '@/Components/DatePicker';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
 import PrimaryButton from '@/Components/PrimaryButton';
-import SecondaryButton from '@/Components/SecondaryButton';
-import DangerButton from '@/Components/DangerButton';
 import useVariantRoute from '@/Hooks/useVariantRoute';
-
-registerLocale('id', id);
+import Surface from '@/Components/ui/Surface';
+import DataTable from '@/Components/ui/DataTable';
+import IconTile from '@/Components/ui/IconTile';
+import StatusBadge from '@/Components/ui/StatusBadge';
+import EmptyState from '@/Components/ui/EmptyState';
+import { SkeletonRows } from '@/Components/ui/Skeleton';
+import {
+    LaporanCalculateButton,
+    LaporanDeleteModal,
+    LaporanFormModal,
+    LaporanMetricCard,
+    LaporanPdfPreviewModal,
+    LaporanPrintSettingsModal,
+    LaporanSectionCard,
+    LaporanSelect,
+    LaporanValidationModal,
+} from './LaporanModalPrimitives';
 
 interface SptjData {
     id: number;
@@ -282,571 +292,350 @@ export default function SptjTab() {
     };
 
     return (
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 animate-fade-in-up">
-            <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-                <div className="flex items-center gap-3">
-                    <div className="p-3 bg-green-50 dark:bg-green-900/30 rounded-lg">
-                        <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
+        <div className="space-y-4">
+            {/* Toolbar: identitas tab + pencarian + aksi */}
+            <div className="animate-rise" style={{ animationDelay: '60ms' }}>
+                <Surface padding="sm">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <div className="flex items-center gap-2.5">
+                            <IconTile tone="mint" size="sm">
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                            </IconTile>
+                            <div>
+                                <p className="text-[11.5px] font-extrabold tracking-tight text-slate-900 dark:text-white">SPTJ</p>
+                                <p className="text-[9.5px] font-medium text-slate-400 dark:text-slate-500">Surat Pernyataan Tanggung Jawab Mutlak (BOSP)</p>
+                            </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <div className="w-full sm:w-64">
+                                <TextInput
+                                    type="text"
+                                    placeholder="Cari Nomor SPTJ..."
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                />
+                            </div>
+                            <PrimaryButton onClick={() => { resetForm(); setIsAddModalOpen(true); }}>
+                                Tambah
+                            </PrimaryButton>
+                        </div>
                     </div>
-                    <div>
-                        <h3 className="text-lg font-bold text-gray-800 dark:text-white">SPTJ</h3>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Surat Pernyataan Tanggung Jawab Mutlak (BOSP)</p>
-                    </div>
-                </div>
-                <div className="flex items-center gap-2">
-                    <input
-                        type="text"
-                        placeholder="Cari Nomor SPTJ..."
-                        className="border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                    />
-                    <PrimaryButton onClick={() => { resetForm(); setIsAddModalOpen(true); }}>
-                        Tambah
-                    </PrimaryButton>
-                </div>
+                </Surface>
             </div>
 
-            <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                    <thead className="bg-gray-50 dark:bg-gray-700">
-                        <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">No</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Nomor SPTJ</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tahap</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Jml Penerimaan</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Jml Pengeluaran</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Sisa Kas</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Sisa Bank</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                        {loading ? (
-                            <tr><td colSpan={8} className="text-center py-4 text-gray-500">Loading...</td></tr>
-                        ) : data.length === 0 ? (
-                            <tr><td colSpan={8} className="text-center py-4 text-gray-500">Tidak ada data SPTJ.</td></tr>
-                        ) : (
-                            data.map((item, index) => {
-                                const totalPenerimaan = Number(item.tahap_satu) + Number(item.tahap_dua);
-                                const totalPengeluaran = Number(item.jenis_belanja_pegawai) + Number(item.jenis_belanja_barang_jasa) + Number(item.jenis_belanja_modal);
-                                return (
-                                    <tr key={item.id}>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{index + 1 + (page - 1) * 10}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{item.nomor_sptj}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{item.tahap}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{formatCurrency(totalPenerimaan)}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{formatCurrency(totalPengeluaran)}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{formatCurrency(item.sisa_kas_tunai)}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{formatCurrency(item.sisa_dana_di_bank)}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                            <div className="flex items-center space-x-2">
-                                                <button
-                                                    onClick={() => { setSelectedPdfUrl(vroute('laporan.sptj.pdf', item.id)); setIsPreviewModalOpen(true); }}
-                                                    className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-200"
-                                                    title="Preview PDF"
-                                                >
-                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
-                                                </button>
-                                                <button
-                                                    onClick={() => openEdit(item)}
-                                                    className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-200"
-                                                    title="Edit"
-                                                >
-                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDelete(item.id)}
-                                                    className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200"
-                                                    title="Delete"
-                                                >
-                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                );
-                            })
-                        )}
-                    </tbody>
-                </table>
-            </div>
-
-            {/* Pagination and Modals remain mostly similar but adjusted for SPTJ fields */}
-            {/* Pagination */}
-            <div className="flex justify-between items-center mt-4">
-                <button
-                    onClick={() => setPage(prev => Math.max(prev - 1, 1))}
-                    disabled={page === 1}
-                    className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded disabled:opacity-50"
+            {/* Tabel data */}
+            <div className="animate-rise" style={{ animationDelay: '120ms' }}>
+                <DataTable
+                    title="Daftar SPTJ"
+                    subtitle="Riwayat dokumen SPTJ per tahap dan tahun anggaran."
+                    icon={
+                        <IconTile tone="sky" size="sm">
+                            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M4 6h16M4 12h16M4 18h10" />
+                            </svg>
+                        </IconTile>
+                    }
+                    actions={<StatusBadge tone="info" dot={false} className="text-sikas-num">{data.length}</StatusBadge>}
+                    contentClassName="mx-4 mb-4"
+                    footer={
+                        <>
+                            <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">
+                                Page <span className="text-sikas-num font-extrabold text-slate-700 dark:text-slate-200">{page}</span> of <span className="text-sikas-num font-extrabold text-slate-700 dark:text-slate-200">{lastPage}</span>
+                            </span>
+                            <div className="flex items-center gap-1">
+                                <button
+                                    onClick={() => setPage(prev => Math.max(prev - 1, 1))}
+                                    disabled={page === 1}
+                                    className="rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-[10px] font-extrabold text-slate-600 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:border-slate-100 disabled:bg-slate-50 disabled:text-slate-300 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10 dark:disabled:border-white/5 dark:disabled:bg-white/5 dark:disabled:text-slate-600"
+                                >
+                                    Previous
+                                </button>
+                                <button
+                                    onClick={() => setPage(prev => Math.min(prev + 1, lastPage))}
+                                    disabled={page === lastPage}
+                                    className="rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-[10px] font-extrabold text-slate-600 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:border-slate-100 disabled:bg-slate-50 disabled:text-slate-300 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10 dark:disabled:border-white/5 dark:disabled:bg-white/5 dark:disabled:text-slate-600"
+                                >
+                                    Next
+                                </button>
+                            </div>
+                        </>
+                    }
                 >
-                    Previous
-                </button>
-                <span className="text-gray-700 dark:text-gray-300">Page {page} of {lastPage}</span>
-                <button
-                    onClick={() => setPage(prev => Math.min(prev + 1, lastPage))}
-                    disabled={page === lastPage}
-                    className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded disabled:opacity-50"
-                >
-                    Next
-                </button>
+                    <table className="min-w-full">
+                        <thead>
+                            <tr>
+                                <th className="text-left">No</th>
+                                <th className="text-left">Nomor SPTJ</th>
+                                <th className="text-left">Tahap</th>
+                                <th className="text-right">Jml Penerimaan</th>
+                                <th className="text-right">Jml Pengeluaran</th>
+                                <th className="text-right">Sisa Kas</th>
+                                <th className="text-right">Sisa Bank</th>
+                                <th className="text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {loading ? (
+                                <tr>
+                                    <td colSpan={8} className="p-0">
+                                        <SkeletonRows rows={4} columns={6} />
+                                    </td>
+                                </tr>
+                            ) : data.length === 0 ? (
+                                <tr>
+                                    <td colSpan={8} className="p-0">
+                                        <EmptyState
+                                            className="border-0 bg-transparent py-9 dark:bg-transparent"
+                                            icon={
+                                                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                                </svg>
+                                            }
+                                            title="Tidak ada data SPTJ."
+                                            description="Coba ubah kata kunci pencarian atau tambahkan data SPTJ baru."
+                                        />
+                                    </td>
+                                </tr>
+                            ) : (
+                                data.map((item, index) => {
+                                    const totalPenerimaan = Number(item.tahap_satu) + Number(item.tahap_dua);
+                                    const totalPengeluaran = Number(item.jenis_belanja_pegawai) + Number(item.jenis_belanja_barang_jasa) + Number(item.jenis_belanja_modal);
+                                    return (
+                                        <tr key={item.id}>
+                                            <td className="text-sikas-num text-slate-400 dark:text-slate-500">{index + 1 + (page - 1) * 10}</td>
+                                            <td className="whitespace-nowrap font-extrabold text-slate-900 dark:text-white">{item.nomor_sptj}</td>
+                                            <td className="whitespace-nowrap">
+                                                <StatusBadge tone={item.tahap === '1' ? 'info' : 'violet'} dot={false}>{item.tahap}</StatusBadge>
+                                            </td>
+                                            <td className="whitespace-nowrap text-right text-sikas-num font-extrabold text-slate-900 dark:text-white">{formatCurrency(totalPenerimaan)}</td>
+                                            <td className="whitespace-nowrap text-right text-sikas-num font-bold text-slate-600 dark:text-slate-300">{formatCurrency(totalPengeluaran)}</td>
+                                            <td className="whitespace-nowrap text-right text-sikas-num font-bold text-slate-600 dark:text-slate-300">{formatCurrency(item.sisa_kas_tunai)}</td>
+                                            <td className="whitespace-nowrap text-right text-sikas-num font-bold text-slate-600 dark:text-slate-300">{formatCurrency(item.sisa_dana_di_bank)}</td>
+                                            <td className="whitespace-nowrap">
+                                                <div className="flex items-center justify-center gap-1">
+                                                    <button
+                                                        onClick={() => { setSelectedPdfUrl(vroute('laporan.sptj.pdf', item.id)); setIsPreviewModalOpen(true); }}
+                                                        className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-slate-100 bg-white text-sky-600 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 hover:text-sky-700 dark:border-white/10 dark:bg-white/5 dark:text-sky-400 dark:hover:bg-white/10"
+                                                        title="Preview PDF"
+                                                    >
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                                                    </button>
+                                                    <button
+                                                        onClick={() => openEdit(item)}
+                                                        className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-slate-100 bg-white text-brand-600 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 hover:text-brand-700 dark:border-white/10 dark:bg-white/5 dark:text-brand-300 dark:hover:bg-white/10"
+                                                        title="Edit"
+                                                    >
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDelete(item.id)}
+                                                        className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-slate-100 bg-white text-rose-600 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 hover:text-rose-700 dark:border-white/10 dark:bg-white/5 dark:text-rose-400 dark:hover:bg-white/10"
+                                                        title="Delete"
+                                                    >
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })
+                            )}
+                        </tbody>
+                    </table>
+                </DataTable>
             </div>
 
             {/* Add/Edit Modal */}
-            <Modal show={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} maxWidth="7xl">
-                <div className="flex flex-col h-[85vh] bg-white dark:bg-gray-800 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 shadow-xl">
-                    <div className="bg-gradient-to-r from-purple-600 to-indigo-600 p-6 shrink-0">
-                        <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                            {formData.id ? 'Edit SPTJ' : 'Tambah SPTJ'}
-                        </h2>
-                        <p className="mt-2 text-purple-100 text-sm">
-                            Kelola Surat Pernyataan Tanggung Jawab Mutlak (BOSP)
-                        </p>
+            <LaporanFormModal
+                show={isAddModalOpen}
+                onClose={() => setIsAddModalOpen(false)}
+                maxWidth="7xl"
+                tall
+                title={formData.id ? 'Edit SPTJ' : 'Tambah SPTJ'}
+                subtitle="Kelola Surat Pernyataan Tanggung Jawab Mutlak (BOSP)"
+                isSaving={isSaving}
+                onSubmit={handleSubmit}
+            >
+                <LaporanSectionCard title="Informasi Surat" tone="neutral">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+                        <div className="col-span-1 md:col-span-2">
+                            <InputLabel htmlFor="nomor_sptj" value="Nomor SPTJ" required />
+                            <TextInput
+                                id="nomor_sptj"
+                                type="text"
+                                className="w-full"
+                                value={formData.nomor_sptj}
+                                onChange={(e) => setFormData({ ...formData, nomor_sptj: e.target.value })}
+                                required
+                                placeholder="Contoh: 001/SPTJ/2024"
+                            />
+                        </div>
+
+                        <div>
+                            <InputLabel htmlFor="tanggal_sptj" value="Tanggal SPTJ" required />
+                            <DatePicker
+                                id="tanggal_sptj"
+                                value={formData.tanggal_sptj}
+                                onChange={(date) =>
+                                    setFormData({
+                                        ...formData,
+                                        tanggal_sptj: date ? format(date, 'yyyy-MM-dd') : '',
+                                    })
+                                }
+                                placeholder="Pilih tanggal SPTJ..."
+                            />
+                        </div>
+
+                        <div>
+                            <InputLabel htmlFor="sptj_tahun_anggaran" value="Tahun Anggaran" required />
+                            <LaporanSelect
+                                inputId="sptj_tahun_anggaran"
+                                options={availableYears.map((year) => ({
+                                    value: year.tahun_anggaran.toString(),
+                                    label: year.tahun_anggaran.toString(),
+                                }))}
+                                value={formData.tahun_anggaran}
+                                onChange={(selectedYear) => {
+                                    const selectedBudget = availableYears.find(
+                                        (y) => String(y.tahun_anggaran) === selectedYear,
+                                    );
+                                    setFormData({
+                                        ...formData,
+                                        tahun_anggaran: selectedYear,
+                                        penganggaran_id: selectedBudget
+                                            ? selectedBudget.id
+                                            : formData.penganggaran_id,
+                                    });
+                                }}
+                                placeholder="Pilih Tahun Anggaran..."
+                                isSearchable
+                            />
+                        </div>
                     </div>
 
-                    <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
-                        <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
-                            {/* Grid 1: Basic Info */}
-                            <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg border border-gray-100 dark:border-gray-600">
-                                <h3 className="text-sm font-semibold text-purple-700 dark:text-purple-300 uppercase tracking-wide mb-4">Informasi Surat</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                                    <div className="col-span-1 md:col-span-2">
-                                        <InputLabel htmlFor="nomor_sptj" value="Nomor SPTJ" className="text-gray-700 dark:text-gray-300 font-medium" />
-                                        <TextInput
-                                            id="nomor_sptj"
-                                            type="text"
-                                            className="mt-1 block w-full border-gray-300 dark:border-gray-600 focus:border-purple-500 focus:ring-purple-500 rounded-lg shadow-sm text-gray-900"
-                                            value={formData.nomor_sptj}
-                                            onChange={(e) => setFormData({ ...formData, nomor_sptj: e.target.value })}
-                                            required
-                                            placeholder="Contoh: 001/SPTJ/2024"
-                                        />
-                                    </div>
-                                    <div>
-                                        <InputLabel htmlFor="tanggal_sptj" value="Tanggal SPTJ" className="text-gray-700 dark:text-gray-300 font-medium" />
-                                        <div className="mt-1">
-                                            <DatePicker
-                                                id="tanggal_sptj"
-                                                selected={formData.tanggal_sptj ? new Date(formData.tanggal_sptj) : null}
-                                                onChange={(date: Date | null) => {
-                                                    if (date) {
-                                                        const offset = date.getTimezoneOffset();
-                                                        const localDate = new Date(date.getTime() - (offset * 60 * 1000));
-                                                        const formatted = localDate.toISOString().split('T')[0];
-                                                        setFormData({ ...formData, tanggal_sptj: formatted });
-                                                    } else {
-                                                        setFormData({ ...formData, tanggal_sptj: '' });
-                                                    }
-                                                }}
-                                                dateFormat="dd MMMM yyyy"
-                                                locale="id"
-                                                showMonthDropdown
-                                                showYearDropdown
-                                                dropdownMode="select"
-                                                className="block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-purple-500 focus:ring-purple-500 rounded-lg shadow-sm"
-                                                placeholderText="Pilih Tanggal"
-                                                isClearable
-                                            />
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <InputLabel htmlFor="tahun_anggaran" value="Tahun Anggaran" className="text-gray-700 dark:text-gray-300 font-medium" />
-                                        <Select
-                                            id="tahun_anggaran"
-                                            className="mt-1"
-                                            classNamePrefix="react-select"
-                                            options={availableYears.map(year => ({ value: year.tahun_anggaran.toString(), label: year.tahun_anggaran.toString() }))}
-                                            value={availableYears
-                                                .filter(year => String(year.tahun_anggaran) === String(formData.tahun_anggaran))
-                                                .map(year => ({ value: year.tahun_anggaran.toString(), label: year.tahun_anggaran.toString() }))[0] || null
-                                            }
-                                            onChange={(val: any) => {
-                                                const selectedYear = val ? val.value : '';
-                                                const selectedBudget = availableYears.find(y => String(y.tahun_anggaran) === selectedYear);
-                                                setFormData({
-                                                    ...formData,
-                                                    tahun_anggaran: selectedYear,
-                                                    penganggaran_id: selectedBudget ? selectedBudget.id : formData.penganggaran_id
-                                                });
-                                            }}
-                                            placeholder="Pilih Tahun Anggaran..."
-                                            isSearchable
-                                            required
-                                            styles={{
-                                                control: (baseStyles, state) => ({
-                                                    ...baseStyles,
-                                                    borderColor: state.isFocused ? '#6366f1' : '#d1d5db',
-                                                    boxShadow: state.isFocused ? '0 0 0 1px #6366f1' : 'none',
-                                                    '&:hover': { borderColor: state.isFocused ? '#6366f1' : '#9ca3af' },
-                                                    borderRadius: '0.375rem',
-                                                    padding: '0.125rem',
-                                                }),
-                                                singleValue: (base) => ({
-                                                    ...base,
-                                                    color: '#111827', // text-gray-900
-                                                }),
-                                                input: (base) => ({
-                                                    ...base,
-                                                    color: '#111827', // text-gray-900
-                                                    'input': {
-                                                        boxShadow: 'none !important',
-                                                        border: 'none !important',
-                                                        outline: 'none !important',
-                                                    },
-                                                    'input:focus': {
-                                                        boxShadow: 'none !important',
-                                                        border: 'none !important',
-                                                    }
-                                                }),
-                                                option: (base, state) => ({
-                                                    ...base,
-                                                    color: '#111827',
-                                                    backgroundColor: state.isSelected ? '#e5e7eb' : state.isFocused ? '#f3f4f6' : 'transparent',
-                                                }),
-                                                menu: (baseStyles) => ({
-                                                    ...baseStyles,
-                                                    zIndex: 9999,
-                                                })
-                                            }}
-                                        />
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-4">
-                                    <div>
-                                        <InputLabel htmlFor="tahap" value="Tahap" className="text-gray-700 dark:text-gray-300 font-medium" />
-                                        <select
-                                            id="tahap"
-                                            className="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-purple-500 focus:ring-purple-500 rounded-lg shadow-sm"
-                                            value={formData.tahap}
-                                            onChange={(e) => setFormData({ ...formData, tahap: e.target.value as '1' | '2' })}
-                                            required
-                                        >
-                                            <option value="1">1</option>
-                                            <option value="2">2</option>
-                                        </select>
-                                    </div>
-                                    <div className="flex items-end col-span-3 justify-end">
-                                        <button
-                                            type="button"
-                                            onClick={handleCalculate}
-                                            disabled={isCalculating}
-                                            className="inline-flex items-center px-4 py-2 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 text-sm font-medium rounded-lg hover:bg-indigo-200 dark:hover:bg-indigo-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors w-full md:w-auto justify-center"
-                                        >
-                                            {isCalculating ? (
-                                                <>
-                                                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-indigo-700 dark:text-indigo-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                                    </svg>
-                                                    Menghitung...
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
-                                                    Hitung Otomatis via API
-                                                </>
-                                            )}
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Section 2: Financial Details - Penerimaan */}
-                            <div>
-                                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700 pb-2 mb-4 flex items-center gap-2">
-                                    <span className="bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 text-xs px-2 py-1 rounded">IN</span>
-                                    Penerimaan Dana
-                                </h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div>
-                                        <InputLabel htmlFor="tahap_satu" value="Tahap I" className="text-gray-600 dark:text-gray-400 font-medium" />
-                                        <input
-                                            id="tahap_satu"
-                                            type="text"
-                                            readOnly
-                                            className="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-green-500 focus:ring-green-500 rounded-lg shadow-sm"
-                                            value={formatCurrency(formData.tahap_satu)}
-                                            onChange={(e) => {
-                                                const value = e.target.value.replace(/\D/g, '');
-                                                setFormData({ ...formData, tahap_satu: Number(value) });
-                                            }}
-                                        />
-                                    </div>
-                                    <div>
-                                        <InputLabel htmlFor="tahap_dua" value="Tahap II" className="text-gray-600 dark:text-gray-400 font-medium" />
-                                        <input
-                                            id="tahap_dua"
-                                            type="text"
-                                            readOnly
-                                            className="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-green-500 focus:ring-green-500 rounded-lg shadow-sm"
-                                            value={formatCurrency(formData.tahap_dua)}
-                                            onChange={(e) => {
-                                                const value = e.target.value.replace(/\D/g, '');
-                                                setFormData({ ...formData, tahap_dua: Number(value) });
-                                            }}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Section 3: Financial Details - Pengeluaran */}
-                            <div>
-                                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700 pb-2 mb-4 flex items-center gap-2">
-                                    <span className="bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 text-xs px-2 py-1 rounded">OUT</span>
-                                    Pengeluaran Dana
-                                </h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div>
-                                        <InputLabel htmlFor="jenis_belanja_operasi" value="Belanja Operasi" className="text-gray-600 dark:text-gray-400 font-medium" />
-                                        <input
-                                            id="jenis_belanja_operasi"
-                                            type="text"
-                                            readOnly
-                                            className="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-red-500 focus:ring-red-500 rounded-lg shadow-sm"
-                                            value={formatCurrency(formData.jenis_belanja_operasi)}
-                                            onChange={(e) => {
-                                                const value = e.target.value.replace(/\D/g, '');
-                                                setFormData({ ...formData, jenis_belanja_operasi: Number(value) });
-                                            }}
-                                        />
-                                    </div>
-                                    <div>
-                                        <InputLabel htmlFor="jenis_belanja_modal" value="Belanja Modal" className="text-gray-600 dark:text-gray-400 font-medium" />
-                                        <input
-                                            id="jenis_belanja_modal"
-                                            type="text"
-                                            readOnly
-                                            className="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-red-500 focus:ring-red-500 rounded-lg shadow-sm"
-                                            value={formatCurrency(formData.jenis_belanja_modal)}
-                                            onChange={(e) => {
-                                                const value = e.target.value.replace(/\D/g, '');
-                                                setFormData({ ...formData, jenis_belanja_modal: Number(value) });
-                                            }}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Section 4: Sisa Dana */}
-                            <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
-                                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 pb-2 mb-4 flex items-center gap-2">
-                                    <span className="bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-xs px-2 py-1 rounded">BAL</span>
-                                    Sisa Dana
-                                </h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div>
-                                        <InputLabel htmlFor="sisa_kas_tunai" value="Sisa Kas Tunai" className="text-gray-600 dark:text-gray-400 font-medium" />
-                                        <input
-                                            id="sisa_kas_tunai"
-                                            type="text"
-                                            readOnly
-                                            className="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-blue-500 focus:ring-blue-500 rounded-lg shadow-sm font-semibold"
-                                            value={formatCurrency(formData.sisa_kas_tunai)}
-                                            onChange={(e) => {
-                                                const value = e.target.value.replace(/\D/g, '');
-                                                setFormData({ ...formData, sisa_kas_tunai: Number(value) });
-                                            }}
-                                        />
-                                    </div>
-                                    <div>
-                                        <InputLabel htmlFor="sisa_dana_di_bank" value="Sisa Dana Di Bank" className="text-gray-600 dark:text-gray-400 font-medium" />
-                                        <input
-                                            id="sisa_dana_di_bank"
-                                            type="text"
-                                            readOnly
-                                            className="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-blue-500 focus:ring-blue-500 rounded-lg shadow-sm font-semibold"
-                                            value={formatCurrency(formData.sisa_dana_di_bank)}
-                                            onChange={(e) => {
-                                                const value = e.target.value.replace(/\D/g, '');
-                                                setFormData({ ...formData, sisa_dana_di_bank: Number(value) });
-                                            }}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
+                    <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-4">
+                        <div>
+                            <InputLabel htmlFor="sptj_tahap" value="Tahap" required />
+                            <LaporanSelect
+                                inputId="sptj_tahap"
+                                options={[
+                                    { value: '1', label: 'Tahap 1' },
+                                    { value: '2', label: 'Tahap 2' },
+                                ]}
+                                value={formData.tahap}
+                                onChange={(val) => setFormData({ ...formData, tahap: (val || '1') as '1' | '2' })}
+                                isSearchable={false}
+                            />
                         </div>
-
-                        <div className="px-6 py-4 bg-gray-50 dark:bg-gray-750 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-3 rounded-b-lg shrink-0">
-                            <SecondaryButton onClick={() => setIsAddModalOpen(false)} disabled={isSaving} className="hover:bg-gray-100 dark:hover:bg-gray-600">
-                                Batal
-                            </SecondaryButton>
-                            <PrimaryButton type="submit" disabled={isSaving} className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 border-none shadow-md hover:shadow-lg transition-all duration-200">
-                                {isSaving ? (
-                                    <div className="flex items-center gap-2">
-                                        <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                        </svg>
-                                        Menyimpan...
-                                    </div>
-                                ) : (
-                                    <div className="flex items-center gap-2">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                        </svg>
-                                        Simpan
-                                    </div>
-                                )}
-                            </PrimaryButton>
+                        <div className="flex items-end justify-end md:col-span-3">
+                            <LaporanCalculateButton
+                                onClick={handleCalculate}
+                                isCalculating={isCalculating}
+                                label="Hitung Otomatis via API"
+                                className="w-full md:w-auto"
+                            />
                         </div>
-                    </form>
-                </div>
-            </Modal>
+                    </div>
+                </LaporanSectionCard>
+
+                <LaporanSectionCard
+                    title="Penerimaan Dana"
+                    tone="mint"
+                    icon={<ArrowDownLeft className="h-3.5 w-3.5" />}
+                >
+                    <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2">
+                        <LaporanMetricCard
+                            label="Tahap I"
+                            value={formatCurrency(formData.tahap_satu)}
+                            tone="mint"
+                        />
+                        <LaporanMetricCard
+                            label="Tahap II"
+                            value={formatCurrency(formData.tahap_dua)}
+                            tone="mint"
+                        />
+                    </div>
+                </LaporanSectionCard>
+
+                <LaporanSectionCard
+                    title="Pengeluaran Dana"
+                    tone="rose"
+                    icon={<ArrowUpRight className="h-3.5 w-3.5" />}
+                >
+                    <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2">
+                        <LaporanMetricCard
+                            label="Belanja Operasi"
+                            value={formatCurrency(formData.jenis_belanja_operasi)}
+                            tone="rose"
+                        />
+                        <LaporanMetricCard
+                            label="Belanja Modal"
+                            value={formatCurrency(formData.jenis_belanja_modal)}
+                            tone="rose"
+                        />
+                    </div>
+                </LaporanSectionCard>
+
+                <LaporanSectionCard
+                    title="Sisa Dana"
+                    tone="sky"
+                    icon={<Wallet className="h-3.5 w-3.5" />}
+                >
+                    <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2">
+                        <LaporanMetricCard
+                            label="Sisa Kas Tunai"
+                            value={formatCurrency(formData.sisa_kas_tunai)}
+                            tone="sky"
+                        />
+                        <LaporanMetricCard
+                            label="Sisa Dana Di Bank"
+                            value={formatCurrency(formData.sisa_dana_di_bank)}
+                            tone="sky"
+                        />
+                    </div>
+                </LaporanSectionCard>
+            </LaporanFormModal>
 
             {/* Delete Confirmation Modal */}
-            <Modal show={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} maxWidth="sm">
-                <div className="p-6">
-                    <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                        Hapus Data SPTJ
-                    </h2>
-                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                        Apakah Anda yakin ingin menghapus data SPTJ ini? Tindakan ini tidak dapat dibatalkan.
-                    </p>
-                    <div className="mt-6 flex justify-end gap-3">
-                        <SecondaryButton onClick={() => setIsDeleteModalOpen(false)}>Batal</SecondaryButton>
-                        <DangerButton onClick={confirmDelete}>Hapus</DangerButton>
-                    </div>
-                </div>
-            </Modal>
+            <LaporanDeleteModal
+                show={isDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
+                onConfirm={confirmDelete}
+                title="Hapus Data SPTJ"
+                message="Apakah Anda yakin ingin menghapus data SPTJ ini? Tindakan ini tidak dapat dibatalkan."
+            />
 
             {/* Preview Modal */}
-            <Modal show={isPreviewModalOpen} onClose={() => setIsPreviewModalOpen(false)} maxWidth="5xl">
-                <div id="sptj-pdf-preview" className="flex flex-col h-[85vh] bg-gray-900 rounded-lg overflow-hidden relative">
-                    {/* Header */}
-                    <div className="bg-green-600 px-4 py-3 flex justify-between items-center shadow-md z-10">
-                        <div className="flex items-center gap-3 text-white">
-                            <span className="font-medium text-sm">Preview SPTJ</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <button
-                                onClick={() => {
-                                    const elem = document.getElementById('sptj-pdf-preview');
-                                    if (elem) {
-                                        if (!document.fullscreenElement) {
-                                            elem.requestFullscreen().catch(err => console.error(err));
-                                        } else {
-                                            document.exitFullscreen();
-                                        }
-                                    }
-                                }}
-                                className="text-white/80 hover:text-white p-1 rounded hover:bg-white/10"
-                                title="Fullscreen"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-                                </svg>
-                            </button>
-                            <button onClick={() => setIsPreviewModalOpen(false)} className="text-white/80 hover:text-white p-1 rounded hover:bg-white/10" title="Close">
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* PDF Viewer */}
-                    <div className="flex-1 bg-gray-500 overflow-hidden relative flex justify-center items-center p-4">
-                        <iframe src={selectedPdfUrl} className="w-full h-full shadow-2xl bg-white" title="PDF Preview" />
-                    </div>
-                    {/* Footer */}
-                    <div className="bg-gray-800 px-4 py-3 border-t border-gray-700 flex justify-end items-center gap-3">
-                        <button
-                            onClick={() => setIsPreviewModalOpen(false)}
-                            className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 text-sm font-medium rounded transition-colors flex items-center gap-2"
-                        >
-                            Tutup
-                        </button>
-                        <button
-                            onClick={() => setIsPrintSettingsModalOpen(true)}
-                            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded transition-colors flex items-center gap-2"
-                        >
-                            Download
-                        </button>
-                    </div>
-                </div>
-            </Modal>
+            <LaporanPdfPreviewModal
+                show={isPreviewModalOpen}
+                onClose={() => setIsPreviewModalOpen(false)}
+                previewId="sptj-pdf-preview"
+                title="Preview SPTJ"
+                pdfUrl={selectedPdfUrl}
+                onOpenPrintSettings={() => setIsPrintSettingsModalOpen(true)}
+            />
 
             {/* Print Settings Modal */}
-            <Modal show={isPrintSettingsModalOpen} onClose={() => setIsPrintSettingsModalOpen(false)} maxWidth="sm">
-                <div className="p-6">
-                    <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Pengaturan Cetak</h2>
-                    <div className="space-y-4">
-                        <div>
-                            <InputLabel htmlFor="paper_size" value="Ukuran Kertas" />
-                            <select
-                                id="paper_size"
-                                className="mt-1 block w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
-                                value={printSettings.paperSize}
-                                onChange={(e) => setPrintSettings({ ...printSettings, paperSize: e.target.value })}
-                            >
-                                <option value="A4">A4</option>
-                                <option value="Letter">Letter</option>
-                                <option value="Folio">Folio (F4)</option>
-                                <option value="Legal">Legal</option>
-                            </select>
-                        </div>
-                        <div>
-                            <InputLabel htmlFor="font_size" value="Ukuran Font" />
-                            <select
-                                id="font_size"
-                                className="mt-1 block w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
-                                value={printSettings.fontSize}
-                                onChange={(e) => setPrintSettings({ ...printSettings, fontSize: e.target.value })}
-                            >
-                                <option value="8pt">8pt</option>
-                                <option value="9pt">9pt</option>
-                                <option value="10pt">10pt</option>
-                                <option value="11pt">11pt</option>
-                                <option value="12pt">12pt</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div className="mt-6 flex justify-end gap-3">
-                        <SecondaryButton onClick={() => setIsPrintSettingsModalOpen(false)}>Batal</SecondaryButton>
-                        <PrimaryButton onClick={handlePrint}>Cetak PDF</PrimaryButton>
-                    </div>
-                </div>
-            </Modal>
+            <LaporanPrintSettingsModal
+                show={isPrintSettingsModalOpen}
+                onClose={() => setIsPrintSettingsModalOpen(false)}
+                paperSize={printSettings.paperSize}
+                fontSize={printSettings.fontSize}
+                onPaperSizeChange={(paperSize) => setPrintSettings({ ...printSettings, paperSize })}
+                onFontSizeChange={(fontSize) => setPrintSettings({ ...printSettings, fontSize })}
+                onPrint={handlePrint}
+            />
 
             {/* Validation Modal */}
-            <Modal show={isValidationModalOpen} onClose={() => setIsValidationModalOpen(false)} maxWidth="md">
-                <div className="p-0 overflow-hidden rounded-lg shadow-2xl bg-white dark:bg-gray-800 animate-scale-in">
-                    <div className="bg-gradient-to-r from-red-500 to-pink-600 p-6 flex items-center justify-center">
-                        <div className="bg-white/20 p-4 rounded-full backdrop-blur-sm animate-pulse">
-                            <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                            </svg>
-                        </div>
-                    </div>
-                    
-                    <div className="p-8 text-center">
-                        <h3 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-3">
-                            Data Duplikat Terdeteksi
-                        </h3>
-                        <div className="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 p-4 mb-6 rounded-r-lg">
-                            <p className="text-red-700 dark:text-red-400 font-medium">
-                                {validationMessage}
-                            </p>
-                        </div>
-                        <p className="text-gray-600 dark:text-gray-400 mb-8">
-                            Nomor SPTJ untuk tahap dan tahun anggaran ini sudah terdaftar dalam sistem. Mohon gunakan nomor yang berbeda atau periksa data yang sudah ada.
-                        </p>
-                        
-                        <button
-                            onClick={() => setIsValidationModalOpen(false)}
-                            className="w-full py-4 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold rounded-xl hover:bg-gray-800 dark:hover:bg-gray-100 transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-lg flex items-center justify-center gap-2 group"
-                        >
-                            <span>Saya Mengerti</span>
-                            <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-            </Modal>
+            <LaporanValidationModal
+                show={isValidationModalOpen}
+                onClose={() => setIsValidationModalOpen(false)}
+                title="Data Duplikat Terdeteksi"
+                message={validationMessage}
+                hint="Nomor SPTJ untuk tahap dan tahun anggaran ini sudah terdaftar dalam sistem. Mohon gunakan nomor yang berbeda atau periksa data yang sudah ada."
+            />
         </div>
     );
 }

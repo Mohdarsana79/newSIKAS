@@ -1,4 +1,5 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
+import Select from 'react-select';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import TextAlign from '@tiptap/extension-text-align';
@@ -14,6 +15,10 @@ import { router } from '@inertiajs/react';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import Modal from '@/Components/Modal';
+import Surface from '@/Components/ui/Surface';
+import IconTile, { IconTileTone } from '@/Components/ui/IconTile';
+import StatusBadge from '@/Components/ui/StatusBadge';
+import { cn } from '@/lib/utils';
 import { applyTextCase } from './KopTiptapExtensions';
 import {
     Bold,
@@ -50,6 +55,10 @@ import {
     Palette,
     Highlighter,
     Minus,
+    X,
+    SlidersHorizontal,
+    FileText,
+    Maximize2,
 } from 'lucide-react';
 
 interface Sekolah {
@@ -91,10 +100,66 @@ const FONT_FAMILIES = [
 
 const FONT_SIZES = [
     '8pt', '9pt', '10pt', '11pt', '12pt', '13pt', '14pt', '15pt',
-    '16pt', '18pt', '20pt', '22pt', '24pt', '26pt', '28pt', '32pt', '36pt', '48pt'
+    '16pt', '18pt', '20pt', '22pt', '24pt', '26pt', '28pt', '32pt', '36pt', '48pt',
 ];
 
 const LINE_HEIGHTS = ['1.0', '1.15', '1.25', '1.5', '2.0'];
+
+interface RibbonSelectOption {
+    value: string;
+    label: string;
+}
+
+const FONT_SIZE_OPTIONS: RibbonSelectOption[] = FONT_SIZES.map((size) => ({
+    value: size,
+    label: size,
+}));
+
+const LINE_HEIGHT_OPTIONS: RibbonSelectOption[] = LINE_HEIGHTS.map((lh) => ({
+    value: lh,
+    label: lh,
+}));
+
+function buildRibbonSelectClassNames(menuWidthClass: string) {
+    return {
+        container: () => 'relative flex-1 min-w-0',
+        control: ({ isFocused }: { isFocused: boolean }) =>
+            cn(
+                '!min-h-[26px] cursor-pointer rounded-lg px-1.5 py-0.5 text-xs font-bold transition',
+                isFocused
+                    ? 'bg-lime-200/40 text-slate-900 dark:bg-lime-400/10 dark:text-white'
+                    : 'bg-transparent text-slate-800 hover:bg-slate-100/80 dark:text-white dark:hover:bg-white/5',
+            ),
+        valueContainer: () => 'gap-1 py-0 pr-1',
+        singleValue: () => 'truncate text-xs font-bold text-slate-800 dark:text-white',
+        input: () =>
+            'm-0 p-0 text-xs font-semibold text-slate-800 dark:text-white [&_input]:!border-0 [&_input]:!outline-none [&_input]:!ring-0 [&_input]:!shadow-none',
+        indicatorsContainer: () => 'pl-0.5 shrink-0',
+        indicatorSeparator: () => 'hidden',
+        dropdownIndicator: ({ isFocused }: { isFocused: boolean }) =>
+            cn(
+                'p-0.5 transition-colors',
+                isFocused
+                    ? 'text-slate-800 dark:text-lime-300'
+                    : 'text-slate-400 hover:text-slate-700 dark:text-slate-500 dark:hover:text-white',
+            ),
+        menu: () =>
+            cn(
+                'z-50 mt-2 left-0 overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-1.5 shadow-float dark:border-white/10 dark:bg-[#1A1728]',
+                menuWidthClass,
+            ),
+        menuList: () => 'sikas-scroll max-h-56 space-y-0.5 overflow-y-auto pr-0.5',
+        option: ({ isSelected, isFocused }: { isSelected: boolean; isFocused: boolean }) =>
+            cn(
+                'flex cursor-pointer items-center justify-between gap-2 rounded-xl px-2.5 py-1.5 text-xs font-semibold transition',
+                isSelected
+                    ? 'bg-lime-300/85 font-extrabold text-slate-900 dark:bg-lime-400/20 dark:text-lime-300'
+                    : isFocused
+                      ? 'bg-slate-100 text-slate-900 dark:bg-white/10 dark:text-white'
+                      : 'text-slate-700 dark:text-slate-300',
+            ),
+    };
+}
 
 const TEXT_COLORS = [
     { label: 'Hitam (Standar)', value: '#000000' },
@@ -114,6 +179,142 @@ const HIGHLIGHT_COLORS = [
     { label: 'Oranye', value: '#fed7aa' },
 ];
 
+const MODAL_GLOW_TONES: Record<'violet' | 'amber' | 'mint' | 'rose', { primary: string; secondary: string }> = {
+    violet: {
+        primary: 'bg-pastel-lavender/75 dark:bg-brand-500/15',
+        secondary: 'bg-pastel-mint/45 dark:bg-mint/10',
+    },
+    amber: {
+        primary: 'bg-pastel-amber/75 dark:bg-amber-500/15',
+        secondary: 'bg-pastel-peach/50 dark:bg-peach/10',
+    },
+    mint: {
+        primary: 'bg-pastel-mint/75 dark:bg-mint/15',
+        secondary: 'bg-pastel-sky/60 dark:bg-sky/10',
+    },
+    rose: {
+        primary: 'bg-pastel-rose/75 dark:bg-rose-500/15',
+        secondary: 'bg-pastel-amber/45 dark:bg-amber-500/10',
+    },
+};
+
+const BORDER_LABELS: Record<'double' | 'single' | 'none', string> = {
+    double: 'Garis Ganda (Resmi Dinas)',
+    single: 'Garis Tunggal (Standar)',
+    none: 'Tanpa Garis (Polos)',
+};
+
+const BORDER_OPTIONS: Array<{
+    value: 'double' | 'single' | 'none';
+    title: string;
+    description: string;
+    badgeLabel: string;
+    badgeTone: 'violet' | 'neutral' | 'warning';
+}> = [
+    {
+        value: 'double',
+        title: 'Garis 2 (Ganda)',
+        description: 'Garis tebal-tipis standar resmi tata naskah dinas pemerintah.',
+        badgeLabel: 'Resmi Dinas',
+        badgeTone: 'violet',
+    },
+    {
+        value: 'single',
+        title: 'Garis 1 (Tunggal)',
+        description: 'Satu garis solid tegas (2px) yang bersih dan modern.',
+        badgeLabel: 'Standar',
+        badgeTone: 'neutral',
+    },
+    {
+        value: 'none',
+        title: 'Tanpa Garis',
+        description: 'Tampilan bersih polos tanpa garis pembatas di bawah kop.',
+        badgeLabel: 'Polos',
+        badgeTone: 'warning',
+    },
+];
+
+interface KopModalShellProps {
+    show: boolean;
+    onClose: () => void;
+    maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '4xl';
+    glowTone: 'violet' | 'amber' | 'mint' | 'rose';
+    iconTone: IconTileTone;
+    icon: React.ReactNode;
+    title: string;
+    subtitle: string;
+    badge?: React.ReactNode;
+    disabledClose?: boolean;
+    children: React.ReactNode;
+}
+
+/**
+ * Wrapper modal bergaya Neo-Bento dengan ambient pastel glow, header seragam,
+ * dan tombol tutup yang konsisten dengan modul Profil Sekolah.
+ */
+function KopModalShell({
+    show,
+    onClose,
+    maxWidth = 'md',
+    glowTone,
+    iconTone,
+    icon,
+    title,
+    subtitle,
+    badge,
+    disabledClose = false,
+    children,
+}: KopModalShellProps) {
+    const glow = MODAL_GLOW_TONES[glowTone];
+
+    return (
+        <Modal show={show} onClose={onClose} maxWidth={maxWidth}>
+            <div className="relative overflow-hidden rounded-[26px] bg-white dark:bg-[#15131F]">
+                <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[26px]">
+                    <div className={cn('absolute -right-14 -top-14 h-44 w-44 rounded-full blur-3xl', glow.primary)} />
+                    <div className={cn('absolute -bottom-16 -left-14 h-40 w-40 rounded-full blur-3xl', glow.secondary)} />
+                </div>
+
+                <div className="relative flex flex-col">
+                    <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-6 py-4 dark:border-white/10">
+                        <div className="flex min-w-0 items-center gap-3.5">
+                            <IconTile tone={iconTone} size="md">
+                                {icon}
+                            </IconTile>
+                            <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <h3 className="text-[15.5px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                                        {title}
+                                    </h3>
+                                    {badge}
+                                </div>
+                                <p className="mt-0.5 truncate text-xs font-medium text-slate-500 dark:text-slate-400">
+                                    {subtitle}
+                                </p>
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            disabled={disabledClose}
+                            aria-label={`Tutup ${title}`}
+                            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-white/10 dark:hover:text-white"
+                        >
+                            <X className="h-4 w-4" />
+                        </button>
+                    </div>
+
+                    <div className="px-6 py-5">{children}</div>
+                </div>
+            </div>
+        </Modal>
+    );
+}
+
+/**
+ * Builder visual kop surat sekolah dengan live preview, kontrol logo/garis Neo-Bento,
+ * dan editor Tiptap bergaya MS Word Ribbon.
+ */
 export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
     const previewRef = useRef<HTMLDivElement>(null);
 
@@ -166,6 +367,24 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
     const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
     const [isHighlightPickerOpen, setIsHighlightPickerOpen] = useState(false);
     const [isCaseMenuOpen, setIsCaseMenuOpen] = useState(false);
+    const [selectedLineHeight, setSelectedLineHeight] = useState<string>('1.15');
+    const ribbonRef = useRef<HTMLDivElement>(null);
+
+    const closeAllPopovers = useCallback(() => {
+        setIsCaseMenuOpen(false);
+        setIsColorPickerOpen(false);
+        setIsHighlightPickerOpen(false);
+    }, []);
+
+    useEffect(() => {
+        const handleMouseDown = (event: MouseEvent) => {
+            if (ribbonRef.current && !ribbonRef.current.contains(event.target as Node)) {
+                closeAllPopovers();
+            }
+        };
+        document.addEventListener('mousedown', handleMouseDown);
+        return () => document.removeEventListener('mousedown', handleMouseDown);
+    }, [closeAllPopovers]);
 
     // Template bawaan kedinasan
     const generateDefaultTemplate = () => {
@@ -223,6 +442,7 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
             const defaultTpl = generateDefaultTemplate();
             editor.commands.setContent(defaultTpl);
             setEditorHtml(defaultTpl);
+            setSelectedLineHeight('1.15');
         }
         setIsResetModalOpen(false);
     };
@@ -306,7 +526,7 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
         setRemoveLogoSekolah(true);
     };
 
-    // Render Canvas ke Blob resolusi tinggi (2480px)
+    // Render Canvas ke Blob resolusi tinggi (2480px) tanpa garis pembatas (dirender via CSS di PDF)
     const renderHighResKopBlob = async (): Promise<Blob | null> => {
         if (!previewRef.current) return null;
         const element = previewRef.current;
@@ -319,6 +539,12 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
             cacheBust: false,
             quality: 0.98,
             imagePlaceholder: 'data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"/>',
+            filter: (node: HTMLElement) => {
+                if (node instanceof HTMLElement && node.dataset?.kopBorder === 'true') {
+                    return false;
+                }
+                return true;
+            },
         });
     };
 
@@ -448,57 +674,102 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
         }
     };
 
+    // Helper kelas tombol aktif di Ribbon Bar
+    const ribbonToggleBtnClass = (active: boolean) =>
+        cn(
+            'rounded-lg p-1.5 transition',
+            active
+                ? 'bg-lime-300/80 font-bold text-slate-900 ring-1 ring-lime-400/70 dark:bg-lime-400/20 dark:text-lime-300 dark:ring-lime-400/30'
+                : 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/10'
+        );
+
+    const activeFontFamily =
+        editor?.getAttributes('textStyle').fontFamily || "'Times New Roman', Times, serif";
+    const selectedFontOption =
+        FONT_FAMILIES.find((f) => f.value === activeFontFamily) ?? FONT_FAMILIES[0];
+
+    const activeFontSize = editor?.getAttributes('textStyle').fontSize || '13pt';
+    const selectedFontSizeOption =
+        FONT_SIZE_OPTIONS.find((s) => s.value === activeFontSize) ?? {
+            value: activeFontSize,
+            label: activeFontSize,
+        };
+
+    const activeLineHeight =
+        editor?.getAttributes('paragraph').lineHeight ||
+        editor?.getAttributes('heading').lineHeight ||
+        selectedLineHeight;
+    const selectedLineHeightOption =
+        LINE_HEIGHT_OPTIONS.find((lh) => lh.value === activeLineHeight) ?? {
+            value: activeLineHeight,
+            label: activeLineHeight,
+        };
+
     return (
-        <div className="space-y-8">
-            {/* Header Pengantar */}
-            <div className="bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 border border-indigo-200 dark:border-indigo-900/50 rounded-2xl p-6">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div>
-                        <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                            <Sparkles className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                            Editor & Pembuat Kop Surat Sekolah (MS Word Style)
-                        </h3>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                            Atur logo daerah, logo sekolah, dan ketik isi kop surat secara bebas dengan toolbar lengkap Microsoft Word (Font Family, Font Size, Spasi Baris, Gaya, dan Warna).
-                        </p>
+        <div className="space-y-5">
+            {/* BAGIAN 1: NEO-BENTO HERO HEADER */}
+            <div className="sikas-card relative overflow-hidden rounded-[26px] p-5 animate-rise">
+                <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[26px]">
+                    <div className="absolute -right-14 -top-16 h-48 w-48 rounded-full bg-pastel-lavender/70 blur-3xl dark:bg-brand-500/15" />
+                    <div className="absolute -bottom-16 left-8 h-40 w-40 rounded-full bg-pastel-mint/50 blur-3xl dark:bg-mint/10" />
+                </div>
+
+                <div className="relative flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
+                    <div className="flex min-w-0 items-start gap-3.5 sm:items-center">
+                        <IconTile tone="violet" size="lg">
+                            <Sparkles />
+                        </IconTile>
+                        <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <h3 className="text-[15.5px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                                    Editor &amp; Pembuat Kop Surat Sekolah
+                                </h3>
+                                <StatusBadge tone="violet" dot={false}>
+                                    MS Word Style
+                                </StatusBadge>
+                            </div>
+                            <p className="mt-1 text-[11.5px] font-medium text-slate-500 dark:text-slate-400">
+                                Susun logo daerah, logo sekolah, garis pembatas kedinasan, serta format teks kop secara bebas dalam satu studio terpadu.
+                            </p>
+                        </div>
                     </div>
 
-                    <div className="flex items-center gap-2 self-start md:self-auto">
+                    <div className="flex flex-wrap items-center gap-2 self-start lg:self-auto">
                         <SecondaryButton
                             onClick={handleOpenPreviewModal}
-                            className="flex items-center gap-1.5 text-xs py-2"
+                            className="flex items-center gap-1.5 py-2 text-xs"
                         >
-                            <Eye className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+                            <Maximize2 className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" />
                             Perbesar Preview
                         </SecondaryButton>
                         <SecondaryButton
                             onClick={handleDownloadPng}
                             disabled={isDownloading}
-                            className="flex items-center gap-1.5 text-xs py-2 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-950"
+                            className="flex items-center gap-1.5 py-2 text-xs"
                         >
                             {isDownloading ? (
-                                <span className="animate-spin mr-1">⌛</span>
+                                <span className="mr-1 animate-spin">⌛</span>
                             ) : (
-                                <Download className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                                <Download className="h-3.5 w-3.5 text-brand-600 dark:text-brand-300" />
                             )}
-                            Unduh Kop (PNG)
+                            Unduh PNG
                         </SecondaryButton>
                         <PrimaryButton
                             onClick={() => setIsConfirmSaveModalOpen(true)}
                             disabled={isSaving}
-                            className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-xs py-2 shadow-md flex items-center gap-1.5"
+                            className="flex items-center gap-1.5 py-2 text-xs shadow-md"
                         >
                             {isSaving ? (
                                 <>
-                                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    <svg className="-ml-1 mr-1.5 h-3.5 w-3.5 animate-spin text-current" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                                     </svg>
                                     Menyimpan...
                                 </>
                             ) : (
                                 <>
-                                    <Save className="w-4 h-4 mr-1" />
+                                    <Save className="h-3.5 w-3.5" />
                                     Simpan Kop Surat
                                 </>
                             )}
@@ -507,54 +778,83 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
                 </div>
             </div>
 
-            {/* LIVE PREVIEW SECTION */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50/70 dark:bg-gray-750 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <span className="flex h-3 w-3 relative">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-                        </span>
-                        <h4 className="font-semibold text-gray-800 dark:text-gray-200 text-sm">
-                            Pratinjau Langsung (Live Preview Kop Surat)
-                        </h4>
+            {/* BAGIAN 2: LIVE PREVIEW STUDIO CANVAS */}
+            <Surface padding="none" className="animate-rise" bodyClassName="flex flex-col">
+                <div className="flex flex-col justify-between gap-3 border-b border-slate-100 bg-slate-50/70 px-5 py-4 sm:flex-row sm:items-center dark:border-white/5 dark:bg-white/[0.03]">
+                    <div className="flex items-center gap-3">
+                        <IconTile tone="mint" size="md">
+                            <Eye />
+                        </IconTile>
+                        <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                                <span className="relative flex h-2.5 w-2.5 shrink-0">
+                                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                                </span>
+                                <h4 className="truncate text-[13.5px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                                    Pratinjau Langsung (Live Preview Kop Surat)
+                                </h4>
+                            </div>
+                            <p className="mt-0.5 text-[10.5px] font-medium text-slate-400 dark:text-slate-500">
+                                Perubahan logo, teks, dan garis pembatas tampil langsung sesuai hasil cetak dokumen resmi.
+                            </p>
+                        </div>
                     </div>
-                    <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
-                        Rasio Cetak Standar (2480 &times; 588 px)
-                    </span>
+
+                    <div className="flex flex-wrap items-center gap-1.5">
+                        <StatusBadge tone="info" dot={false}>
+                            {kopMode === '2_logo' ? '2 Logo Dinas & Sekolah' : '1 Logo Daerah'}
+                        </StatusBadge>
+                        <StatusBadge tone="violet" dot={false}>
+                            {kopBorder === 'double' ? 'Garis Ganda' : kopBorder === 'single' ? 'Garis Tunggal' : 'Tanpa Garis'}
+                        </StatusBadge>
+                        <StatusBadge tone="neutral" dot={false} className="text-sikas-num">
+                            2480 &times; 588 px
+                        </StatusBadge>
+                    </div>
                 </div>
 
-                <div className="p-4 sm:p-6 bg-gray-100 dark:bg-gray-900/60 overflow-x-auto flex justify-center">
-                    {/* WADAH YANG AKAN DI-RENDER KE CANVAS/IMAGE */}
+                {/* Kanvas Studio berpola dot-grid */}
+                <div className="relative flex justify-center overflow-x-auto bg-slate-100/90 p-5 sm:p-8 dark:bg-[#0E0C16]">
                     <div
-                        ref={previewRef}
-                        className="bg-white text-gray-900 w-full max-w-4xl p-5 sm:p-7 shadow-md rounded-md flex flex-col justify-between select-none"
+                        className="pointer-events-none absolute inset-0 opacity-60 dark:opacity-25"
                         style={{
-                            minHeight: '175px',
-                            boxSizing: 'border-box',
+                            backgroundImage: 'radial-gradient(rgba(100, 116, 139, 0.28) 1px, transparent 1px)',
+                            backgroundSize: '18px 18px',
                         }}
-                    >
+                    />
+
+                    {/* BINGKAI KERTAS STUDIO (TIDAK IKUT DI-RENDER KE PNG) */}
+                    <div className="w-full max-w-4xl overflow-hidden rounded-xl bg-white shadow-lg ring-1 ring-slate-200/80">
+                        {/* WADAH YANG AKAN DI-RENDER KE CANVAS/IMAGE */}
+                        <div
+                            ref={previewRef}
+                            className="relative flex w-full select-none flex-col bg-white px-5 pt-2 pb-0.5 text-gray-900 sm:px-7 sm:pt-2.5 sm:pb-0.5"
+                            style={{
+                                boxSizing: 'border-box',
+                            }}
+                        >
                         {/* Baris Logo dan Teks Kop */}
-                        <div className="flex items-center justify-between gap-4 w-full flex-1">
+                        <div className="flex w-full flex-1 items-start justify-between gap-4">
                             {/* 1. Sisi Kiri: Logo Daerah */}
-                            <div className="w-24 sm:w-28 flex-shrink-0 flex items-center justify-center">
+                            <div className="flex w-24 flex-shrink-0 items-start justify-center sm:w-28">
                                 {logoDaerahPreview ? (
                                     <img
                                         src={logoDaerahPreview}
                                         alt="Logo Daerah"
-                                        className="max-h-24 sm:max-h-28 max-w-full object-contain"
+                                        className="max-h-24 max-w-full object-contain object-top sm:max-h-28"
                                         onError={() => setLogoDaerahPreview(null)}
                                     />
                                 ) : (
-                                    <div className="w-20 h-20 sm:w-24 sm:h-24 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 p-2 text-center text-xs">
-                                        <Building2 className="w-6 h-6 mb-1 text-gray-300" />
+                                    <div className="flex h-20 w-20 flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 p-2 text-center text-xs text-gray-400 sm:h-24 sm:w-24">
+                                        <Building2 className="mb-1 h-6 w-6 text-gray-300" />
                                         <span>Logo Pemda</span>
                                     </div>
                                 )}
                             </div>
 
                             {/* 2. Sisi Tengah: Teks Kop Sekolah (Mengikuti Styling Akurat MS Word) */}
-                            <div className="flex-1 text-center px-3 overflow-hidden">
+                            <div className="flex-1 overflow-hidden px-3 text-center">
                                 <style>{`
                                     .kop-live-content {
                                         color: #000000;
@@ -587,430 +887,502 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
                             </div>
 
                             {/* 3. Sisi Kanan: Logo Sekolah ATAU Spacer Simetris */}
-                            <div className="w-24 sm:w-28 flex-shrink-0 flex items-center justify-center">
+                            <div className="flex w-24 flex-shrink-0 items-start justify-center sm:w-28">
                                 {kopMode === '2_logo' ? (
                                     logoSekolahPreview ? (
                                         <img
                                             src={logoSekolahPreview}
                                             alt="Logo Sekolah"
-                                            className="max-h-24 sm:max-h-28 max-w-full object-contain"
+                                            className="max-h-24 max-w-full object-contain object-top sm:max-h-28"
                                             onError={() => setLogoSekolahPreview(null)}
                                         />
                                     ) : (
-                                        <div className="w-20 h-20 sm:w-24 sm:h-24 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 p-2 text-center text-xs">
-                                            <School className="w-6 h-6 mb-1 text-gray-300" />
+                                        <div className="flex h-20 w-20 flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 p-2 text-center text-xs text-gray-400 sm:h-24 sm:w-24">
+                                            <School className="mb-1 h-6 w-6 text-gray-300" />
                                             <span>Logo Sekolah</span>
                                         </div>
                                     )
                                 ) : (
                                     /* Spacer penyeimbang simetris untuk mode 1 logo */
-                                    <div className="w-24 sm:w-28 opacity-0 pointer-events-none" />
+                                    <div className="pointer-events-none w-24 opacity-0 sm:w-28" />
                                 )}
                             </div>
                         </div>
 
-                        {/* 4. Garis Pembatas Kop Surat */}
+                        {/* 4. Garis Pembatas Kop Surat (tampil di preview, dikecualikan saat render PNG) */}
                         {kopBorder === 'double' && (
-                            <div className="w-full mt-3.5 pt-1">
-                                <div className="w-full border-t-[3px] border-black"></div>
-                                <div className="w-full border-t-[1px] border-black mt-[2px]"></div>
+                            <div data-kop-border="true" className="mt-1 w-full pb-2">
+                                <div className="w-full border-t-[3px] border-black" />
+                                <div className="mt-[2px] w-full border-t-[1px] border-black" />
                             </div>
                         )}
                         {kopBorder === 'single' && (
-                            <div className="w-full mt-3.5 pt-1">
-                                <div className="w-full border-t-[2px] border-black"></div>
+                            <div data-kop-border="true" className="mt-1 w-full pb-2">
+                                <div className="w-full border-t-[2px] border-black" />
                             </div>
                         )}
                         {kopBorder === 'none' && (
-                            <div className="w-full mt-2"></div>
+                            <div data-kop-border="true" className="mt-1 w-full pb-1" />
                         )}
-                    </div>
-                </div>
-            </div>
-
-            {/* PENGATURAN MODE LOGO & GARIS PEMBATAS (BARIS 1) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* 1. Pengaturan Mode Logo */}
-                <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-                    <h4 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2 mb-4 text-sm">
-                        <Layers className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                        Pilihan Susunan Logo
-                    </h4>
-
-                    <div className="space-y-3">
-                        <label
-                            className={`flex items-start p-3.5 rounded-xl border-2 cursor-pointer transition-all ${
-                                kopMode === '2_logo'
-                                    ? 'border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/20 dark:border-indigo-500'
-                                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
-                            }`}
-                        >
-                            <input
-                                type="radio"
-                                name="kop_mode"
-                                value="2_logo"
-                                checked={kopMode === '2_logo'}
-                                onChange={() => setKopMode('2_logo')}
-                                className="mt-1 h-4 w-4 text-indigo-600 focus:ring-indigo-500"
-                            />
-                            <div className="ml-3">
-                                <span className="block text-sm font-semibold text-gray-900 dark:text-gray-100">
-                                    2 Logo (Rekomendasi Dinas)
-                                </span>
-                                <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                    Logo Daerah di sebelah kiri & Logo Sekolah di sebelah kanan.
-                                </span>
-                            </div>
-                        </label>
-
-                        <label
-                            className={`flex items-start p-3.5 rounded-xl border-2 cursor-pointer transition-all ${
-                                kopMode === '1_logo'
-                                    ? 'border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/20 dark:border-indigo-500'
-                                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
-                            }`}
-                        >
-                            <input
-                                type="radio"
-                                name="kop_mode"
-                                value="1_logo"
-                                checked={kopMode === '1_logo'}
-                                onChange={() => setKopMode('1_logo')}
-                                className="mt-1 h-4 w-4 text-indigo-600 focus:ring-indigo-500"
-                            />
-                            <div className="ml-3">
-                                <span className="block text-sm font-semibold text-gray-900 dark:text-gray-100">
-                                    1 Logo (Hanya Logo Daerah)
-                                </span>
-                                <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                    Logo Daerah di sebelah kiri, teks kop tetap simetris rata tengah.
-                                </span>
-                            </div>
-                        </label>
-                    </div>
-                </div>
-
-                {/* 2. Pengaturan Gaya Garis Pembatas */}
-                <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-                    <h4 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2 mb-4 text-sm">
-                        <Minus className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                        Pilihan Garis Pembatas
-                    </h4>
-
-                    <div className="space-y-3">
-                        {/* Opsi Garis 2 (Ganda) */}
-                        <label
-                            className={`flex items-start p-3.5 rounded-xl border-2 cursor-pointer transition-all ${
-                                kopBorder === 'double'
-                                    ? 'border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/20 dark:border-indigo-500'
-                                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
-                            }`}
-                        >
-                            <input
-                                type="radio"
-                                name="kop_border"
-                                value="double"
-                                checked={kopBorder === 'double'}
-                                onChange={() => setKopBorder('double')}
-                                className="mt-1 h-4 w-4 text-indigo-600 focus:ring-indigo-500"
-                            />
-                            <div className="ml-3 flex-1">
-                                <div className="flex items-center justify-between">
-                                    <span className="block text-sm font-semibold text-gray-900 dark:text-gray-100">
-                                        Garis 2 (Ganda)
-                                    </span>
-                                    <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded bg-indigo-100 text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300">
-                                        Resmi Dinas
-                                    </span>
-                                </div>
-                                <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                    Garis tebal-tipis standar resmi tata naskah dinas pemerintah.
-                                </span>
-                                <div className="mt-2.5 pt-1 bg-gray-50 dark:bg-gray-900 px-3 py-2 rounded border border-gray-100 dark:border-gray-700">
-                                    <div className="w-full border-t-[2.5px] border-black dark:border-gray-100"></div>
-                                    <div className="w-full border-t-[1px] border-black dark:border-gray-100 mt-[2px]"></div>
-                                </div>
-                            </div>
-                        </label>
-
-                        {/* Opsi Garis 1 (Tunggal) */}
-                        <label
-                            className={`flex items-start p-3.5 rounded-xl border-2 cursor-pointer transition-all ${
-                                kopBorder === 'single'
-                                    ? 'border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/20 dark:border-indigo-500'
-                                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
-                            }`}
-                        >
-                            <input
-                                type="radio"
-                                name="kop_border"
-                                value="single"
-                                checked={kopBorder === 'single'}
-                                onChange={() => setKopBorder('single')}
-                                className="mt-1 h-4 w-4 text-indigo-600 focus:ring-indigo-500"
-                            />
-                            <div className="ml-3 flex-1">
-                                <div className="flex items-center justify-between">
-                                    <span className="block text-sm font-semibold text-gray-900 dark:text-gray-100">
-                                        Garis 1 (Tunggal)
-                                    </span>
-                                    <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300">
-                                        Standar
-                                    </span>
-                                </div>
-                                <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                    Satu garis solid tegas (2px) yang rapi dan tegas.
-                                </span>
-                                <div className="mt-2.5 pt-1 bg-gray-50 dark:bg-gray-900 px-3 py-2 rounded border border-gray-100 dark:border-gray-700">
-                                    <div className="w-full border-t-[2px] border-black dark:border-gray-100"></div>
-                                </div>
-                            </div>
-                        </label>
-
-                        {/* Opsi Tanpa Garis */}
-                        <label
-                            className={`flex items-start p-3.5 rounded-xl border-2 cursor-pointer transition-all ${
-                                kopBorder === 'none'
-                                    ? 'border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/20 dark:border-indigo-500'
-                                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
-                            }`}
-                        >
-                            <input
-                                type="radio"
-                                name="kop_border"
-                                value="none"
-                                checked={kopBorder === 'none'}
-                                onChange={() => setKopBorder('none')}
-                                className="mt-1 h-4 w-4 text-indigo-600 focus:ring-indigo-500"
-                            />
-                            <div className="ml-3 flex-1">
-                                <div className="flex items-center justify-between">
-                                    <span className="block text-sm font-semibold text-gray-900 dark:text-gray-100">
-                                        Tanpa Garis
-                                    </span>
-                                    <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded bg-amber-50 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
-                                        Polos
-                                    </span>
-                                </div>
-                                <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                    Bersih tanpa garis pembatas horizontal di bawah kop.
-                                </span>
-                                <div className="mt-2.5 pt-1 bg-gray-50 dark:bg-gray-900 px-3 py-2 rounded border border-dashed border-gray-300 dark:border-gray-700 text-center">
-                                    <span className="text-[11px] text-gray-400 dark:text-gray-500 italic">Tidak ada garis</span>
-                                </div>
-                            </div>
-                        </label>
-                    </div>
-                </div>
-            </div>
-
-            {/* PENGATURAN UPLOAD LOGO (BARIS 2) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-                {/* 3. Upload Logo Daerah (Kiri) */}
-                <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col justify-between">
-                    <div>
-                        <div className="flex items-center justify-between mb-3">
-                            <h4 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2 text-sm">
-                                <Building2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                                Logo Daerah (Kiri)
-                            </h4>
-                            <span className="text-[11px] px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 font-medium">
-                                Sisi Kiri
-                            </span>
-                        </div>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-                            Lambang Pemerintah Provinsi / Kabupaten / Kota. Format PNG/JPG maks 2MB.
-                        </p>
-
-                        <div className="flex items-center gap-4">
-                            <div className="w-20 h-20 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-750 flex items-center justify-center overflow-hidden flex-shrink-0 p-1">
-                                {logoDaerahPreview ? (
-                                    <img
-                                        src={logoDaerahPreview}
-                                        alt="Logo Daerah Preview"
-                                        className="max-h-full max-w-full object-contain"
-                                        onError={() => setLogoDaerahPreview(null)}
-                                    />
-                                ) : (
-                                    <ImageIcon className="w-8 h-8 text-gray-300 dark:text-gray-600" />
-                                )}
-                            </div>
-
-                            <div className="flex-1 space-y-2">
-                                <label className="inline-flex items-center justify-center px-3.5 py-1.5 border border-indigo-600 dark:border-indigo-500 rounded-lg text-xs font-medium text-indigo-600 dark:text-indigo-400 bg-transparent hover:bg-indigo-50 dark:hover:bg-indigo-950/40 cursor-pointer transition">
-                                    <Upload className="w-3.5 h-3.5 mr-1.5" />
-                                    {logoDaerahPreview ? 'Ganti Logo' : 'Unggah Logo'}
-                                    <input
-                                        type="file"
-                                        accept="image/png,image/jpeg,image/jpg,image/svg+xml"
-                                        onChange={handleLogoDaerahChange}
-                                        className="hidden"
-                                    />
-                                </label>
-
-                                {logoDaerahPreview && (
-                                    <div>
-                                        <button
-                                            type="button"
-                                            onClick={handleHapusLogoDaerah}
-                                            className="text-xs text-rose-600 hover:text-rose-700 dark:text-rose-400 flex items-center gap-1 font-medium transition"
-                                        >
-                                            <Trash2 className="w-3.5 h-3.5" />
-                                            Hapus Logo
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
                         </div>
                     </div>
                 </div>
+            </Surface>
 
-                {/* 4. Upload Logo Sekolah (Kanan) */}
-                <div
-                    className={`bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col justify-between transition-opacity ${
-                        kopMode === '1_logo' ? 'opacity-40 pointer-events-none' : ''
-                    }`}
+            {/* BAGIAN 3: BENTO GRID 2-KOLOM TERPADU (LOGO & GARIS PEMBATAS) */}
+            <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
+                {/* KOLOM KIRI: Susunan Logo + Upload Logo Kiri & Kanan */}
+                <Surface
+                    className="lg:col-span-7 animate-rise"
+                    icon={
+                        <IconTile tone="sky" size="md">
+                            <Layers />
+                        </IconTile>
+                    }
+                    title="Susunan & Logo Kop Surat"
+                    subtitle="Pilih susunan logo lalu unggah lambang pemerintah daerah dan sekolah."
+                    badge={
+                        <StatusBadge tone="info" dot={false}>
+                            {kopMode === '2_logo' ? 'Mode 2 Logo' : 'Mode 1 Logo'}
+                        </StatusBadge>
+                    }
                 >
-                    <div>
-                        <div className="flex items-center justify-between mb-3">
-                            <h4 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2 text-sm">
-                                <School className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                                Logo Sekolah (Kanan)
-                            </h4>
-                            <span className="text-[11px] px-2 py-0.5 rounded-full bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 font-medium">
-                                Sisi Kanan
-                            </span>
-                        </div>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-                            Logo Tut Wuri Handayani atau Lambang Khusus Sekolah Anda.
-                        </p>
-
-                        <div className="flex items-center gap-4">
-                            <div className="w-20 h-20 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-750 flex items-center justify-center overflow-hidden flex-shrink-0 p-1">
-                                {logoSekolahPreview ? (
-                                    <img
-                                        src={logoSekolahPreview}
-                                        alt="Logo Sekolah Preview"
-                                        className="max-h-full max-w-full object-contain"
-                                        onError={() => setLogoSekolahPreview(null)}
-                                    />
-                                ) : (
-                                    <ImageIcon className="w-8 h-8 text-gray-300 dark:text-gray-600" />
+                    <div className="space-y-4">
+                        {/* Sub-bagian A: Pemilih Mode Susunan Logo */}
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            <label
+                                className={cn(
+                                    'relative flex cursor-pointer items-start gap-3 rounded-2xl border-2 p-3.5 transition-all',
+                                    kopMode === '2_logo'
+                                        ? 'border-lime-400 bg-lime-200/35 shadow-sm dark:border-lime-400/70 dark:bg-lime-400/10'
+                                        : 'border-slate-200/90 bg-white hover:border-slate-300 dark:border-white/10 dark:bg-white/[0.02] dark:hover:border-white/20'
                                 )}
+                            >
+                                <input
+                                    type="radio"
+                                    name="kop_mode"
+                                    value="2_logo"
+                                    checked={kopMode === '2_logo'}
+                                    onChange={() => setKopMode('2_logo')}
+                                    className="sr-only"
+                                />
+                                <span
+                                    className={cn(
+                                        'mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition',
+                                        kopMode === '2_logo'
+                                            ? 'border-lime-500 bg-lime-400 text-slate-950'
+                                            : 'border-slate-300 bg-white dark:border-white/20 dark:bg-white/5'
+                                    )}
+                                >
+                                    {kopMode === '2_logo' && <Check className="h-3 w-3 stroke-[3]" />}
+                                </span>
+                                <div className="min-w-0 flex-1">
+                                    <div className="flex flex-wrap items-center justify-between gap-1.5">
+                                        <span className="text-[12.5px] font-extrabold text-slate-900 dark:text-white">
+                                            2 Logo (Kiri &amp; Kanan)
+                                        </span>
+                                        <StatusBadge tone="lime" dot={false} className="text-[8.5px]">
+                                            Rekomendasi
+                                        </StatusBadge>
+                                    </div>
+                                    <p className="mt-1 text-[11px] font-medium leading-relaxed text-slate-500 dark:text-slate-400">
+                                        Logo Daerah di kiri dan Logo Sekolah di kanan kop.
+                                    </p>
+                                </div>
+                            </label>
+
+                            <label
+                                className={cn(
+                                    'relative flex cursor-pointer items-start gap-3 rounded-2xl border-2 p-3.5 transition-all',
+                                    kopMode === '1_logo'
+                                        ? 'border-lime-400 bg-lime-200/35 shadow-sm dark:border-lime-400/70 dark:bg-lime-400/10'
+                                        : 'border-slate-200/90 bg-white hover:border-slate-300 dark:border-white/10 dark:bg-white/[0.02] dark:hover:border-white/20'
+                                )}
+                            >
+                                <input
+                                    type="radio"
+                                    name="kop_mode"
+                                    value="1_logo"
+                                    checked={kopMode === '1_logo'}
+                                    onChange={() => setKopMode('1_logo')}
+                                    className="sr-only"
+                                />
+                                <span
+                                    className={cn(
+                                        'mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition',
+                                        kopMode === '1_logo'
+                                            ? 'border-lime-500 bg-lime-400 text-slate-950'
+                                            : 'border-slate-300 bg-white dark:border-white/20 dark:bg-white/5'
+                                    )}
+                                >
+                                    {kopMode === '1_logo' && <Check className="h-3 w-3 stroke-[3]" />}
+                                </span>
+                                <div className="min-w-0 flex-1">
+                                    <div className="flex flex-wrap items-center justify-between gap-1.5">
+                                        <span className="text-[12.5px] font-extrabold text-slate-900 dark:text-white">
+                                            1 Logo (Hanya Kiri)
+                                        </span>
+                                        <StatusBadge tone="violet" dot={false} className="text-[8.5px]">
+                                            Simetris
+                                        </StatusBadge>
+                                    </div>
+                                    <p className="mt-1 text-[11px] font-medium leading-relaxed text-slate-500 dark:text-slate-400">
+                                        Logo Daerah di kiri, teks kop tetap rata tengah simetris.
+                                    </p>
+                                </div>
+                            </label>
+                        </div>
+
+                        {/* Sub-bagian B: Slot Upload Logo Daerah & Sekolah */}
+                        <div className="grid grid-cols-1 gap-3.5 rounded-[20px] border border-slate-200/80 bg-slate-50/75 p-4 sm:grid-cols-2 dark:border-white/10 dark:bg-white/[0.03]">
+                            {/* Slot 1: Logo Daerah (Sisi Kiri) */}
+                            <div className="flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-sm dark:border-white/10 dark:bg-[#15131F]">
+                                <div>
+                                    <div className="mb-3 flex items-center justify-between gap-2">
+                                        <span className="flex items-center gap-1.5 text-[12px] font-extrabold text-slate-800 dark:text-white">
+                                            <Building2 className="h-3.5 w-3.5 text-sky" />
+                                            Logo Daerah
+                                        </span>
+                                        <StatusBadge tone="info" dot={false}>
+                                            Sisi Kiri
+                                        </StatusBadge>
+                                    </div>
+
+                                    <div className="flex items-center gap-3.5">
+                                        <div
+                                            className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-slate-200 p-1.5 dark:border-white/15"
+                                            style={{
+                                                backgroundImage:
+                                                    'linear-gradient(45deg, rgba(148,163,184,0.12) 25%, transparent 25%), linear-gradient(-45deg, rgba(148,163,184,0.12) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, rgba(148,163,184,0.12) 75%), linear-gradient(-45deg, transparent 75%, rgba(148,163,184,0.12) 75%)',
+                                                backgroundSize: '12px 12px',
+                                                backgroundPosition: '0 0, 0 6px, 6px -6px, -6px 0',
+                                            }}
+                                        >
+                                            {logoDaerahPreview ? (
+                                                <img
+                                                    src={logoDaerahPreview}
+                                                    alt="Logo Daerah Preview"
+                                                    className="max-h-full max-w-full object-contain"
+                                                    onError={() => setLogoDaerahPreview(null)}
+                                                />
+                                            ) : (
+                                                <ImageIcon className="h-7 w-7 text-slate-300 dark:text-slate-600" />
+                                            )}
+                                        </div>
+
+                                        <div className="min-w-0 flex-1 space-y-2">
+                                            <p className="text-[10.5px] font-medium leading-snug text-slate-500 dark:text-slate-400">
+                                                Lambang Pemda PNG/JPG maks 2MB.
+                                            </p>
+                                            <div className="flex flex-wrap items-center gap-1.5">
+                                                <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-brand-500/25 bg-pastel-lavender px-3 py-1.5 text-[10.5px] font-extrabold text-brand-700 transition hover:bg-brand-200/70 dark:border-brand-400/25 dark:bg-brand-500/15 dark:text-brand-300 dark:hover:bg-brand-500/25">
+                                                    <Upload className="h-3 w-3" />
+                                                    {logoDaerahPreview ? 'Ganti' : 'Unggah'}
+                                                    <input
+                                                        type="file"
+                                                        accept="image/png,image/jpeg,image/jpg,image/svg+xml"
+                                                        onChange={handleLogoDaerahChange}
+                                                        className="hidden"
+                                                    />
+                                                </label>
+
+                                                {logoDaerahPreview && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleHapusLogoDaerah}
+                                                        className="inline-flex items-center gap-1 rounded-xl border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-[10.5px] font-bold text-rose-600 transition hover:bg-rose-100 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-400 dark:hover:bg-rose-500/20"
+                                                    >
+                                                        <Trash2 className="h-3 w-3" />
+                                                        Hapus
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
-                            <div className="flex-1 space-y-2">
-                                <label className="inline-flex items-center justify-center px-3.5 py-1.5 border border-purple-600 dark:border-purple-500 rounded-lg text-xs font-medium text-purple-600 dark:text-purple-400 bg-transparent hover:bg-purple-50 dark:hover:bg-purple-950/40 cursor-pointer transition">
-                                    <Upload className="w-3.5 h-3.5 mr-1.5" />
-                                    {logoSekolahPreview ? 'Ganti Logo' : 'Unggah Logo'}
-                                    <input
-                                        type="file"
-                                        accept="image/png,image/jpeg,image/jpg,image/svg+xml"
-                                        onChange={handleLogoSekolahChange}
-                                        disabled={kopMode === '1_logo'}
-                                        className="hidden"
-                                    />
-                                </label>
-
-                                {logoSekolahPreview && (
-                                    <div>
-                                        <button
-                                            type="button"
-                                            onClick={handleHapusLogoSekolah}
-                                            disabled={kopMode === '1_logo'}
-                                            className="text-xs text-rose-600 hover:text-rose-700 dark:text-rose-400 flex items-center gap-1 font-medium transition"
-                                        >
-                                            <Trash2 className="w-3.5 h-3.5" />
-                                            Hapus Logo
-                                        </button>
-                                    </div>
+                            {/* Slot 2: Logo Sekolah (Sisi Kanan) */}
+                            <div
+                                className={cn(
+                                    'flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-sm transition-opacity dark:border-white/10 dark:bg-[#15131F]',
+                                    kopMode === '1_logo' && 'pointer-events-none opacity-50'
                                 )}
+                            >
+                                <div>
+                                    <div className="mb-3 flex items-center justify-between gap-2">
+                                        <span className="flex items-center gap-1.5 text-[12px] font-extrabold text-slate-800 dark:text-white">
+                                            <School className="h-3.5 w-3.5 text-brand-600 dark:text-brand-300" />
+                                            Logo Sekolah
+                                        </span>
+                                        <StatusBadge tone={kopMode === '2_logo' ? 'violet' : 'neutral'} dot={false}>
+                                            {kopMode === '2_logo' ? 'Sisi Kanan' : 'Nonaktif (1 Logo)'}
+                                        </StatusBadge>
+                                    </div>
+
+                                    <div className="flex items-center gap-3.5">
+                                        <div
+                                            className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-slate-200 p-1.5 dark:border-white/15"
+                                            style={{
+                                                backgroundImage:
+                                                    'linear-gradient(45deg, rgba(148,163,184,0.12) 25%, transparent 25%), linear-gradient(-45deg, rgba(148,163,184,0.12) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, rgba(148,163,184,0.12) 75%), linear-gradient(-45deg, transparent 75%, rgba(148,163,184,0.12) 75%)',
+                                                backgroundSize: '12px 12px',
+                                                backgroundPosition: '0 0, 0 6px, 6px -6px, -6px 0',
+                                            }}
+                                        >
+                                            {logoSekolahPreview ? (
+                                                <img
+                                                    src={logoSekolahPreview}
+                                                    alt="Logo Sekolah Preview"
+                                                    className="max-h-full max-w-full object-contain"
+                                                    onError={() => setLogoSekolahPreview(null)}
+                                                />
+                                            ) : (
+                                                <ImageIcon className="h-7 w-7 text-slate-300 dark:text-slate-600" />
+                                            )}
+                                        </div>
+
+                                        <div className="min-w-0 flex-1 space-y-2">
+                                            <p className="text-[10.5px] font-medium leading-snug text-slate-500 dark:text-slate-400">
+                                                {kopMode === '1_logo'
+                                                    ? 'Aktifkan mode 2 Logo untuk memakai logo sisi kanan.'
+                                                    : 'Tut Wuri Handayani atau lambang sekolah.'}
+                                            </p>
+                                            <div className="flex flex-wrap items-center gap-1.5">
+                                                <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-brand-500/25 bg-pastel-lavender px-3 py-1.5 text-[10.5px] font-extrabold text-brand-700 transition hover:bg-brand-200/70 dark:border-brand-400/25 dark:bg-brand-500/15 dark:text-brand-300 dark:hover:bg-brand-500/25">
+                                                    <Upload className="h-3 w-3" />
+                                                    {logoSekolahPreview ? 'Ganti' : 'Unggah'}
+                                                    <input
+                                                        type="file"
+                                                        accept="image/png,image/jpeg,image/jpg,image/svg+xml"
+                                                        onChange={handleLogoSekolahChange}
+                                                        disabled={kopMode === '1_logo'}
+                                                        className="hidden"
+                                                    />
+                                                </label>
+
+                                                {logoSekolahPreview && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleHapusLogoSekolah}
+                                                        disabled={kopMode === '1_logo'}
+                                                        className="inline-flex items-center gap-1 rounded-xl border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-[10.5px] font-bold text-rose-600 transition hover:bg-rose-100 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-400 dark:hover:bg-rose-500/20"
+                                                    >
+                                                        <Trash2 className="h-3 w-3" />
+                                                        Hapus
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
+                </Surface>
+
+                {/* KOLOM KANAN: Pilihan Garis Pembatas Kop */}
+                <Surface
+                    className="lg:col-span-5 animate-rise"
+                    icon={
+                        <IconTile tone="violet" size="md">
+                            <Minus />
+                        </IconTile>
+                    }
+                    title="Garis Pembatas Kop"
+                    subtitle="Garis bawah otomatis membentang 100% mengikuti margin dokumen PDF."
+                    badge={
+                        <StatusBadge tone="violet" dot={false}>
+                            CSS 100%
+                        </StatusBadge>
+                    }
+                >
+                    <div className="space-y-2.5">
+                        {BORDER_OPTIONS.map((option) => {
+                            const isSelected = kopBorder === option.value;
+                            return (
+                                <label
+                                    key={option.value}
+                                    className={cn(
+                                        'flex cursor-pointer items-start gap-3 rounded-2xl border-2 p-3.5 transition-all',
+                                        isSelected
+                                            ? 'border-lime-400 bg-lime-200/35 shadow-sm dark:border-lime-400/70 dark:bg-lime-400/10'
+                                            : 'border-slate-200/90 bg-white hover:border-slate-300 dark:border-white/10 dark:bg-white/[0.02] dark:hover:border-white/20'
+                                    )}
+                                >
+                                    <input
+                                        type="radio"
+                                        name="kop_border"
+                                        value={option.value}
+                                        checked={isSelected}
+                                        onChange={() => setKopBorder(option.value)}
+                                        className="sr-only"
+                                    />
+                                    <span
+                                        className={cn(
+                                            'mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition',
+                                            isSelected
+                                                ? 'border-lime-500 bg-lime-400 text-slate-950'
+                                                : 'border-slate-300 bg-white dark:border-white/20 dark:bg-white/5'
+                                        )}
+                                    >
+                                        {isSelected && <Check className="h-3 w-3 stroke-[3]" />}
+                                    </span>
+
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex items-center justify-between gap-2">
+                                            <span className="text-[12.5px] font-extrabold text-slate-900 dark:text-white">
+                                                {option.title}
+                                            </span>
+                                            <StatusBadge tone={option.badgeTone} dot={false} className="text-[8.5px]">
+                                                {option.badgeLabel}
+                                            </StatusBadge>
+                                        </div>
+                                        <p className="mt-0.5 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                                            {option.description}
+                                        </p>
+
+                                        {option.value === 'double' && (
+                                            <div className="mt-2.5 rounded-xl border border-slate-200/70 bg-slate-50 px-3 py-2 dark:border-white/10 dark:bg-white/[0.03]">
+                                                <div className="w-full border-t-[2.5px] border-black dark:border-white/80" />
+                                                <div className="mt-[2px] w-full border-t-[1px] border-black dark:border-white/80" />
+                                            </div>
+                                        )}
+                                        {option.value === 'single' && (
+                                            <div className="mt-2.5 rounded-xl border border-slate-200/70 bg-slate-50 px-3 py-2 dark:border-white/10 dark:bg-white/[0.03]">
+                                                <div className="w-full border-t-[2px] border-black dark:border-white/80" />
+                                            </div>
+                                        )}
+                                        {option.value === 'none' && (
+                                            <div className="mt-2.5 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-1.5 text-center dark:border-white/10 dark:bg-white/[0.03]">
+                                                <span className="text-[10.5px] font-medium italic text-slate-400 dark:text-slate-500">
+                                                    Tidak ada garis pembatas
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </label>
+                            );
+                        })}
+                    </div>
+                </Surface>
             </div>
 
-            {/* EDITOR TIPTAP DENGAN RIBBON BAR MS WORD LENGKAP */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-                <div className="px-6 py-3.5 border-b border-gray-200 dark:border-gray-700 bg-gray-50/70 dark:bg-gray-750 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
-                        <h4 className="font-semibold text-gray-900 dark:text-gray-100 text-sm flex items-center gap-2">
-                            <span className="p-1 rounded bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400">
-                                📝
-                            </span>
-                            Pita Menu Format Teks (MS Word Ribbon)
-                        </h4>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                            Gunakan alat formatting lengkap di bawah ini untuk menata huruf, ukuran, perataan, warna, dan spasi.
-                        </p>
+            {/* BAGIAN 4: EDITOR TIPTAP & MS WORD RIBBON STUDIO */}
+            <Surface padding="none" overflowVisible className="animate-rise">
+                <div className="flex flex-col justify-between gap-3 border-b border-slate-100 bg-slate-50/70 px-5 py-4 sm:flex-row sm:items-center dark:border-white/5 dark:bg-white/[0.03]">
+                    <div className="flex items-center gap-3">
+                        <IconTile tone="amber" size="md">
+                            <Type />
+                        </IconTile>
+                        <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <h4 className="text-[13.5px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                                    Editor Teks Kop Surat (MS Word Ribbon)
+                                </h4>
+                                <StatusBadge tone="warning" dot={false}>
+                                    Rich Format
+                                </StatusBadge>
+                            </div>
+                            <p className="mt-0.5 text-[10.5px] font-medium text-slate-400 dark:text-slate-500">
+                                Atur jenis huruf, ukuran per baris, perataan, warna kedinasan, dan spasi baris secara presisi.
+                            </p>
+                        </div>
                     </div>
 
                     <button
                         type="button"
                         onClick={handleResetTemplate}
-                        className="self-start sm:self-auto inline-flex items-center gap-1.5 text-xs font-medium text-gray-600 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-indigo-400 py-1.5 px-3 rounded-lg border border-gray-300 dark:border-gray-600 hover:border-indigo-300 transition"
+                        className="inline-flex items-center gap-1.5 self-start rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-[11px] font-extrabold text-slate-600 shadow-sm transition hover:border-amber-300 hover:bg-amber-50/60 hover:text-amber-700 sm:self-auto dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:border-amber-400/30 dark:hover:bg-amber-500/10 dark:hover:text-amber-300"
                     >
-                        <RotateCcw className="w-3.5 h-3.5" />
+                        <RotateCcw className="h-3.5 w-3.5" />
                         Reset ke Template Baku
                     </button>
                 </div>
 
                 {/* MS WORD RIBBON BAR (2 BARIS TERORGANISIR) */}
                 {editor && (
-                    <div className="border-b border-gray-200 dark:border-gray-700 bg-gray-100/70 dark:bg-gray-800/90 divide-y divide-gray-200 dark:divide-gray-700 text-xs">
+                    <div
+                        ref={ribbonRef}
+                        className="divide-y divide-slate-200/70 border-b border-slate-100 bg-slate-100/75 text-xs dark:divide-white/5 dark:border-white/5 dark:bg-white/[0.02]"
+                    >
                         {/* BARIS 1: FONT UTAMA, UKURAN, CAPITALIZATION & HISTORY */}
-                        <div className="px-4 py-2 flex flex-wrap items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2 px-5 py-2.5">
                             {/* 1. Font Family Dropdown */}
-                            <div className="flex items-center bg-white dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600 px-2 py-1 shadow-sm">
-                                <span className="text-gray-400 mr-1 text-[11px] font-mono">Font:</span>
-                                <select
-                                    value={editor.getAttributes('textStyle').fontFamily || "'Times New Roman', Times, serif"}
-                                    onChange={(e) => editor.chain().focus().setFontFamily(e.target.value).run()}
-                                    className="bg-transparent border-0 text-xs text-gray-800 dark:text-gray-100 py-0 pl-1 pr-6 focus:ring-0 cursor-pointer font-medium"
-                                >
-                                    {FONT_FAMILIES.map((font) => (
-                                        <option key={font.value} value={font.value} className="text-gray-900 bg-white">
-                                            {font.label}
-                                        </option>
-                                    ))}
-                                </select>
+                            <div className="flex w-[210px] sm:w-[230px] items-center rounded-xl border border-slate-200/90 bg-white py-0.5 pl-2.5 pr-1 shadow-sm dark:border-white/10 dark:bg-white/5">
+                                <span className="mr-1.5 select-none text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                                    Font
+                                </span>
+                                <Select<RibbonSelectOption, false>
+                                    unstyled
+                                    isSearchable={false}
+                                    options={FONT_FAMILIES}
+                                    value={selectedFontOption}
+                                    onMenuOpen={closeAllPopovers}
+                                    onChange={(opt) => {
+                                        if (opt) {
+                                            editor.chain().focus().setFontFamily(opt.value).run();
+                                        }
+                                    }}
+                                    formatOptionLabel={(opt, { context }) => (
+                                        <div className="flex w-full items-center justify-between gap-2">
+                                            <span className="truncate" style={{ fontFamily: opt.value }}>
+                                                {opt.label}
+                                            </span>
+                                            {context === 'menu' && selectedFontOption.value === opt.value && (
+                                                <Check className="h-3.5 w-3.5 shrink-0" />
+                                            )}
+                                        </div>
+                                    )}
+                                    classNames={buildRibbonSelectClassNames('w-[220px]')}
+                                />
                             </div>
 
                             {/* 2. Font Size Dropdown */}
-                            <div className="flex items-center bg-white dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600 px-2 py-1 shadow-sm">
-                                <span className="text-gray-400 mr-1 text-[11px] font-mono">Size:</span>
-                                <select
-                                    value={editor.getAttributes('textStyle').fontSize || '13pt'}
-                                    onChange={(e) => editor.chain().focus().setFontSize(e.target.value).run()}
-                                    className="bg-transparent border-0 text-xs text-gray-800 dark:text-gray-100 py-0 pl-1 pr-6 focus:ring-0 cursor-pointer font-semibold"
-                                >
-                                    {FONT_SIZES.map((size) => (
-                                        <option key={size} value={size} className="text-gray-900 bg-white">
-                                            {size}
-                                        </option>
-                                    ))}
-                                </select>
+                            <div className="flex w-[124px] items-center rounded-xl border border-slate-200/90 bg-white py-0.5 pl-2.5 pr-1 shadow-sm dark:border-white/10 dark:bg-white/5">
+                                <span className="mr-1.5 select-none text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                                    Ukuran
+                                </span>
+                                <Select<RibbonSelectOption, false>
+                                    unstyled
+                                    isSearchable={false}
+                                    options={FONT_SIZE_OPTIONS}
+                                    value={selectedFontSizeOption}
+                                    onMenuOpen={closeAllPopovers}
+                                    onChange={(opt) => {
+                                        if (opt) {
+                                            editor.chain().focus().setFontSize(opt.value).run();
+                                        }
+                                    }}
+                                    formatOptionLabel={(opt, { context }) => (
+                                        <div className="flex w-full items-center justify-between gap-2">
+                                            <span>{opt.label}</span>
+                                            {context === 'menu' && selectedFontSizeOption.value === opt.value && (
+                                                <Check className="h-3.5 w-3.5 shrink-0" />
+                                            )}
+                                        </div>
+                                    )}
+                                    classNames={buildRibbonSelectClassNames('w-[115px]')}
+                                />
                             </div>
 
                             {/* 3. Grow / Shrink Font Buttons (A^ / Av) */}
-                            <div className="flex items-center bg-white dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600 p-0.5 shadow-sm">
+                            <div className="flex items-center gap-0.5 rounded-xl border border-slate-200/90 bg-white p-0.5 shadow-sm dark:border-white/10 dark:bg-white/5">
                                 <button
                                     type="button"
                                     onClick={handleGrowFont}
                                     title="Perbesar Ukuran Font (Grow Font)"
-                                    className="px-2 py-1 text-xs font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 rounded flex items-center"
+                                    className="flex items-center rounded-lg px-2 py-1 text-xs font-bold text-slate-700 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/10"
                                 >
-                                    A<span className="text-[10px] ml-0.5">▲</span>
+                                    A<span className="ml-0.5 text-[10px]">▲</span>
                                 </button>
                                 <button
                                     type="button"
                                     onClick={handleShrinkFont}
                                     title="Perkecil Ukuran Font (Shrink Font)"
-                                    className="px-2 py-1 text-xs font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 rounded flex items-center"
+                                    className="flex items-center rounded-lg px-2 py-1 text-xs font-bold text-slate-700 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/10"
                                 >
-                                    A<span className="text-[10px] ml-0.5">▼</span>
+                                    A<span className="ml-0.5 text-[10px]">▼</span>
                                 </button>
                             </div>
 
@@ -1024,21 +1396,21 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
                                         setIsHighlightPickerOpen(false);
                                     }}
                                     title="Ubah Kapitalisasi Huruf (Change Case)"
-                                    className="flex items-center gap-1 bg-white dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600 px-2 py-1 shadow-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 font-medium"
+                                    className="flex items-center gap-1 rounded-xl border border-slate-200/90 bg-white px-2.5 py-1.5 font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10"
                                 >
-                                    <span className="font-bold">Aa</span>
-                                    <ChevronDown className="w-3 h-3 text-gray-400" />
+                                    <span className="font-extrabold">Aa</span>
+                                    <ChevronDown className="h-3 w-3 text-slate-400 dark:text-slate-500" />
                                 </button>
 
                                 {isCaseMenuOpen && (
-                                    <div className="absolute left-0 mt-1 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-1.5 z-20 space-y-1">
+                                    <div className="absolute left-0 z-30 mt-1.5 w-52 space-y-1 rounded-2xl border border-slate-200/90 bg-white p-1.5 shadow-float dark:border-white/10 dark:bg-[#1A1728]">
                                         <button
                                             type="button"
                                             onClick={() => {
                                                 applyTextCase(editor, 'uppercase');
                                                 setIsCaseMenuOpen(false);
                                             }}
-                                            className="w-full text-left px-2.5 py-1.5 text-xs hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg text-gray-800 dark:text-gray-200 font-semibold"
+                                            className="w-full rounded-xl px-3 py-2 text-left text-xs font-bold text-slate-800 transition hover:bg-slate-100 dark:text-white dark:hover:bg-white/10"
                                         >
                                             HURUF BESAR (UPPERCASE)
                                         </button>
@@ -1048,7 +1420,7 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
                                                 applyTextCase(editor, 'capitalize');
                                                 setIsCaseMenuOpen(false);
                                             }}
-                                            className="w-full text-left px-2.5 py-1.5 text-xs hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg text-gray-800 dark:text-gray-200"
+                                            className="w-full rounded-xl px-3 py-2 text-left text-xs font-medium text-slate-700 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/10"
                                         >
                                             Huruf Besar Tiap Kata
                                         </button>
@@ -1058,7 +1430,7 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
                                                 applyTextCase(editor, 'lowercase');
                                                 setIsCaseMenuOpen(false);
                                             }}
-                                            className="w-full text-left px-2.5 py-1.5 text-xs hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg text-gray-800 dark:text-gray-200"
+                                            className="w-full rounded-xl px-3 py-2 text-left text-xs font-medium text-slate-700 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/10"
                                         >
                                             huruf kecil (lowercase)
                                         </button>
@@ -1066,121 +1438,97 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
                                 )}
                             </div>
 
-                            <div className="h-5 w-[1px] bg-gray-300 dark:bg-gray-600 mx-1"></div>
+                            <div className="mx-0.5 h-5 w-px bg-slate-200 dark:bg-white/10" />
 
                             {/* 5. Undo & Redo */}
-                            <div className="flex items-center bg-white dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600 p-0.5 shadow-sm">
+                            <div className="flex items-center gap-0.5 rounded-xl border border-slate-200/90 bg-white p-0.5 shadow-sm dark:border-white/10 dark:bg-white/5">
                                 <button
                                     type="button"
                                     onClick={() => editor.chain().focus().undo().run()}
                                     disabled={!editor.can().undo()}
                                     title="Undo (Ctrl+Z)"
-                                    className="p-1 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 rounded disabled:opacity-30"
+                                    className="rounded-lg p-1.5 text-slate-700 transition hover:bg-slate-100 disabled:opacity-30 dark:text-slate-200 dark:hover:bg-white/10"
                                 >
-                                    <Undo2 className="w-3.5 h-3.5" />
+                                    <Undo2 className="h-3.5 w-3.5" />
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => editor.chain().focus().redo().run()}
                                     disabled={!editor.can().redo()}
                                     title="Redo (Ctrl+Y)"
-                                    className="p-1 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 rounded disabled:opacity-30"
+                                    className="rounded-lg p-1.5 text-slate-700 transition hover:bg-slate-100 disabled:opacity-30 dark:text-slate-200 dark:hover:bg-white/10"
                                 >
-                                    <Redo2 className="w-3.5 h-3.5" />
+                                    <Redo2 className="h-3.5 w-3.5" />
                                 </button>
                             </div>
 
-                            {/* 6. Clear Formatting (Penghapus Format) */}
+                            {/* 6. Clear Formatting */}
                             <button
                                 type="button"
                                 onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()}
                                 title="Hapus Semua Format (Clear Formatting)"
-                                className="flex items-center gap-1 bg-white dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600 px-2 py-1 shadow-sm text-gray-700 dark:text-gray-200 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40 transition"
+                                className="flex items-center gap-1.5 rounded-xl border border-slate-200/90 bg-white px-2.5 py-1.5 font-semibold text-slate-700 shadow-sm transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:border-rose-500/30 dark:hover:bg-rose-950/40"
                             >
-                                <RemoveFormatting className="w-3.5 h-3.5 text-rose-500" />
+                                <RemoveFormatting className="h-3.5 w-3.5 text-rose-500" />
                                 <span className="hidden sm:inline">Hapus Format</span>
                             </button>
                         </div>
 
                         {/* BARIS 2: GAYA FONT, WARNA, PARAGRAF, SPASI BARIS & LIST */}
-                        <div className="px-4 py-2 flex flex-wrap items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2 px-5 py-2.5">
                             {/* 1. Gaya Karakter: Bold, Italic, Underline, Strike, Sub, Super */}
-                            <div className="flex items-center bg-white dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600 p-0.5 shadow-sm">
+                            <div className="flex items-center gap-0.5 rounded-xl border border-slate-200/90 bg-white p-0.5 shadow-sm dark:border-white/10 dark:bg-white/5">
                                 <button
                                     type="button"
                                     onClick={() => editor.chain().focus().toggleBold().run()}
-                                    className={`p-1.5 rounded ${
-                                        editor.isActive('bold')
-                                            ? 'bg-indigo-600 text-white font-bold'
-                                            : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600'
-                                    }`}
+                                    className={ribbonToggleBtnClass(editor.isActive('bold'))}
                                     title="Tebal / Bold (Ctrl+B)"
                                 >
-                                    <Bold className="w-3.5 h-3.5" />
+                                    <Bold className="h-3.5 w-3.5" />
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => editor.chain().focus().toggleItalic().run()}
-                                    className={`p-1.5 rounded ${
-                                        editor.isActive('italic')
-                                            ? 'bg-indigo-600 text-white font-bold'
-                                            : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600'
-                                    }`}
+                                    className={ribbonToggleBtnClass(editor.isActive('italic'))}
                                     title="Miring / Italic (Ctrl+I)"
                                 >
-                                    <Italic className="w-3.5 h-3.5" />
+                                    <Italic className="h-3.5 w-3.5" />
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => editor.chain().focus().toggleUnderline().run()}
-                                    className={`p-1.5 rounded ${
-                                        editor.isActive('underline')
-                                            ? 'bg-indigo-600 text-white font-bold'
-                                            : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600'
-                                    }`}
+                                    className={ribbonToggleBtnClass(editor.isActive('underline'))}
                                     title="Garis Bawah / Underline (Ctrl+U)"
                                 >
-                                    <UnderlineIcon className="w-3.5 h-3.5" />
+                                    <UnderlineIcon className="h-3.5 w-3.5" />
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => editor.chain().focus().toggleStrike().run()}
-                                    className={`p-1.5 rounded ${
-                                        editor.isActive('strike')
-                                            ? 'bg-indigo-600 text-white font-bold'
-                                            : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600'
-                                    }`}
+                                    className={ribbonToggleBtnClass(editor.isActive('strike'))}
                                     title="Coret / Strikethrough"
                                 >
-                                    <Strikethrough className="w-3.5 h-3.5" />
+                                    <Strikethrough className="h-3.5 w-3.5" />
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => editor.chain().focus().toggleSubscript().run()}
-                                    className={`p-1.5 rounded ${
-                                        editor.isActive('subscript')
-                                            ? 'bg-indigo-600 text-white font-bold'
-                                            : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600'
-                                    }`}
+                                    className={ribbonToggleBtnClass(editor.isActive('subscript'))}
                                     title="Subscript (X₂)"
                                 >
-                                    <SubscriptIcon className="w-3.5 h-3.5" />
+                                    <SubscriptIcon className="h-3.5 w-3.5" />
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => editor.chain().focus().toggleSuperscript().run()}
-                                    className={`p-1.5 rounded ${
-                                        editor.isActive('superscript')
-                                            ? 'bg-indigo-600 text-white font-bold'
-                                            : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600'
-                                    }`}
+                                    className={ribbonToggleBtnClass(editor.isActive('superscript'))}
                                     title="Superscript (X²)"
                                 >
-                                    <SuperscriptIcon className="w-3.5 h-3.5" />
+                                    <SuperscriptIcon className="h-3.5 w-3.5" />
                                 </button>
                             </div>
 
-                            <div className="h-5 w-[1px] bg-gray-300 dark:bg-gray-600 mx-1"></div>
+                            <div className="mx-0.5 h-5 w-px bg-slate-200 dark:bg-white/10" />
 
                             {/* 2. Warna Teks (Font Color) */}
                             <div className="relative">
@@ -1192,26 +1540,27 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
                                         setIsCaseMenuOpen(false);
                                     }}
                                     title="Warna Teks (Font Color)"
-                                    className="flex items-center gap-1.5 bg-white dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600 px-2 py-1 shadow-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50"
+                                    className="flex items-center gap-1.5 rounded-xl border border-slate-200/90 bg-white px-2.5 py-1.5 text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10"
                                 >
                                     <div className="flex flex-col items-center">
-                                        <span className="font-bold text-xs leading-none">A</span>
+                                        <span className="text-xs font-extrabold leading-none">A</span>
                                         <div
-                                            className="h-1 w-4 mt-0.5 rounded-full"
+                                            className="mt-0.5 h-1 w-4 rounded-full"
                                             style={{
                                                 backgroundColor: editor.getAttributes('textStyle').color || '#000000',
                                             }}
                                         />
                                     </div>
-                                    <ChevronDown className="w-3 h-3 text-gray-400" />
+                                    <ChevronDown className="h-3 w-3 text-slate-400 dark:text-slate-500" />
                                 </button>
 
                                 {isColorPickerOpen && (
-                                    <div className="absolute left-0 mt-1 w-52 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-3 z-20">
-                                        <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider block mb-2">
-                                            Warna Huruf Dinas:
+                                    <div className="absolute left-0 z-30 mt-1.5 w-56 rounded-2xl border border-slate-200/90 bg-white p-3 shadow-float dark:border-white/10 dark:bg-[#1A1728]">
+                                        <span className="mb-2 flex items-center gap-1.5 text-[10.5px] font-extrabold uppercase tracking-[0.12em] text-slate-400 dark:text-slate-500">
+                                            <Palette className="h-3.5 w-3.5" />
+                                            Warna Huruf Dinas
                                         </span>
-                                        <div className="grid grid-cols-4 gap-2 mb-3">
+                                        <div className="mb-3 grid grid-cols-4 gap-2">
                                             {TEXT_COLORS.map((c) => (
                                                 <button
                                                     key={c.value}
@@ -1221,18 +1570,20 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
                                                         setIsColorPickerOpen(false);
                                                     }}
                                                     title={c.label}
-                                                    className="w-8 h-8 rounded-lg border border-gray-300 hover:scale-110 transition shadow-sm"
+                                                    className="h-8 w-8 rounded-xl border border-slate-200/90 shadow-sm transition hover:scale-110 dark:border-white/10"
                                                     style={{ backgroundColor: c.value }}
                                                 />
                                             ))}
                                         </div>
-                                        <div className="pt-2 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                                            <span className="text-xs text-gray-600 dark:text-gray-300">Warna Bebas:</span>
+                                        <div className="flex items-center justify-between border-t border-slate-200 pt-2.5 dark:border-white/10">
+                                            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                                                Warna Bebas:
+                                            </span>
                                             <input
                                                 type="color"
                                                 value={editor.getAttributes('textStyle').color || '#000000'}
                                                 onChange={(e) => editor.chain().focus().setColor(e.target.value).run()}
-                                                className="w-7 h-7 rounded border-0 cursor-pointer p-0"
+                                                className="h-7 w-7 cursor-pointer rounded-lg border-0 p-0"
                                             />
                                         </div>
                                     </div>
@@ -1249,18 +1600,18 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
                                         setIsCaseMenuOpen(false);
                                     }}
                                     title="Stabilo / Sorot Teks (Highlight)"
-                                    className="flex items-center gap-1.5 bg-white dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600 px-2 py-1 shadow-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50"
+                                    className="flex items-center gap-1.5 rounded-xl border border-slate-200/90 bg-white px-2.5 py-1.5 text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10"
                                 >
-                                    <Highlighter className="w-3.5 h-3.5 text-amber-500" />
-                                    <ChevronDown className="w-3 h-3 text-gray-400" />
+                                    <Highlighter className="h-3.5 w-3.5 text-amber-500" />
+                                    <ChevronDown className="h-3 w-3 text-slate-400 dark:text-slate-500" />
                                 </button>
 
                                 {isHighlightPickerOpen && (
-                                    <div className="absolute left-0 mt-1 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-3 z-20">
-                                        <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider block mb-2">
-                                            Warna Stabilo:
+                                    <div className="absolute left-0 z-30 mt-1.5 w-52 rounded-2xl border border-slate-200/90 bg-white p-3 shadow-float dark:border-white/10 dark:bg-[#1A1728]">
+                                        <span className="mb-2 block text-[10.5px] font-extrabold uppercase tracking-[0.12em] text-slate-400 dark:text-slate-500">
+                                            Warna Stabilo
                                         </span>
-                                        <div className="flex gap-2 mb-2">
+                                        <div className="mb-2.5 flex gap-2">
                                             {HIGHLIGHT_COLORS.map((h) => (
                                                 <button
                                                     key={h.value}
@@ -1270,7 +1621,7 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
                                                         setIsHighlightPickerOpen(false);
                                                     }}
                                                     title={h.label}
-                                                    className="w-7 h-7 rounded-lg border border-gray-300 hover:scale-110 transition"
+                                                    className="h-7 w-7 rounded-xl border border-slate-200/90 transition hover:scale-110 dark:border-white/10"
                                                     style={{ backgroundColor: h.value }}
                                                 />
                                             ))}
@@ -1281,7 +1632,7 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
                                                 editor.chain().focus().unsetHighlight().run();
                                                 setIsHighlightPickerOpen(false);
                                             }}
-                                            className="w-full text-center text-xs text-rose-600 py-1 hover:bg-rose-50 rounded"
+                                            className="w-full rounded-xl py-1.5 text-center text-xs font-bold text-rose-600 transition hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-500/10"
                                         >
                                             Hapus Stabilo
                                         </button>
@@ -1289,103 +1640,92 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
                                 )}
                             </div>
 
-                            <div className="h-5 w-[1px] bg-gray-300 dark:bg-gray-600 mx-1"></div>
+                            <div className="mx-0.5 h-5 w-px bg-slate-200 dark:bg-white/10" />
 
                             {/* 4. Perataan Teks (Alignment: Left, Center, Right, Justify) */}
-                            <div className="flex items-center bg-white dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600 p-0.5 shadow-sm">
+                            <div className="flex items-center gap-0.5 rounded-xl border border-slate-200/90 bg-white p-0.5 shadow-sm dark:border-white/10 dark:bg-white/5">
                                 <button
                                     type="button"
                                     onClick={() => editor.chain().focus().setTextAlign('left').run()}
-                                    className={`p-1.5 rounded ${
-                                        editor.isActive({ textAlign: 'left' })
-                                            ? 'bg-indigo-600 text-white'
-                                            : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600'
-                                    }`}
+                                    className={ribbonToggleBtnClass(editor.isActive({ textAlign: 'left' }))}
                                     title="Rata Kiri"
                                 >
-                                    <AlignLeft className="w-3.5 h-3.5" />
+                                    <AlignLeft className="h-3.5 w-3.5" />
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => editor.chain().focus().setTextAlign('center').run()}
-                                    className={`p-1.5 rounded ${
-                                        editor.isActive({ textAlign: 'center' })
-                                            ? 'bg-indigo-600 text-white'
-                                            : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600'
-                                    }`}
+                                    className={ribbonToggleBtnClass(editor.isActive({ textAlign: 'center' }))}
                                     title="Rata Tengah (Default Kop)"
                                 >
-                                    <AlignCenter className="w-3.5 h-3.5" />
+                                    <AlignCenter className="h-3.5 w-3.5" />
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => editor.chain().focus().setTextAlign('right').run()}
-                                    className={`p-1.5 rounded ${
-                                        editor.isActive({ textAlign: 'right' })
-                                            ? 'bg-indigo-600 text-white'
-                                            : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600'
-                                    }`}
+                                    className={ribbonToggleBtnClass(editor.isActive({ textAlign: 'right' }))}
                                     title="Rata Kanan"
                                 >
-                                    <AlignRight className="w-3.5 h-3.5" />
+                                    <AlignRight className="h-3.5 w-3.5" />
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => editor.chain().focus().setTextAlign('justify').run()}
-                                    className={`p-1.5 rounded ${
-                                        editor.isActive({ textAlign: 'justify' })
-                                            ? 'bg-indigo-600 text-white'
-                                            : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600'
-                                    }`}
+                                    className={ribbonToggleBtnClass(editor.isActive({ textAlign: 'justify' }))}
                                     title="Rata Kiri-Kanan (Justify)"
                                 >
-                                    <AlignJustify className="w-3.5 h-3.5" />
+                                    <AlignJustify className="h-3.5 w-3.5" />
                                 </button>
                             </div>
 
                             {/* 5. Jarak Antar Baris (Line Spacing) */}
-                            <div className="flex items-center bg-white dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600 px-2 py-1 shadow-sm">
-                                <span className="text-gray-400 mr-1 text-[11px] font-mono">Spasi:</span>
-                                <select
-                                    onChange={(e) => editor.commands.setLineHeight(e.target.value)}
-                                    defaultValue="1.15"
-                                    className="bg-transparent border-0 text-xs text-gray-800 dark:text-gray-100 py-0 pl-1 pr-6 focus:ring-0 cursor-pointer font-medium"
-                                >
-                                    {LINE_HEIGHTS.map((lh) => (
-                                        <option key={lh} value={lh} className="text-gray-900 bg-white">
-                                            {lh}
-                                        </option>
-                                    ))}
-                                </select>
+                            <div className="flex w-[118px] items-center rounded-xl border border-slate-200/90 bg-white py-0.5 pl-2.5 pr-1 shadow-sm dark:border-white/10 dark:bg-white/5">
+                                <span className="mr-1.5 select-none text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                                    Spasi
+                                </span>
+                                <Select<RibbonSelectOption, false>
+                                    unstyled
+                                    isSearchable={false}
+                                    options={LINE_HEIGHT_OPTIONS}
+                                    value={selectedLineHeightOption}
+                                    onMenuOpen={closeAllPopovers}
+                                    onChange={(opt) => {
+                                        if (opt) {
+                                            setSelectedLineHeight(opt.value);
+                                            editor.chain().focus().setLineHeight(opt.value).run();
+                                        }
+                                    }}
+                                    formatOptionLabel={(opt, { context }) => (
+                                        <div className="flex w-full items-center justify-between gap-2">
+                                            <span>{opt.label}</span>
+                                            {context === 'menu' && selectedLineHeightOption.value === opt.value && (
+                                                <Check className="h-3.5 w-3.5 shrink-0" />
+                                            )}
+                                        </div>
+                                    )}
+                                    classNames={buildRibbonSelectClassNames('w-[110px]')}
+                                />
                             </div>
 
-                            <div className="h-5 w-[1px] bg-gray-300 dark:bg-gray-600 mx-1"></div>
+                            <div className="mx-0.5 h-5 w-px bg-slate-200 dark:bg-white/10" />
 
                             {/* 6. List: Bullet & Numbered */}
-                            <div className="flex items-center bg-white dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600 p-0.5 shadow-sm">
+                            <div className="flex items-center gap-0.5 rounded-xl border border-slate-200/90 bg-white p-0.5 shadow-sm dark:border-white/10 dark:bg-white/5">
                                 <button
                                     type="button"
                                     onClick={() => editor.chain().focus().toggleBulletList().run()}
-                                    className={`p-1.5 rounded ${
-                                        editor.isActive('bulletList')
-                                            ? 'bg-indigo-600 text-white'
-                                            : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600'
-                                    }`}
+                                    className={ribbonToggleBtnClass(editor.isActive('bulletList'))}
                                     title="Bullet List (Daftar Berbutir)"
                                 >
-                                    <List className="w-3.5 h-3.5" />
+                                    <List className="h-3.5 w-3.5" />
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => editor.chain().focus().toggleOrderedList().run()}
-                                    className={`p-1.5 rounded ${
-                                        editor.isActive('orderedList')
-                                            ? 'bg-indigo-600 text-white'
-                                            : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600'
-                                    }`}
+                                    className={ribbonToggleBtnClass(editor.isActive('orderedList'))}
                                     title="Numbered List (Daftar Bernomor)"
                                 >
-                                    <ListOrdered className="w-3.5 h-3.5" />
+                                    <ListOrdered className="h-3.5 w-3.5" />
                                 </button>
                             </div>
                         </div>
@@ -1393,7 +1733,7 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
                 )}
 
                 {/* Editor Content Area */}
-                <div className="p-6 bg-white dark:bg-gray-900 min-h-[220px]">
+                <div className="min-h-[220px] bg-white p-5 dark:bg-[#15131F]">
                     <style>{`
                         .tiptap {
                             outline: none !important;
@@ -1408,198 +1748,198 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
                     `}</style>
                     <EditorContent
                         editor={editor}
-                        className="border border-gray-200 dark:border-gray-700 rounded-xl p-4 bg-gray-50/50 dark:bg-gray-800/50 focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-transparent transition"
+                        className="rounded-2xl border border-slate-200/90 bg-slate-50/50 p-5 transition focus-within:border-lime-400 focus-within:ring-4 focus-within:ring-lime-200/60 dark:border-white/10 dark:bg-white/[0.03] dark:focus-within:border-lime-400/70 dark:focus-within:ring-lime-400/10"
                     />
                 </div>
 
                 {/* Footer Aksi Simpan */}
-                <div className="p-6 border-t border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row items-center justify-between gap-4 bg-gray-50 dark:bg-gray-850">
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                        Format dan ukuran teks yang Anda atur pada editor di atas akan dicerminkan secara persis pada hasil cetak dokumen.
+                <div className="flex flex-col items-center justify-between gap-4 border-t border-slate-100 bg-slate-50/70 p-5 sm:flex-row dark:border-white/5 dark:bg-white/[0.02]">
+                    <p className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
+                        <FileText className="h-4 w-4 shrink-0 text-amber-500" />
+                        Format huruf, spasi baris, dan perataan teks pada editor akan dicerminkan persis pada dokumen PDF.
                     </p>
 
-                    <div className="flex items-center gap-3 w-full sm:w-auto">
+                    <div className="flex w-full items-center gap-3 sm:w-auto">
                         <SecondaryButton
                             onClick={handleDownloadPng}
                             disabled={isDownloading}
-                            className="flex-1 sm:flex-initial justify-center"
+                            className="flex-1 justify-center sm:flex-initial"
                         >
-                            <Download className="w-4 h-4 mr-1.5" />
+                            <Download className="mr-1.5 h-4 w-4" />
                             Unduh Gambar (PNG)
                         </SecondaryButton>
                         <PrimaryButton
                             onClick={() => setIsConfirmSaveModalOpen(true)}
                             disabled={isSaving}
-                            className="flex-1 sm:flex-initial justify-center bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
+                            className="flex-1 justify-center sm:flex-initial"
                         >
                             {isSaving ? (
                                 <>
-                                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    <svg className="-ml-1 mr-2 h-4 w-4 animate-spin text-current" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                                     </svg>
                                     Menyimpan...
                                 </>
                             ) : (
                                 <>
-                                    <Check className="w-4 h-4 mr-1.5" />
+                                    <Check className="mr-1.5 h-4 w-4" />
                                     Simpan Kop Sekarang
                                 </>
                             )}
                         </PrimaryButton>
                     </div>
                 </div>
-            </div>
+            </Surface>
 
-            {/* Modal Zoom Preview */}
-            <Modal show={isPreviewModalOpen} onClose={() => setIsPreviewModalOpen(false)} maxWidth="4xl">
-                <div className="p-6">
-                    <div className="flex items-center justify-between pb-4 border-b border-gray-200 dark:border-gray-700 mb-4">
-                        <h3 className="text-base font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                            <Eye className="w-5 h-5 text-indigo-600" />
-                            Ukuran Penuh Kop Surat Sekolah
-                        </h3>
-                        <button
-                            type="button"
-                            onClick={() => setIsPreviewModalOpen(false)}
-                            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-                        >
-                            ✕
-                        </button>
-                    </div>
-
-                    <div className="bg-gray-100 dark:bg-gray-900 p-4 rounded-xl flex items-center justify-center overflow-auto max-h-[70vh]">
+            {/* MODAL 1: ZOOM PREVIEW KOP SURAT */}
+            <KopModalShell
+                show={isPreviewModalOpen}
+                onClose={() => setIsPreviewModalOpen(false)}
+                maxWidth="4xl"
+                glowTone="violet"
+                iconTone="violet"
+                icon={<Eye />}
+                title="Ukuran Penuh Kop Surat Sekolah"
+                subtitle="Pratinjau resolusi tinggi hasil susunan logo, teks, dan garis pembatas kop."
+                badge={<StatusBadge tone="violet">Resolusi Tinggi</StatusBadge>}
+            >
+                <div className="space-y-4">
+                    <div className="flex max-h-[70vh] items-center justify-center overflow-auto rounded-2xl border border-slate-200/80 bg-slate-100/90 p-5 dark:border-white/10 dark:bg-black/30">
                         {previewModalImgUrl && (
                             <img
                                 src={previewModalImgUrl}
                                 alt="Perbesaran Kop Surat"
-                                className="w-full h-auto rounded shadow-md border border-gray-300"
+                                className="h-auto w-full rounded-xl border border-slate-200 shadow-md dark:border-white/10"
                             />
                         )}
                     </div>
 
-                    <div className="mt-4 flex justify-end">
-                        <SecondaryButton onClick={() => setIsPreviewModalOpen(false)}>
-                            Tutup
+                    <div className="flex items-center justify-end gap-2.5 border-t border-slate-100 pt-4 dark:border-white/10">
+                        <SecondaryButton onClick={handleDownloadPng} disabled={isDownloading}>
+                            <Download className="mr-1.5 h-4 w-4" />
+                            Unduh PNG
                         </SecondaryButton>
+                        <PrimaryButton onClick={() => setIsPreviewModalOpen(false)}>
+                            Tutup Preview
+                        </PrimaryButton>
                     </div>
                 </div>
-            </Modal>
+            </KopModalShell>
 
-            {/* Modal Konfirmasi Reset Template */}
-            <Modal show={isResetModalOpen} onClose={() => setIsResetModalOpen(false)} maxWidth="md">
-                <div className="p-6">
-                    <div className="flex items-center gap-4 mb-4">
-                        <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center text-amber-600 dark:text-amber-400 flex-shrink-0">
-                            <RotateCcw className="w-6 h-6" />
-                        </div>
-                        <div>
-                            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">
-                                Kembalikan ke Template Baku?
-                            </h3>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">
-                                Konfirmasi pengaturan ulang isi teks kop surat
-                            </p>
-                        </div>
+            {/* MODAL 2: KONFIRMASI RESET TEMPLATE */}
+            <KopModalShell
+                show={isResetModalOpen}
+                onClose={() => setIsResetModalOpen(false)}
+                maxWidth="md"
+                glowTone="amber"
+                iconTone="amber"
+                icon={<RotateCcw />}
+                title="Kembalikan ke Template Baku?"
+                subtitle="Konfirmasi pengaturan ulang isi teks kop surat"
+                badge={<StatusBadge tone="warning">Reset Teks</StatusBadge>}
+            >
+                <div className="space-y-5">
+                    <div className="rounded-[20px] border border-amber-200/80 bg-amber-50/70 p-4 text-sm leading-relaxed text-slate-700 dark:border-amber-400/20 dark:bg-amber-500/10 dark:text-slate-300">
+                        Teks kop surat saat ini akan diganti dengan susunan baku dinas berdasarkan data profil sekolah Anda. Perubahan teks atau kustomisasi yang sedang Anda buat akan ditimpa.
                     </div>
 
-                    <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-6">
-                        Teks kop surat saat ini akan diganti dengan susunan baku dinas berdasarkan data profil sekolah Anda. Perubahan teks atau kustomisasi yang sedang Anda buat akan ditimpa.
-                    </p>
-
-                    <div className="flex items-center justify-end gap-3">
+                    <div className="flex items-center justify-end gap-3 border-t border-slate-100 pt-4 dark:border-white/10">
                         <SecondaryButton onClick={() => setIsResetModalOpen(false)}>
                             Batal
                         </SecondaryButton>
-                        <PrimaryButton
-                            onClick={confirmResetTemplate}
-                            className="bg-amber-600 hover:bg-amber-700 text-white"
-                        >
-                            <RotateCcw className="w-4 h-4 mr-1.5" />
+                        <PrimaryButton onClick={confirmResetTemplate}>
+                            <RotateCcw className="mr-1.5 h-4 w-4" />
                             Ya, Terapkan Template
                         </PrimaryButton>
                     </div>
                 </div>
-            </Modal>
+            </KopModalShell>
 
-            {/* Modal Konfirmasi Simpan Kop Surat */}
-            <Modal show={isConfirmSaveModalOpen} onClose={() => setIsConfirmSaveModalOpen(false)} maxWidth="md">
-                <div className="p-6">
-                    <div className="flex items-center gap-4 mb-4">
-                        <div className="w-12 h-12 rounded-full bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center text-indigo-600 dark:text-indigo-400 flex-shrink-0">
-                            <Save className="w-6 h-6" />
+            {/* MODAL 3: KONFIRMASI SIMPAN KOP SURAT */}
+            <KopModalShell
+                show={isConfirmSaveModalOpen}
+                onClose={() => setIsConfirmSaveModalOpen(false)}
+                maxWidth="md"
+                glowTone="mint"
+                iconTone="mint"
+                icon={<Save />}
+                title="Simpan & Terapkan Kop Surat?"
+                subtitle="Pembuatan gambar resolusi tinggi untuk seluruh PDF"
+                badge={<StatusBadge tone="success">Siap Cetak PDF</StatusBadge>}
+            >
+                <div className="space-y-4">
+                    <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+                        Sistem akan menggabungkan logo daerah, teks kop surat, dan logo sekolah menjadi gambar berkualitas tinggi (2480 &times; 588 px) dan menerapkannya ke seluruh dokumen PDF laporan sekolah.
+                    </p>
+
+                    <div className="space-y-2 rounded-[20px] border border-slate-200/80 bg-slate-50/75 p-4 dark:border-white/10 dark:bg-white/[0.03]">
+                        <div className="flex items-center gap-2 border-b border-slate-200/70 pb-2 dark:border-white/10">
+                            <SlidersHorizontal className="h-3.5 w-3.5 text-brand-500 dark:text-brand-300" />
+                            <span className="text-[10.5px] font-extrabold uppercase tracking-[0.14em] text-slate-600 dark:text-slate-300">
+                                Ringkasan Pengaturan Aktif
+                            </span>
                         </div>
-                        <div>
-                            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">
-                                Simpan & Terapkan Kop Surat?
-                            </h3>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">
-                                Pembuatan gambar resolusi tinggi untuk seluruh PDF
-                            </p>
+                        <div className="flex items-center justify-between text-xs">
+                            <span className="font-medium text-slate-500 dark:text-slate-400">Susunan Logo</span>
+                            <StatusBadge tone="info" dot={false}>
+                                {kopMode === '2_logo' ? '2 Logo (Kiri & Kanan)' : '1 Logo (Hanya Kiri)'}
+                            </StatusBadge>
+                        </div>
+                        <div className="flex items-center justify-between text-xs">
+                            <span className="font-medium text-slate-500 dark:text-slate-400">Garis Pembatas PDF</span>
+                            <StatusBadge tone="violet" dot={false}>
+                                {BORDER_LABELS[kopBorder]}
+                            </StatusBadge>
                         </div>
                     </div>
 
-                    <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-6">
-                        Sistem akan menggabungkan logo daerah, teks kop surat, dan logo sekolah menjadi satu file gambar berkualitas tinggi (2480 &times; 588 px). Gambar ini akan otomatis diterapkan ke seluruh dokumen PDF laporan sekolah (SPJ, Kwitansi, SPTJ, BKU, dll).
-                    </p>
-
-                    <div className="flex items-center justify-end gap-3">
+                    <div className="flex items-center justify-end gap-3 border-t border-slate-100 pt-4 dark:border-white/10">
                         <SecondaryButton onClick={() => setIsConfirmSaveModalOpen(false)}>
                             Batal
                         </SecondaryButton>
-                        <PrimaryButton
-                            onClick={executeSaveKop}
-                            className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
-                        >
-                            <Check className="w-4 h-4 mr-1.5" />
+                        <PrimaryButton onClick={executeSaveKop}>
+                            <Check className="mr-1.5 h-4 w-4" />
                             Ya, Simpan Kop Sekarang
                         </PrimaryButton>
                     </div>
                 </div>
-            </Modal>
+            </KopModalShell>
 
-            {/* Modal Status (Sukses / Gagal) */}
-            <Modal
+            {/* MODAL 4: STATUS SUKSES / GAGAL */}
+            <KopModalShell
                 show={statusModal.isOpen}
                 onClose={() => setStatusModal((prev) => ({ ...prev, isOpen: false }))}
                 maxWidth="md"
+                glowTone={statusModal.type === 'success' ? 'mint' : 'rose'}
+                iconTone={statusModal.type === 'success' ? 'mint' : 'rose'}
+                icon={statusModal.type === 'success' ? <CheckCircle2 /> : <AlertTriangle />}
+                title={statusModal.title}
+                subtitle={statusModal.type === 'success' ? 'Pembaruan profil sekolah selesai' : 'Terjadi kendala pemrosesan'}
+                badge={
+                    <StatusBadge tone={statusModal.type === 'success' ? 'success' : 'danger'}>
+                        {statusModal.type === 'success' ? 'Berhasil' : 'Kendala'}
+                    </StatusBadge>
+                }
             >
-                <div className="p-6">
-                    <div className="flex items-center gap-4 mb-4">
-                        <div
-                            className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${
-                                statusModal.type === 'success'
-                                    ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400'
-                                    : 'bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400'
-                            }`}
-                        >
-                            {statusModal.type === 'success' ? (
-                                <CheckCircle2 className="w-6 h-6" />
-                            ) : (
-                                <AlertTriangle className="w-6 h-6" />
-                            )}
-                        </div>
-                        <div>
-                            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">
-                                {statusModal.title}
-                            </h3>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">
-                                {statusModal.type === 'success' ? 'Informasi Berhasil' : 'Pemberitahuan Kendala'}
-                            </p>
-                        </div>
+                <div className="space-y-5">
+                    <div
+                        className={cn(
+                            'rounded-[20px] border p-4 text-sm leading-relaxed whitespace-pre-line',
+                            statusModal.type === 'success'
+                                ? 'border-emerald-200/80 bg-emerald-50/60 text-slate-700 dark:border-mint/20 dark:bg-mint/10 dark:text-slate-200'
+                                : 'border-rose-200/80 bg-rose-50/70 text-rose-800 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-200'
+                        )}
+                    >
+                        {statusModal.message}
                     </div>
 
-                    <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-6 whitespace-pre-line">
-                        {statusModal.message}
-                    </p>
-
-                    <div className="flex items-center justify-end">
+                    <div className="flex items-center justify-end border-t border-slate-100 pt-4 dark:border-white/10">
                         {statusModal.type === 'success' ? (
                             <PrimaryButton
                                 onClick={() => setStatusModal((prev) => ({ ...prev, isOpen: false }))}
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white"
                             >
-                                <Check className="w-4 h-4 mr-1.5" />
+                                <Check className="mr-1.5 h-4 w-4" />
                                 Mengerti
                             </PrimaryButton>
                         ) : (
@@ -1611,7 +1951,7 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
                         )}
                     </div>
                 </div>
-            </Modal>
+            </KopModalShell>
         </div>
     );
 }

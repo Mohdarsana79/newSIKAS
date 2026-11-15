@@ -1,5 +1,6 @@
 import React from 'react';
 import Modal from '@/Components/Modal';
+import IconTile from '@/Components/ui/IconTile';
 import { AlertTriangle, Info, Trash2 } from 'lucide-react';
 
 interface Props {
@@ -30,41 +31,52 @@ export default function ConfirmModal({
 
     return (
         <Modal show={show} onClose={onClose} maxWidth="sm">
-            <div className="p-6 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 text-gray-900 dark:text-white rounded-2xl text-center shadow-xl">
-                {/* Icon */}
+            <div className="relative overflow-hidden">
                 <div
-                    className={`mx-auto flex items-center justify-center h-12 w-12 rounded-2xl mb-4 ${
+                    className={`pointer-events-none absolute -right-10 -top-16 h-40 w-40 rounded-full blur-3xl ${
                         isDanger
-                            ? 'bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20'
+                            ? 'bg-rose-500/10 dark:bg-rose-500/[0.08]'
                             : isWarning
-                            ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20'
-                            : 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/20'
+                            ? 'bg-amber-400/20 dark:bg-amber-400/10'
+                            : 'bg-brand-500/10 dark:bg-brand-500/[0.08]'
                     }`}
-                >
-                    {isDanger ? (
-                        <Trash2 className="w-6 h-6" />
-                    ) : isWarning ? (
-                        <AlertTriangle className="w-6 h-6" />
-                    ) : (
-                        <Info className="w-6 h-6" />
-                    )}
+                />
+
+                {/* Header */}
+                <div className="relative flex items-center gap-3 border-b border-slate-100 px-6 py-4 dark:border-white/5">
+                    <IconTile tone={isDanger ? 'rose' : isWarning ? 'amber' : 'violet'} size="lg">
+                        {isDanger ? (
+                            <Trash2 className="w-4 h-4" />
+                        ) : isWarning ? (
+                            <AlertTriangle className="w-4 h-4" />
+                        ) : (
+                            <Info className="w-4 h-4" />
+                        )}
+                    </IconTile>
+                    <div className="min-w-0">
+                        <h3 className="text-[14px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                            {title}
+                        </h3>
+                        <p className="mt-0.5 text-[10px] font-medium text-slate-400 dark:text-slate-500">
+                            Konfirmasi tindakan
+                        </p>
+                    </div>
                 </div>
 
-                {/* Title & Message */}
-                <h3 className="text-base font-bold text-gray-900 dark:text-slate-100 mb-1.5">
-                    {title}
-                </h3>
-                <p className="text-xs text-gray-500 dark:text-slate-400 leading-relaxed mb-6">
-                    {message}
-                </p>
+                {/* Body */}
+                <div className="px-6 py-5">
+                    <p className="text-[11.5px] font-medium leading-relaxed text-slate-500 dark:text-slate-400">
+                        {message}
+                    </p>
+                </div>
 
-                {/* Actions */}
-                <div className="flex justify-center gap-3">
+                {/* Footer */}
+                <div className="flex justify-end gap-2 border-t border-slate-100 px-6 py-4 dark:border-white/5">
                     <button
                         type="button"
                         onClick={onClose}
                         disabled={loading}
-                        className="px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-200 text-xs font-semibold rounded-xl border border-gray-200 dark:border-slate-700 transition-colors"
+                        className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-[11.5px] font-bold text-slate-700 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10"
                     >
                         {cancelText}
                     </button>
@@ -72,12 +84,12 @@ export default function ConfirmModal({
                         type="button"
                         onClick={onConfirm}
                         disabled={loading}
-                        className={`px-4 py-2 text-white text-xs font-semibold rounded-xl shadow-md transition-colors ${
+                        className={`inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-[11.5px] font-extrabold text-white shadow-lg transition-all duration-200 hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50 ${
                             isDanger
-                                ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-500/20'
+                                ? 'bg-rose-500 shadow-rose-500/25 hover:bg-rose-600'
                                 : isWarning
-                                ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-500/20'
-                                : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-500/20'
+                                ? 'bg-amber-500 shadow-amber-500/25 hover:bg-amber-600'
+                                : 'bg-brand-500 shadow-brand-500/25 hover:bg-brand-600'
                         }`}
                     >
                         {loading ? 'Memproses...' : confirmText}

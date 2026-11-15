@@ -20,3 +20,4 @@ Pada `resources/js/Pages/Penatausahaan/Index.tsx` (baris 431–464):
 ### Tahap 2: Verifikasi Build
 1. Jalankan `npm run build` (`tsc && vite build`) dan pastikan kompilasi berhasil tanpa error.
 2. Pastikan class `py-5` dan styling badge `bg-pastel-lavender` terkompilasi ke output build CSS.
+

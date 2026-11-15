@@ -81,3 +81,4 @@ Terbungkus dalam kartu bento (`rounded-[20px] border border-slate-200/80 bg-slat
 
 - Seluruh kelas warna menggunakan token valid di `tailwind.config.js` (`pastel-amber`, `pastel-mint`, `pastel-rose`, `mint`, `rose-500`, `amber-200`, `slate-*`, `white/*`, `dark:` mode). Tidak ada `brand-50`, `text-sky-*`, atau `py-4.5`.
 - Verifikasi dilakukan dengan `npm run build` (`tsc && vite build`) dan memastikan build selesai tanpa error TypeScript maupun Vite.
+

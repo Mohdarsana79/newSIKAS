@@ -128,3 +128,4 @@ actions={
    - Mengganti pilihan Varian Anggaran dan Tahun: data harus tetap ter-fetch secara benar melalui AJAX dan grafik ter-update.
 3. **Verifikasi Build**:
    - Menjalankan `npm run build` (`tsc && vite build`) untuk memastikan tidak ada error TypeScript maupun dependensi yang rusak.
+

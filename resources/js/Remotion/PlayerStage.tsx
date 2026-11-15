@@ -3,17 +3,18 @@ import type { ComponentType, CSSProperties, ReactElement, ReactNode, RefObject }
 
 import { useReducedMotion } from '@/Hooks/useReducedMotion';
 
-import {
-    BRAND,
-    FONT_BODY,
-    GLASS,
-    GOLD,
-    GOLD_SOFT,
-    HAIRLINE,
-    INK,
-    INK_DEEP,
-    INK_SOFT,
-} from './theme';
+// Token visual lokal untuk placeholder & wrapper.
+// Sengaja tidak mengimpor dari ./theme agar Rollup tidak menggabungkan theme ke chunk Welcome
+// yang menyebabkan Welcome diperlakukan sebagai shared chunk dan hilang dari manifest Vite.
+const INK_DEEP = '#07060C';
+const INK = '#0B0A12';
+const INK_SOFT = '#15121F';
+const BRAND = '#7C5CFF';
+const GOLD = '#E8C87D';
+const GOLD_SOFT = '#F5DCA8';
+const HAIRLINE = 'rgba(232,200,125,0.22)';
+const GLASS = 'rgba(255,255,255,0.05)';
+const FONT_BODY = '"Plus Jakarta Sans", Figtree, ui-sans-serif, system-ui, sans-serif';
 
 /**
  * Wrapper publik animasi SIKAS.

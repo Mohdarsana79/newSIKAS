@@ -1,14 +1,20 @@
-import Checkbox from '@/Components/Checkbox';
-import InputError from '@/Components/InputError';
-import InputLabel from '@/Components/InputLabel';
-import PrimaryButton from '@/Components/PrimaryButton';
-import TextInput from '@/Components/TextInput';
+import AuthButton from '@/Components/Auth/AuthButton';
+import AuthCheckbox from '@/Components/Auth/AuthCheckbox';
+import AuthField from '@/Components/Auth/AuthField';
+import AuthHeading, { AuthAccent } from '@/Components/Auth/AuthHeading';
 import GuestLayout from '@/Layouts/GuestLayout';
 import Modal from '@/Components/Modal';
-import SecondaryButton from '@/Components/SecondaryButton';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { FormEventHandler, useState, useEffect, useRef } from 'react';
-import { ShieldCheck } from 'lucide-react';
+import {
+    CheckCircle2,
+    Eye,
+    EyeOff,
+    KeyRound,
+    LockKeyhole,
+    ShieldCheck,
+    UserRound,
+} from 'lucide-react';
 
 export default function Login({
     status,
@@ -89,158 +95,180 @@ export default function Login({
         <GuestLayout>
             <Head title="Log in" />
 
-            <div className="text-center mb-10">
-                <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-                    Selamat Datang Kembali
-                </h2>
-                <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                    Silakan masuk ke akun SIKAS Anda
-                </p>
+            <div className="auth-rise">
+                <AuthHeading
+                    eyebrow="Masuk akun"
+                    title={
+                        <>
+                            Selamat datang <AuthAccent>kembali</AuthAccent>.
+                        </>
+                    }
+                    subtitle="Masuk untuk melanjutkan pekerjaan anggaran sekolah Anda."
+                />
             </div>
 
             {status && (
-                <div className="mb-4 rounded-md bg-green-50 p-4 text-sm font-medium text-green-600">
-                    {status}
+                <div
+                    className="auth-rise mt-5 flex items-start gap-2.5 rounded-2xl border border-[#C3D6BC] bg-[#F2F7EC] px-3.5 py-3 text-[12.5px] font-medium leading-relaxed text-[#3F6B43]"
+                    style={{ animationDelay: '80ms' }}
+                >
+                    <CheckCircle2 aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-[#5E8C5A]" />
+                    <span>{status}</span>
                 </div>
             )}
 
-            <form onSubmit={submit} className="space-y-6">
-                <div>
-                    <InputLabel htmlFor="username" value="Username" />
-                    <div className="relative mt-2">
-                        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                            <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                            </svg>
-                        </div>
-                        <TextInput
-                            id="username"
-                            type="text"
-                            name="username"
-                            value={data.username}
-                            className="block w-full pl-10 py-3 text-gray-900"
-                            autoComplete="username"
-                            isFocused={true}
-                            onChange={(e) => setData('username', e.target.value)}
-                            placeholder="Masukkan username anda"
-                        />
-                    </div>
-                    <InputError message={errors.username} className="mt-2" />
+            <form onSubmit={submit} className="mt-6 space-y-[18px]">
+                <div className="auth-rise" style={{ animationDelay: '110ms' }}>
+                    <AuthField
+                        id="username"
+                        type="text"
+                        name="username"
+                        label="Username"
+                        icon={<UserRound className="h-[17px] w-[17px]" strokeWidth={1.7} />}
+                        value={data.username}
+                        autoComplete="username"
+                        autoFocus
+                        onChange={(e) => setData('username', e.target.value)}
+                        placeholder="Masukkan username"
+                        error={errors.username}
+                    />
                 </div>
 
-                <div>
-                    <InputLabel htmlFor="password" value="Password" />
-                    <div className="relative mt-2">
-                        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                            <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                            </svg>
-                        </div>
-                        <TextInput
-                            id="password"
-                            type={showPassword ? 'text' : 'password'}
-                            name="password"
-                            value={data.password}
-                            className="block w-full pl-10 pr-10 py-3 text-gray-900"
-                            autoComplete="current-password"
-                            onChange={(e) => setData('password', e.target.value)}
-                            placeholder="Masukkan password anda"
-                        />
-                        <button
-                            type="button"
-                            className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 focus:outline-none"
-                            onClick={() => setShowPassword(!showPassword)}
-                        >
-                            {showPassword ? (
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
-                                </svg>
-                            ) : (
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                </svg>
-                            )}
-                        </button>
-                    </div>
-                    <InputError message={errors.password} className="mt-2" />
-
-                    <div className="flex items-center justify-end mt-1">
-                        <Link
-                            href={route('password.request')}
-                            className="text-sm font-medium text-indigo-600 hover:text-indigo-500 transition-colors"
-                        >
-                            Lupa Password?
-                        </Link>
-                    </div>
+                <div className="auth-rise" style={{ animationDelay: '170ms' }}>
+                    <AuthField
+                        id="password"
+                        type={showPassword ? 'text' : 'password'}
+                        name="password"
+                        label="Password"
+                        icon={<LockKeyhole className="h-[17px] w-[17px]" strokeWidth={1.7} />}
+                        value={data.password}
+                        autoComplete="current-password"
+                        onChange={(e) => setData('password', e.target.value)}
+                        placeholder="Masukkan password"
+                        error={errors.password}
+                        trailing={
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
+                                aria-pressed={showPassword}
+                                className="mr-1 flex h-9 w-9 items-center justify-center rounded-[10px] text-[#857A93] transition-colors duration-200 hover:bg-[#F1E9FF] hover:text-[#5B3DF5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6D4DE0]/30"
+                            >
+                                {showPassword ? (
+                                    <EyeOff className="h-[17px] w-[17px]" strokeWidth={1.7} aria-hidden="true" />
+                                ) : (
+                                    <Eye className="h-[17px] w-[17px]" strokeWidth={1.7} aria-hidden="true" />
+                                )}
+                            </button>
+                        }
+                    />
                 </div>
 
-                <div className="flex items-center">
-                    <label className="flex items-center">
-                        <Checkbox
-                            name="remember"
-                            checked={data.remember}
-                            onChange={(e) => setData('remember', e.target.checked)}
-                        />
-                        <span className="ms-2 text-sm text-gray-600 dark:text-gray-400">
-                            Ingat Saya
-                        </span>
-                    </label>
+                <div
+                    className="auth-rise flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pt-0.5"
+                    style={{ animationDelay: '230ms' }}
+                >
+                    <AuthCheckbox
+                        name="remember"
+                        checked={data.remember}
+                        onChange={(e) => setData('remember', e.target.checked)}
+                        label="Ingat saya"
+                    />
+
+                    <Link
+                        href={route('password.request')}
+                        className="auth-link text-[12px] font-semibold text-[#5B3DF5] transition-colors hover:text-[#4A2FB0]"
+                    >
+                        Lupa password?
+                    </Link>
                 </div>
 
-                <div className="pt-2">
-                    <PrimaryButton className="w-full justify-center py-3 text-base" disabled={processing}>
-                        Masuk
-                    </PrimaryButton>
+                <div className="auth-rise pt-1" style={{ animationDelay: '290ms' }}>
+                    <AuthButton processing={processing}>Masuk</AuthButton>
                 </div>
             </form>
 
-            <Modal show={showSecurityModal} onClose={closeModal}>
-                <form onSubmit={submitSecurityCode} className="p-6">
-                    <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                        <ShieldCheck className="w-6 h-6 text-indigo-600" />
-                        Verifikasi Keamanan
-                    </h2>
+            <div
+                className="auth-rise mt-6 flex items-center justify-center gap-1.5 text-[10.5px] tracking-[0.02em] text-[#7A7085]"
+                style={{ animationDelay: '350ms' }}
+            >
+                <ShieldCheck aria-hidden="true" className="h-3.5 w-3.5 text-[#8FAE8B]" strokeWidth={1.8} />
+                <span>Akses hanya untuk akun sekolah terdaftar.</span>
+            </div>
 
-                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                        Akun ini dilindungi dengan kode keamanan. Silakan masukkan kode 6 digit yang telah Anda generate.
-                    </p>
+            <Modal
+                show={showSecurityModal}
+                onClose={closeModal}
+                maxWidth="md"
+                ariaLabelledBy="security-modal-title"
+                ariaDescribedBy="security-modal-description"
+                panelClassName="overflow-hidden rounded-[26px] border border-[#E4D8C4] bg-[#FFFDF8] shadow-[0_40px_80px_-44px_rgba(34,28,51,0.6)] dark:border-[#E4D8C4] dark:bg-[#FFFDF8]"
+                overlayClassName="bg-[#221C33]/45 backdrop-blur-[3px]"
+            >
+                <form onSubmit={submitSecurityCode} className="relative p-6 sm:p-7">
+                    <span
+                        aria-hidden="true"
+                        className="absolute right-5 top-5 flex h-8 w-8 items-center justify-center rounded-full border border-[#E5DBFF] bg-[#F7F2FF] text-[#6D4DE0]"
+                    >
+                        <KeyRound className="h-3.5 w-3.5" strokeWidth={1.8} />
+                    </span>
+
+                    <div className="flex items-start gap-3.5">
+                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#EFE8FF] text-[#5B3DF5]">
+                            <ShieldCheck className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
+                        </span>
+                        <div>
+                            <h2
+                                id="security-modal-title"
+                                className="font-display text-[22px] font-semibold leading-tight tracking-[-0.015em] text-[#221C33]"
+                            >
+                                Verifikasi keamanan
+                            </h2>
+                            <p
+                                id="security-modal-description"
+                                className="mt-1.5 text-[12.5px] leading-relaxed text-[#6B6178]"
+                            >
+                                Akun ini dilindungi dengan kode keamanan. Silakan masukkan kode 6
+                                digit yang telah Anda generate.
+                            </p>
+                        </div>
+                    </div>
 
                     <div className="mt-6">
-                        <InputLabel
-                            htmlFor="security_code"
-                            value="Kode Keamanan"
-                        />
-
-                        <div className="mt-2 flex gap-2">
-                            <TextInput
-                                id="security_code"
-                                type="text"
-                                name="security_code"
-                                ref={securityCodeInput}
-                                value={data.security_code}
-                                onChange={(e) => setData('security_code', e.target.value.replace(/\D/g, '').slice(0, 6))}
-                                className="block w-full text-center tracking-[0.5em] text-xl font-mono font-bold text-black"
-                                isFocused
-                                placeholder="000000"
-                                maxLength={6}
-                            />
-                        </div>
-
-                        <InputError
-                            message={errors.security_code}
-                            className="mt-2"
+                        <AuthField
+                            id="security_code"
+                            type="text"
+                            name="security_code"
+                            label="Kode keamanan"
+                            ref={securityCodeInput}
+                            value={data.security_code}
+                            onChange={(e) =>
+                                setData('security_code', e.target.value.replace(/\D/g, '').slice(0, 6))
+                            }
+                            inputMode="numeric"
+                            autoComplete="one-time-code"
+                            className="text-center font-mono text-[18px] font-bold tracking-[0.5em]"
+                            placeholder="000000"
+                            maxLength={6}
+                            error={errors.security_code}
                         />
                     </div>
 
-                    <div className="mt-6 flex justify-end gap-3">
-                        <SecondaryButton onClick={closeModal}>
+                    <div className="mt-6 flex items-center justify-end gap-2.5">
+                        <button
+                            type="button"
+                            onClick={closeModal}
+                            className="inline-flex h-11 items-center justify-center rounded-[12px] border border-[#E3D9C9] bg-[#FFFCF5] px-4 text-[13px] font-semibold text-[#5C5468] transition-all duration-200 hover:border-[#CFC2AC] hover:bg-[#F7F0E5] hover:text-[#221C33] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#6D4DE0]/20"
+                        >
                             Batal
-                        </SecondaryButton>
+                        </button>
 
-                        <PrimaryButton disabled={processing} className="min-w-[100px] justify-center">
+                        <AuthButton
+                            processing={processing}
+                            className="h-11 min-w-[136px] w-auto px-5 text-[13px]"
+                        >
                             {processing ? 'Memverifikasi...' : 'Verifikasi'}
-                        </PrimaryButton>
+                        </AuthButton>
                     </div>
                 </form>
             </Modal>

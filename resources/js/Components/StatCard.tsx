@@ -1,10 +1,13 @@
 import { ReactNode } from 'react';
 import { TiltCard } from '@/Components/Landing/ui/TiltCard';
+import IconTile, { IconTileTone } from '@/Components/ui/IconTile';
+import { cn } from '@/lib/utils';
 
 export interface StatCardProps {
     title: string;
     value: string | number;
     icon?: ReactNode;
+    /** @deprecated warna ikon kini ditentukan oleh `tone`. */
     color?: string;
     description?: string;
     tooltip?: string;
@@ -12,12 +15,30 @@ export interface StatCardProps {
         value: string;
         isPositive?: boolean;
     };
+    /** Warna tile ikon & aksen kartu. */
+    tone?: IconTileTone;
+    /** Persentase progres 0-100 untuk bar tipis di bawah nilai. */
+    progress?: number;
+    /** Label kecil di kanan bar progres (mis. "dari pagu"). */
+    progressLabel?: string;
+    className?: string;
 }
 
+const TONE_BAR: Record<string, string> = {
+    violet: 'from-brand-400 to-brand-500',
+    mint: 'from-mint to-emerald-400',
+    peach: 'from-peach to-orange-400',
+    sky: 'from-sky to-blue-400',
+    amber: 'from-amber-400 to-orange-400',
+    lime: 'from-lime-400 to-lime-500',
+    rose: 'from-rose-400 to-rose-500',
+    slate: 'from-slate-400 to-slate-500',
+    ink: 'from-slate-700 to-slate-900',
+};
+
 /**
- * Kartu Statistik Bento bergaya Eduplex Top Cards:
- * Efek fisika 3D Tilt kursor, sudut rounded-[1.75rem] (28px), wadah ikon pastel,
- * tipografi angka tajam, dan border presisi.
+ * Kartu statistik bento SIKAS: tile ikon pastel, nilai besar tabular,
+ * badge tren, dan bar progres tipis. Tilt 3D hanya aktif saat pointer halus.
  */
 export default function StatCard({
     title,
@@ -27,60 +48,79 @@ export default function StatCard({
     description,
     tooltip,
     trend,
+    tone = 'violet',
+    progress,
+    progressLabel,
+    className,
 }: StatCardProps) {
+    const isPositive = trend?.isPositive !== false;
+
     return (
-        <TiltCard maxTilt={6} className="h-full">
-            <div className="group relative flex h-full flex-col justify-between overflow-hidden rounded-[1.75rem] border border-slate-200/80 bg-white p-6 shadow-sm transition-all duration-300 hover:border-brand-500/30 hover:shadow-lg dark:border-white/10 dark:bg-[#151324] dark:shadow-card-dark dark:hover:border-brand-400/30">
-                {/* Background ambient radial highlight */}
+        <TiltCard maxTilt={5} className={cn('h-full', className)}>
+            <article className="group relative flex h-full flex-col justify-between overflow-hidden rounded-[26px] border border-white bg-white p-4 shadow-card transition-all duration-500 hover:-translate-y-1 hover:shadow-card-hover dark:border-white/10 dark:bg-[#15131F] dark:shadow-card-dark">
                 <div
                     aria-hidden
-                    className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-brand-500/5 blur-2xl transition-transform duration-500 group-hover:scale-150 dark:bg-brand-500/10"
+                    className="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full bg-pastel-lavender/70 blur-2xl transition-transform duration-500 group-hover:scale-150 dark:bg-brand-500/10"
                 />
 
-                <div className="relative z-10 flex items-start justify-between gap-3">
-                    <div className="space-y-1">
-                        <span className="text-xs font-semibold tracking-wide uppercase text-slate-500 dark:text-slate-400">
-                            {title}
-                        </span>
-                        <div
-                            className="font-display text-2xl font-bold tracking-tight text-slate-900 dark:text-white cursor-help"
-                            title={tooltip || (typeof value === 'string' ? value : undefined)}
-                        >
-                            {value}
-                        </div>
-                    </div>
-
+                <div className="relative flex items-start justify-between gap-3">
                     {icon && (
-                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-100 p-2.5 text-slate-700 transition-all duration-300 group-hover:scale-110 dark:bg-white/5 dark:text-slate-200">
+                        <IconTile tone={tone} size="lg">
                             {icon}
-                        </div>
-                    )}
-                </div>
-
-                <div className="relative z-10 mt-4 flex items-center justify-between gap-2 border-t border-slate-100 pt-3 dark:border-white/5">
-                    {description ? (
-                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                            {description}
-                        </p>
-                    ) : (
-                        <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500">
-                            Data BOSP Terverifikasi
-                        </span>
+                        </IconTile>
                     )}
 
                     {trend && (
                         <span
-                            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                                trend.isPositive !== false
-                                    ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400'
-                                    : 'bg-rose-50 text-rose-700 dark:bg-rose-500/15 dark:text-rose-400'
-                            }`}
+                            className={cn(
+                                'inline-flex items-center gap-1 rounded-full px-2 py-1 text-[9.5px] font-extrabold leading-none',
+                                isPositive
+                                    ? 'bg-pastel-mint text-mint dark:bg-mint/10 dark:text-mint'
+                                    : 'bg-pastel-rose text-rose-500 dark:bg-rose-500/10 dark:text-rose-300',
+                            )}
                         >
                             {trend.value}
+                            <svg className="h-2.5 w-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round"><path d="m7 17 10-10M8 7h9v9" /></svg>
                         </span>
                     )}
                 </div>
-            </div>
+
+                <div className="relative mt-3">
+                    <p className="text-[9.5px] font-bold uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
+                        {title}
+                    </p>
+                    <p
+                        className="mt-1 flex items-baseline gap-1 text-sikas-num"
+                        title={tooltip || (typeof value === 'string' ? value : undefined)}
+                    >
+                        <span className="text-[24px] font-extrabold leading-none tracking-tight text-slate-900 dark:text-white">
+                            {value}
+                        </span>
+                    </p>
+                </div>
+
+                {(typeof progress === 'number' || description) && (
+                    <div className="relative mt-3 flex items-center gap-2">
+                        {typeof progress === 'number' ? (
+                            <>
+                                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100 dark:bg-white/5">
+                                    <div
+                                        className={cn('h-full rounded-full bg-gradient-to-r', TONE_BAR[tone] ?? TONE_BAR.violet)}
+                                        style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
+                                    />
+                                </div>
+                                <span className="text-[9.5px] font-bold text-slate-400 dark:text-slate-500">
+                                    {progressLabel ?? `${progress}%`}
+                                </span>
+                            </>
+                        ) : (
+                            <p className="truncate text-[10px] font-medium text-slate-500 dark:text-slate-400">
+                                {description}
+                            </p>
+                        )}
+                    </div>
+                )}
+            </article>
         </TiltCard>
     );
 }

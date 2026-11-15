@@ -22,3 +22,4 @@ Pada `resources/js/Pages/Penatausahaan/Bku.tsx` (sekitar baris 2828–2940):
 ### Tahap 3: Verifikasi Build & Commit
 1. Jalankan `npm run build` (`tsc && vite build`) untuk memastikan TypeScript dan Vite CSS bundle lulus tanpa error.
 2. Commit perubahan ke Git.
+

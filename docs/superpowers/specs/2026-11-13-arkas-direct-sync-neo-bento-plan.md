@@ -41,3 +41,4 @@ Acuan Desain: [2026-11-13-arkas-direct-sync-neo-bento-design.md](file:///c:/lara
 ## Tugas 3 — Verifikasi Build & Git Commit
 1. Jalankan `npm run build` (`tsc && vite build`) untuk memastikan TypeScript strict & Vite bundling bersih tanpa error/warning baru.
 2. Commit hasil implementasi dengan pesan commit terstruktur.
+

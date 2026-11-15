@@ -8,12 +8,24 @@ import ModalDetailBast from './ModalDetailBast';
 import ModalPreview from './ModalPreview';
 import ModalPrintSettings from './ModalPrintSettings';
 import ModalConfirmDelete from './ModalConfirmDelete';
-import { Eye, FileText, Edit, Trash2, List } from 'lucide-react';
+import { Eye, FileText, Edit, Trash2, List, CalendarDays, Files } from 'lucide-react';
+import PageHeader from '@/Components/ui/PageHeader';
+import Surface from '@/Components/ui/Surface';
+import DataTable from '@/Components/ui/DataTable';
+import StatusBadge from '@/Components/ui/StatusBadge';
+import IconTile from '@/Components/ui/IconTile';
+import EmptyState from '@/Components/ui/EmptyState';
+import TextInput from '@/Components/TextInput';
+import InputLabel from '@/Components/InputLabel';
+import PrimaryButton from '@/Components/PrimaryButton';
 
 // Custom Toast helper
 const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     window.dispatchEvent(new CustomEvent('toast-notification', { detail: { message, type } }));
 };
+
+const SELECT_CLASS =
+    'w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-[12px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10';
 
 export default function BastIndex({ auth }: { auth: any }) {
     const vroute = useVariantRoute();
@@ -94,24 +106,101 @@ export default function BastIndex({ auth }: { auth: any }) {
     };
 
     return (
-        <AuthenticatedLayout
-            header={
-                <div className="flex justify-between items-center">
-                    <h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">Berita Acara Serah Terima Barang</h2>
-                </div>
-            }
-        >
+        <AuthenticatedLayout>
             <Head title="BAST" />
 
+            <div className="space-y-4">
+                <PageHeader
+                    className="animate-rise"
+                    breadcrumb={[
+                        { label: 'Dashboard' },
+                        { label: 'Dokumen SPJ' },
+                        { label: 'BAST' },
+                    ]}
+                    title="Berita Acara Serah Terima Barang"
+                    badge={<StatusBadge tone="violet">SPJ</StatusBadge>}
+                    subtitle="Kelola berita acara serah terima barang dari transaksi BKU."
+                />
 
-            <div className="py-8">
-                <div className="max-w-9xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-                    {/* Tabs */}
-                    <div className="mb-6 flex justify-start">
-                        <nav className="flex space-x-1 p-1 bg-gray-100 dark:bg-gray-800/50 rounded-xl">
+                {/* Ringkasan tampilan â€” dihitung dari data yang sudah dimuat */}
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <div
+                        className="group sikas-card sikas-card-hover animate-rise relative overflow-hidden p-4"
+                        style={{ animationDelay: '60ms' }}
+                    >
+                        <div className="flex items-center justify-between gap-2">
+                            <IconTile tone="violet" size="md" className="transition-transform duration-300 group-hover:scale-110">
+                                <FileText />
+                            </IconTile>
+                            <span className="text-[9px] font-extrabold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                                Total BAST
+                            </span>
+                        </div>
+                        <p className="mt-2 text-sikas-num text-[19px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                            {stats.total}
+                        </p>
+                        <p className="mt-0.5 text-[10px] font-semibold text-slate-400 dark:text-slate-500">
+                            Dokumen BAST terdaftar
+                        </p>
+                    </div>
+
+                    <div
+                        className="group sikas-card sikas-card-hover animate-rise relative overflow-hidden p-4"
+                        style={{ animationDelay: '110ms' }}
+                    >
+                        <div className="flex items-center justify-between gap-2">
+                            <IconTile tone="lime" size="md" className="transition-transform duration-300 group-hover:scale-110">
+                                <Files />
+                            </IconTile>
+                            <span className="text-[9px] font-extrabold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                                Ditampilkan
+                            </span>
+                        </div>
+                        <p className="mt-2 text-sikas-num text-[19px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                            {basts.length}
+                            <span className="ml-1.5 text-[10.5px] font-bold text-slate-400 dark:text-slate-500">baris</span>
+                        </p>
+                        <p className="mt-0.5 text-[10px] font-semibold text-slate-400 dark:text-slate-500">
+                            Sesuai pencarian &amp; tahun aktif
+                        </p>
+                    </div>
+
+                    <div
+                        className="group sikas-card sikas-card-hover animate-rise relative overflow-hidden p-4"
+                        style={{ animationDelay: '160ms' }}
+                    >
+                        <div className="flex items-center justify-between gap-2">
+                            <IconTile tone="sky" size="md" className="transition-transform duration-300 group-hover:scale-110">
+                                <CalendarDays />
+                            </IconTile>
+                            <span className="text-[9px] font-extrabold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                                Tahun Anggaran
+                            </span>
+                        </div>
+                        <p className="mt-2 text-sikas-num text-[19px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                            {years.length}
+                            <span className="ml-1.5 text-[10.5px] font-bold text-slate-400 dark:text-slate-500">tahun</span>
+                        </p>
+                        <p className="mt-0.5 text-[10px] font-semibold text-slate-400 dark:text-slate-500">
+                            Pilihan tahun tersedia
+                        </p>
+                    </div>
+                </div>
+
+                {/* Tab varian BOSP */}
+                <div className="animate-rise" style={{ animationDelay: '200ms' }}>
+                    <Surface padding="sm">
+                        <div
+                            role="tablist"
+                            aria-label="Varian BOSP BAST"
+                            className="flex items-center gap-1 overflow-x-auto p-0.5"
+                        >
                             {['BOSP Reguler', 'BOSP Kinerja', 'SiLPA BOSP Reguler', 'SiLPA BOSP Kinerja'].map(tab => (
                                 <button
                                     key={tab}
+                                    type="button"
+                                    role="tab"
+                                    aria-selected={activeTab === tab}
                                     onClick={() => {
                                         if (activeTab === tab) return;
                                         if (tab === 'BOSP Reguler') router.visit(route('bast.index'));
@@ -119,21 +208,29 @@ export default function BastIndex({ auth }: { auth: any }) {
                                         if (tab === 'SiLPA BOSP Reguler') router.visit(route('silpa-bast.index'));
                                         if (tab === 'SiLPA BOSP Kinerja') router.visit(route('kinerja-silpa-bast.index'));
                                     }}
-                                    className={`${activeTab === tab ? 'bg-blue-600 text-white shadow-md hover:bg-blue-700' : 'text-gray-600 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700'} px-6 py-2.5 text-sm font-medium rounded-lg transition-all`}
+                                    className={`flex shrink-0 items-center gap-1.5 rounded-xl px-3.5 py-2 text-[11px] font-bold transition-all duration-200 ${
+                                        activeTab === tab
+                                            ? 'bg-slate-900 text-white shadow-pill dark:bg-white dark:text-slate-900'
+                                            : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-white'
+                                    }`}
                                 >
+                                    {activeTab === tab && <span className="h-1.5 w-1.5 rounded-full bg-lime-300" />}
                                     {tab}
                                 </button>
                             ))}
-                        </nav>
-                    </div>
+                        </div>
+                    </Surface>
+                </div>
 
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
-                        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-                            <div className="flex items-center gap-4 flex-1">
-                                <div className="w-48">
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tahun Anggaran</label>
+                {/* Toolbar filter & aksi */}
+                <div className="animate-rise" style={{ animationDelay: '240ms' }}>
+                    <Surface padding="sm">
+                        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                            <div className="flex flex-1 flex-col gap-3 sm:flex-row">
+                                <div className="w-full sm:w-52">
+                                    <InputLabel>Tahun Anggaran</InputLabel>
                                     <select
-                                        className="w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600"
+                                        className={SELECT_CLASS}
                                         value={selectedYear}
                                         onChange={e => setSelectedYear(e.target.value)}
                                     >
@@ -143,92 +240,123 @@ export default function BastIndex({ auth }: { auth: any }) {
                                         ))}
                                     </select>
                                 </div>
-                                <div className="flex-1">
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Pencarian</label>
-                                    <input
+                                <div className="min-w-0 flex-1">
+                                    <InputLabel>Pencarian</InputLabel>
+                                    <TextInput
                                         type="text"
-                                        className="w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600"
                                         placeholder="Cari uraian BKU, Nomor BAST..."
                                         value={search}
                                         onChange={e => setSearch(e.target.value)}
                                     />
                                 </div>
                             </div>
-                            <div>
-                                <button
+                            <div className="flex items-center justify-end">
+                                <PrimaryButton
                                     onClick={() => {
                                         setEditData(null);
                                         setShowModal(true);
                                     }}
-                                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
                                 >
+                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                    </svg>
                                     Tambah BAST
-                                </button>
+                                </PrimaryButton>
                             </div>
                         </div>
-                    </div>
-
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-                        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                            <thead className="bg-gray-50 dark:bg-gray-700">
-                                <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">No</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">No. BAST</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Uraian Transaksi</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Tgl BAST</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                                {loading ? (
-                                    <tr><td colSpan={5} className="px-6 py-4 text-center">Memuat data...</td></tr>
-                                ) : basts.length > 0 ? (
-                                    basts.map((bast, idx) => (
-                                        <tr key={bast.id}>
-                                            <td className="px-6 py-4">{bast.number}</td>
-                                            <td className="px-6 py-4">{bast.nomor_bast}</td>
-                                            <td className="px-6 py-4 text-sm max-w-sm truncate" title={bast.uraian}>{bast.uraian}</td>
-                                            <td className="px-6 py-4 text-sm">{bast.tanggal}</td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex gap-3">
-                                                    <button onClick={() => {
-                                                        setPreviewData({ title: bast.uraian, url: bast.preview_url });
-                                                        setShowPreviewModal(true);
-                                                    }} className="text-blue-600 hover:text-blue-900" title="Preview">
-                                                        <Eye size={18} />
-                                                    </button>
-                                                    <button onClick={() => {
-                                                        setEditData(bast);
-                                                        setShowPrintModal(true);
-                                                    }} className="text-green-600 hover:text-green-900" title="PDF">
-                                                        <FileText size={18} />
-                                                    </button>
-                                                    <button onClick={() => {
-                                                        setEditData(bast);
-                                                        setShowDetailModal(true);
-                                                    }} className="text-indigo-600 hover:text-indigo-900" title="Detail BAST">
-                                                        <List size={18} />
-                                                    </button>
-                                                    <button onClick={() => {
-                                                        setEditData(bast);
-                                                        setShowModal(true);
-                                                    }} className="text-yellow-600 hover:text-yellow-900" title="Edit">
-                                                        <Edit size={18} />
-                                                    </button>
-                                                    <button onClick={() => confirmDelete(bast.id)} className="text-red-600 hover:text-red-900" title="Hapus">
-                                                        <Trash2 size={18} />
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))
-                                ) : (
-                                    <tr><td colSpan={5} className="px-6 py-4 text-center text-gray-500">Tidak ada data BAST</td></tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+                    </Surface>
                 </div>
+
+                {/* Daftar BAST */}
+                <DataTable
+                    className="animate-rise"
+                    title="Daftar BAST"
+                    subtitle="Berita acara serah terima barang per transaksi BKU."
+                    icon={
+                        <IconTile tone="violet" size="md">
+                            <FileText />
+                        </IconTile>
+                    }
+                    actions={
+                        <StatusBadge tone="neutral" dot={false}>
+                            {activeTab}
+                        </StatusBadge>
+                    }
+                >
+                    <table className="min-w-full">
+                        <thead>
+                            <tr>
+                                <th className="text-left">No</th>
+                                <th className="text-left">No. BAST</th>
+                                <th className="text-left">Uraian Transaksi</th>
+                                <th className="text-left">Tgl BAST</th>
+                                <th className="text-right">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {loading ? (
+                                <tr>
+                                    <td colSpan={5} className="px-6 py-8 text-center !text-[11.5px] font-semibold text-slate-400 dark:text-slate-500">
+                                        Memuat data...
+                                    </td>
+                                </tr>
+                            ) : basts.length > 0 ? (
+                                basts.map((bast, idx) => (
+                                    <tr key={bast.id}>
+                                        <td className="text-sikas-num">{bast.number}</td>
+                                        <td className="text-sikas-num whitespace-nowrap">{bast.nomor_bast}</td>
+                                        <td className="max-w-sm truncate" title={bast.uraian}>{bast.uraian}</td>
+                                        <td className="text-sikas-num whitespace-nowrap">{bast.tanggal}</td>
+                                        <td>
+                                            <div className="flex items-center justify-end gap-1.5">
+                                                <button onClick={() => {
+                                                    setPreviewData({ title: bast.uraian, url: bast.preview_url });
+                                                    setShowPreviewModal(true);
+                                                }} className="inline-flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 transition hover:bg-brand-500/10 hover:text-brand-600 dark:text-slate-500 dark:hover:bg-white/5 dark:hover:text-brand-300" title="Preview">
+                                                    <Eye size={18} />
+                                                </button>
+                                                <button onClick={() => {
+                                                    setEditData(bast);
+                                                    setShowPrintModal(true);
+                                                }} className="inline-flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 transition hover:bg-mint/10 hover:text-mint dark:text-slate-500 dark:hover:bg-white/5 dark:hover:text-mint" title="PDF">
+                                                    <FileText size={18} />
+                                                </button>
+                                                <button onClick={() => {
+                                                    setEditData(bast);
+                                                    setShowDetailModal(true);
+                                                }} className="inline-flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 transition hover:bg-sky/10 hover:text-sky dark:text-slate-500 dark:hover:bg-white/5 dark:hover:text-sky" title="Detail BAST">
+                                                    <List size={18} />
+                                                </button>
+                                                <button onClick={() => {
+                                                    setEditData(bast);
+                                                    setShowModal(true);
+                                                }} className="inline-flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 transition hover:bg-amber-400/10 hover:text-amber-600 dark:text-slate-500 dark:hover:bg-white/5 dark:hover:text-amber-300" title="Edit">
+                                                    <Edit size={18} />
+                                                </button>
+                                                <button onClick={() => confirmDelete(bast.id)} className="inline-flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 transition hover:bg-rose-500/10 hover:text-rose-500 dark:text-slate-500 dark:hover:bg-white/5 dark:hover:text-rose-300" title="Hapus">
+                                                    <Trash2 size={18} />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan={5} className="px-6 py-4">
+                                        <EmptyState
+                                            title="Tidak ada data BAST"
+                                            icon={
+                                                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                </svg>
+                                            }
+                                        />
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </DataTable>
             </div>
 
             <ModalFormBast

@@ -1,10 +1,10 @@
-import InputError from '@/Components/InputError';
-import InputLabel from '@/Components/InputLabel';
-import PrimaryButton from '@/Components/PrimaryButton';
-import TextInput from '@/Components/TextInput';
+import AuthButton from '@/Components/Auth/AuthButton';
+import AuthField from '@/Components/Auth/AuthField';
+import AuthHeading, { AuthAccent } from '@/Components/Auth/AuthHeading';
 import GuestLayout from '@/Layouts/GuestLayout';
 import { Head, useForm } from '@inertiajs/react';
 import { FormEventHandler } from 'react';
+import { LockKeyhole, ShieldCheck } from 'lucide-react';
 
 export default function ConfirmPassword() {
     const { data, setData, post, processing, errors, reset } = useForm({
@@ -23,34 +23,47 @@ export default function ConfirmPassword() {
         <GuestLayout>
             <Head title="Confirm Password" />
 
-            <div className="mb-4 text-sm text-gray-600">
-                This is a secure area of the application. Please confirm your
-                password before continuing.
+            <div className="auth-rise">
+                <AuthHeading
+                    eyebrow="Area aman"
+                    title={
+                        <>
+                            Konfirmasi <AuthAccent>password</AuthAccent>.
+                        </>
+                    }
+                    subtitle="Ini area aman aplikasi. Konfirmasi password Anda sebelum melanjutkan."
+                />
             </div>
 
-            <form onSubmit={submit}>
-                <div className="mt-4">
-                    <InputLabel htmlFor="password" value="Password" />
-
-                    <TextInput
+            <form onSubmit={submit} className="mt-6 space-y-[18px]">
+                <div className="auth-rise" style={{ animationDelay: '110ms' }}>
+                    <AuthField
                         id="password"
                         type="password"
                         name="password"
+                        label="Password"
+                        icon={<LockKeyhole className="h-[17px] w-[17px]" strokeWidth={1.7} />}
                         value={data.password}
-                        className="mt-1 block w-full"
-                        isFocused={true}
+                        autoComplete="current-password"
+                        autoFocus
                         onChange={(e) => setData('password', e.target.value)}
+                        placeholder="Masukkan password Anda"
+                        error={errors.password}
                     />
-
-                    <InputError message={errors.password} className="mt-2" />
                 </div>
 
-                <div className="mt-4 flex items-center justify-end">
-                    <PrimaryButton className="ms-4" disabled={processing}>
-                        Confirm
-                    </PrimaryButton>
+                <div className="auth-rise pt-1" style={{ animationDelay: '170ms' }}>
+                    <AuthButton processing={processing}>Konfirmasi</AuthButton>
                 </div>
             </form>
+
+            <div
+                className="auth-rise mt-6 flex items-center justify-center gap-1.5 text-center text-[10.5px] tracking-[0.02em] text-[#7A7085]"
+                style={{ animationDelay: '230ms' }}
+            >
+                <ShieldCheck aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-[#8FAE8B]" strokeWidth={1.8} />
+                <span>Konfirmasi ini melindungi perubahan data penting sekolah.</span>
+            </div>
         </GuestLayout>
     );
 }

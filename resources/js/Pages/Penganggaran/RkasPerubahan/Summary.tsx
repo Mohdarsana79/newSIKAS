@@ -320,15 +320,14 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, taha
 
     return (
         <AuthenticatedLayout
-            header={<h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">Summary RKAS Perubahan</h2>}
         >
             {/* Print Settings Modal */}
             {showPrintModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md p-6">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
+                    <div className="w-full max-w-md rounded-[26px] border border-white/70 bg-white p-6 shadow-float dark:border-white/10 dark:bg-[#15131F]">
                         <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Pengaturan Cetak</h3>
-                            <button onClick={() => setShowPrintModal(false)} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                            <h3 className="text-[14px] font-extrabold text-slate-900 dark:text-white">Pengaturan Cetak</h3>
+                            <button onClick={() => setShowPrintModal(false)} className="text-slate-400 transition hover:text-slate-800 dark:text-slate-500 dark:hover:text-white">
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                 </svg>
@@ -338,11 +337,11 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, taha
                         <div className="space-y-4">
                             {printTarget === 'rincian' && (
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tahap Cetak</label>
+                                    <label className="mb-1.5 block text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">Tahap Cetak</label>
                                     <select
                                         value={printTahap}
                                         onChange={(e) => setPrintTahap(e.target.value as any)}
-                                        className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                        className="w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-[12px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white"
                                     >
                                         <option value="tahunan">Tahunan (Januari - Desember)</option>
                                         <option value="1">Tahap 1 (Januari - Juni)</option>
@@ -352,11 +351,11 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, taha
                             )}
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Ukuran Kertas</label>
+                                <label className="mb-1.5 block text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">Ukuran Kertas</label>
                                 <select
                                     value={printSettings.paperSize}
                                     onChange={(e) => setPrintSettings({ ...printSettings, paperSize: e.target.value })}
-                                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                    className="w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-[12px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white"
                                 >
                                     <option value="A4">A4</option>
                                     <option value="Letter">Letter</option>
@@ -366,11 +365,11 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, taha
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Orientasi</label>
+                                <label className="mb-1.5 block text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">Orientasi</label>
                                 <select
                                     value={printSettings.orientation}
                                     onChange={(e) => setPrintSettings({ ...printSettings, orientation: e.target.value })}
-                                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                    className="w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-[12px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white"
                                 >
                                     <option value="portrait">Portrait</option>
                                     <option value="landscape">Landscape</option>
@@ -378,11 +377,11 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, taha
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Ukuran Font</label>
+                                <label className="mb-1.5 block text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">Ukuran Font</label>
                                 <select
                                     value={printSettings.fontSize}
                                     onChange={(e) => setPrintSettings({ ...printSettings, fontSize: e.target.value })}
-                                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                    className="w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-[12px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white"
                                 >
                                     <option value="8pt">Sangat Kecil (8pt)</option>
                                     <option value="9pt">Kecil (9pt)</option>
@@ -396,7 +395,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, taha
                         <div className="mt-6 flex justify-end gap-3">
                             <button
                                 onClick={() => setShowPrintModal(false)}
-                                className="bg-white text-gray-700 hover:bg-gray-50 border border-gray-300 px-4 py-2 rounded-md text-sm font-medium shadow-sm transition-colors dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600"
+                                className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-[11.5px] font-bold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10"
                             >
                                 Batal
                             </button>
@@ -421,7 +420,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, taha
                             )}
                             <button
                                 onClick={() => handlePrint()}
-                                className="bg-indigo-600 text-white hover:bg-indigo-700 px-4 py-2 rounded-md text-sm font-medium shadow-sm transition-colors"
+                                className="bg-lime-400 text-slate-950 shadow-lime hover:bg-lime-300 px-4 py-2 rounded-md text-sm font-medium shadow-sm transition-colors"
                             >
                                 Cetak PDF
                             </button>
@@ -432,41 +431,41 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, taha
 
             <Head title="Summary RKAS Perubahan" />
 
-            <div className="py-6 px-4 sm:px-6 lg:px-8 max-w-[1920px] mx-auto space-y-6">
+            <div className="space-y-4">
 
                 {/* Header Section */}
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-4">
                     <div>
-                        <Link href={route(`${routePrefix}rkas-perubahan.index`, anggaran.id)} className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 font-medium mb-2">
+                        <Link href={route(`${routePrefix}rkas-perubahan.index`, anggaran.id)} className="mb-1 inline-flex items-center text-[10.5px] font-semibold text-slate-400 transition hover:text-slate-700 dark:text-slate-500 dark:hover:text-slate-200">
                             <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                             </svg>
                             Kembali
                         </Link>
-                        <h1 className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">Rekapan RKAS Perubahan</h1>
-                        <p className="text-gray-500 dark:text-gray-400">Rekap Rencana Kegiatan dan Anggaran Sekolah (Perubahan)</p>
+                        <h1 className="text-[26px] font-extrabold leading-tight tracking-tight text-slate-900 dark:text-white">Rekapan RKAS Perubahan</h1>
+                        <p className="text-[11.5px] font-medium text-slate-500 dark:text-slate-400">Rekap Rencana Kegiatan dan Anggaran Sekolah (Perubahan)</p>
                     </div>
                     <div className="flex items-center gap-2">
                         <button
                             onClick={() => setShowDateModal(true)}
-                            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md font-medium text-sm flex items-center gap-2 transition-colors"
+                            className="flex items-center gap-2 rounded-2xl bg-lime-400 px-4 py-2 text-[11.5px] font-extrabold text-slate-950 shadow-lime transition hover:-translate-y-0.5 hover:bg-lime-300"
                         >
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                             </svg>
                             Tanggal Perubahan
                         </button>
-                        <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                        <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
                             Tanggal Perubahan: {formatDateSafe(anggaran.tanggal_perubahan)}
                         </span>
                     </div>
                 </div>
 
                 {/* Tabs & Content Container */}
-                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 min-h-[600px]">
+                <div className="sikas-card min-h-[600px]">
 
                     {/* Tabs Navigation */}
-                    <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+                    <div className="border-b border-slate-100 px-4 py-3 dark:border-white/5">
                         <nav className="flex flex-wrap gap-2" aria-label="Tabs">
                             {tabs.map((tab) => (
                                 <button
@@ -475,8 +474,8 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, taha
                                     className={`
                                         whitespace-nowrap px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 ease-in-out
                                         ${activeTab === tab.name
-                                            ? 'bg-indigo-600 text-white shadow-md'
-                                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700/50'
+                                            ? 'bg-slate-900 text-white shadow-pill dark:bg-white dark:text-slate-900'
+                                            : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-white'
                                         }
                                     `}
                                 >
@@ -491,7 +490,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, taha
 
                         {/* Tab: Rka Tahapan */}
                         {activeTab === 'Rka Tahapan' && (
-                            <div className="space-y-8 animate-fade-in-up">
+                            <div className="space-y-8 animate-fade-in">
                                 {/* Action Button */}
                                 <div className="flex justify-end mb-4">
                                     <button
@@ -499,7 +498,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, taha
                                             setPrintTarget('tahapan');
                                             setShowPrintModal(true);
                                         }}
-                                        className="bg-indigo-600 text-white hover:bg-indigo-700 px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 shadow-sm transition-colors">
+                                        className="bg-lime-400 text-slate-950 shadow-lime hover:bg-lime-300 px-4 py-2 rounded-xl text-[11px] font-extrabold flex items-center gap-2 shadow-sm transition-colors">
                                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -508,7 +507,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, taha
                                     </button>
                                 </div>
 
-                                <div className="bg-white dark:bg-gray-800 p-8 border border-gray-200 dark:border-gray-700 shadow-sm rounded-lg print:border-none print:shadow-none">
+                                <div className="bg-white dark:bg-[#15131F] p-8 border border-slate-200 dark:border-white/10 shadow-sm rounded-lg print:border-none print:shadow-none">
                                     {/* Report Header */}
                                     <div className="text-center mb-8">
                                         <h2 className="text-lg font-bold uppercase tracking-wider text-gray-900 dark:text-gray-100">KERTAS KERJA RKAS PERUBAHAN PER TAHAP</h2>
@@ -828,14 +827,14 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, taha
                         )}
 
                         {activeTab === 'Rka Rekap' && (
-                            <div className="space-y-8 animate-fade-in-up">
+                            <div className="space-y-8 animate-fade-in">
                                 <div className="flex justify-end mb-4">
                                     <button
                                         onClick={() => {
                                             setPrintTarget('rekap');
                                             setShowPrintModal(true);
                                         }}
-                                        className="bg-indigo-600 text-white hover:bg-indigo-700 px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 shadow-sm transition-colors">
+                                        className="bg-lime-400 text-slate-950 shadow-lime hover:bg-lime-300 px-4 py-2 rounded-xl text-[11px] font-extrabold flex items-center gap-2 shadow-sm transition-colors">
                                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                                         </svg>
@@ -843,7 +842,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, taha
                                     </button>
                                 </div>
 
-                                <div className="bg-white dark:bg-gray-800 p-8 border border-gray-200 dark:border-gray-700 shadow-sm rounded-lg">
+                                <div className="bg-white dark:bg-[#15131F] p-8 border border-slate-200 dark:border-white/10 shadow-sm rounded-lg">
                                     {/* Report Header */}
                                     <div className="text-center mb-8 font-bold text-gray-900 dark:text-gray-100 uppercase">
                                         <h2 className="text-lg">LEMBAR KERTAS KERJA</h2>
@@ -961,14 +960,14 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, taha
                         )}
 
                         {activeTab === 'Lembar Kerja 221' && (
-                            <div className="space-y-8 animate-fade-in-up">
+                            <div className="space-y-8 animate-fade-in">
                                 <div className="flex justify-end mb-4">
                                     <button
                                         onClick={() => {
                                             setPrintTarget('lembar');
                                             setShowPrintModal(true);
                                         }}
-                                        className="bg-indigo-600 text-white hover:bg-indigo-700 px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 shadow-sm transition-colors">
+                                        className="bg-lime-400 text-slate-950 shadow-lime hover:bg-lime-300 px-4 py-2 rounded-xl text-[11px] font-extrabold flex items-center gap-2 shadow-sm transition-colors">
                                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -977,7 +976,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, taha
                                     </button>
                                 </div>
 
-                                <div className="bg-white dark:bg-gray-800 p-8 border border-gray-200 dark:border-gray-700 shadow-sm rounded-lg print:border-none print:shadow-none">
+                                <div className="bg-white dark:bg-[#15131F] p-8 border border-slate-200 dark:border-white/10 shadow-sm rounded-lg print:border-none print:shadow-none">
                                     {/* Report Header */}
                                     <div className="text-center mb-8">
                                         <h2 className="text-lg font-bold uppercase tracking-wider text-gray-900 dark:text-gray-100">Lembar Kertas Kerja</h2>
@@ -1094,7 +1093,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, taha
                         )}
 
                         {activeTab === 'Rka Bulanan' && (
-                            <div className="space-y-8 animate-fade-in-up">
+                            <div className="space-y-8 animate-fade-in">
                                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
                                     <div className="flex items-center gap-2">
                                         <label htmlFor="monthSelect" className="text-sm font-medium text-gray-700 dark:text-gray-300">Pilih Bulan:</label>
@@ -1102,7 +1101,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, taha
                                             id="monthSelect"
                                             value={selectedMonth}
                                             onChange={(e) => handleMonthChange(e.target.value)}
-                                            className="block w-40 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                            className="block w-40 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-[11.5px] font-semibold text-slate-800 shadow-sm focus:border-lime-400 focus:outline-none dark:border-white/10 dark:bg-white/5 dark:text-white dark:text-white"
                                             disabled={isLoading}
                                         >
                                             {months.map(m => (
@@ -1117,7 +1116,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, taha
                                             setPrintTarget('bulanan');
                                             setShowPrintModal(true);
                                         }}
-                                        className="bg-indigo-600 text-white hover:bg-indigo-700 px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 shadow-sm transition-colors">
+                                        className="bg-lime-400 text-slate-950 shadow-lime hover:bg-lime-300 px-4 py-2 rounded-xl text-[11px] font-extrabold flex items-center gap-2 shadow-sm transition-colors">
                                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -1126,7 +1125,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, taha
                                     </button>
                                 </div>
 
-                                <div className="bg-white dark:bg-gray-800 p-8 border border-gray-200 dark:border-gray-700 shadow-sm rounded-lg print:border-none print:shadow-none">
+                                <div className="bg-white dark:bg-[#15131F] p-8 border border-slate-200 dark:border-white/10 shadow-sm rounded-lg print:border-none print:shadow-none">
                                     {/* Report Header */}
                                     <div className="text-center mb-8">
                                         <h2 className="text-lg font-bold uppercase tracking-wider text-gray-900 dark:text-gray-100 underline decoration-1 underline-offset-4">RENCANA KERTAS KERJA PER BULAN {selectedMonth.toUpperCase()}</h2>
@@ -1349,7 +1348,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, taha
 
                         {/* Rincian Perubahan Tab */}
                         {activeTab === 'Rincian Perubahan' && rincianData && (
-                            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow animate-fade-in-up">
+                            <div className="sikas-card p-6 animate-fade-in">
                                 <div className="flex justify-between items-center mb-6">
                                     <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 uppercase">
                                         Rincian Belanja Perubahan
@@ -1360,7 +1359,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, taha
                                                 setPrintTarget('rincian');
                                                 setShowPrintModal(true);
                                             }}
-                                            className="bg-red-600 dark:bg-red-700 text-white px-4 py-2 rounded-md hover:bg-red-700 dark:hover:bg-red-800 flex items-center justify-center gap-2 shadow-sm transition-colors text-sm font-medium focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                                            className="bg-rose-500 text-white shadow-lg shadow-rose-500/20 px-4 py-2 rounded-md hover:bg-rose-600 flex items-center justify-center gap-2 shadow-sm transition-colors text-sm font-medium focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
                                         >
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -1372,7 +1371,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, taha
                                                 setPrintTarget('rincian');
                                                 setShowPrintModal(true);
                                             }}
-                                            className="bg-green-600 dark:bg-green-700 text-white px-4 py-2 rounded-md hover:bg-green-700 dark:hover:bg-green-800 flex items-center justify-center gap-2 shadow-sm transition-colors text-sm font-medium focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                                            className="bg-slate-900 text-white px-4 py-2 rounded-md hover:bg-slate-800 dark:hover:bg-slate-800 flex items-center justify-center gap-2 shadow-sm transition-colors text-sm font-medium focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
                                         >
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -1438,7 +1437,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, taha
                         {/* Other Tabs Placeholders */}
 
                         {activeTab === 'Grafik' && grafikData && (
-                            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow animate-fade-in-up">
+                            <div className="sikas-card p-6 animate-fade-in">
                                 <h2 className="text-xl font-bold text-center text-blue-600 dark:text-blue-400 mb-8 uppercase">
                                     Analisis Proporsi Anggaran RKAS
                                 </h2>
@@ -1586,14 +1585,14 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, taha
             {showDateModal && (
                 <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
                     <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-                        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onClick={() => setShowDateModal(false)}></div>
+                        <div className="fixed inset-0 bg-slate-950/50 backdrop-blur-sm transition-opacity" aria-hidden="true" onClick={() => setShowDateModal(false)}></div>
                         <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-                        <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-visible shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                        <div className="inline-block transform overflow-visible rounded-[26px] border border-white/70 bg-white text-left align-bottom shadow-float transition-all dark:border-white/10 dark:bg-[#15131F] sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
                             <form onSubmit={handleSaveTanggalCetak}>
-                                <div className="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                                <div className="px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                                     <div className="sm:flex sm:items-start">
                                         <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
-                                            <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100" id="modal-title">
+                                            <h3 className="text-[14px] font-extrabold leading-6 text-slate-900 dark:text-white" id="modal-title">
                                                 Atur Tanggal Cetak Perubahan
                                             </h3>
                                             <div className="mt-4">
@@ -1607,24 +1606,24 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, taha
                                                     placeholder="Pilih Tanggal Perubahan"
                                                 />
                                                 {errors.tanggal_perubahan && (
-                                                    <p className="mt-2 text-sm text-red-600 dark:text-red-400">{errors.tanggal_perubahan}</p>
+                                                    <p className="mt-2 text-[10px] font-semibold text-rose-500">{errors.tanggal_perubahan}</p>
                                                 )}
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                                <div className="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                                <div className="flex flex-col-reverse gap-2 border-t border-slate-100 bg-white px-4 py-3 dark:border-white/5 dark:bg-[#15131F] sm:flex-row-reverse sm:px-6">
                                     <button
                                         type="submit"
                                         disabled={processing}
-                                        className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50"
+                                        className="inline-flex w-full justify-center rounded-2xl bg-lime-400 px-4 py-2.5 text-[11.5px] font-extrabold text-slate-950 shadow-lime transition hover:bg-lime-300 disabled:opacity-50 sm:ml-3 sm:w-auto"
                                     >
                                         {processing ? 'Menyimpan...' : 'Simpan'}
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => setShowDateModal(false)}
-                                        className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700"
+                                        className="mt-3 inline-flex w-full justify-center rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-[11.5px] font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10 sm:mt-0 sm:ml-3 sm:w-auto"
                                     >
                                         Batal
                                     </button>

@@ -1,0 +1,139 @@
+{
+  "url": "/login",
+  "viewport": {
+    "w": 390,
+    "h": 844
+  },
+  "docScrollWidth": 390,
+  "bodyScrollWidth": 390,
+  "hasHorizontalOverflow": false,
+  "pageHeight": 844,
+  "vScroll": false,
+  "shell": {
+    "x": 0,
+    "y": 0,
+    "w": 390,
+    "h": 844,
+    "bottom": 844
+  },
+  "card": {
+    "x": 29,
+    "y": 164,
+    "w": 332,
+    "h": 550,
+    "bottom": 714
+  },
+  "inputs": [
+    {
+      "id": "username",
+      "name": "username",
+      "type": "text",
+      "required": false,
+      "readOnly": false,
+      "autoComplete": "username",
+      "hasLabelFor": true,
+      "ariaInvalid": null,
+      "ariaDescribedBy": null,
+      "describedExists": null,
+      "w": 290,
+      "h": 52
+    },
+    {
+      "id": "password",
+      "name": "password",
+      "type": "password",
+      "required": false,
+      "readOnly": false,
+      "autoComplete": "current-password",
+      "hasLabelFor": true,
+      "ariaInvalid": null,
+      "ariaDescribedBy": null,
+      "describedExists": null,
+      "w": 290,
+      "h": 52
+    },
+    {
+      "id": "",
+      "name": "remember",
+      "type": "checkbox",
+      "required": false,
+      "readOnly": false,
+      "autoComplete": null,
+      "hasLabelFor": false,
+      "ariaInvalid": null,
+      "ariaDescribedBy": null,
+      "describedExists": null,
+      "w": 19,
+      "h": 19
+    }
+  ],
+  "buttons": [
+    {
+      "text": "",
+      "ariaLabel": "Tampilkan password",
+      "ariaPressed": "false",
+      "type": "button",
+      "disabled": false,
+      "busy": null,
+      "w": 36,
+      "h": 36
+    },
+    {
+      "text": "Masuk",
+      "ariaLabel": null,
+      "ariaPressed": null,
+      "type": "submit",
+      "disabled": false,
+      "busy": null,
+      "w": 290,
+      "h": 52
+    }
+  ],
+  "headings": [
+    {
+      "tag": "H2",
+      "text": "Anggaran sekolah, rapi dari hulu ke hilir.",
+      "size": "32px",
+      "family": "Fraunces"
+    },
+    {
+      "tag": "H1",
+      "text": "Selamat datang kembali.",
+      "size": "28.8px",
+      "family": "Fraunces"
+    }
+  ],
+  "animCounts": {
+    "authRise": 10,
+    "authDraw": 2,
+    "authSceneEnter": 1,
+    "authSceneSun": 1,
+    "authSceneDrift": 2,
+    "authSceneSteam": 2,
+    "authSceneSway": 3,
+    "authSceneBob": 2,
+    "authSceneBobAlt": 1,
+    "authSceneSparkle": 4
+  },
+  "lowContrast": [
+    {
+      "text": "© 2026 SIKAS · Sistem Informasi Keuang",
+      "size": 9.5,
+      "weight": "400",
+      "color": "rgb(122, 112, 133)",
+      "bg": "rgb(251,245,233)",
+      "ratio": 4.31
+    }
+  ],
+  "minContrast": {
+    "text": "© 2026 SIKAS · Sistem Informasi Keuang",
+    "size": 9.5,
+    "weight": "400",
+    "color": "rgb(122, 112, 133)",
+    "bg": "rgb(251,245,233)",
+    "ratio": 4.31
+  },
+  "darkHtml": true,
+  "bodyBg": "rgb(2, 8, 23)",
+  "shellBg": "rgb(250, 244, 232)"
+}

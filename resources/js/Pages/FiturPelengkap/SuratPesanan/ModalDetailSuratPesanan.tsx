@@ -1,5 +1,7 @@
 import React from 'react';
 import Modal from '@/Components/Modal';
+import SecondaryButton from '@/Components/SecondaryButton';
+import IconTile from '@/Components/ui/IconTile';
 
 export default function ModalDetailSuratPesanan({ show, onClose, suratPesananData }: { show: boolean, onClose: () => void, suratPesananData: any }) {
     const totalKeseluruhan = suratPesananData?.uraian_details?.reduce((acc: number, curr: any) => {
@@ -8,62 +10,84 @@ export default function ModalDetailSuratPesanan({ show, onClose, suratPesananDat
 
     return (
         <Modal show={show} onClose={onClose} maxWidth="4xl">
-            <div className="p-6">
-                <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                        Detail Barang (Surat Pesanan {suratPesananData?.nomor_sp || 'Tanpa Nomor'})
-                    </h2>
-                    <button onClick={onClose} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">✕</button>
-                </div>
-
-                <div className="overflow-x-auto overflow-y-auto max-h-[60vh]">
-                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 border">
-                        <thead className="bg-gray-50 dark:bg-gray-700">
-                            <tr>
-                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">No</th>
-                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Nama Barang</th>
-                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Jumlah</th>
-                                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Harga Satuan (Rp)</th>
-                                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Total Harga (Rp)</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                            {suratPesananData?.uraian_details?.length > 0 ? (
-                                suratPesananData.uraian_details.map((detail: any, idx: number) => (
-                                    <tr key={detail.id}>
-                                        <td className="px-4 py-3">{idx + 1}</td>
-                                        <td className="px-4 py-3 text-sm">{detail.uraian}</td>
-                                        <td className="px-4 py-3 text-sm">{detail.volume} {detail.satuan}</td>
-                                        <td className="px-4 py-3 text-sm text-right">{new Intl.NumberFormat('id-ID').format(detail.harga_satuan)}</td>
-                                        <td className="px-4 py-3 text-sm text-right">{new Intl.NumberFormat('id-ID').format(detail.volume * detail.harga_satuan)}</td>
-                                    </tr>
-                                ))
-                            ) : (
-                                <tr>
-                                    <td colSpan={5} className="px-4 py-6 text-center text-gray-500">
-                                        Data Surat Pesanan ini tidak memiliki rincian barang. BKU mungkin merupakan transaksi tunggal.
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                        {suratPesananData?.uraian_details?.length > 0 && (
-                            <tfoot className="bg-gray-50 dark:bg-gray-700">
-                                <tr>
-                                    <td colSpan={4} className="px-4 py-3 text-right font-bold text-sm text-gray-900 dark:text-gray-100">Total Keseluruhan</td>
-                                    <td className="px-4 py-3 text-right font-bold text-sm text-gray-900 dark:text-gray-100">{new Intl.NumberFormat('id-ID').format(totalKeseluruhan)}</td>
-                                </tr>
-                            </tfoot>
-                        )}
-                    </table>
-                </div>
-
-                <div className="mt-6 flex justify-end">
-                    <button onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">
-                        Tutup
+            <div className="relative overflow-hidden">
+                <div className="pointer-events-none absolute -right-10 -top-20 h-44 w-44 rounded-full bg-sky/10 blur-3xl" />
+                <div className="relative flex items-start justify-between gap-3 border-b border-slate-100 px-6 py-4 dark:border-white/5">
+                    <div className="flex min-w-0 items-center gap-3">
+                        <IconTile tone="sky" size="md">
+                            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h10" />
+                            </svg>
+                        </IconTile>
+                        <div className="min-w-0">
+                            <h2 className="truncate text-[14px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                                Detail Barang (Surat Pesanan {suratPesananData?.nomor_sp || 'Tanpa Nomor'})
+                            </h2>
+                            <p className="truncate text-[10px] font-medium text-slate-400 dark:text-slate-500">
+                                Rincian barang beserta harga satuan dan total harga.
+                            </p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={onClose}
+                        className="sikas-icon-btn h-8 w-8"
+                        aria-label="Tutup detail"
+                    >
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
                     </button>
+                </div>
+
+                <div className="sikas-scroll max-h-[60vh] overflow-y-auto px-6 py-5">
+                    <div className="bento-table-wrapper overflow-x-auto">
+                        <table className="min-w-full">
+                            <thead>
+                                <tr>
+                                    <th className="text-left">No</th>
+                                    <th className="text-left">Nama Barang</th>
+                                    <th className="text-left">Jumlah</th>
+                                    <th className="text-right">Harga Satuan (Rp)</th>
+                                    <th className="text-right">Total Harga (Rp)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {suratPesananData?.uraian_details?.length > 0 ? (
+                                    suratPesananData.uraian_details.map((detail: any, idx: number) => (
+                                        <tr key={detail.id}>
+                                            <td className="text-sikas-num">{idx + 1}</td>
+                                            <td>{detail.uraian}</td>
+                                            <td className="text-sikas-num whitespace-nowrap">{detail.volume} {detail.satuan}</td>
+                                            <td className="text-sikas-num text-right">{new Intl.NumberFormat('id-ID').format(detail.harga_satuan)}</td>
+                                            <td className="text-sikas-num text-right">{new Intl.NumberFormat('id-ID').format(detail.volume * detail.harga_satuan)}</td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan={5} className="px-6 py-8 text-center !text-[11.5px] font-medium text-slate-400 dark:text-slate-500">
+                                            Data Surat Pesanan ini tidak memiliki rincian barang. BKU mungkin merupakan transaksi tunggal.
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                            {suratPesananData?.uraian_details?.length > 0 && (
+                                <tfoot>
+                                    <tr>
+                                        <td colSpan={4} className="!text-[11.5px] text-right !font-extrabold !text-slate-900 dark:!text-white">Total Keseluruhan</td>
+                                        <td className="!text-[12px] text-right !font-extrabold !text-slate-900 text-sikas-num dark:!text-white">{new Intl.NumberFormat('id-ID').format(totalKeseluruhan)}</td>
+                                    </tr>
+                                </tfoot>
+                            )}
+                        </table>
+                    </div>
+                </div>
+
+                <div className="flex justify-end gap-2 border-t border-slate-100 px-6 py-4 dark:border-white/5">
+                    <SecondaryButton onClick={onClose}>
+                        Tutup
+                    </SecondaryButton>
                 </div>
             </div>
         </Modal>
     );
 }
-

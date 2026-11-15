@@ -105,3 +105,4 @@ Halaman `Data Master → Rekening Belanja` memiliki 4 modal inline (`L379–797`
 
 - Menjalankan `npm run build` (`tsc && vite build`) dan memastikan kompilasi TypeScript strict & Vite build berhasil dengan 0 error.
 - Memastikan seluruh route Laravel (`rekening-belanja.store`, `rekening-belanja.update`, `rekening-belanja.destroy`, `rekening-belanja.import`, `rekening-belanja.download-template`) tetap identik.
+

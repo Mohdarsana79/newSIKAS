@@ -9,6 +9,12 @@ import InputError from '@/Components/InputError'; // Assuming existing
 import InputLabel from '@/Components/InputLabel'; // Assuming existing
 import TextInput from '@/Components/TextInput'; // Assuming existing
 import { format } from 'date-fns';
+import PageHeader from '@/Components/ui/PageHeader';
+import Surface from '@/Components/ui/Surface';
+import DataTable from '@/Components/ui/DataTable';
+import EmptyState from '@/Components/ui/EmptyState';
+import IconTile from '@/Components/ui/IconTile';
+import StatusBadge from '@/Components/ui/StatusBadge';
 
 interface BackupFile {
     name: string;
@@ -359,74 +365,128 @@ export default function BackupIndex({ auth, backupFiles, stats, flash, currentNp
     };
 
     return (
-        <AuthenticatedLayout
-            header={<h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">Backup & Restore Database</h2>}
-        >
+        <AuthenticatedLayout>
             <Head title="Backup & Restore" />
 
-            <div className="py-12">
-                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
+            <div className="space-y-4">
+                <PageHeader
+                    className="animate-rise"
+                    breadcrumb={[
+                        { label: 'Dashboard' },
+                        { label: 'Backup & Restore' },
+                    ]}
+                    title="Backup & Restore Database"
+                    badge={<StatusBadge tone="success" dot={false}>Keamanan Data</StatusBadge>}
+                    subtitle="Buat cadangan, unduh, dan pulihkan database beserta berkas unggahan."
+                />
 
-                    {/* Flash Messages */}
-                    {flash.success && (
-                        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative dark:bg-green-900/50 dark:border-green-600 dark:text-green-300" role="alert">
-                            <span className="block sm:inline">{flash.success}</span>
-                        </div>
-                    )}
-                    {flash.error && (
-                        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative dark:bg-red-900/50 dark:border-red-600 dark:text-red-300" role="alert">
-                            <span className="block sm:inline">{flash.error}</span>
-                        </div>
-                    )}
-
-                    {/* Stats Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6 border-l-4 border-indigo-500">
-                            <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Ukuran Database</div>
-                            <div className="mt-2 text-2xl font-semibold text-gray-900 dark:text-gray-100">{stats.dbSize}</div>
-                        </div>
-                        <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6 border-l-4 border-green-500">
-                            <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Total File Backup</div>
-                            <div className="mt-2 text-2xl font-semibold text-gray-900 dark:text-gray-100">{backupFiles.length} File</div>
-                            <div className="text-xs text-gray-400 mt-1">{stats.totalBackupSize}</div>
-                        </div>
-                        <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6 border-l-4 border-yellow-500">
-                            <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Record</div>
-                            <div className="mt-2 text-2xl font-semibold text-gray-900 dark:text-gray-100">{stats.totalRecords.toLocaleString()}</div>
-                        </div>
-                        <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6 border-l-4 border-purple-500">
-                            <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Backup Terakhir</div>
-                            <div className="mt-2 text-lg font-semibold text-gray-900 dark:text-gray-100 break-words">
-                                {stats.lastBackupDate !== '-' ? stats.lastBackupDate : 'Belum ada'}
-                            </div>
-                        </div>
+                {/* Flash Messages */}
+                {flash.success && (
+                    <div className="flex items-start gap-3 rounded-[22px] border border-mint/20 bg-pastel-mint/60 px-4 py-3 dark:border-mint/20 dark:bg-mint/10" role="alert">
+                        <svg className="mt-0.5 h-5 w-5 shrink-0 text-mint" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span className="block text-[11.5px] font-semibold text-mint">{flash.success}</span>
                     </div>
+                )}
+                {flash.error && (
+                    <div className="flex items-start gap-3 rounded-[22px] border border-rose-200 bg-pastel-rose/70 px-4 py-3 dark:border-rose-400/20 dark:bg-rose-500/10" role="alert">
+                        <svg className="mt-0.5 h-5 w-5 shrink-0 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span className="block text-[11.5px] font-semibold text-rose-600 dark:text-rose-300">{flash.error}</span>
+                    </div>
+                )}
 
-                    {/* Actions Area */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {/* Create Backup */}
-                        <div className="md:col-span-2 bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6">
-                            <div className="flex items-center justify-between mb-3">
-                                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Buat Backup Baru</h3>
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900/60 dark:text-indigo-300">
-                                    <svg className="w-3.5 h-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                    </svg>
-                                    Paket All-in-One
-                                </span>
+                {/* Stats Cards */}
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
+                    <div className="sikas-card sikas-card-hover animate-rise p-4" style={{ animationDelay: '60ms' }}>
+                        <div className="flex items-center gap-2.5">
+                            <IconTile tone="violet" size="md">
+                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                                    <ellipse cx="12" cy="5" rx="9" ry="3" />
+                                    <path d="M3 5v14a9 3 0 0018 0V5" />
+                                    <path d="M3 12a9 3 0 0018 0" />
+                                </svg>
+                            </IconTile>
+                            <div className="min-w-0">
+                                <p className="text-[11.5px] font-extrabold tracking-tight text-slate-900 dark:text-white">Total Ukuran Database</p>
+                                <p className="text-[9.5px] font-medium text-slate-400 dark:text-slate-500">Penyimpanan PostgreSQL</p>
                             </div>
+                        </div>
+                        <p className="mt-3 text-sikas-num text-[19px] font-extrabold tracking-tight text-slate-900 dark:text-white">{stats.dbSize}</p>
+                    </div>
+                    <div className="sikas-card sikas-card-hover animate-rise p-4" style={{ animationDelay: '100ms' }}>
+                        <div className="flex items-center gap-2.5">
+                            <IconTile tone="mint" size="md">
+                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3-7 3V5z" />
+                                </svg>
+                            </IconTile>
+                            <div className="min-w-0">
+                                <p className="text-[11.5px] font-extrabold tracking-tight text-slate-900 dark:text-white">Total File Backup</p>
+                                <p className="text-[9.5px] font-medium text-slate-400 dark:text-slate-500">Berkas cadangan</p>
+                            </div>
+                        </div>
+                        <p className="mt-3 text-sikas-num text-[19px] font-extrabold tracking-tight text-slate-900 dark:text-white">{backupFiles.length} File</p>
+                        <div className="mt-1 text-[10px] font-semibold text-slate-400 dark:text-slate-500">{stats.totalBackupSize}</div>
+                    </div>
+                    <div className="sikas-card sikas-card-hover animate-rise p-4" style={{ animationDelay: '140ms' }}>
+                        <div className="flex items-center gap-2.5">
+                            <IconTile tone="amber" size="md">
+                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M4 7h16M4 12h16M4 17h10" />
+                                </svg>
+                            </IconTile>
+                            <div className="min-w-0">
+                                <p className="text-[11.5px] font-extrabold tracking-tight text-slate-900 dark:text-white">Total Record</p>
+                                <p className="text-[9.5px] font-medium text-slate-400 dark:text-slate-500">Baris data tersimpan</p>
+                            </div>
+                        </div>
+                        <p className="mt-3 text-sikas-num text-[19px] font-extrabold tracking-tight text-slate-900 dark:text-white">{stats.totalRecords.toLocaleString()}</p>
+                    </div>
+                    <div className="sikas-card sikas-card-hover animate-rise p-4" style={{ animationDelay: '180ms' }}>
+                        <div className="flex items-center gap-2.5">
+                            <IconTile tone="sky" size="md">
+                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </IconTile>
+                            <div className="min-w-0">
+                                <p className="text-[11.5px] font-extrabold tracking-tight text-slate-900 dark:text-white">Backup Terakhir</p>
+                                <p className="text-[9.5px] font-medium text-slate-400 dark:text-slate-500">Cadangan terbaru</p>
+                            </div>
+                        </div>
+                        <p className="mt-3 break-words text-[13px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                            {stats.lastBackupDate !== '-' ? stats.lastBackupDate : 'Belum ada'}
+                        </p>
+                    </div>
+                </div>
 
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-                                Mencakup seluruh data tabel database serta file fisik unggahan (gambar kop surat, logo daerah/sekolah, template Word, dan arsip dokumen).
-                            </p>
-
-                            <form onSubmit={handleCreateBackup} className="flex gap-4 items-end">
-                                <div className="flex-1">
+                {/* Actions Area */}
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                    {/* Create Backup */}
+                    <div className="md:col-span-2">
+                        <Surface
+                            className="animate-rise"
+                            title="Buat Backup Baru"
+                            subtitle="Mencakup seluruh data tabel database serta file fisik unggahan (gambar kop surat, logo daerah/sekolah, template Word, dan arsip dokumen)."
+                            icon={
+                                <IconTile tone="violet" size="md">
+                                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3-7 3V5z" />
+                                    </svg>
+                                </IconTile>
+                            }
+                            actions={<StatusBadge tone="violet" dot={false}>Paket All-in-One</StatusBadge>}
+                        >
+                            <form onSubmit={handleCreateBackup} className="flex flex-col items-end gap-3 sm:flex-row">
+                                <div className="w-full flex-1">
                                     <InputLabel htmlFor="backup_name" value="Nama Backup (Opsional)" />
                                     <TextInput
                                         id="backup_name"
                                         type="text"
-                                        className="mt-1 block w-full text-gray-900"
+                                        className="mt-1 block w-full"
                                         placeholder="backup_harian"
                                         value={backupData.backup_name}
                                         onChange={(e) => setBackupData('backup_name', e.target.value)}
@@ -437,137 +497,195 @@ export default function BackupIndex({ auth, backupFiles, stats, flash, currentNp
                                     {processingBackup ? 'Memproses...' : 'Buat Backup'}
                                 </PrimaryButton>
                             </form>
-                            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                                File backup akan disimpan dengan ekstensi <strong>.rsv</strong>. Anda dapat mengunduhnya kapan saja.
+                            <p className="mt-2 text-[10.5px] font-medium text-slate-400 dark:text-slate-500">
+                                File backup akan disimpan dengan ekstensi <strong className="text-slate-600 dark:text-slate-300">.rsv</strong>. Anda dapat mengunduhnya kapan saja.
                             </p>
-                        </div>
-
-                        {/* Restore / Reset Actions */}
-                        <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6 space-y-4">
-                            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Tindakan Lain</h3>
-
-                            {/* Restore Button (Trigger Input) */}
-                            <div>
-                                <input
-                                    type="file"
-                                    ref={fileInputRef}
-                                    onChange={handleFileSelect}
-                                    className="hidden"
-                                    accept=".rsv,.btb,.sql"
-                                />
-                                <SecondaryButton
-                                    onClick={() => fileInputRef.current?.click()}
-                                    className="w-full justify-center"
-                                >
-                                    <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                                    </svg>
-                                    Restore Database
-                                </SecondaryButton>
-                                <p className="text-xs text-center text-gray-500 mt-1">Upload file .rsv (Maks. 2 GB)</p>
-                            </div>
-                        </div>
+                        </Surface>
                     </div>
 
-                    {/* Backup List */}
-                    <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
-                        <div className="p-6">
-                            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Riwayat Backup</h3>
-                            <div className="overflow-x-auto">
-                                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                                    <thead className="bg-gray-50 dark:bg-gray-700">
-                                        <tr>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Nama File</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Ukuran</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tanggal Dibuat</th>
-                                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Aksi</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                        {backupFiles.length > 0 ? (
-                                            backupFiles.map((file, idx) => (
-                                                <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100 flex items-center">
-                                                        <svg className="w-5 h-5 mr-2 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    {/* Restore / Reset Actions */}
+                    <Surface
+                        className="animate-rise"
+                        title="Tindakan Lain"
+                        subtitle="Pulihkan database dari berkas cadangan."
+                        icon={
+                            <IconTile tone="amber" size="md">
+                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                </svg>
+                            </IconTile>
+                        }
+                    >
+                        <div>
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                onChange={handleFileSelect}
+                                className="hidden"
+                                accept=".rsv,.btb,.sql"
+                            />
+                            <SecondaryButton
+                                onClick={() => fileInputRef.current?.click()}
+                                className="w-full justify-center"
+                            >
+                                <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                </svg>
+                                Restore Database
+                            </SecondaryButton>
+                            <p className="mt-1 text-center text-[10px] font-medium text-slate-400 dark:text-slate-500">Upload file .rsv (Maks. 2 GB)</p>
+                        </div>
+                    </Surface>
+                </div>
+
+                {/* Backup List */}
+                <div className="animate-rise">
+                    <DataTable
+                        title="Riwayat Backup"
+                        subtitle="Daftar berkas cadangan yang tersimpan di server."
+                        icon={
+                            <IconTile tone="sky" size="sm">
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M4 6h16M4 12h16M4 18h10" />
+                                </svg>
+                            </IconTile>
+                        }
+                        actions={<StatusBadge tone="info" dot={false} className="text-sikas-num">{backupFiles.length}</StatusBadge>}
+                        contentClassName="bento-table-wrapper mx-4 mb-4"
+                    >
+                        <table className="min-w-full">
+                            <thead>
+                                <tr>
+                                    <th className="text-left">Nama File</th>
+                                    <th className="text-left">Ukuran</th>
+                                    <th className="text-left">Tanggal Dibuat</th>
+                                    <th className="text-right">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {backupFiles.length > 0 ? (
+                                    backupFiles.map((file, idx) => (
+                                        <tr key={idx}>
+                                            <td className="whitespace-nowrap">
+                                                <div className="flex items-center gap-2 font-bold text-slate-900 dark:text-white">
+                                                    <svg className="h-5 w-5 shrink-0 text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                    </svg>
+                                                    {file.name}
+                                                </div>
+                                            </td>
+                                            <td className="whitespace-nowrap text-sikas-num font-semibold text-slate-500 dark:text-slate-400">
+                                                {file.size}
+                                            </td>
+                                            <td className="whitespace-nowrap text-slate-500 dark:text-slate-400">
+                                                {file.created_at}
+                                            </td>
+                                            <td className="whitespace-nowrap text-right">
+                                                <div className="flex items-center justify-end gap-1">
+                                                    <button
+                                                        onClick={() => handleDownload(file.name)}
+                                                        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-100 bg-white px-2.5 py-1.5 text-[10px] font-extrabold text-brand-600 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 hover:text-brand-700 dark:border-white/10 dark:bg-white/5 dark:text-brand-300 dark:hover:bg-white/10"
+                                                        title="Download"
+                                                    >
+                                                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                                                         </svg>
-                                                        {file.name}
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                                        {file.size}
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                                        {file.created_at}
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                        <button
-                                                            onClick={() => handleDownload(file.name)}
-                                                            className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 mr-4"
-                                                            title="Download"
-                                                        >
-                                                            Download
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleDelete(file.name)}
-                                                            className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                                                            title="Hapus"
-                                                        >
-                                                            Hapus
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            ))
-                                        ) : (
-                                            <tr>
-                                                <td colSpan={4} className="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
-                                                    Belum ada file backup.
-                                                </td>
-                                            </tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
+                                                        Download
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDelete(file.name)}
+                                                        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-100 bg-white px-2.5 py-1.5 text-[10px] font-extrabold text-rose-600 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 hover:text-rose-700 dark:border-white/10 dark:bg-white/5 dark:text-rose-400 dark:hover:bg-white/10"
+                                                        title="Hapus"
+                                                    >
+                                                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                        </svg>
+                                                        Hapus
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan={4} className="p-0">
+                                            <EmptyState
+                                                className="border-0 bg-transparent py-9 dark:bg-transparent"
+                                                icon={
+                                                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3-7 3V5z" />
+                                                    </svg>
+                                                }
+                                                title="Belum ada file backup."
+                                            />
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </DataTable>
                 </div>
             </div>
 
             {/* Reset Confirmation Modal */}
             <Modal show={confirmingReset} onClose={closeResetModal}>
-                <div className="p-6">
-                    <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                        Apakah Anda yakin ingin mereset database?
-                    </h2>
-
-                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                        PERINGATAN: Tindakan ini akan <strong>MENGHAPUS SEMUA DATA</strong> transaksi, pengaturan, dan master data (kecuali Tabel Users).
-                        Data yang dihapus tidak dapat dipulihkan kembali kecuali Anda memiliki backup.
-                        Silakan masukkan password Anda untuk konfirmasi.
-                    </p>
-
-                    <div className="mt-6">
-                        <InputLabel htmlFor="password" value="Password" className="sr-only" />
-
-                        <TextInput
-                            id="password"
-                            type="password"
-                            name="password"
-                            isFocused={true}
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            className="mt-1 block w-3/4 text-gray-900"
-                            placeholder="Password"
-                        />
-
-                        <InputError message={passwordError} className="mt-2" />
+                <div className="relative overflow-hidden bg-white dark:bg-[#15131F]">
+                    <div className="pointer-events-none absolute -right-10 -top-16 h-44 w-44 rounded-full bg-rose-500/15 blur-3xl" />
+                    <div className="relative flex items-start justify-between gap-3 border-b border-slate-100 px-6 py-4 dark:border-white/5">
+                        <div className="flex items-center gap-3">
+                            <IconTile tone="rose" size="lg">
+                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                            </IconTile>
+                            <div className="min-w-0">
+                                <h2 className="text-[14px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                                    Apakah Anda yakin ingin mereset database?
+                                </h2>
+                                <p className="mt-0.5 text-[10px] font-medium text-slate-400 dark:text-slate-500">Konfirmasi dengan password.</p>
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={closeResetModal}
+                            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-500 dark:hover:bg-white/5 dark:hover:text-white"
+                            aria-label="Tutup"
+                        >
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
                     </div>
+                    <div className="px-6 py-5">
+                        <p className="text-[11.5px] font-medium leading-relaxed text-slate-500 dark:text-slate-400">
+                            PERINGATAN: Tindakan ini akan <strong className="text-rose-600 dark:text-rose-300">MENGHAPUS SEMUA DATA</strong> transaksi, pengaturan, dan master data (kecuali Tabel Users).
+                            Data yang dihapus tidak dapat dipulihkan kembali kecuali Anda memiliki backup.
+                            Silakan masukkan password Anda untuk konfirmasi.
+                        </p>
 
-                    <div className="mt-6 flex justify-end">
+                        <div className="mt-5">
+                            <InputLabel htmlFor="password" value="Password" className="sr-only" />
+
+                            <TextInput
+                                id="password"
+                                type="password"
+                                name="password"
+                                isFocused={true}
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                className="mt-1 block w-3/4"
+                                placeholder="Password"
+                            />
+
+                            <InputError message={passwordError} className="mt-2" />
+                        </div>
+                    </div>
+                    <div className="flex justify-end gap-2 border-t border-slate-100 px-6 py-4 dark:border-white/5">
                         <SecondaryButton onClick={closeResetModal}>
                             Batal
                         </SecondaryButton>
 
-                        <DangerButton className="ml-3" disabled={processingReset} onClick={handleResetDatabase}>
+                        <DangerButton disabled={processingReset} onClick={handleResetDatabase}>
                             {processingReset ? 'Mereset...' : 'Reset Database'}
                         </DangerButton>
                     </div>
@@ -576,22 +694,45 @@ export default function BackupIndex({ auth, backupFiles, stats, flash, currentNp
 
             {/* Delete Confirmation Modal */}
             <Modal show={confirmingDeletion} onClose={closeDeleteModal}>
-                <div className="p-6">
-                    <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                        Konfirmasi Hapus Backup
-                    </h2>
-
-                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                        Apakah Anda yakin ingin menghapus file backup <strong>{fileToDelete}</strong>?
-                        Tindakan ini tidak dapat dibatalkan.
-                    </p>
-
-                    <div className="mt-6 flex justify-end">
+                <div className="relative overflow-hidden bg-white dark:bg-[#15131F]">
+                    <div className="pointer-events-none absolute -right-10 -top-16 h-40 w-40 rounded-full bg-rose-500/10 blur-3xl" />
+                    <div className="relative flex items-start justify-between gap-3 border-b border-slate-100 px-6 py-4 dark:border-white/5">
+                        <div className="flex items-center gap-3">
+                            <IconTile tone="rose" size="lg">
+                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </IconTile>
+                            <div className="min-w-0">
+                                <h2 className="text-[14px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                                    Konfirmasi Hapus Backup
+                                </h2>
+                                <p className="mt-0.5 text-[10px] font-medium text-slate-400 dark:text-slate-500">Konfirmasi tindakan</p>
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={closeDeleteModal}
+                            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-500 dark:hover:bg-white/5 dark:hover:text-white"
+                            aria-label="Tutup"
+                        >
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div className="px-6 py-5">
+                        <p className="text-[11.5px] font-medium leading-relaxed text-slate-500 dark:text-slate-400">
+                            Apakah Anda yakin ingin menghapus file backup <strong className="text-slate-800 dark:text-slate-200">{fileToDelete}</strong>?
+                            Tindakan ini tidak dapat dibatalkan.
+                        </p>
+                    </div>
+                    <div className="flex justify-end gap-2 border-t border-slate-100 px-6 py-4 dark:border-white/5">
                         <SecondaryButton onClick={closeDeleteModal} disabled={processingDelete}>
                             Batal
                         </SecondaryButton>
 
-                        <DangerButton className="ml-3" onClick={executeDelete} disabled={processingDelete}>
+                        <DangerButton onClick={executeDelete} disabled={processingDelete}>
                             {processingDelete ? 'Menghapus...' : 'Hapus'}
                         </DangerButton>
                     </div>
@@ -600,25 +741,48 @@ export default function BackupIndex({ auth, backupFiles, stats, flash, currentNp
 
             {/* Restore Confirmation Modal */}
             <Modal show={showRestoreModal} onClose={closeRestoreModal}>
-                <div className="p-6">
-                    <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                        Konfirmasi Restore Database &amp; Berkas
-                    </h2>
+                <div className="relative overflow-hidden bg-white dark:bg-[#15131F]">
+                    <div className="pointer-events-none absolute -right-10 -top-16 h-40 w-40 rounded-full bg-amber-400/10 blur-3xl" />
+                    <div className="relative flex items-start justify-between gap-3 border-b border-slate-100 px-6 py-4 dark:border-white/5">
+                        <div className="flex items-center gap-3">
+                            <IconTile tone="amber" size="lg">
+                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                </svg>
+                            </IconTile>
+                            <div className="min-w-0">
+                                <h2 className="text-[14px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                                    Konfirmasi Restore Database &amp; Berkas
+                                </h2>
+                                <p className="mt-0.5 text-[10px] font-medium text-slate-400 dark:text-slate-500">Pulihkan skema database dan berkas unggahan.</p>
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={closeRestoreModal}
+                            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-500 dark:hover:bg-white/5 dark:hover:text-white"
+                            aria-label="Tutup"
+                        >
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
 
-                    <div className="mt-4">
-                        <div className="bg-yellow-50 dark:bg-yellow-950/40 border-l-4 border-yellow-400 dark:border-yellow-600 p-4 mb-4">
-                            <div className="flex">
-                                <div className="flex-shrink-0">
-                                    <svg className="h-5 w-5 text-yellow-500" viewBox="0 0 20 20" fill="currentColor">
-                                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    <div className="px-6 py-5">
+                        <div className="mb-4 rounded-2xl border-l-4 border-amber-400 bg-pastel-amber/70 p-4 dark:bg-amber-400/10">
+                            <div className="flex items-start gap-3">
+                                <div className="shrink-0 text-amber-500">
+                                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                                     </svg>
                                 </div>
-                                <div className="ml-3">
-                                    <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                                <div>
+                                    <p className="text-[11px] font-medium leading-relaxed text-amber-800 dark:text-amber-200">
                                         PERINGATAN: Proses ini akan <strong>MENIMPA</strong> skema database saat ini serta memulihkan file fisik unggahan (kop surat, logo, dan dokumen) dari file backup.
                                         Pastikan Anda telah membuat backup data saat ini sebelum melanjutkan.
                                     </p>
-                                    <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
+                                    <p className="mt-1 text-[10px] font-medium text-amber-700 dark:text-amber-300">
                                         *File backup format lama (.sql polos) tetap didukung secara otomatis.
                                     </p>
                                 </div>
@@ -626,74 +790,74 @@ export default function BackupIndex({ auth, backupFiles, stats, flash, currentNp
                         </div>
 
                         {restoreFile && (
-                            <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                                <p className="text-sm text-gray-600 dark:text-gray-300 font-semibold">File yang dipilih:</p>
-                                <p className="text-md text-gray-900 dark:text-gray-100">{restoreFile.name}</p>
-                                <p className="text-xs text-gray-500 dark:text-gray-400">Ukuran: {(restoreFile.size / 1024).toFixed(2)} KB</p>
+                            <div className="mb-4 rounded-2xl border border-slate-100 bg-slate-50/60 p-4 dark:border-white/5 dark:bg-white/[0.02]">
+                                <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">File yang dipilih:</p>
+                                <p className="text-[12px] font-extrabold text-slate-900 dark:text-white">{restoreFile.name}</p>
+                                <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500">Ukuran: {(restoreFile.size / 1024).toFixed(2)} KB</p>
                             </div>
                         )}
 
                         {/* Progress Bar & Status */}
                         {restoreStatus !== 'idle' && (
-                            <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-700/60 rounded-lg border border-gray-200 dark:border-gray-600 space-y-3">
-                                <div className="flex items-center justify-between text-sm">
+                            <div className="mb-4 space-y-3 rounded-2xl border border-slate-100 bg-slate-50/60 p-4 dark:border-white/5 dark:bg-white/[0.02]">
+                                <div className="flex items-center justify-between text-[11px]">
                                     <div className="flex items-center font-medium">
                                         {restoreStatus === 'processing' || restoreStatus === 'uploading' ? (
-                                            <svg className="animate-spin -ml-0.5 mr-2.5 h-4 w-4 text-indigo-600 dark:text-indigo-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <svg className="animate-spin -ml-0.5 mr-2.5 h-4 w-4 text-brand-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
                                             </svg>
                                         ) : restoreStatus === 'completed' ? (
-                                            <svg className="w-5 h-5 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <svg className="w-5 h-5 text-mint mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                             </svg>
                                         ) : (
-                                            <svg className="w-5 h-5 text-red-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <svg className="w-5 h-5 text-rose-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                             </svg>
                                         )}
                                         <span className={
                                             restoreStatus === 'error'
-                                                ? 'text-red-700 dark:text-red-400 font-semibold'
+                                                ? 'text-rose-600 dark:text-rose-300 font-extrabold'
                                                 : restoreStatus === 'completed'
-                                                    ? 'text-green-700 dark:text-green-400 font-semibold'
-                                                    : 'text-indigo-700 dark:text-indigo-300 font-medium'
+                                                    ? 'text-mint font-extrabold'
+                                                    : 'text-brand-600 dark:text-brand-300 font-bold'
                                         }>
                                             {restoreMessage || (restoreStatus === 'uploading' ? 'Mengunggah berkas...' : 'Memproses di server...')}
                                         </span>
                                     </div>
-                                    <span className="font-bold text-sm text-gray-700 dark:text-gray-300 ml-2 tabular-nums">
+                                    <span className="ml-2 text-sikas-num font-extrabold text-slate-700 dark:text-slate-300">
                                         {restoreProgress}%
                                     </span>
                                 </div>
 
-                                <div className="w-full bg-gray-200 rounded-full h-3 dark:bg-gray-600 overflow-hidden">
+                                <div className="h-3 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
                                     <div
                                         className={`h-3 rounded-full transition-all duration-200 ease-out ${
                                             restoreStatus === 'error'
-                                                ? 'bg-red-600'
+                                                ? 'bg-rose-500'
                                                 : restoreStatus === 'completed'
-                                                    ? 'bg-green-600'
-                                                    : 'bg-indigo-600'
+                                                    ? 'bg-mint'
+                                                    : 'bg-brand-500'
                                         }`}
                                         style={{ width: `${restoreProgress}%` }}
                                     ></div>
                                 </div>
 
                                 {restoreError && (
-                                    <div className="p-3 bg-red-100 border border-red-300 rounded text-red-700 text-xs dark:bg-red-900/40 dark:border-red-700 dark:text-red-300">
+                                    <div className="rounded-xl border border-rose-200 bg-pastel-rose/70 p-3 text-[10.5px] font-medium text-rose-600 dark:border-rose-400/20 dark:bg-rose-500/10 dark:text-rose-300">
                                         <strong>Kendala:</strong> {restoreError}
                                     </div>
                                 )}
 
                                 {restoreStatus === 'completed' && (
-                                    <p className="text-xs text-center text-green-600 dark:text-green-400 font-medium">
+                                    <p className="text-center text-[10px] font-semibold text-mint">
                                         Sistem sedang memuat ulang halaman secara otomatis...
                                     </p>
                                 )}
 
                                 {(restoreStatus === 'uploading' || restoreStatus === 'processing') && (
-                                    <p className="text-xs text-center text-gray-500 dark:text-gray-400">
+                                    <p className="text-center text-[10px] font-medium text-slate-400 dark:text-slate-500">
                                         Proses restore sedang berjalan, mohon jangan menutup jendela ini...
                                     </p>
                                 )}
@@ -701,7 +865,7 @@ export default function BackupIndex({ auth, backupFiles, stats, flash, currentNp
                         )}
                     </div>
 
-                    <div className="mt-6 flex justify-end">
+                    <div className="flex justify-end gap-2 border-t border-slate-100 px-6 py-4 dark:border-white/5">
                         {restoreStatus === 'error' ? (
                             <SecondaryButton onClick={closeRestoreModal}>
                                 Tutup
@@ -712,7 +876,7 @@ export default function BackupIndex({ auth, backupFiles, stats, flash, currentNp
                                     Batal
                                 </SecondaryButton>
 
-                                <PrimaryButton className="ml-3" disabled={restoreStatus !== 'idle'} onClick={executeRestore}>
+                                <PrimaryButton disabled={restoreStatus !== 'idle'} onClick={executeRestore}>
                                     {restoreStatus === 'idle' ? 'Mulai Restore' : 'Sedang Memproses...'}
                                 </PrimaryButton>
                             </>
@@ -723,47 +887,72 @@ export default function BackupIndex({ auth, backupFiles, stats, flash, currentNp
 
             {/* NPSN Modal */}
             <Modal show={showNpsnModal} onClose={closeNpsnModal}>
-                <div className="p-6">
-                    <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                        Edit APP_NPSN_CODE & Reset Database
-                    </h2>
-                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                        Anda harus melakukan Reset Database terlebih dahulu sebelum dapat mengubah NPSN.
-                    </p>
-
-                    <div className="mt-6 border-b pb-6 border-gray-200 dark:border-gray-700">
-                        <div className="flex justify-between items-center">
-                            <div>
-                                <h3 className="text-md font-medium text-gray-900 dark:text-gray-100">Reset Database</h3>
-                                <p className="text-xs text-red-500 mt-1">Hapus semua data (Kecuali User)</p>
+                <div className="relative overflow-hidden bg-white dark:bg-[#15131F]">
+                    <div className="pointer-events-none absolute -right-10 -top-16 h-40 w-40 rounded-full bg-brand-500/10 blur-3xl" />
+                    <div className="relative flex items-start justify-between gap-3 border-b border-slate-100 px-6 py-4 dark:border-white/5">
+                        <div className="flex items-center gap-3">
+                            <IconTile tone="violet" size="lg">
+                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                            </IconTile>
+                            <div className="min-w-0">
+                                <h2 className="text-[14px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                                    Edit APP_NPSN_CODE & Reset Database
+                                </h2>
+                                <p className="mt-0.5 text-[10px] font-medium text-slate-400 dark:text-slate-500">
+                                    Anda harus melakukan Reset Database terlebih dahulu sebelum dapat mengubah NPSN.
+                                </p>
                             </div>
-                            <DangerButton onClick={confirmReset} disabled={isDatabaseReset}>
-                                {isDatabaseReset ? 'Database Telah Direset' : 'Reset Database'}
-                            </DangerButton>
                         </div>
+                        <button
+                            type="button"
+                            onClick={closeNpsnModal}
+                            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-500 dark:hover:bg-white/5 dark:hover:text-white"
+                            aria-label="Tutup"
+                        >
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
                     </div>
 
-                    <form onSubmit={submitNpsn} className="mt-6">
-                        <InputLabel htmlFor="npsn_code" value="NPSN Code" />
-                        <TextInput
-                            id="npsn_code"
-                            type="text"
-                            name="npsn_code"
-                            value={npsnData.npsn_code}
-                            onChange={(e) => setNpsnData('npsn_code', e.target.value)}
-                            className="mt-1 block w-full dark:text-gray-950"
-                            disabled={!isDatabaseReset}
-                            isFocused={isDatabaseReset}
-                        />
-                        <InputError message={npsnErrors.npsn_code} className="mt-2" />
-                        
-                        <div className="mt-6 flex justify-end">
-                            <SecondaryButton onClick={closeNpsnModal} type="button">Batal</SecondaryButton>
-                            <PrimaryButton className="ml-3" disabled={processingNpsn || !isDatabaseReset}>
-                                {processingNpsn ? 'Menyimpan...' : 'Simpan NPSN'}
-                            </PrimaryButton>
+                    <div className="px-6 py-5">
+                        <div className="border-b border-slate-100 pb-5 dark:border-white/5">
+                            <div className="flex items-center justify-between gap-3">
+                                <div>
+                                    <h3 className="text-[12px] font-extrabold text-slate-900 dark:text-white">Reset Database</h3>
+                                    <p className="mt-1 text-[10px] font-semibold text-rose-500">Hapus semua data (Kecuali User)</p>
+                                </div>
+                                <DangerButton onClick={confirmReset} disabled={isDatabaseReset}>
+                                    {isDatabaseReset ? 'Database Telah Direset' : 'Reset Database'}
+                                </DangerButton>
+                            </div>
                         </div>
-                    </form>
+
+                        <form onSubmit={submitNpsn} className="mt-5">
+                            <InputLabel htmlFor="npsn_code" value="NPSN Code" />
+                            <TextInput
+                                id="npsn_code"
+                                type="text"
+                                name="npsn_code"
+                                value={npsnData.npsn_code}
+                                onChange={(e) => setNpsnData('npsn_code', e.target.value)}
+                                className="mt-1 block w-full"
+                                disabled={!isDatabaseReset}
+                                isFocused={isDatabaseReset}
+                            />
+                            <InputError message={npsnErrors.npsn_code} className="mt-2" />
+
+                            <div className="mt-5 flex justify-end gap-2 border-t border-slate-100 pt-4 dark:border-white/5">
+                                <SecondaryButton onClick={closeNpsnModal} type="button">Batal</SecondaryButton>
+                                <PrimaryButton disabled={processingNpsn || !isDatabaseReset}>
+                                    {processingNpsn ? 'Menyimpan...' : 'Simpan NPSN'}
+                                </PrimaryButton>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </Modal>
         </AuthenticatedLayout>

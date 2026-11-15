@@ -94,3 +94,4 @@ Diekstrak dari `ArkasTools/Index.tsx` agar bersih dan konsisten dengan `ArkasDia
 - Mematuhi konfigurasi Tailwind v3 SIKAS: tidak memakai token invalid (`brand-50`, `brand-100`, `sky-100..950`, `gray-850`, `gray-750`, `py-4.5`).
 - Menggunakan komponen UI bersama (`Modal`, `IconTile`, `StatusBadge`, `PrimaryButton`, `SecondaryButton`) dan token Neo-Bento valid (`rounded-[26px]`, `rounded-[20px]`, `pastel-lavender`, `pastel-mint`, `pastel-amber`, `pastel-rose`, `text-mint`, `dark:bg-[#15131F]`).
 - Verifikasi setelah implementasi: `npm run build` (`tsc && vite build`) harus lolos tanpa error TypeScript atau Vite.
+

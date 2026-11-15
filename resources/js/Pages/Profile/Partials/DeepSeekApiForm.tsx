@@ -2,6 +2,8 @@ import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
+import IconTile from '@/Components/ui/IconTile';
+import StatusBadge from '@/Components/ui/StatusBadge';
 import { Transition } from '@headlessui/react';
 import { useForm, usePage, router } from '@inertiajs/react';
 import axios from 'axios';
@@ -105,33 +107,37 @@ export default function DeepSeekApiForm({
 
     return (
         <section className={className}>
-            <header className="mb-6 border-b pb-4 border-gray-100 dark:border-gray-700">
-                <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                        <Brain className="w-6 h-6 text-purple-600 dark:text-purple-400" />
-                        Konfigurasi AI DeepSeek (BYOK)
-                    </h2>
-                    {hasExistingKey && (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
-                            <ShieldCheck className="w-3.5 h-3.5" />
-                            Kunci API Terpasang & Aktif
-                        </span>
-                    )}
+            <header className="mb-5 flex flex-col gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-start sm:justify-between dark:border-white/5">
+                <div className="flex min-w-0 items-start gap-3">
+                    <IconTile tone="violet" size="lg">
+                        <Brain />
+                    </IconTile>
+                    <div className="min-w-0">
+                        <h2 className="text-[14px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                            Konfigurasi AI DeepSeek (BYOK)
+                        </h2>
+                        <p className="mt-0.5 text-[10.5px] font-medium text-slate-400 dark:text-slate-500">
+                            Aplikasi newSIKAS menggunakan model <strong className="font-bold text-slate-600 dark:text-slate-300">DeepSeek-R1</strong> untuk pra-audit penatausahaan kas dan <strong className="font-bold text-slate-600 dark:text-slate-300">DeepSeek-V3</strong> untuk asisten transaksi. Masukkan API Key Anda sendiri agar penggunaan kuota mandiri & aman.
+                        </p>
+                    </div>
                 </div>
-                <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                    Aplikasi newSIKAS menggunakan model <strong>DeepSeek-R1</strong> untuk pra-audit penatausahaan kas dan <strong>DeepSeek-V3</strong> untuk asisten transaksi. Masukkan API Key Anda sendiri agar penggunaan kuota mandiri & aman.
-                </p>
+                {hasExistingKey && (
+                    <StatusBadge tone="success" dot={false} className="shrink-0 self-start">
+                        <ShieldCheck className="h-3.5 w-3.5" />
+                        Kunci API Terpasang & Aktif
+                    </StatusBadge>
+                )}
             </header>
 
-            <form onSubmit={submit} className="space-y-6">
+            <form onSubmit={submit} className="space-y-5">
                 <div>
-                    <div className="flex items-center justify-between mb-2">
+                    <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
                         <InputLabel htmlFor="deepseek_api_key" value="DeepSeek API Key" />
                         <a
                             href="https://platform.deepseek.com/api_keys"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-1 font-medium"
+                            className="inline-flex items-center gap-1 text-[10.5px] font-bold text-brand-600 transition hover:underline dark:text-brand-300"
                         >
                             Dapatkan API Key di DeepSeek Console
                             <ExternalLink className="w-3 h-3" />
@@ -140,12 +146,12 @@ export default function DeepSeekApiForm({
 
                     <div className="relative">
                         <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                            <Key className="h-5 w-5 text-gray-400" />
+                            <Key className="h-4 w-4 text-slate-400 dark:text-slate-500" />
                         </div>
                         <TextInput
                             id="deepseek_api_key"
                             type={showKey ? 'text' : 'password'}
-                            className="block w-full pl-10 pr-10 font-mono text-sm text-black dark:text-black"
+                            className="pl-10 pr-10 font-mono text-sm"
                             value={data.deepseek_api_key}
                             onChange={(e) => setData('deepseek_api_key', e.target.value)}
                             placeholder={hasExistingKey ? '•••••••••••••••••••••••••••••••• (Kunci terenkripsi disimpan)' : 'sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'}
@@ -153,12 +159,12 @@ export default function DeepSeekApiForm({
                         <button
                             type="button"
                             onClick={() => setShowKey(!showKey)}
-                            className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                            className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 transition hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
                         >
-                            {showKey ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                            {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </button>
                     </div>
-                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    <p className="mt-1.5 text-[10.5px] font-medium text-slate-400 dark:text-slate-500">
                         {hasExistingKey
                             ? 'Biarkan kosong jika tidak ingin mengubah kunci API yang sudah tersimpan.'
                             : 'Kunci disimpan secara terenkripsi dan tidak dapat dibaca oleh pihak lain.'}
@@ -166,19 +172,19 @@ export default function DeepSeekApiForm({
                     <InputError className="mt-2" message={errors.deepseek_api_key} />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div>
                         <InputLabel htmlFor="deepseek_model_reasoner" value="Model Penalaran (Pra-Audit / R1)" />
                         <select
                             id="deepseek_model_reasoner"
                             value={data.deepseek_model_reasoner}
                             onChange={(e) => setData('deepseek_model_reasoner', e.target.value)}
-                            className="mt-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                            className="mt-1 block w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-[12px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
                         >
                             <option value="deepseek-reasoner">deepseek-reasoner (R1 - Penalaran Audit Mendalam)</option>
                             <option value="deepseek-chat">deepseek-chat (V3 - Mode Cepat)</option>
                         </select>
-                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        <p className="mt-1.5 text-[10.5px] font-medium text-slate-400 dark:text-slate-500">
                             Digunakan untuk pemindaian audit forensik dan analisis regulasi BKU.
                         </p>
                     </div>
@@ -189,12 +195,12 @@ export default function DeepSeekApiForm({
                             id="deepseek_model_chat"
                             value={data.deepseek_model_chat}
                             onChange={(e) => setData('deepseek_model_chat', e.target.value)}
-                            className="mt-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                            className="mt-1 block w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-[12px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
                         >
                             <option value="deepseek-chat">deepseek-chat (V3 - Default Cepat & Hemat)</option>
                             <option value="deepseek-reasoner">deepseek-reasoner (R1)</option>
                         </select>
-                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        <p className="mt-1.5 text-[10.5px] font-medium text-slate-400 dark:text-slate-500">
                             Digunakan untuk asisten drafting transaksi, kalkulasi pajak, dan query analitik.
                         </p>
                     </div>
@@ -203,25 +209,25 @@ export default function DeepSeekApiForm({
                 {/* Status Uji Koneksi */}
                 {testResult.type && (
                     <div
-                        className={`p-3 rounded-lg text-sm flex items-start gap-2 ${
+                        className={`flex items-start gap-2 rounded-2xl border p-3.5 text-[11.5px] font-medium ${
                             testResult.type === 'success'
-                                ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800'
-                                : 'bg-rose-50 text-rose-800 border border-rose-200 dark:bg-rose-900/30 dark:text-rose-300 dark:border-rose-800'
+                                ? 'border-emerald-200/70 bg-pastel-mint text-emerald-700 dark:border-emerald-400/20 dark:bg-mint/10 dark:text-emerald-300'
+                                : 'border-rose-200/70 bg-pastel-rose text-rose-700 dark:border-rose-400/20 dark:bg-rose-500/10 dark:text-rose-300'
                         }`}
                     >
                         {testResult.type === 'success' ? (
-                            <CheckCircle2 className="w-5 h-5 flex-shrink-0 text-emerald-600 dark:text-emerald-400" />
+                            <CheckCircle2 className="h-4 w-4 flex-shrink-0 text-emerald-600 dark:text-emerald-300" />
                         ) : (
-                            <AlertCircle className="w-5 h-5 flex-shrink-0 text-rose-600 dark:text-rose-400" />
+                            <AlertCircle className="h-4 w-4 flex-shrink-0 text-rose-600 dark:text-rose-300" />
                         )}
                         <span>{testResult.message}</span>
                     </div>
                 )}
 
-                <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-                    <div className="flex items-center gap-3">
-                        <PrimaryButton disabled={processing} className="bg-indigo-600 hover:bg-indigo-700">
-                            <Sparkles className="w-4 h-4 mr-2" />
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4 dark:border-white/5">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <PrimaryButton disabled={processing}>
+                            <Sparkles className="w-4 h-4" />
                             Simpan Pengaturan AI
                         </PrimaryButton>
 
@@ -229,11 +235,11 @@ export default function DeepSeekApiForm({
                             type="button"
                             onClick={handleTestConnection}
                             disabled={testLoading || (!hasExistingKey && !data.deepseek_api_key)}
-                            className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md font-semibold text-xs text-gray-700 dark:text-gray-300 uppercase tracking-widest shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 transition"
+                            className="inline-flex items-center gap-2 rounded-2xl border border-slate-200/90 bg-white px-4 py-2.5 text-[11.5px] font-bold text-slate-700 shadow-pill transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-lime-400 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10"
                         >
                             {testLoading ? (
                                 <>
-                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                    <Loader2 className="w-4 h-4 animate-spin" />
                                     Menguji...
                                 </>
                             ) : (
@@ -248,7 +254,7 @@ export default function DeepSeekApiForm({
                             leave="transition ease-in-out"
                             leaveTo="opacity-0"
                         >
-                            <p className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">
+                            <p className="inline-flex items-center gap-1.5 rounded-full bg-pastel-mint px-3 py-1 text-[10.5px] font-extrabold text-emerald-700 dark:bg-mint/10 dark:text-emerald-300">
                                 Tersimpan!
                             </p>
                         </Transition>
@@ -258,7 +264,7 @@ export default function DeepSeekApiForm({
                         <button
                             type="button"
                             onClick={handleClearKey}
-                            className="text-xs text-rose-600 dark:text-rose-400 hover:underline inline-flex items-center gap-1 font-medium"
+                            className="inline-flex items-center gap-1 text-[10.5px] font-bold text-rose-600 transition hover:underline dark:text-rose-300"
                         >
                             <Trash2 className="w-3.5 h-3.5" />
                             Hapus Kunci Tersimpan

@@ -6,53 +6,69 @@ import SecurityCodeForm from './Partials/SecurityCodeForm';
 import UpdatePasswordForm from './Partials/UpdatePasswordForm';
 import UpdateProfileInformationForm from './Partials/UpdateProfileInformationForm';
 import { ShieldCheck } from 'lucide-react';
+import PageHeader from '@/Components/ui/PageHeader';
+import Surface from '@/Components/ui/Surface';
+import IconTile from '@/Components/ui/IconTile';
+import StatusBadge from '@/Components/ui/StatusBadge';
 
 export default function Edit({
     mustVerifyEmail,
     status,
 }: PageProps<{ mustVerifyEmail: boolean; status?: string }>) {
     return (
-        <AuthenticatedLayout
-            header={
-                <div className="flex items-center gap-2">
-                    <ShieldCheck className="h-6 w-6 text-indigo-500" />
-                    <h2 className="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
-                        Pengaturan Profil
-                    </h2>
-                </div>
-            }
-        >
+        <AuthenticatedLayout>
             <Head title="Profil Pengguna" />
 
-            <div className="py-12">
-                <div className="mx-auto max-w-7xl space-y-8 sm:px-6 lg:px-8">
+            <div className="space-y-4">
+                <PageHeader
+                    className="animate-rise"
+                    breadcrumb={[
+                        { label: 'Dashboard' },
+                        { label: 'Pengaturan' },
+                        { label: 'Profil Pengguna' },
+                    ]}
+                    icon={
+                        <IconTile tone="violet" size="lg">
+                            <ShieldCheck />
+                        </IconTile>
+                    }
+                    title="Pengaturan Profil"
+                    badge={
+                        <StatusBadge tone="violet" dot={false}>
+                            Akun
+                        </StatusBadge>
+                    }
+                    subtitle="Kelola biodata, kata sandi, konfigurasi AI, dan keamanan akun Anda di satu tempat."
+                />
 
-                    {/* Grid Layout for Profile & Password */}
-                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-                        {/* Profile Info */}
-                        <div className="bg-white p-4 shadow-lg sm:rounded-xl sm:p-8 dark:bg-gray-800 transition-all hover:shadow-xl duration-300 border border-gray-100 dark:border-gray-700">
+                <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                    <div className="animate-rise" style={{ animationDelay: '60ms' }}>
+                        <Surface padding="md">
                             <UpdateProfileInformationForm
                                 mustVerifyEmail={mustVerifyEmail}
                                 status={status}
                                 className="max-w-xl"
                             />
-                        </div>
+                        </Surface>
+                    </div>
 
-                        {/* Password */}
-                        <div className="bg-white p-4 shadow-lg sm:rounded-xl sm:p-8 dark:bg-gray-800 transition-all hover:shadow-xl duration-300 border border-gray-100 dark:border-gray-700">
+                    <div className="animate-rise" style={{ animationDelay: '110ms' }}>
+                        <Surface padding="md">
                             <UpdatePasswordForm className="max-w-xl" />
-                        </div>
+                        </Surface>
                     </div>
+                </div>
 
-                    {/* DeepSeek AI Configuration (BYOK) */}
-                    <div className="bg-white p-4 shadow-lg sm:rounded-xl sm:p-8 dark:bg-gray-800 transition-all hover:shadow-xl duration-300 border border-purple-100 dark:border-purple-900/30">
+                <div className="animate-rise" style={{ animationDelay: '160ms' }}>
+                    <Surface padding="md">
                         <DeepSeekApiForm className="max-w-4xl" />
-                    </div>
+                    </Surface>
+                </div>
 
-                    {/* Security Code Section (Replaces Delete Account) */}
-                    <div className="bg-white p-4 shadow-lg sm:rounded-xl sm:p-8 dark:bg-gray-800 transition-all hover:shadow-xl duration-300 border border-gray-100 dark:border-gray-700">
+                <div className="animate-rise" style={{ animationDelay: '210ms' }}>
+                    <Surface padding="md">
                         <SecurityCodeForm className="max-w-3xl" />
-                    </div>
+                    </Surface>
                 </div>
             </div>
         </AuthenticatedLayout>

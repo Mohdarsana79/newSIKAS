@@ -23,3 +23,4 @@ Pada `resources/js/Pages/Penatausahaan/Bku.tsx`:
 ### Tahap 3: Verifikasi Build
 1. Jalankan `npm run build` (`tsc && vite build`) untuk memastikan tidak ada error tipe TypeScript maupun build Vite.
 2. Commit semua perubahan.
+

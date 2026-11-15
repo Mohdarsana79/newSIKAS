@@ -61,3 +61,4 @@ Sebelumnya, daftar tahun pada pemilih `react-select` di **Arkas Tools** diambil 
 ## 5. Verifikasi
 - Memperbarui [ArkasToolTest.php](file:///c:/laragon/www/newSIKAS2/newSIKAS/tests/Unit/ArkasToolTest.php) agar menguji deteksi tahun dari `arkas.db` / fallback `RefBarang` (termasuk pengujian mock/subclass `detectArkasYears()` agar test deterministik baik saat `arkas.db` tersedia maupun tidak).
 - Menjalankan `vendor/bin/pint`, `php artisan test --filter=ArkasToolTest` (dan `composer test`), serta `npm run build`.
+

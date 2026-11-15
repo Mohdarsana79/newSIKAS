@@ -15,6 +15,12 @@ import { useForm } from '@inertiajs/react';
 import DatePicker from '@/Components/DatePicker';
 import { format } from 'date-fns';
 import axios from 'axios';
+import PageHeader from '@/Components/ui/PageHeader';
+import StatusBadge from '@/Components/ui/StatusBadge';
+import IconTile from '@/Components/ui/IconTile';
+import PillTabs from '@/Components/ui/PillTabs';
+import EmptyState from '@/Components/ui/EmptyState';
+import FilterBar from '@/Components/ui/FilterBar';
 
 interface PenganggaranItem {
     id: number;
@@ -277,239 +283,405 @@ export default function Index({
         }
     };
 
+    // === Ringkasan presentasional (dihitung dari props existing, bukan state baru) ===
+    const totalDokumen = items.length;
+    const jumlahAwal = items.filter((item) => item.status === 'regular').length;
+    const jumlahPerubahan = items.filter((item) => item.status === 'perubahan').length;
+    const persenAwal = totalDokumen > 0 ? Math.round((jumlahAwal / totalDokumen) * 100) : 0;
+    const persenPerubahan = totalDokumen > 0 ? Math.round((jumlahPerubahan / totalDokumen) * 100) : 0;
+    const totalPagu = anggarans.reduce((total, anggaran) => total + Number(anggaran.pagu_anggaran || 0), 0);
+    const tahunAktif = anggarans[0]?.tahun_anggaran || items[0]?.tahun || new Date().getFullYear().toString();
+
     return (
         <AuthenticatedLayout>
             <Head title="Penganggaran" />
 
-            <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
-                <div className="p-6 text-gray-900 dark:text-gray-100">
-                    {/* Header Section */}
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
-                        <div>
-                            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                                <span className="bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 p-2 rounded-lg">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                                    </svg>
-                                </span>
-                                Penganggaran
-                            </h1>
-                            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 pl-12">
-                                Kelola Rencana Kegiatan dan Anggaran Sekolah (RKAS) Anda di sini.
-                            </p>
-                        </div>
-                        <PrimaryButton
-                            onClick={handleCreate}
-                            className={`bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500 shadow-lg shadow-indigo-500/30 transition-all ${can_create ? 'hover:scale-105' : 'opacity-80'}`}
-                        >
-                            <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            <div className="space-y-4">
+                {/* Header halaman */}
+                <PageHeader
+                    className="animate-rise"
+                    breadcrumb={[
+                        { label: 'Dashboard' },
+                        { label: 'Penganggaran' },
+                    ]}
+                    title="Penganggaran"
+                    badge={
+                        <span className="rounded-full bg-pastel-lavender px-2.5 py-1 text-[10px] font-extrabold text-brand-600 ring-1 ring-brand-500/15 dark:bg-brand-500/15 dark:text-brand-300 dark:ring-brand-400/25">
+                            RKAS
+                        </span>
+                    }
+                    subtitle="Kelola Rencana Kegiatan dan Anggaran Sekolah (RKAS) Anda di sini."
+                    actions={
+                        <PrimaryButton onClick={handleCreate}>
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                             </svg>
                             Buat Anggaran Baru
                         </PrimaryButton>
-                    </div>
+                    }
+                />
 
-                    {/* Tabs Navigation */}
-                    <div className="mb-6">
-                        <nav className="flex space-x-3 overflow-x-auto pb-2 scrollbar-hide" aria-label="Tabs">
-                            {tabs.map((tab) => (
-                                <button
-                                    key={tab}
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        if (tab === 'BOSP Reguler') {
-                                            router.visit(route('penganggaran.index'));
-                                        } else if (tab === 'SiLPA BOSP Reguler') {
-                                            router.visit(route('silpa-penganggaran.index'));
-                                        } else if (tab === 'BOSP Kinerja') {
-                                            router.visit(route('kinerja-penganggaran.index'));
-                                        } else if (tab === 'SiLPA BOSP Kinerja') {
-                                            router.visit(route('kinerja-silpa-penganggaran.index'));
-                                        }
-                                    }}
-                                    className={`
-                                            whitespace-nowrap py-2.5 px-6 rounded-full font-medium text-sm transition-all duration-300
-                                            ${activeTab === tab
-                                            ? 'bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-lg transform scale-105'
-                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
-                                        }
-                                        `}
-                                >
-                                    {tab}
-                                </button>
-                            ))}
-                        </nav>
-                    </div>
-
-                    {/* Items List */}
-                    <div className="space-y-4">
-                        {items.length === 0 ? (
-                            <div className="text-center py-12 bg-gray-50 dark:bg-gray-700/30 rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-700">
-                                <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2h-1" />
+                {/* Strip ringkasan */}
+                <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+                    <div
+                        className="group sikas-card sikas-card-hover animate-rise relative overflow-hidden p-4"
+                        style={{ animationDelay: '60ms' }}
+                    >
+                        <div className="flex items-center justify-between gap-2">
+                            <IconTile tone="violet" size="md" className="transition-transform duration-300 group-hover:scale-110">
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+                                    <path d="M3 3v18h18" />
+                                    <rect x="7" y="10" width="3" height="7" rx="1" />
+                                    <rect x="12" y="6" width="3" height="11" rx="1" />
+                                    <rect x="17" y="13" width="3" height="4" rx="1" />
                                 </svg>
-                                <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">Tidak ada data anggaran</h3>
-                                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Mulailah dengan membuat anggaran baru.</p>
-                                <div className="mt-6">
-                                    <PrimaryButton onClick={handleCreate}>
-                                        <svg className="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                            <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-                                        </svg>
-                                        Buat Anggaran
-                                    </PrimaryButton>
-                                </div>
+                            </IconTile>
+                            <span className="text-[9px] font-extrabold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                                Total Pagu
+                            </span>
+                        </div>
+                        <p className="mt-2 truncate text-sikas-num text-[17px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                            Rp {new Intl.NumberFormat('id-ID').format(totalPagu)}
+                        </p>
+                        <p className="mt-0.5 text-[10px] font-semibold text-slate-400 dark:text-slate-500">
+                            Tahun anggaran {tahunAktif}
+                        </p>
+                    </div>
+
+                    <div
+                        className="group sikas-card sikas-card-hover animate-rise relative overflow-hidden p-4"
+                        style={{ animationDelay: '110ms' }}
+                    >
+                        <div className="flex items-center justify-between gap-2">
+                            <IconTile tone="lime" size="md" className="transition-transform duration-300 group-hover:scale-110">
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+                                    <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                            </IconTile>
+                            <span className="text-[9px] font-extrabold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                                Dokumen RKAS
+                            </span>
+                        </div>
+                        <p className="mt-2 text-sikas-num text-[17px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                            {totalDokumen}
+                            <span className="ml-1.5 text-[10.5px] font-bold text-slate-400 dark:text-slate-500">dokumen</span>
+                        </p>
+                        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
+                            <div
+                                className="h-full rounded-full bg-gradient-to-r from-lime-400 to-lime-500"
+                                style={{ width: `${persenAwal}%` }}
+                            />
+                        </div>
+                        <p className="mt-1.5 text-[10px] font-semibold text-slate-400 dark:text-slate-500">
+                            {jumlahAwal} RKAS awal
+                        </p>
+                    </div>
+
+                    <div
+                        className="group sikas-card sikas-card-hover animate-rise relative col-span-2 overflow-hidden p-4 lg:col-span-1"
+                        style={{ animationDelay: '160ms' }}
+                    >
+                        <div className="flex items-center justify-between gap-2">
+                            <IconTile tone="amber" size="md" className="transition-transform duration-300 group-hover:scale-110">
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+                                    <path d="m22 7-8.5 8.5-5-5L2 17" />
+                                    <path d="M16 7h6v6" />
+                                </svg>
+                            </IconTile>
+                            <span className="text-[9px] font-extrabold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                                RKAS Perubahan
+                            </span>
+                        </div>
+                        <p className="mt-2 text-sikas-num text-[17px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                            {jumlahPerubahan}
+                            <span className="ml-1.5 text-[10.5px] font-bold text-slate-400 dark:text-slate-500">dokumen</span>
+                        </p>
+                        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
+                            <div
+                                className="h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-400"
+                                style={{ width: `${persenPerubahan}%` }}
+                            />
+                        </div>
+                        <p className="mt-1.5 text-[10px] font-semibold text-slate-400 dark:text-slate-500">
+                            {persenPerubahan}% dari total dokumen
+                        </p>
+                    </div>
+                </div>
+
+                {/* Tab varian BOSP + info tahun */}
+                <div
+                    className="sikas-card animate-rise relative p-2"
+                    style={{ animationDelay: '200ms' }}
+                >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                        <PillTabs
+                            value={activeTab}
+                            variant="solid"
+                            ariaLabel="Varian BOSP"
+                            onChange={(key) => {
+                                if (key === 'BOSP Reguler') {
+                                    router.visit(route('penganggaran.index'));
+                                } else if (key === 'SiLPA BOSP Reguler') {
+                                    router.visit(route('silpa-penganggaran.index'));
+                                } else if (key === 'BOSP Kinerja') {
+                                    router.visit(route('kinerja-penganggaran.index'));
+                                } else if (key === 'SiLPA BOSP Kinerja') {
+                                    router.visit(route('kinerja-silpa-penganggaran.index'));
+                                }
+                            }}
+                            items={tabs.map((tab) => ({ key: tab, label: tab }))}
+                        />
+
+                        <div className="flex items-center gap-2 px-1">
+                            <span className="inline-flex items-center gap-1.5 rounded-xl border border-slate-100 bg-white px-2.5 py-1.5 text-[10.5px] font-bold text-slate-600 shadow-pill dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
+                                <svg className="h-3 w-3 text-slate-400 dark:text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+                                    <rect x="3" y="4" width="18" height="18" rx="3" />
+                                    <path d="M16 2v4M8 2v4M3 10h18" />
+                                </svg>
+                                Tahun {tahunAktif}
+                            </span>
+                            <span className="hidden items-center gap-1.5 rounded-xl bg-slate-100 px-2.5 py-1.5 text-[10.5px] font-bold text-slate-500 sm:inline-flex dark:bg-white/5 dark:text-slate-400">
+                                {totalDokumen} dokumen
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Baris info & filter (tanpa state filter baru) */}
+                <div className="animate-rise" style={{ animationDelay: '240ms' }}>
+                    <FilterBar
+                        className="px-1"
+                        end={
+                            <div className="flex flex-wrap items-center gap-1.5">
+                                <StatusBadge tone="violet" dot={false}>
+                                    RKAS Awal {jumlahAwal}
+                                </StatusBadge>
+                                <StatusBadge tone="warning" dot={false}>
+                                    Perubahan {jumlahPerubahan}
+                                </StatusBadge>
                             </div>
-                        ) : (
-                            items.map((item) => (
-                                <div
+                        }
+                    >
+                        <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                            Menampilkan{' '}
+                            <span className="text-sikas-num font-extrabold text-slate-700 dark:text-slate-200">{totalDokumen}</span>{' '}
+                            dokumen pada varian{' '}
+                            <span className="font-extrabold text-slate-700 dark:text-slate-200">{activeTab}</span>.
+                        </p>
+                    </FilterBar>
+                </div>
+
+                {/* Daftar dokumen RKAS */}
+                <div>
+                    {items.length === 0 ? (
+                        <EmptyState
+                            title="Tidak ada data anggaran"
+                            description="Mulailah dengan membuat anggaran baru."
+                            icon={
+                                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2h-1" />
+                                </svg>
+                            }
+                            action={
+                                <PrimaryButton onClick={handleCreate}>
+                                    <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                        <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                                    </svg>
+                                    Buat Anggaran
+                                </PrimaryButton>
+                            }
+                        />
+                    ) : (
+                        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                            {items.map((item, index) => (
+                                <article
                                     key={`${item.id}-${item.status}`}
-                                    className={`
-                                            group relative bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 
-                                            hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1
-                                            ${item.status === 'perubahan' ? 'border-l-4 border-l-amber-500' : 'border-l-4 border-l-indigo-500'}
-                                        `}
+                                    className="group sikas-card sikas-card-hover animate-rise relative overflow-hidden p-4"
+                                    style={{ animationDelay: `${280 + Math.min(index, 4) * 40}ms` }}
                                 >
-                                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                                        <div className="flex flex-col">
-                                            <div className="flex items-center gap-2">
-                                                <h3 className="text-lg font-bold text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="flex min-w-0 items-center gap-3">
+                                            <IconTile
+                                                size="lg"
+                                                tone={item.status === 'perubahan' ? 'amber' : 'violet'}
+                                                className="transition-transform duration-300 group-hover:scale-105"
+                                            >
+                                                {item.status === 'perubahan' ? (
+                                                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+                                                        <path d="M3 3v18h18" />
+                                                        <path d="m19 9-5 5-4-4-3 3" />
+                                                    </svg>
+                                                ) : (
+                                                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+                                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                                        <path d="M14 2v6h6" />
+                                                        <path d="M9 13h6M9 17h4" />
+                                                    </svg>
+                                                )}
+                                            </IconTile>
+
+                                            <div className="min-w-0">
+                                                <h3 className="truncate text-[13px] font-extrabold tracking-tight text-slate-900 dark:text-white">
                                                     {item.title}
                                                 </h3>
-                                                {item.status === 'perubahan' && (
-                                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200">
-                                                        Perubahan
+                                                <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                                                    <StatusBadge tone={item.status === 'perubahan' ? 'warning' : 'violet'}>
+                                                        {item.status === 'perubahan' ? 'Perubahan' : 'RKAS Awal'}
+                                                    </StatusBadge>
+                                                    <span className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2 py-1 text-[9px] font-bold text-slate-500 dark:bg-white/5 dark:text-slate-400">
+                                                        <svg className="h-2.5 w-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
+                                                            <rect x="3" y="4" width="18" height="18" rx="3" />
+                                                            <path d="M16 2v4M8 2v4M3 10h18" />
+                                                        </svg>
+                                                        TA <span className="text-sikas-num">{item.tahun}</span>
                                                     </span>
-                                                )}
+                                                </div>
                                             </div>
-                                            <div className="flex items-center gap-2 mt-1 text-sm text-gray-500 dark:text-gray-400">
-                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                </svg>
-                                                Pagu: <span className="font-semibold text-gray-700 dark:text-gray-300">{item.pagu}</span>
-                                            </div>
-                                        </div>
-
-                                        <div className="flex items-center gap-3 w-full sm:w-auto mt-4 sm:mt-0">
-                                            {/* Edit Button - Conditional */}
-                                            {item.status === 'regular' && (
-                                                <button
-                                                    onClick={() => handleEdit(item.id)}
-                                                    className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-gray-700 rounded-full transition-colors"
-                                                    title="Edit Data Anggaran"
-                                                >
-                                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                    </svg>
-                                                </button>
-                                            )}
-
-                                            {/* View / Detail Button */}
-                                            <Link
-                                                href={item.status === 'perubahan' ? vroute('rkas-perubahan.index', item.id) : vroute('rkas.index', item.id)}
-                                                className={`
-                                                        flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-sm
-                                                        ${item.status === 'perubahan'
-                                                        ? 'bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-900/20 dark:text-amber-400 dark:hover:bg-amber-900/40 border border-amber-200 dark:border-amber-800'
-                                                        : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-900/20 dark:text-indigo-400 dark:hover:bg-indigo-900/40 border border-indigo-200 dark:border-indigo-800'
-                                                    }
-                                                    `}
-                                            >
-                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                </svg>
-                                                Detail RKAS
-                                            </Link>
-
-                                            {/* Tarik ARKAS Button for Perubahan */}
-                                            {item.status === 'perubahan' && (
-                                                <button
-                                                    onClick={() => handleCheckArkasPerubahan(item.id, item.tahun)}
-                                                    disabled={isCheckingArkas && activeCheckingId === item.id}
-                                                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all shadow-sm bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:hover:bg-emerald-900/40 border border-emerald-200 dark:border-emerald-800"
-                                                    title="Tarik RKAS Perubahan dari ARKAS"
-                                                >
-                                                    {isCheckingArkas && activeCheckingId === item.id ? (
-                                                        <svg className="animate-spin h-4 w-4 text-emerald-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                                        </svg>
-                                                    ) : (
-                                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                                        </svg>
-                                                    )}
-                                                    <span className="hidden sm:inline">Tarik ARKAS</span>
-                                                </button>
-                                            )}
-
-                                            {/* Summary / Print Button */}
-                                            <Link
-                                                href={item.status === 'perubahan' ? vroute('rkas-perubahan.summary', item.id) : vroute('rkas.summary', item.id)}
-                                                className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-gray-700 rounded-full transition-colors"
-                                                title="Ringkasan & Cetak"
-                                            >
-                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                                </svg>
-                                            </Link>
-
-                                            {/* Delete Button */}
-                                            <button
-                                                onClick={() => handleDelete(item.id, item.status)}
-                                                className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-gray-700 rounded-full transition-colors"
-                                                title="Hapus Anggaran"
-                                            >
-                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                </svg>
-                                            </button>
                                         </div>
                                     </div>
-                                </div>
-                            ))
-                        )}
-                    </div>
+
+                                    <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
+                                        <div className="min-w-0">
+                                            <p className="text-[9px] font-extrabold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                                                Pagu anggaran
+                                            </p>
+                                            <p className="truncate text-sikas-num text-[17px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                                                {item.pagu}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-3 flex flex-wrap items-center justify-end gap-1.5 border-t border-slate-100 pt-3 dark:border-white/5">
+                                        {/* Edit Button - Conditional */}
+                                        {item.status === 'regular' && (
+                                            <button
+                                                onClick={() => handleEdit(item.id)}
+                                                className="inline-flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-500 dark:hover:bg-white/5 dark:hover:text-white"
+                                                title="Edit Data Anggaran"
+                                            >
+                                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                </svg>
+                                            </button>
+                                        )}
+
+                                        {/* View / Detail Button */}
+                                        <Link
+                                            href={item.status === 'perubahan' ? vroute('rkas-perubahan.index', item.id) : vroute('rkas.index', item.id)}
+                                            className={`inline-flex items-center gap-1 rounded-xl px-3 py-1.5 text-[10px] font-extrabold ring-1 transition ${
+                                                item.status === 'perubahan'
+                                                    ? 'bg-pastel-amber text-amber-700 ring-amber-500/15 hover:bg-amber-100 dark:bg-amber-400/10 dark:text-amber-300 dark:ring-amber-400/20 dark:hover:bg-amber-400/15'
+                                                    : 'bg-lime-200 text-slate-900 ring-lime-300/70 hover:bg-lime-300 dark:bg-lime-400/15 dark:text-lime-300 dark:ring-lime-400/25 dark:hover:bg-lime-400/20'
+                                            }`}
+                                        >
+                                            Detail RKAS
+                                            <svg className="h-2.5 w-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round">
+                                                <path d="m9 18 6-6-6-6" />
+                                            </svg>
+                                        </Link>
+
+                                        {/* Tarik ARKAS Button for Perubahan */}
+                                        {item.status === 'perubahan' && (
+                                            <button
+                                                onClick={() => handleCheckArkasPerubahan(item.id, item.tahun)}
+                                                disabled={isCheckingArkas && activeCheckingId === item.id}
+                                                className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/15 bg-pastel-mint px-3 py-1.5 text-[10px] font-extrabold text-emerald-700 ring-1 ring-emerald-500/15 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-400/20 dark:bg-mint/10 dark:text-emerald-300 dark:ring-emerald-400/20 dark:hover:bg-mint/15"
+                                                title="Tarik RKAS Perubahan dari ARKAS"
+                                            >
+                                                {isCheckingArkas && activeCheckingId === item.id ? (
+                                                    <svg className="h-3.5 w-3.5 animate-spin text-emerald-600 dark:text-emerald-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                    </svg>
+                                                ) : (
+                                                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                                    </svg>
+                                                )}
+                                                <span className="hidden sm:inline">Tarik ARKAS</span>
+                                            </button>
+                                        )}
+
+                                        {/* Summary / Print Button */}
+                                        <Link
+                                            href={item.status === 'perubahan' ? vroute('rkas-perubahan.summary', item.id) : vroute('rkas.summary', item.id)}
+                                            className="inline-flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 transition hover:bg-emerald-50 hover:text-emerald-600 dark:text-slate-500 dark:hover:bg-white/5 dark:hover:text-emerald-300"
+                                            title="Ringkasan & Cetak"
+                                        >
+                                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                            </svg>
+                                        </Link>
+
+                                        {/* Delete Button */}
+                                        <button
+                                            onClick={() => handleDelete(item.id, item.status)}
+                                            className="inline-flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 dark:text-slate-500 dark:hover:bg-white/5 dark:hover:text-rose-300"
+                                            title="Hapus Anggaran"
+                                        >
+                                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </article>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </div>
 
             {/* Modal Tambah Baru */}
             <Modal show={isModalOpen} onClose={handleCloseModal} maxWidth="2xl">
-                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl overflow-hidden max-h-[90vh] flex flex-col">
-                    {/* Modal Header with Gradient */}
-                    <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 px-6 py-4 flex items-center justify-between shrink-0">
-                        <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                            <svg className="w-6 h-6 text-white/90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                            {editMode ? 'Edit Data Anggaran' : 'Tambah Anggaran Baru'}
-                        </h2>
+                <div className="flex max-h-[90vh] flex-col overflow-hidden">
+                    {/* Header modal */}
+                    <div className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-100 px-6 py-5 dark:border-white/5">
+                        <div className="flex items-center gap-3">
+                            <IconTile tone="violet" size="lg">
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                    <path d="M14 2v6h6" />
+                                    <path d="M9 13h6M9 17h4" />
+                                </svg>
+                            </IconTile>
+                            <div className="min-w-0">
+                                <h2 className="text-[17px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                                    {editMode ? 'Edit Data Anggaran' : 'Tambah Anggaran Baru'}
+                                </h2>
+                                <p className="mt-0.5 text-[11px] font-medium text-slate-400 dark:text-slate-500">
+                                    Lengkapi rincian dokumen RKAS di bawah ini.
+                                </p>
+                            </div>
+                        </div>
                         <button
                             onClick={handleCloseModal}
-                            className="text-white/80 hover:text-white hover:bg-white/20 rounded-full p-1 transition-colors"
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-500 dark:hover:bg-white/5 dark:hover:text-white"
+                            aria-label="Tutup"
                         >
-                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                             </svg>
                         </button>
                     </div>
 
-                    <div className="p-6 overflow-y-auto custom-scrollbar">
-                        <form onSubmit={submit} className="space-y-8">
+                    <form onSubmit={submit} className="flex min-h-0 flex-1 flex-col">
+                        <div className="sikas-scroll flex-1 space-y-4 overflow-y-auto px-6 py-5">
                             {/* Section 1: Informasi Dasar */}
-                            <div className="bg-gray-50 dark:bg-gray-700/30 p-5 rounded-xl border border-gray-100 dark:border-gray-700">
-                                <h3 className="text-sm font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
+                            <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-4 dark:border-white/5 dark:bg-white/[0.03]">
+                                <h3 className="mb-4 flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+                                    <IconTile tone="slate" size="sm">
+                                        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+                                            <path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                    </IconTile>
                                     Informasi Dasar
                                 </h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                     <div className="md:col-span-2">
-                                        <InputLabel value="Pagu Anggaran (Rp)" className="text-gray-700 dark:text-gray-300" />
-                                        <div className="relative mt-1">
-                                            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                                                <span className="text-gray-500 sm:text-sm">Rp</span>
+                                        <InputLabel value="Pagu Anggaran (Rp)" />
+                                        <div className="relative">
+                                            <div className="pointer-events-none absolute inset-y-0 left-0 z-10 flex items-center pl-3">
+                                                <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500">Rp</span>
                                             </div>
                                             <TextInput
                                                 value={data.pagu_anggaran.replace('Rp ', '')}
@@ -534,16 +706,12 @@ export default function Index({
                                                     }
                                                 }}
                                                 placeholder="50.000.000"
-                                                className={`block w-full pl-10 bg-white border-gray-300 dark:bg-gray-800 dark:border-gray-600 dark:text-white focus:border-indigo-500 focus:ring-indigo-500 rounded-lg shadow-sm ${
-                                                    editMode && isPerubahanLocked
-                                                        ? 'bg-gray-100 text-gray-500 cursor-not-allowed dark:bg-gray-700/50 dark:text-gray-400'
-                                                        : ''
-                                                }`}
+                                                className="pl-10 text-sikas-num disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 dark:disabled:bg-white/5 dark:disabled:text-slate-400"
                                                 required
                                             />
                                         </div>
                                         {editMode && isPerubahanLocked && (
-                                            <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                                            <p className="mt-1 text-[10px] font-semibold text-amber-600 dark:text-amber-400">
                                                 Pagu anggaran tidak dapat diubah karena sudah memiliki RKAS Perubahan.
                                             </p>
                                         )}
@@ -551,21 +719,17 @@ export default function Index({
                                     </div>
 
                                     <div>
-                                        <InputLabel value="Tahun Anggaran" className="text-gray-700 dark:text-gray-300" />
+                                        <InputLabel value="Tahun Anggaran" />
                                         <TextInput
                                             type="number"
                                             value={data.tahun_anggaran}
                                             disabled={editMode && isPerubahanLocked}
                                             onChange={(e) => setData('tahun_anggaran', e.target.value)}
-                                            className={`mt-1 block w-full bg-white border-gray-300 dark:bg-gray-800 dark:border-gray-600 dark:text-white rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 ${
-                                                editMode && isPerubahanLocked
-                                                    ? 'bg-gray-100 text-gray-500 cursor-not-allowed dark:bg-gray-700/50 dark:text-gray-400'
-                                                    : ''
-                                            }`}
+                                            className="text-sikas-num disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 dark:disabled:bg-white/5 dark:disabled:text-slate-400"
                                             required
                                         />
                                         {editMode && isPerubahanLocked && (
-                                            <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                                            <p className="mt-1 text-[10px] font-semibold text-amber-600 dark:text-amber-400">
                                                 Tahun anggaran tidak dapat diubah karena sudah memiliki RKAS Perubahan.
                                             </p>
                                         )}
@@ -573,11 +737,10 @@ export default function Index({
                                     </div>
 
                                     <div>
-                                        <InputLabel value="Nama Komite" className="text-gray-700 dark:text-gray-300" />
+                                        <InputLabel value="Nama Komite" />
                                         <TextInput
                                             value={data.komite}
                                             onChange={(e) => setData('komite', e.target.value)}
-                                            className="mt-1 block w-full bg-white border-gray-300 dark:bg-gray-800 dark:border-gray-600 dark:text-white rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                                             required
                                         />
                                         <InputError message={errors.komite} className="mt-2" />
@@ -586,51 +749,51 @@ export default function Index({
                             </div>
 
                             {/* Section 2: Kepala Sekolah */}
-                            <div className="bg-indigo-50 dark:bg-indigo-900/10 p-5 rounded-xl border border-indigo-100 dark:border-indigo-800/30">
-                                <h3 className="text-sm font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider mb-4 flex items-center gap-2">
-                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                    </svg>
+                            <div className="rounded-2xl border border-brand-500/10 bg-pastel-lavender/50 p-4 dark:border-brand-400/20 dark:bg-brand-500/[0.08]">
+                                <h3 className="mb-4 flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[0.14em] text-brand-600 dark:text-brand-300">
+                                    <IconTile tone="violet" size="sm">
+                                        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+                                            <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                        </svg>
+                                    </IconTile>
                                     Data Kepala Sekolah
                                 </h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                     <div className="md:col-span-2">
-                                        <InputLabel value="Nama Lengkap" className="text-gray-700 dark:text-gray-300" />
+                                        <InputLabel value="Nama Lengkap" />
                                         <TextInput
                                             value={data.kepala_sekolah}
                                             onChange={(e) => setData('kepala_sekolah', e.target.value)}
-                                            className="mt-1 block w-full bg-white border-gray-300 dark:bg-gray-800 dark:border-gray-600 dark:text-white rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                                             required
                                             placeholder="Nama lengkap beserta gelar"
                                         />
                                         <InputError message={errors.kepala_sekolah} className="mt-2" />
                                     </div>
                                     <div>
-                                        <InputLabel value="NIP" className="text-gray-700 dark:text-gray-300" />
+                                        <InputLabel value="NIP" />
                                         <TextInput
                                             value={data.nip_kepala_sekolah}
                                             onChange={(e) => setData('nip_kepala_sekolah', e.target.value)}
-                                            className="mt-1 block w-full bg-white border-gray-300 dark:bg-gray-800 dark:border-gray-600 dark:text-white rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                            className="text-sikas-num"
                                             required
                                         />
                                         <InputError message={errors.nip_kepala_sekolah} className="mt-2" />
                                     </div>
                                     <div>
-                                        <InputLabel value="Nomor SK" className="text-gray-700 dark:text-gray-300" />
+                                        <InputLabel value="Nomor SK" />
                                         <TextInput
                                             value={data.sk_kepala_sekolah}
                                             onChange={(e) => setData('sk_kepala_sekolah', e.target.value)}
-                                            className="mt-1 block w-full bg-white border-gray-300 dark:bg-gray-800 dark:border-gray-600 dark:text-white rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                                             required
                                         />
                                         <InputError message={errors.sk_kepala_sekolah} className="mt-2" />
                                     </div>
                                     <div className="md:col-span-2">
-                                        <InputLabel value="Tanggal SK" className="text-gray-700 dark:text-gray-300" />
+                                        <InputLabel value="Tanggal SK" />
                                         <DatePicker
                                             value={data.tanggal_sk_kepala_sekolah}
                                             onChange={(date) => setData('tanggal_sk_kepala_sekolah', date ? format(date, 'yyyy-MM-dd') : '')}
-                                            className="mt-1 w-full"
+                                            className="mt-1 w-full rounded-xl border-slate-200/90 bg-white py-2.5 text-[12px] font-semibold text-slate-800 shadow-sm focus:border-lime-400 focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white"
                                             placeholder="Pilih Tanggal SK"
                                         />
                                         <InputError message={errors.tanggal_sk_kepala_sekolah} className="mt-2" />
@@ -639,94 +802,100 @@ export default function Index({
                             </div>
 
                             {/* Section 3: Bendahara */}
-                            <div className="bg-purple-50 dark:bg-purple-900/10 p-5 rounded-xl border border-purple-100 dark:border-purple-800/30">
-                                <h3 className="text-sm font-bold text-purple-700 dark:text-purple-300 uppercase tracking-wider mb-4 flex items-center gap-2">
-                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-                                    </svg>
+                            <div className="rounded-2xl border border-peach/10 bg-pastel-peach/40 p-4 dark:border-peach/20 dark:bg-peach/[0.06]">
+                                <h3 className="mb-4 flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[0.14em] text-orange-700 dark:text-orange-300">
+                                    <IconTile tone="peach" size="sm">
+                                        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+                                            <path d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                                        </svg>
+                                    </IconTile>
                                     Data Bendahara
                                 </h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                     <div className="md:col-span-2">
-                                        <InputLabel value="Nama Lengkap" className="text-gray-700 dark:text-gray-300" />
+                                        <InputLabel value="Nama Lengkap" />
                                         <TextInput
                                             value={data.bendahara}
                                             onChange={(e) => setData('bendahara', e.target.value)}
-                                            className="mt-1 block w-full bg-white border-gray-300 dark:bg-gray-800 dark:border-gray-600 dark:text-white rounded-lg shadow-sm focus:border-purple-500 focus:ring-purple-500"
                                             required
                                             placeholder="Nama lengkap beserta gelar"
                                         />
                                         <InputError message={errors.bendahara} className="mt-2" />
                                     </div>
                                     <div>
-                                        <InputLabel value="NIP" className="text-gray-700 dark:text-gray-300" />
+                                        <InputLabel value="NIP" />
                                         <TextInput
                                             value={data.nip_bendahara}
                                             onChange={(e) => setData('nip_bendahara', e.target.value)}
-                                            className="mt-1 block w-full bg-white border-gray-300 dark:bg-gray-800 dark:border-gray-600 dark:text-white rounded-lg shadow-sm focus:border-purple-500 focus:ring-purple-500"
+                                            className="text-sikas-num"
                                             required
                                         />
                                         <InputError message={errors.nip_bendahara} className="mt-2" />
                                     </div>
                                     <div>
-                                        <InputLabel value="Nomor SK" className="text-gray-700 dark:text-gray-300" />
+                                        <InputLabel value="Nomor SK" />
                                         <TextInput
                                             value={data.sk_bendahara}
                                             onChange={(e) => setData('sk_bendahara', e.target.value)}
-                                            className="mt-1 block w-full bg-white border-gray-300 dark:bg-gray-800 dark:border-gray-600 dark:text-white rounded-lg shadow-sm focus:border-purple-500 focus:ring-purple-500"
                                             required
                                         />
                                         <InputError message={errors.sk_bendahara} className="mt-2" />
                                     </div>
                                     <div className="md:col-span-2">
-                                        <InputLabel value="Tanggal SK" className="text-gray-700 dark:text-gray-300" />
+                                        <InputLabel value="Tanggal SK" />
                                         <DatePicker
                                             value={data.tanggal_sk_bendahara}
                                             onChange={(date) => setData('tanggal_sk_bendahara', date ? format(date, 'yyyy-MM-dd') : '')}
-                                            className="mt-1 w-full"
+                                            className="mt-1 w-full rounded-xl border-slate-200/90 bg-white py-2.5 text-[12px] font-semibold text-slate-800 shadow-sm focus:border-lime-400 focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white"
                                             placeholder="Pilih Tanggal SK"
                                         />
                                         <InputError message={errors.tanggal_sk_bendahara} className="mt-2" />
                                     </div>
                                 </div>
                             </div>
+                        </div>
 
-                            {/* Footer / Actions */}
-                            <div className="flex justify-end gap-3 pt-6 border-t border-gray-200 dark:border-gray-700">
-                                <SecondaryButton onClick={handleCloseModal} disabled={processing}>
-                                    Batal
-                                </SecondaryButton>
-                                <PrimaryButton
-                                    className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-lg shadow-indigo-500/30 border-0"
-                                    disabled={processing}
-                                >
-                                    {processing ? (
-                                        <span className="flex items-center gap-2">
-                                            <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                            </svg>
-                                            Menyimpan...
-                                        </span>
-                                    ) : 'Simpan Anggaran'}
-                                </PrimaryButton>
-                            </div>
-                        </form>
-                    </div>
+                        {/* Footer aksi */}
+                        <div className="flex shrink-0 flex-wrap justify-end gap-3 border-t border-slate-100 bg-white/90 px-6 py-4 dark:border-white/5 dark:bg-[#15131F]/95">
+                            <SecondaryButton onClick={handleCloseModal} disabled={processing}>
+                                Batal
+                            </SecondaryButton>
+                            <PrimaryButton disabled={processing}>
+                                {processing ? (
+                                    <span className="flex items-center gap-2">
+                                        <svg className="h-4 w-4 animate-spin text-slate-950" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        Menyimpan...
+                                    </span>
+                                ) : 'Simpan Anggaran'}
+                            </PrimaryButton>
+                        </div>
+                    </form>
                 </div>
             </Modal>
+
             {/* Modal Konfirmasi Hapus */}
             <Modal show={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} maxWidth="md">
                 <div className="p-6">
-                    <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                        Apakah Anda yakin ingin menghapus data ini?
-                    </h2>
+                    <div className="flex items-start gap-3">
+                        <IconTile tone="rose" size="lg">
+                            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+                                <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        </IconTile>
+                        <div className="min-w-0">
+                            <h2 className="text-[15px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                                Apakah Anda yakin ingin menghapus data ini?
+                            </h2>
+                            <p className="mt-1 text-[11.5px] font-medium text-slate-500 dark:text-slate-400">
+                                Data yang dihapus tidak dapat dikembalikan. Semua data yang terkait dengan anggaran ini juga akan dihapus.
+                            </p>
+                        </div>
+                    </div>
 
-                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                        Data yang dihapus tidak dapat dikembalikan. Semua data yang terkait dengan anggaran ini juga akan dihapus.
-                    </p>
-
-                    <div className="mt-6 flex justify-end gap-3">
+                    <div className="mt-5 flex flex-wrap justify-end gap-3 border-t border-slate-100 pt-4 dark:border-white/5">
                         <SecondaryButton onClick={() => setIsDeleteModalOpen(false)} disabled={isDeleting}>
                             Batal
                         </SecondaryButton>
@@ -736,26 +905,25 @@ export default function Index({
                         </DangerButton>
                     </div>
                 </div>
-
             </Modal>
 
             {/* Modal Restriksi / Peringatan Prasyarat */}
             <Modal show={isRestrictionModalOpen} onClose={() => setIsRestrictionModalOpen(false)} maxWidth="sm">
                 <div className="p-6">
-                    <div className="flex items-center justify-center mb-4">
-                        <div className="bg-red-100 dark:bg-red-900/30 p-3 rounded-full">
-                            <svg className="w-8 h-8 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    <div className="flex justify-center">
+                        <IconTile tone="rose" size="lg">
+                            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+                                <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                             </svg>
-                        </div>
+                        </IconTile>
                     </div>
-                    <h2 className="text-lg font-bold text-center text-gray-900 dark:text-white mb-2">
+                    <h2 className="mt-3 text-center text-[15px] font-extrabold tracking-tight text-slate-900 dark:text-white">
                         Perhatian
                     </h2>
-                    <p className="text-center text-sm text-gray-600 dark:text-gray-400">
+                    <p className="mt-1 text-center text-[11.5px] font-medium text-slate-500 dark:text-slate-400">
                         Mohon Maaf Lengkapi Profile Sekolah, Kode Kegiatan, dan Rekening Belanja Terlebih Dahulu
                     </p>
-                    <div className="mt-6 flex justify-center flex-col w-full px-4 gap-2">
+                    <div className="mt-5 flex w-full flex-col gap-2">
                         <PrimaryButton className="w-full justify-center" onClick={() => setIsRestrictionModalOpen(false)}>
                             Mengerti
                         </PrimaryButton>
@@ -772,20 +940,20 @@ export default function Index({
             {/* Modal Validasi BKU */}
             <Modal show={isAlertModalOpen} onClose={() => setIsAlertModalOpen(false)} maxWidth="sm">
                 <div className="p-6">
-                    <div className="flex items-center justify-center mb-4">
-                        <div className="bg-amber-100 dark:bg-amber-900/30 p-3 rounded-full">
-                            <svg className="w-8 h-8 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    <div className="flex justify-center">
+                        <IconTile tone="amber" size="lg">
+                            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+                                <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                             </svg>
-                        </div>
+                        </IconTile>
                     </div>
-                    <h2 className="text-lg font-bold text-center text-gray-900 dark:text-white mb-2">
+                    <h2 className="mt-3 text-center text-[15px] font-extrabold tracking-tight text-slate-900 dark:text-white">
                         Pemberitahuan
                     </h2>
-                    <p className="text-center text-sm text-gray-600 dark:text-gray-400">
+                    <p className="mt-1 text-center text-[11.5px] font-medium text-slate-500 dark:text-slate-400">
                         {alertMessage}
                     </p>
-                    <div className="mt-6 flex justify-center">
+                    <div className="mt-5 flex justify-center">
                         <PrimaryButton className="w-full justify-center" onClick={() => setIsAlertModalOpen(false)}>
                             Mengerti
                         </PrimaryButton>
@@ -796,79 +964,79 @@ export default function Index({
             {/* Modal Preview Tarik RKAS Perubahan dari ARKAS */}
             <Modal show={isArkasModalOpen} onClose={() => { if (!isPullingArkas) setIsArkasModalOpen(false); }} maxWidth="md">
                 <div className="p-6">
-                    <div className="mb-5 flex justify-center">
-                        <div className="bg-emerald-100 dark:bg-emerald-900/30 p-3 rounded-full text-emerald-600 dark:text-emerald-400">
-                            <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    <div className="flex items-start gap-3">
+                        <IconTile tone="mint" size="lg">
+                            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+                                <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                             </svg>
+                        </IconTile>
+                        <div className="min-w-0">
+                            <h2 className="text-[15px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                                Tarik RKAS Perubahan dari ARKAS
+                            </h2>
+                            <p className="mt-0.5 text-[10.5px] font-medium text-slate-400 dark:text-slate-500">
+                                Data Perubahan Anggaran resmi ditemukan di database ARKAS. Periksa rincian di bawah sebelum menyinkronkan.
+                            </p>
                         </div>
                     </div>
-                    <h2 className="text-xl font-bold text-center text-gray-900 dark:text-gray-100 mb-1">
-                        Tarik RKAS Perubahan dari ARKAS
-                    </h2>
-                    <p className="text-center text-xs text-gray-500 dark:text-gray-400 mb-6">
-                        Data Perubahan Anggaran resmi ditemukan di database ARKAS. Periksa rincian di bawah sebelum menyinkronkan.
-                    </p>
 
                     {arkasPreviewData && (
-                        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 space-y-3 border border-gray-100 dark:border-gray-700 text-sm mb-6">
-                            <div className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-gray-600">
-                                <span className="text-gray-500 dark:text-gray-400">Tahun Anggaran</span>
-                                <span className="font-semibold text-gray-800 dark:text-white">{arkasPreviewData.tahun}</span>
+                        <div className="mt-4 space-y-2 rounded-2xl border border-slate-100 bg-slate-50/70 p-4 text-[11.5px] dark:border-white/5 dark:bg-white/[0.03]">
+                            <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-2 dark:border-white/5">
+                                <span className="font-semibold text-slate-400 dark:text-slate-500">Tahun Anggaran</span>
+                                <span className="text-sikas-num font-extrabold text-slate-800 dark:text-white">{arkasPreviewData.tahun}</span>
                             </div>
-                            <div className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-gray-600">
-                                <span className="text-gray-500 dark:text-gray-400">Sumber Dana</span>
-                                <span className="font-semibold text-gray-800 dark:text-white">{arkasPreviewData.sumber_dana}</span>
+                            <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-2 dark:border-white/5">
+                                <span className="font-semibold text-slate-400 dark:text-slate-500">Sumber Dana</span>
+                                <span className="font-extrabold text-slate-800 dark:text-white">{arkasPreviewData.sumber_dana}</span>
                             </div>
-                            <div className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-gray-600">
-                                <span className="text-gray-500 dark:text-gray-400">Status Revisi ARKAS</span>
-                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
-                                    Perubahan (Revisi)
-                                </span>
+                            <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-2 dark:border-white/5">
+                                <span className="font-semibold text-slate-400 dark:text-slate-500">Status Revisi ARKAS</span>
+                                <StatusBadge tone="warning" dot={false}>Perubahan (Revisi)</StatusBadge>
                             </div>
-                            <div className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-gray-600">
-                                <span className="text-gray-500 dark:text-gray-400">Pagu Total Perubahan</span>
-                                <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                            <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-2 dark:border-white/5">
+                                <span className="font-semibold text-slate-400 dark:text-slate-500">Pagu Total Perubahan</span>
+                                <span className="text-sikas-num font-extrabold text-emerald-600 dark:text-emerald-300">
                                     Rp {new Intl.NumberFormat('id-ID').format(arkasPreviewData.pagu)}
                                 </span>
                             </div>
-                            <div className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-gray-600">
-                                <span className="text-gray-500 dark:text-gray-400">Jumlah Kegiatan</span>
-                                <span className="font-semibold text-gray-800 dark:text-white">{arkasPreviewData.total_kegiatan} Kegiatan</span>
+                            <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-2 dark:border-white/5">
+                                <span className="font-semibold text-slate-400 dark:text-slate-500">Jumlah Kegiatan</span>
+                                <span className="text-sikas-num font-extrabold text-slate-800 dark:text-white">{arkasPreviewData.total_kegiatan} Kegiatan</span>
                             </div>
-                            <div className="flex justify-between items-center">
-                                <span className="text-gray-500 dark:text-gray-400">Total Alokasi Bulanan</span>
-                                <span className="font-semibold text-gray-800 dark:text-white">{arkasPreviewData.total_alokasi} Baris Data</span>
+                            <div className="flex items-center justify-between gap-3">
+                                <span className="font-semibold text-slate-400 dark:text-slate-500">Total Alokasi Bulanan</span>
+                                <span className="text-sikas-num font-extrabold text-slate-800 dark:text-white">{arkasPreviewData.total_alokasi} Baris Data</span>
                             </div>
                         </div>
                     )}
 
                     {arkasPreviewData && arkasPreviewData.current_rkas_count > 0 ? (
-                        <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md mb-6 space-y-2">
-                            <p className="text-xs text-amber-800 dark:text-amber-200 leading-relaxed font-semibold">
+                        <div className="mt-4 space-y-2 rounded-2xl border border-amber-500/15 bg-pastel-amber p-3.5 dark:border-amber-400/20 dark:bg-amber-400/10">
+                            <p className="text-[11px] font-bold leading-relaxed text-amber-800 dark:text-amber-200">
                                 Data RKAS Perubahan di newSIKAS saat ini sudah berisi {arkasPreviewData.current_rkas_count} baris alokasi.
                             </p>
-                            <label className="flex items-start gap-2 cursor-pointer mt-2 pt-2 border-t border-amber-200 dark:border-amber-700/50">
+                            <label className="mt-2 flex cursor-pointer items-start gap-2 border-t border-amber-500/15 pt-2 dark:border-amber-400/20">
                                 <input
                                     type="checkbox"
                                     checked={confirmOverwrite}
                                     onChange={(e) => setConfirmOverwrite(e.target.checked)}
-                                    className="mt-0.5 rounded border-amber-300 text-amber-600 shadow-sm focus:ring-amber-500"
+                                    className="mt-0.5 h-3.5 w-3.5 rounded border-amber-400 text-amber-600 shadow-sm focus:ring-amber-500 dark:border-amber-400/40 dark:bg-white/5"
                                 />
-                                <span className="text-xs text-amber-900 dark:text-amber-100 font-medium">
+                                <span className="text-[10.5px] font-semibold text-amber-900 dark:text-amber-100">
                                     Saya setuju untuk menimpa ulang (overwrite) seluruh data RKAS Perubahan saat ini dengan data dari ARKAS.
                                 </span>
                             </label>
                         </div>
                     ) : (
-                        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md mb-6">
-                            <p className="text-xs text-blue-800 dark:text-blue-200 leading-relaxed">
+                        <div className="mt-4 rounded-2xl border border-sky/15 bg-pastel-sky p-3.5 dark:border-sky/20 dark:bg-sky/10">
+                            <p className="text-[10.5px] font-medium leading-relaxed text-sky dark:text-sky">
                                 <strong>Informasi:</strong> Seluruh data alokasi bulanan akan disalin ke modul RKAS Perubahan newSIKAS dan nilai Pagu Anggaran akan otomatis disinkronkan.
                             </p>
                         </div>
                     )}
 
-                    <div className="flex justify-center gap-3">
+                    <div className="mt-5 flex flex-wrap justify-center gap-3">
                         <SecondaryButton onClick={() => setIsArkasModalOpen(false)} disabled={isPullingArkas}>
                             Batal
                         </SecondaryButton>
@@ -876,17 +1044,12 @@ export default function Index({
                         <PrimaryButton
                             onClick={confirmPullArkas}
                             disabled={isPullingArkas || (arkasPreviewData?.current_rkas_count > 0 && !confirmOverwrite)}
-                            className="bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-500"
                         >
                             {isPullingArkas ? 'Menarik Data...' : 'Ya, Tarik Sekarang'}
                         </PrimaryButton>
                     </div>
                 </div>
             </Modal>
-
-
-
-
         </AuthenticatedLayout>
     );
 }

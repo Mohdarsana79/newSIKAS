@@ -1,0 +1,63 @@
+{
+  "vp": {
+    "w": 1440,
+    "h": 900
+  },
+  "targets": [
+    {
+      "label": "aside-p-0",
+      "text": "Sekolah lebih terkelola",
+      "color": "rgb(122, 108, 150)",
+      "size": "10px",
+      "weight": "700",
+      "x": 73,
+      "y": 145,
+      "w": 480,
+      "h": 15
+    },
+    {
+      "label": "aside-span-3",
+      "text": "SIKAS",
+      "color": "rgb(34, 28, 51)",
+      "size": "21px",
+      "weight": "600",
+      "x": 125,
+      "y": 72,
+      "w": 240,
+      "h": 21
+    },
+    {
+      "label": "aside-span-4",
+      "text": "Sistem Informasi Keuangan Sekolah",
+      "color": "rgb(122, 108, 150)",
+      "size": "9px",
+      "weight": "600",
+      "x": 125,
+      "y": 98,
+      "w": 240,
+      "h": 9
+    },
+    {
+      "label": "aside-span-8",
+      "text": "© 2026 SIKAS",
+      "color": "rgb(122, 108, 150)",
+      "size": "10px",
+      "weight": "400",
+      "x": 73,
+      "y": 816,
+      "w": 71,
+      "h": 15
+    },
+    {
+      "label": "aside-a-0",
+      "text": "Dibuat oleh Moh Gian Darsana, S.Pd., Gr",
+      "color": "rgb(107, 94, 134)",
+      "size": "10px",
+      "weight": "500",
+      "x": 496,
+      "y": 816,
+      "w": 204,
+      "h": 15
+    }
+  ]
+}

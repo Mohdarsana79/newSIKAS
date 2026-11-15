@@ -29,3 +29,4 @@ Memperbaiki bagian header modal di `resources/js/Pages/Penatausahaan/Index.tsx` 
 ## 4. Verifikasi
 - Menjalankan `npm run build` (`tsc && vite build`) untuk memastikan tidak ada error TypeScript maupun Vite build.
 - Memastikan class Tailwind valid dan terkompilasi ke bundle CSS produksi.
+

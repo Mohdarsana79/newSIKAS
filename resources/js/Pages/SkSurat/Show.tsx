@@ -482,6 +482,12 @@ export default function Show({ folder, schoolData = {}, filters = {} }: Props) {
                 templates={folder.templates}
                 schoolData={schoolData}
                 dokumen={editingDokumen}
+                isKepalaSekolah={isKepalaSekolah}
+                onOpenManageTemplates={() => {
+                    setShowGenerateDokumen(false);
+                    setEditingDokumen(null);
+                    setShowManageTemplates(true);
+                }}
             />
 
             {/* Modal Upload Arsip Fisik */}

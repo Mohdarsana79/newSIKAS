@@ -43,8 +43,10 @@ class SkSuratController extends Controller
 
         if ($request->filled('search')) {
             $search = strtolower($request->search);
-            $query->whereRaw('LOWER(nama_folder) LIKE ?', ["%{$search}%"])
-                ->orWhereRaw('LOWER(deskripsi) LIKE ?', ["%{$search}%"]);
+            $query->where(function ($sub) use ($search) {
+                $sub->whereRaw('LOWER(nama_folder) LIKE ?', ["%{$search}%"])
+                    ->orWhereRaw('LOWER(deskripsi) LIKE ?', ["%{$search}%"]);
+            });
         }
 
         $folders = $query->paginate(12)->withQueryString();
@@ -161,16 +163,18 @@ class SkSuratController extends Controller
 
         $folder = SkFolder::with(['templates', 'dokumens'])->findOrFail($id);
 
+        $localDisk = Storage::disk('local');
+
         // Remove files from storage
         foreach ($folder->templates as $template) {
-            if ($template->file_path && Storage::exists($template->file_path)) {
-                Storage::delete($template->file_path);
+            if ($template->file_path && $localDisk->exists($template->file_path)) {
+                $localDisk->delete($template->file_path);
             }
         }
 
         foreach ($folder->dokumens as $dokumen) {
-            if ($dokumen->file_path && Storage::exists($dokumen->file_path)) {
-                Storage::delete($dokumen->file_path);
+            if ($dokumen->file_path && $localDisk->exists($dokumen->file_path)) {
+                $localDisk->delete($dokumen->file_path);
             }
         }
 
@@ -226,11 +230,23 @@ class SkSuratController extends Controller
 
         $file = $request->file('file');
         $originalName = $file->getClientOriginalName();
+        $localDisk = Storage::disk('local');
         $storedPath = $file->store('sk_surat/templates', 'local');
 
-        $fullPath = Storage::path($storedPath);
-        $variables = $this->skSuratService->extractVariables($fullPath);
+        try {
+            $report = $this->skSuratService->extractVariableReport($localDisk->path($storedPath));
+        } catch (\Throwable $e) {
+            if ($storedPath && $localDisk->exists($storedPath)) {
+                $localDisk->delete($storedPath);
+            }
+            report($e);
 
+            return back()->withErrors([
+                'file' => $e->getMessage(),
+            ]);
+        }
+
+        $variables = $report['variables'];
         $template = SkTemplate::create([
             'folder_id' => $folder->id,
             'judul' => $request->judul,
@@ -240,7 +256,69 @@ class SkSuratController extends Controller
             'created_by' => auth()->id(),
         ]);
 
-        return back()->with('success', "Master template '{$template->judul}' berhasil diunggah dengan ".count($variables).' variabel terdeteksi.');
+        return back()->with($this->buildTemplateScanFlash($template, $report, false));
+    }
+
+    /**
+     * Re-scan variable tags from an existing master template DOCX file.
+     */
+    public function rescanTemplate($id)
+    {
+        abort_if(auth()->user()->isKepalaSekolah(), 403, 'Akses ditolak untuk Kepala Sekolah.');
+
+        $template = SkTemplate::findOrFail($id);
+        $localDisk = Storage::disk('local');
+
+        if (! $template->file_path || ! $localDisk->exists($template->file_path)) {
+            return back()->withErrors([
+                'file' => 'Berkas master template tidak ditemukan di penyimpanan.',
+            ]);
+        }
+
+        try {
+            $report = $this->skSuratService->extractVariableReport($localDisk->path($template->file_path));
+        } catch (\Throwable $e) {
+            report($e);
+
+            return back()->withErrors([
+                'file' => $e->getMessage(),
+            ]);
+        }
+
+        $template->update([
+            'detected_variables' => $report['variables'],
+        ]);
+
+        return back()->with($this->buildTemplateScanFlash($template, $report, true));
+    }
+
+    /**
+     * Build success + optional warning flash payloads from template variable diagnostics.
+     *
+     * @param  array{variables: array<string>, unclosed: array<string>}  $report
+     * @return array<string, string>
+     */
+    protected function buildTemplateScanFlash(SkTemplate $template, array $report, bool $isRescan): array
+    {
+        $count = count($report['variables']);
+        if ($isRescan) {
+            $success = $count > 0
+                ? "Deteksi ulang berhasil: {$count} variabel ditemukan pada '{$template->judul}'."
+                : "Deteksi ulang selesai, namun belum ada tag variabel \${...} yang ditemukan pada '{$template->judul}'.";
+        } else {
+            $success = $count > 0
+                ? "Master template '{$template->judul}' berhasil diunggah dengan {$count} variabel terdeteksi."
+                : "Master template '{$template->judul}' diunggah, namun belum ada tag variabel \${...} yang terdeteksi.";
+        }
+
+        $flash = ['success' => $success];
+
+        if ($report['unclosed'] !== []) {
+            $tagList = implode(', ', array_map(fn (string $tag) => "\${{$tag}}", $report['unclosed']));
+            $flash['warning'] = "Tag berikut terdeteksi kurang tanda tutup '}' di file Word: {$tagList}. Sistem tetap mendukung pengisiannya, namun disarankan melengkapi tanda '}' pada file Word.";
+        }
+
+        return $flash;
     }
 
     /**
@@ -251,9 +329,10 @@ class SkSuratController extends Controller
         abort_if(auth()->user()->isKepalaSekolah(), 403, 'Akses ditolak untuk Kepala Sekolah.');
 
         $template = SkTemplate::findOrFail($id);
+        $localDisk = Storage::disk('local');
 
-        if ($template->file_path && Storage::exists($template->file_path)) {
-            Storage::delete($template->file_path);
+        if ($template->file_path && $localDisk->exists($template->file_path)) {
+            $localDisk->delete($template->file_path);
         }
 
         $template->delete();
@@ -377,9 +456,10 @@ class SkSuratController extends Controller
         abort_if(auth()->user()->isKepalaSekolah(), 403, 'Akses ditolak untuk Kepala Sekolah.');
 
         $dokumen = SkDokumen::findOrFail($id);
+        $localDisk = Storage::disk('local');
 
-        if ($dokumen->file_path && Storage::exists($dokumen->file_path)) {
-            Storage::delete($dokumen->file_path);
+        if ($dokumen->file_path && $localDisk->exists($dokumen->file_path)) {
+            $localDisk->delete($dokumen->file_path);
         }
 
         $dokumen->delete();
@@ -415,25 +495,22 @@ class SkSuratController extends Controller
             abort(400, 'Dokumen ini bukan dokumen hasil generate template.');
         }
 
-        $tempDocxPath = $this->skSuratService->generateDocx($dokumen);
+        $tempDocxPath = null;
 
         try {
+            $tempDocxPath = $this->skSuratService->generateDocx($dokumen);
             $tempPdfPath = $this->skSuratService->convertDocxToPdf($tempDocxPath);
             $downloadName = Str::slug($dokumen->perihal ?: 'surat').'.pdf';
 
-            // Clean up docx temp file
-            if (file_exists($tempDocxPath)) {
-                @unlink($tempDocxPath);
-            }
-
             return response()->download($tempPdfPath, $downloadName)->deleteFileAfterSend(true);
         } catch (\Throwable $e) {
-            if (file_exists($tempDocxPath)) {
-                @unlink($tempDocxPath);
-            }
             report($e);
 
-            return back()->with('error', 'Gagal mengekspor PDF: '.$e->getMessage().'. Anda dapat mengunduh format DOCX.');
+            return back()->with('error', 'Gagal mengekspor PDF: '.$e->getMessage().' Anda dapat mengunduh format DOCX.');
+        } finally {
+            if ($tempDocxPath && file_exists($tempDocxPath)) {
+                @unlink($tempDocxPath);
+            }
         }
     }
 
@@ -443,11 +520,12 @@ class SkSuratController extends Controller
     public function downloadArchive($id)
     {
         $dokumen = SkDokumen::findOrFail($id);
+        $localDisk = Storage::disk('local');
 
-        if ($dokumen->tipe !== 'uploaded' || ! $dokumen->file_path || ! Storage::exists($dokumen->file_path)) {
+        if ($dokumen->tipe !== 'uploaded' || ! $dokumen->file_path || ! $localDisk->exists($dokumen->file_path)) {
             abort(404, 'Berkas arsip tidak ditemukan.');
         }
 
-        return Storage::download($dokumen->file_path, $dokumen->file_name_original ?: 'dokumen_arsip');
+        return $localDisk->download($dokumen->file_path, $dokumen->file_name_original ?: 'dokumen_arsip');
     }
 }

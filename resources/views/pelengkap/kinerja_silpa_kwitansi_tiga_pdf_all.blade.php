@@ -30,7 +30,6 @@
 
         .header-kop {
             width: 100%;
-            border-bottom: 3px solid #000;
             margin-bottom: 10px;
         }
 
@@ -175,6 +174,7 @@
         @if(isset($sekolah->kop_surat) && $sekolah->kop_surat)
             <div class="header-kop">
                 <img src="{{ public_path('storage/' . $sekolah->kop_surat) }}" alt="Kop Surat">
+                @include('partials.kop_border', ['border' => $sekolah->kop_border ?? 'double'])
             </div>
         @else
             <div class="fallback-header">

@@ -1499,7 +1499,7 @@ export default function Bku({
                                 setData('jenis_transaksi', e.target.value);
                                 if (e.target.value) setJenisTransaksiError('');
                             }}
-                            className={`mt-1 block w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-[12px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10 ${jenisTransaksiError ? 'border-rose-500 focus:border-rose-500 focus:ring-rose-200/60' : ''}`}
+                            className={`mt-1 block w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-[12px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-slate-900 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10 ${jenisTransaksiError ? 'border-rose-500 focus:border-rose-500 focus:ring-rose-200/60' : ''}`}
                         >
                             <option value=''>Pilih Jenis Transaksi</option>
                             <option value="Tunai">Tunai ({formatCurrency(saldoTunai)})</option>

@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SIKAS — Preview Dashboard</title>
+<link rel="stylesheet" href="preview.build.css" />
+</head>
+<body class="aurora-canvas min-h-screen font-sans antialiased text-ink-900">
+
+<!-- ============================ SIDEBAR (floating) ============================ -->
+<aside class="fixed inset-y-3 left-3 z-40 flex w-[268px] flex-col overflow-hidden rounded-[30px] bg-gradient-to-b from-[#252438] via-[#1E1D2E] to-[#15141E] text-white shadow-float ring-1 ring-white/10">
+  <div class="pointer-events-none absolute -left-16 -top-24 h-64 w-64 rounded-full aurora-blob-violet opacity-70 blur-2xl"></div>
+  <div class="pointer-events-none absolute -bottom-24 -right-20 h-64 w-64 rounded-full aurora-blob-lime opacity-30 blur-3xl"></div>
+
+  <!-- Brand -->
+  <div class="relative z-10 flex items-center justify-between px-4 pb-2 pt-5">
+    <div class="flex items-center gap-3">
+      <div class="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-lime-300 via-lime-400 to-lime-500 shadow-lime">
+        <svg class="h-5 w-5 text-ink-950" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      </div>
+      <div>
+        <p class="text-[17px] font-extrabold leading-none tracking-tight">SIKAS</p>
+        <p class="mt-1 text-[8.5px] font-bold uppercase leading-none tracking-[0.24em] text-lime-300">Keuangan Sekolah</p>
+      </div>
+    </div>
+    <button class="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white/50 transition hover:bg-white/10 hover:text-white">
+      <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+    </button>
+  </div>
+
+  <!-- Nav -->
+  <nav class="relative z-10 flex-1 overflow-y-auto no-scrollbar px-3 pb-2 pt-1">
+    <p class="px-3 pb-2 pt-3 text-[9px] font-bold uppercase tracking-[0.22em] text-white/30">Menu Utama</p>
+    <div class="space-y-1">
+      <a href="#" class="nav-active group flex items-center gap-3 rounded-2xl px-3.5 py-2.5 text-[12.5px] font-bold transition">
+        <svg class="h-[18px] w-[18px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.6"/><rect x="14" y="3" width="7" height="7" rx="1.6"/><rect x="3" y="14" width="7" height="7" rx="1.6"/><rect x="14" y="14" width="7" height="7" rx="1.6"/></svg>
+        <span class="flex-1">Dashboard</span>
+        <span class="h-1.5 w-1.5 rounded-full bg-ink-950/70"></span>
+      </a>
+      <a href="#" class="group flex items-center gap-3 rounded-2xl px-3.5 py-2.5 text-[12.5px] font-semibold text-white/55 transition hover:bg-white/[0.06] hover:text-white">
+        <svg class="h-[18px] w-[18px] shrink-0 transition group-hover:scale-110" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>
+        <span class="flex-1">Penganggaran</span>
+      </a>
+      <a href="#" class="group flex items-center gap-3 rounded-2xl px-3.5 py-2.5 text-[12.5px] font-semibold text-white/55 transition hover:bg-white/[0.06] hover:text-white">
+        <svg class="h-[18px] w-[18px] shrink-0 transition group-hover:scale-110" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
+        <span class="flex-1">Penatausahaan</span>
+      </a>
+      <a href="#" class="group flex items-center gap-3 rounded-2xl px-3.5 py-2.5 text-[12.5px] font-semibold text-white/55 transition hover:bg-white/[0.06] hover:text-white">
+        <svg class="h-[18px] w-[18px] shrink-0 transition group-hover:scale-110" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15v2"/><path d="M11 11v6"/><path d="M15 8v9"/><path d="M19 5v12"/></svg>
+        <span class="flex-1">Status STS</span>
+      </a>
+      <a href="#" class="group flex items-center gap-3 rounded-2xl px-3.5 py-2.5 text-[12.5px] font-semibold text-white/55 transition hover:bg-white/[0.06] hover:text-white">
+        <svg class="h-[18px] w-[18px] shrink-0 transition group-hover:scale-110" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76Z"/></svg>
+        <span class="flex-1">Arkas Tools</span>
+        <span class="rounded-full bg-rose-400/90 px-1.5 py-0.5 text-[9px] font-extrabold text-ink-950">2</span>
+      </a>
+      <a href="#" class="group flex items-center gap-3 rounded-2xl px-3.5 py-2.5 text-[12.5px] font-semibold text-white/55 transition hover:bg-white/[0.06] hover:text-white">
+        <svg class="h-[18px] w-[18px] shrink-0 transition group-hover:scale-110" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+        <span class="flex-1">Referensi Kode</span>
+      </a>
+    </div>
+
+    <button class="mt-4 flex w-full items-center justify-between px-3 py-2 text-[9px] font-bold uppercase tracking-[0.22em] text-white/30 transition hover:text-white/60">
+      Data Master
+      <svg class="h-3 w-3 rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+    </button>
+    <div class="space-y-1">
+      <a href="#" class="group flex items-center gap-3 rounded-2xl px-3.5 py-2.5 text-[12.5px] font-semibold text-white/55 transition hover:bg-white/[0.06] hover:text-white">
+        <svg class="h-[18px] w-[18px] shrink-0 transition group-hover:scale-110" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 21V8l10-5 10 5v13"/><path d="M6 21v-7h12v7"/><path d="M9 21v-4h6v4"/></svg>
+        <span class="flex-1">Profil Sekolah</span>
+      </a>
+      <a href="#" class="group flex items-center gap-3 rounded-2xl px-3.5 py-2.5 text-[12.5px] font-semibold text-white/55 transition hover:bg-white/[0.06] hover:text-white">
+        <svg class="h-[18px] w-[18px] shrink-0 transition group-hover:scale-110" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6"/><path d="M9 16h4"/></svg>
+        <span class="flex-1">Kode Kegiatan</span>
+      </a>
+      <a href="#" class="group flex items-center gap-3 rounded-2xl px-3.5 py-2.5 text-[12.5px] font-semibold text-white/55 transition hover:bg-white/[0.06] hover:text-white">
+        <svg class="h-[18px] w-[18px] shrink-0 transition group-hover:scale-110" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/><path d="M7 15h3"/></svg>
+        <span class="flex-1">Rekening Belanja</span>
+      </a>
+    </div>
+
+    <button class="mt-4 flex w-full items-center justify-between px-3 py-2 text-[9px] font-bold uppercase tracking-[0.22em] text-white/30 transition hover:text-white/60">
+      Fitur Pelengkap
+      <svg class="h-3 w-3 rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+    </button>
+    <div class="space-y-1">
+      <a href="#" class="group flex items-center gap-3 rounded-2xl px-3.5 py-2.5 text-[12.5px] font-semibold text-white/55 transition hover:bg-white/[0.06] hover:text-white">
+        <svg class="h-[18px] w-[18px] shrink-0 transition group-hover:scale-110" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+        <span class="flex-1">Kwitansi</span>
+      </a>
+      <a href="#" class="group flex items-center gap-3 rounded-2xl px-3.5 py-2.5 text-[12.5px] font-semibold text-white/55 transition hover:bg-white/[0.06] hover:text-white">
+        <svg class="h-[18px] w-[18px] shrink-0 transition group-hover:scale-110" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12h6"/><path d="M9 16h6"/><path d="M9 8h6"/><rect x="3" y="3" width="18" height="18" rx="3"/></svg>
+        <span class="flex-1">Tanda Terima</span>
+      </a>
+      <a href="#" class="group flex items-center gap-3 rounded-2xl px-3.5 py-2.5 text-[12.5px] font-semibold text-white/55 transition hover:bg-white/[0.06] hover:text-white">
+        <svg class="h-[18px] w-[18px] shrink-0 transition group-hover:scale-110" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+        <span class="flex-1">Laporan</span>
+      </a>
+    </div>
+  </nav>
+
+  <!-- Bottom promo card -->
+  <div class="relative z-10 px-3 pb-1 pt-2">
+    <div class="relative rounded-[22px] bg-gradient-to-br from-lime-300 via-lime-400 to-lime-500 p-3.5 pt-4 text-ink-950 shadow-lime">
+      <div class="absolute -right-4 -top-6 h-20 w-20 rounded-full bg-white/25 blur-xl"></div>
+      <div class="absolute right-2 top-2 opacity-40">
+        <svg class="h-12 w-12" viewBox="0 0 48 48" fill="none" stroke="#14131F" stroke-width="2" stroke-linecap="round"><ellipse cx="24" cy="13" rx="11" ry="4.5"/><path d="M13 13v8c0 2.5 5 4.5 11 4.5s11-2 11-4.5v-8"/><path d="M13 21v8c0 2.5 5 4.5 11 4.5s11-2 11-4.5v-8"/><path d="M13 29v7c0 2.5 5 4.5 11 4.5s11-2 11-4.5v-7"/></svg>
+      </div>
+      <p class="relative text-[12.5px] font-extrabold leading-tight">ARKAS Desktop</p>
+      <p class="relative mt-0.5 text-[9.5px] font-semibold text-ink-950/65">Sinkronisasi database otomatis</p>
+      <div class="relative mt-2 flex items-center gap-1.5">
+        <span class="h-1.5 w-1.5 rounded-full bg-ink-950 animate-pulse-soft"></span>
+        <span class="text-[9.5px] font-bold">Terhubung · arkas.db</span>
+      </div>
+      <button class="relative mt-2.5 w-full rounded-xl bg-ink-950 px-3 py-2 text-[10.5px] font-bold text-lime-200 shadow-lg transition hover:-translate-y-0.5 hover:bg-ink-900">Kelola Koneksi</button>
+      <!-- floating circular arrow -->
+      <div class="absolute -top-3.5 left-1/2 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full border-[3px] border-[#1E1D2E] bg-white shadow-lg">
+        <svg class="h-3.5 w-3.5 text-ink-950" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="relative z-10 border-t border-white/5 px-3 py-2">
+    <a href="#" class="flex items-center gap-3 rounded-2xl px-3 py-2 text-[12.5px] font-semibold text-white/45 transition hover:bg-rose-500/10 hover:text-rose-300">
+      <svg class="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Keluar Sistem
+    </a>
+  </div>
+</aside>
+
+<!-- ============================ MAIN ============================ -->
+<div class="relative flex-1 pb-6 pl-[286px] pr-3 pt-3 lg:pr-4">
+
+  <!-- Navbar floating -->
+  <header class="glass-nav sticky top-3 z-30 flex items-center gap-3 rounded-[22px] border border-white/70 px-3 py-2.5 shadow-nav ring-1 ring-ink-900/[0.03]">
+    <button class="flex h-9 w-9 items-center justify-center rounded-xl border border-ink-100 bg-white text-ink-500 shadow-sm lg:hidden">
+      <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+    </button>
+    <div class="min-w-0">
+      <p class="flex items-center gap-1.5 text-[10.5px] font-semibold text-ink-400">
+        <span class="h-1.5 w-1.5 rounded-full bg-mint animate-pulse-soft"></span>
+        Selamat datang,
+      </p>
+      <p class="truncate text-[15px] font-extrabold tracking-tight text-ink-950">Bendahara Sari 👋</p>
+    </div>
+
+    <div class="ml-auto hidden w-[290px] md:block">
+      <div class="group flex items-center gap-2 rounded-full border border-ink-100 bg-white/80 px-3.5 py-2 shadow-sm transition focus-within:border-lime-400 focus-within:ring-4 focus-within:ring-lime-200/60">
+        <svg class="h-3.5 w-3.5 text-ink-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <span class="flex-1 text-[11.5px] font-medium text-ink-400">Cari modul, RKAS, atau BKU…</span>
+        <kbd class="rounded-md border border-ink-100 bg-ink-50 px-1.5 py-0.5 text-[9px] font-bold text-ink-400">⌘K</kbd>
+      </div>
+    </div>
+
+    <div class="ml-auto flex items-center gap-2 md:ml-0">
+      <button class="relative flex h-9 w-9 items-center justify-center rounded-xl border border-ink-100 bg-white text-ink-500 shadow-sm transition hover:-translate-y-0.5 hover:text-ink-900">
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+        <span class="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-peach text-[8.5px] font-extrabold text-ink-950 ring-2 ring-white">3</span>
+      </button>
+      <button class="hidden h-9 w-9 items-center justify-center rounded-xl border border-ink-100 bg-white text-ink-500 shadow-sm transition hover:-translate-y-0.5 hover:text-ink-900 sm:flex">
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+      </button>
+      <button class="hidden h-9 w-9 items-center justify-center rounded-xl border border-ink-100 bg-white text-ink-500 shadow-sm transition hover:-translate-y-0.5 hover:text-ink-900 sm:flex">
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+      </button>
+      <button class="relative flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 text-white shadow-lg shadow-brand-500/30 transition hover:-translate-y-0.5">
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span class="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-lime-300 ring-2 ring-white"></span>
+      </button>
+      <div class="mx-1 hidden h-7 w-px bg-ink-100 sm:block"></div>
+      <button class="flex items-center gap-2.5 rounded-xl p-0.5 pr-2 transition hover:bg-white/70">
+        <span class="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-brand-400 via-brand-500 to-peach text-[12px] font-extrabold text-white ring-2 ring-lime-300 ring-offset-2 ring-offset-white/70">BS</span>
+        <span class="hidden text-left xl:block">
+          <span class="block text-[11px] font-extrabold leading-tight text-ink-950">Bendahara Sari</span>
+          <span class="block text-[9.5px] font-semibold text-ink-400">SMPN 4 Yogyakarta</span>
+        </span>
+        <svg class="hidden h-3 w-3 text-ink-400 xl:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="mt-4 space-y-4">
+    <!-- Page head -->
+    <div class="flex flex-wrap items-end justify-between gap-3 px-1 animate-rise">
+      <div>
+        <div class="flex items-center gap-2 text-[10.5px] font-semibold text-ink-400">
+          <span class="h-1.5 w-1.5 rounded-full bg-mint"></span> Ringkasan keuangan sekolah
+          <span class="text-ink-200">/</span> TA 2026
+        </div>
+        <h1 class="mt-1 text-[26px] font-extrabold tracking-tight text-ink-950">Dashboard</h1>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <div class="flex items-center gap-1 rounded-2xl border border-white bg-white/80 p-1 shadow-pill">
+          <button class="rounded-xl bg-ink-950 px-3 py-1.5 text-[11px] font-bold text-white shadow">Reguler</button>
+          <button class="rounded-xl px-3 py-1.5 text-[11px] font-semibold text-ink-500 transition hover:text-ink-900">Kinerja</button>
+          <button class="rounded-xl px-3 py-1.5 text-[11px] font-semibold text-ink-500 transition hover:text-ink-900">SiLPA</button>
+        </div>
+        <button class="flex items-center gap-2 rounded-2xl border border-white bg-white/80 px-3 py-2 text-[11px] font-bold text-ink-700 shadow-pill transition hover:-translate-y-0.5">
+          <svg class="h-3.5 w-3.5 text-ink-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+          2026
+          <svg class="h-3 w-3 text-ink-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <button class="group flex items-center gap-2 rounded-2xl bg-lime-400 px-3.5 py-2 text-[11px] font-extrabold text-ink-950 shadow-lime transition hover:-translate-y-0.5 hover:bg-lime-300">
+          <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+          Sinkronkan
+        </button>
+      </div>
+    </div>
+
+    <!-- Stat cards -->
+    <div class="grid grid-cols-2 gap-3 xl:grid-cols-4">
+      <!-- 1 -->
+      <article class="group relative overflow-hidden rounded-[26px] border border-white bg-white p-4 shadow-card transition-all duration-500 hover:-translate-y-1 hover:shadow-card-hover animate-rise" style="animation-delay:60ms">
+        <div class="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full bg-pastel-lavender blur-2xl transition-transform duration-500 group-hover:scale-150"></div>
+        <div class="relative flex items-start justify-between">
+          <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-pastel-lavender text-brand-600 ring-1 ring-brand-500/10">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>
+          </div>
+          <span class="inline-flex items-center gap-1 rounded-full bg-pastel-mint px-2 py-1 text-[9.5px] font-extrabold text-mint">+12,4% <svg class="h-2.5 w-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="m7 17 10-10M8 7h9v9"/></svg></span>
+        </div>
+        <p class="mt-3 text-[9.5px] font-bold uppercase tracking-[0.16em] text-ink-400">Pagu Anggaran</p>
+        <p class="mt-1 flex items-baseline gap-1 text-tabular">
+          <span class="text-[24px] font-extrabold leading-none tracking-tight text-ink-950">Rp 1,28</span>
+          <span class="text-[13px] font-bold text-ink-400">M</span>
+        </p>
+        <div class="mt-3 flex items-center gap-2">
+          <div class="h-1.5 flex-1 overflow-hidden rounded-full bg-ink-50">
+            <div class="h-full w-[68%] rounded-full bg-gradient-to-r from-brand-400 to-brand-500"></div>
+          </div>
+          <span class="text-[9.5px] font-bold text-ink-400">68%</span>
+        </div>
+      </article>
+
+      <!-- 2 -->
+      <article class="group relative overflow-hidden rounded-[26px] border border-white bg-white p-4 shadow-card transition-all duration-500 hover:-translate-y-1 hover:shadow-card-hover animate-rise" style="animation-delay:120ms">
+        <div class="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full bg-pastel-mint blur-2xl transition-transform duration-500 group-hover:scale-150"></div>
+        <div class="relative flex items-start justify-between">
+          <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-pastel-mint text-mint ring-1 ring-mint/15">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+          </div>
+          <span class="inline-flex items-center gap-1 rounded-full bg-pastel-mint px-2 py-1 text-[9.5px] font-extrabold text-mint">On track</span>
+        </div>
+        <p class="mt-3 text-[9.5px] font-bold uppercase tracking-[0.16em] text-ink-400">Total Realisasi</p>
+        <p class="mt-1 flex items-baseline gap-1 text-tabular">
+          <span class="text-[24px] font-extrabold leading-none tracking-tight text-ink-950">Rp 872,4</span>
+          <span class="text-[13px] font-bold text-ink-400">jt</span>
+        </p>
+        <div class="mt-3 flex items-center gap-2">
+          <div class="h-1.5 flex-1 overflow-hidden rounded-full bg-ink-50">
+            <div class="h-full w-[54%] rounded-full bg-gradient-to-r from-mint to-emerald-400"></div>
+          </div>
+          <span class="text-[9.5px] font-bold text-ink-400">54%</span>
+        </div>
+      </article>
+
+      <!-- 3 -->
+      <article class="group relative overflow-hidden rounded-[26px] border border-white bg-white p-4 shadow-card transition-all duration-500 hover:-translate-y-1 hover:shadow-card-hover animate-rise" style="animation-delay:180ms">
+        <div class="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full bg-pastel-peach blur-2xl transition-transform duration-500 group-hover:scale-150"></div>
+        <div class="relative flex items-start justify-between">
+          <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-pastel-peach text-peach ring-1 ring-peach/15">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="5"/><path d="M2 12a5 5 0 0 0 5 5h2"/><path d="M16 8h.01"/><path d="M22 8h.01"/><path d="M18 12h4"/><circle cx="18" cy="16" r="4"/></svg>
+          </div>
+          <span class="inline-flex items-center gap-1 rounded-full bg-pastel-amber px-2 py-1 text-[9.5px] font-extrabold text-amber-600">Kas</span>
+        </div>
+        <p class="mt-3 text-[9.5px] font-bold uppercase tracking-[0.16em] text-ink-400">Sisa Saldo Kas</p>
+        <p class="mt-1 flex items-baseline gap-1 text-tabular">
+          <span class="text-[24px] font-extrabold leading-none tracking-tight text-ink-950">Rp 407,6</span>
+          <span class="text-[13px] font-bold text-ink-400">jt</span>
+        </p>
+        <div class="mt-3 flex items-center gap-2">
+          <div class="h-1.5 flex-1 overflow-hidden rounded-full bg-ink-50">
+            <div class="h-full w-[32%] rounded-full bg-gradient-to-r from-peach to-orange-400"></div>
+          </div>
+          <span class="text-[9.5px] font-bold text-ink-400">32%</span>
+        </div>
+      </article>
+
+      <!-- 4 -->
+      <article class="group relative overflow-hidden rounded-[26px] border border-white bg-white p-4 shadow-card transition-all duration-500 hover:-translate-y-1 hover:shadow-card-hover animate-rise" style="animation-delay:240ms">
+        <div class="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full bg-pastel-sky blur-2xl transition-transform duration-500 group-hover:scale-150"></div>
+        <div class="relative flex items-start justify-between">
+          <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-pastel-sky text-sky ring-1 ring-sky/15">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 21v-6h6v6"/><path d="M9 9h.01M15 9h.01M9 12h.01M15 12h.01"/></svg>
+          </div>
+          <span class="inline-flex items-center gap-1 rounded-full bg-pastel-sky px-2 py-1 text-[9.5px] font-extrabold text-sky">SP2D</span>
+        </div>
+        <p class="mt-3 text-[9.5px] font-bold uppercase tracking-[0.16em] text-ink-400">Penerimaan BOSP</p>
+        <p class="mt-1 flex items-baseline gap-1 text-tabular">
+          <span class="text-[24px] font-extrabold leading-none tracking-tight text-ink-950">Rp 1,10</span>
+          <span class="text-[13px] font-bold text-ink-400">M</span>
+        </p>
+        <div class="mt-3 flex items-center gap-2">
+          <div class="h-1.5 flex-1 overflow-hidden rounded-full bg-ink-50">
+            <div class="h-full w-[86%] rounded-full bg-gradient-to-r from-sky to-blue-400"></div>
+          </div>
+          <span class="text-[9.5px] font-bold text-ink-400">86%</span>
+        </div>
+      </article>
+    </div>
+
+    <!-- Bento grid -->
+    <div class="grid grid-cols-1 gap-4 xl:grid-cols-12">
+      <!-- LEFT 8 -->
+      <div class="space-y-4 xl:col-span-8">
+
+        <!-- Chart -->
+        <section class="rounded-[26px] border border-white bg-white p-5 shadow-card animate-rise" style="animation-delay:300ms">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div class="flex items-center gap-3">
+              <div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-ink-950 text-lime-300">
+                <svg class="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect x="7" y="10" width="3" height="7" rx="1"/><rect x="12" y="6" width="3" height="11" rx="1"/><rect x="17" y="13" width="3" height="4" rx="1"/></svg>
+              </div>
+              <div>
+                <h2 class="text-[15px] font-extrabold tracking-tight text-ink-950">Arus Kas Bulanan</h2>
+                <p class="text-[10.5px] font-medium text-ink-400">Penyerapan dana BOSP tahun anggaran 2026</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-1 rounded-full bg-ink-50 p-1">
+              <button class="rounded-full bg-white px-3 py-1 text-[10px] font-bold text-ink-900 shadow-sm">Bulanan</button>
+              <button class="rounded-full px-3 py-1 text-[10px] font-semibold text-ink-400 transition hover:text-ink-700">Tahunan</button>
+            </div>
+          </div>
+
+          <div class="mt-5 flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-4 text-[10px] font-bold text-ink-500">
+              <span class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-lime-400"></span>Realisasi bulan ini</span>
+              <span class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-ink-200"></span>Rencana</span>
+            </div>
+            <span class="rounded-full bg-ink-50 px-2.5 py-1 text-[10px] font-bold text-ink-500">Total Rp 872,4 jt</span>
+          </div>
+
+          <!-- chart -->
+          <div class="relative mt-4 h-[232px]">
+            <!-- horizontal grid + y labels -->
+            <div class="absolute inset-0 pl-9">
+              <div class="relative h-full chart-grid">
+                <span class="absolute -top-1.5 right-0 text-[9px] font-semibold text-ink-300">180 jt</span>
+                <span class="absolute right-0 top-1/3 -translate-y-1/2 text-[9px] font-semibold text-ink-300">120 jt</span>
+                <span class="absolute right-0 top-2/3 -translate-y-1/2 text-[9px] font-semibold text-ink-300">60 jt</span>
+                <span class="absolute bottom-0 right-0 text-[9px] font-semibold text-ink-300">0</span>
+              </div>
+            </div>
+            <!-- bars -->
+            <div class="absolute inset-0 flex items-end gap-[1.6%] pl-9 pr-1">
+              <div class="relative flex h-full flex-1 items-end"><div class="w-full rounded-t-lg bg-ink-100 transition hover:bg-ink-200" style="height:38%"></div></div>
+              <div class="relative flex h-full flex-1 items-end"><div class="w-full rounded-t-lg bg-ink-100 transition hover:bg-ink-200" style="height:52%"></div></div>
+              <div class="relative flex h-full flex-1 items-end"><div class="w-full rounded-t-lg bg-ink-100 transition hover:bg-ink-200" style="height:44%"></div></div>
+              <div class="relative flex h-full flex-1 items-end"><div class="w-full rounded-t-lg bg-ink-100 transition hover:bg-ink-200" style="height:66%"></div></div>
+              <div class="relative flex h-full flex-1 items-end"><div class="w-full rounded-t-lg bg-ink-100 transition hover:bg-ink-200" style="height:58%"></div></div>
+              <div class="relative flex h-full flex-1 items-end"><div class="w-full rounded-t-lg bg-ink-100 transition hover:bg-ink-200" style="height:74%"></div></div>
+              <!-- active -->
+              <div class="relative flex h-full flex-1 items-end">
+                <div class="absolute inset-x-0 bottom-0 top-[10%] rounded-xl bg-lime-100/70"></div>
+                <div class="relative w-full rounded-t-lg bg-gradient-to-t from-lime-400 to-lime-300 shadow-lime" style="height:92%"></div>
+                <div class="absolute bottom-[96%] left-1/2 z-10 w-[118px] -translate-x-1/2 rounded-xl bg-ink-950 px-2.5 py-2 text-center shadow-float">
+                  <p class="text-[9px] font-semibold text-lime-300">Juli 2026</p>
+                  <p class="text-[11.5px] font-extrabold text-white">Rp 184,2 jt</p>
+                  <p class="mt-0.5 text-[8.5px] font-semibold text-white/50">68% dari pagu bulan</p>
+                  <span class="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-ink-950"></span>
+                </div>
+              </div>
+              <div class="relative flex h-full flex-1 items-end"><div class="w-full rounded-t-lg bg-ink-100 transition hover:bg-ink-200" style="height:62%"></div></div>
+              <div class="relative flex h-full flex-1 items-end"><div class="w-full rounded-t-lg bg-ink-100 transition hover:bg-ink-200" style="height:70%"></div></div>
+              <div class="relative flex h-full flex-1 items-end"><div class="w-full rounded-t-lg bg-ink-100 transition hover:bg-ink-200" style="height:55%"></div></div>
+              <div class="relative flex h-full flex-1 items-end"><div class="w-full rounded-t-lg bg-ink-100 transition hover:bg-ink-200" style="height:84%"></div></div>
+              <div class="relative flex h-full flex-1 items-end"><div class="w-full rounded-t-lg bg-ink-100 transition hover:bg-ink-200" style="height:48%"></div></div>
+            </div>
+          </div>
+          <div class="mt-2 flex justify-between pl-9 pr-1 text-[9.5px] font-bold text-ink-300">
+            <span class="flex-1 text-center">Jan</span><span class="flex-1 text-center">Feb</span><span class="flex-1 text-center">Mar</span>
+            <span class="flex-1 text-center">Apr</span><span class="flex-1 text-center">Mei</span><span class="flex-1 text-center">Jun</span>
+            <span class="flex-1 text-center font-extrabold text-ink-900">Jul</span><span class="flex-1 text-center">Agu</span>
+            <span class="flex-1 text-center">Sep</span><span class="flex-1 text-center">Okt</span><span class="flex-1 text-center">Nov</span><span class="flex-1 text-center">Des</span>
+          </div>
+        </section>
+
+        <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <!-- Donut / Program -->
+          <section class="rounded-[26px] border border-white bg-white p-5 shadow-card animate-rise" style="animation-delay:360ms">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2.5">
+                <div class="flex h-9 w-9 items-center justify-center rounded-2xl bg-lime-200 text-ink-900">
+                  <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>
+                </div>
+                <div>
+                  <h2 class="text-[13.5px] font-extrabold text-ink-950">Pemanfaatan SNP</h2>
+                  <p class="text-[10px] font-medium text-ink-400">8 standar nasional pendidikan</p>
+                </div>
+              </div>
+              <button class="rounded-lg p-1.5 text-ink-300 transition hover:bg-ink-50 hover:text-ink-600">
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+              </button>
+            </div>
+            <div class="mt-4 flex items-center gap-4">
+              <div class="relative h-[112px] w-[112px] shrink-0">
+                <div class="donut-ring h-full w-full rounded-full" style="background: conic-gradient(#D8F275 0 46%, #A38CFF 46% 68%, #FFB489 68% 84%, #7DD3FC 84% 94%, #ECECF3 94% 100%)"></div>
+                <div class="absolute inset-0 flex flex-col items-center justify-center">
+                  <span class="text-[19px] font-extrabold leading-none tracking-tight text-ink-950">72%</span>
+                  <span class="mt-0.5 text-[8.5px] font-bold uppercase tracking-wider text-ink-400">Terserap</span>
+                </div>
+              </div>
+              <div class="flex-1 space-y-2">
+                <div class="flex items-center justify-between text-[10px] font-bold"><span class="flex items-center gap-1.5 text-ink-500"><span class="h-2 w-2 rounded-full bg-lime-400"></span>Standar Isi</span><span class="text-ink-900">46%</span></div>
+                <div class="flex items-center justify-between text-[10px] font-bold"><span class="flex items-center gap-1.5 text-ink-500"><span class="h-2 w-2 rounded-full bg-brand-400"></span>Standar Proses</span><span class="text-ink-900">22%</span></div>
+                <div class="flex items-center justify-between text-[10px] font-bold"><span class="flex items-center gap-1.5 text-ink-500"><span class="h-2 w-2 rounded-full bg-peach"></span>Sarpras</span><span class="text-ink-900">16%</span></div>
+                <div class="flex items-center justify-between text-[10px] font-bold"><span class="flex items-center gap-1.5 text-ink-500"><span class="h-2 w-2 rounded-full bg-sky"></span>Lainnya</span><span class="text-ink-900">16%</span></div>
+              </div>
+            </div>
+            <div class="mt-4 space-y-2 border-t border-ink-50 pt-3">
+              <div class="flex items-center justify-between gap-2">
+                <div class="flex min-w-0 items-center gap-2">
+                  <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-pastel-mint text-mint"><svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+                  <span class="truncate text-[10.5px] font-bold text-ink-700">Buku Kurikulum Merdeka</span>
+                </div>
+                <span class="text-tabular text-[10.5px] font-extrabold text-ink-900">Rp 96,4 jt</span>
+              </div>
+              <div class="flex items-center justify-between gap-2">
+                <div class="flex min-w-0 items-center gap-2">
+                  <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-pastel-lavender text-brand-600"><svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 20V10M18 20V4M6 20v-4"/></svg></span>
+                  <span class="truncate text-[10.5px] font-bold text-ink-700">Pelatihan Guru</span>
+                </div>
+                <span class="text-tabular text-[10.5px] font-extrabold text-ink-900">Rp 48,2 jt</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- Area chart -->
+          <section class="rounded-[26px] border border-white bg-white p-5 shadow-card animate-rise" style="animation-delay:420ms">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2.5">
+                <div class="flex h-9 w-9 items-center justify-center rounded-2xl bg-pastel-mint text-mint">
+                  <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 7-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/></svg>
+                </div>
+                <div>
+                  <h2 class="text-[13.5px] font-extrabold text-ink-950">Tren 5 Tahun</h2>
+                  <p class="text-[10px] font-medium text-ink-400">Realisasi BOSP tahunan</p>
+                </div>
+              </div>
+              <span class="rounded-full bg-pastel-mint px-2 py-1 text-[9.5px] font-extrabold text-mint">+18,2%</span>
+            </div>
+            <div class="mt-4">
+              <svg viewBox="0 0 320 130" class="h-[128px] w-full" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="areaViolet" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#7C5CFF" stop-opacity="0.35"/>
+                    <stop offset="100%" stop-color="#7C5CFF" stop-opacity="0"/>
+                  </linearGradient>
+                </defs>
+                <path d="M0,104 L53,88 L107,96 L160,66 L213,74 L267,40 L320,26 L320,130 L0,130 Z" fill="url(#areaViolet)"/>
+                <path d="M0,104 L53,88 L107,96 L160,66 L213,74 L267,40 L320,26" fill="none" stroke="#7C5CFF" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="267" cy="40" r="4.5" fill="#fff" stroke="#7C5CFF" stroke-width="3"/>
+                <circle cx="320" cy="26" r="4.5" fill="#D8F275" stroke="#fff" stroke-width="2.5"/>
+              </svg>
+              <div class="mt-1 flex justify-between text-[9.5px] font-bold text-ink-300">
+                <span>2022</span><span>2023</span><span>2024</span><span>2025</span><span class="text-ink-900">2026</span>
+              </div>
+            </div>
+            <div class="mt-3 flex items-center justify-between rounded-2xl bg-ink-50/80 px-3 py-2">
+              <div>
+                <p class="text-[9px] font-bold uppercase tracking-wider text-ink-400">Tahun ini</p>
+                <p class="text-tabular text-[14px] font-extrabold text-ink-950">Rp 872,4 jt</p>
+              </div>
+              <div class="h-8 w-px bg-ink-100"></div>
+              <div class="text-right">
+                <p class="text-[9px] font-bold uppercase tracking-wider text-ink-400">Rata-rata</p>
+                <p class="text-tabular text-[14px] font-extrabold text-ink-950">Rp 741,8 jt</p>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <!-- RIGHT 4 -->
+      <div class="space-y-4 xl:col-span-4">
+
+        <!-- Promo / ARKAS -->
+        <section class="relative overflow-hidden rounded-[26px] bg-gradient-to-br from-[#2B2940] via-[#232135] to-[#191826] p-5 text-white shadow-float ring-1 ring-white/10 animate-rise" style="animation-delay:320ms">
+          <div class="pointer-events-none absolute -right-10 -top-12 h-36 w-36 rounded-full aurora-blob-violet opacity-80 blur-2xl"></div>
+          <div class="pointer-events-none absolute -bottom-14 -left-10 h-32 w-32 rounded-full aurora-blob-lime opacity-30 blur-2xl"></div>
+          <div class="pointer-events-none absolute -right-6 top-6 opacity-90 animate-float">
+            <svg class="h-20 w-20" viewBox="0 0 80 80" fill="none" stroke="#D8F275" stroke-width="2.4" stroke-linecap="round"><ellipse cx="40" cy="22" rx="18" ry="7"/><path d="M22 22v12c0 3.8 8 7 18 7s18-3.2 18-7V22"/><path d="M22 34v12c0 3.8 8 7 18 7s18-3.2 18-7V34"/><path d="M22 46v12c0 3.8 8 7 18 7s18-3.2 18-7V46"/></svg>
+          </div>
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-lime-400/15 px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-[0.16em] text-lime-300 ring-1 ring-lime-400/30">
+            <span class="h-1.5 w-1.5 rounded-full bg-lime-400 animate-pulse-soft"></span> Integrasi ARKAS
+          </span>
+          <h2 class="mt-3 max-w-[70%] text-[16px] font-extrabold leading-snug tracking-tight">Sinkron otomatis dengan ARKAS Desktop</h2>
+          <p class="mt-1.5 max-w-[80%] text-[10.5px] font-medium leading-relaxed text-white/55">Tarik RKAS &amp; BKU tanpa input ulang. Data terverifikasi langsung dari database sekolah.</p>
+          <button class="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-lime-400 px-4 py-2.5 text-[11.5px] font-extrabold text-ink-950 shadow-lime transition hover:-translate-y-0.5 hover:bg-lime-300">
+            Tarik Data Terbaru
+            <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg>
+          </button>
+          <div class="mt-3 flex items-center justify-between text-[9.5px] font-semibold text-white/40">
+            <span class="flex items-center gap-1.5"><span class="h-1.5 w-1.5 rounded-full bg-mint"></span>Terhubung · arkas.db</span>
+            <span>12 menit lalu</span>
+          </div>
+        </section>
+
+        <!-- Calendar -->
+        <section class="rounded-[26px] border border-white bg-white p-4 shadow-card animate-rise" style="animation-delay:380ms">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <div class="flex h-9 w-9 items-center justify-center rounded-2xl bg-ink-950 text-lime-300">
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+              </div>
+              <div>
+                <h2 class="text-[13px] font-extrabold text-ink-950">Kalender Keuangan</h2>
+                <p class="text-[9.5px] font-medium text-ink-400">Agustus 2026</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-1">
+              <button class="flex h-6 w-6 items-center justify-center rounded-lg text-ink-400 transition hover:bg-ink-50 hover:text-ink-800"><svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m15 18-6-6 6-6"/></svg></button>
+              <button class="flex h-6 w-6 items-center justify-center rounded-lg text-ink-400 transition hover:bg-ink-50 hover:text-ink-800"><svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m9 18 6-6-6-6"/></svg></button>
+            </div>
+          </div>
+          <div class="mt-3 grid grid-cols-7 gap-y-1 text-center">
+            <span class="text-[8.5px] font-extrabold uppercase tracking-wider text-ink-300">S</span>
+            <span class="text-[8.5px] font-extrabold uppercase tracking-wider text-ink-300">S</span>
+            <span class="text-[8.5px] font-extrabold uppercase tracking-wider text-ink-300">R</span>
+            <span class="text-[8.5px] font-extrabold uppercase tracking-wider text-ink-300">K</span>
+            <span class="text-[8.5px] font-extrabold uppercase tracking-wider text-ink-300">J</span>
+            <span class="text-[8.5px] font-extrabold uppercase tracking-wider text-ink-300">S</span>
+            <span class="text-[8.5px] font-extrabold uppercase tracking-wider text-ink-300">M</span>
+            <span class="text-[10px] font-semibold text-ink-200">27</span><span class="text-[10px] font-semibold text-ink-200">28</span><span class="text-[10px] font-semibold text-ink-200">29</span><span class="text-[10px] font-semibold text-ink-200">30</span><span class="text-[10px] font-semibold text-ink-200">31</span>
+            <span class="text-[10px] font-semibold text-ink-700">1</span><span class="text-[10px] font-semibold text-ink-700">2</span>
+            <span class="text-[10px] font-semibold text-ink-700">3</span><span class="text-[10px] font-semibold text-ink-700">4</span><span class="text-[10px] font-semibold text-ink-700">5</span><span class="text-[10px] font-semibold text-ink-700">6</span><span class="text-[10px] font-semibold text-ink-700">7</span><span class="text-[10px] font-semibold text-ink-700">8</span><span class="text-[10px] font-semibold text-ink-700">9</span>
+            <span class="text-[10px] font-semibold text-ink-700">10</span><span class="text-[10px] font-semibold text-ink-700">11</span>
+            <span class="mx-auto flex h-7 w-7 items-center justify-center rounded-full bg-lime-400 text-[10px] font-extrabold text-ink-950 shadow-lime">12</span>
+            <span class="text-[10px] font-semibold text-ink-700">13</span><span class="text-[10px] font-semibold text-ink-700">14</span><span class="text-[10px] font-semibold text-ink-700">15</span><span class="text-[10px] font-semibold text-ink-700">16</span>
+            <span class="relative mx-auto flex h-7 w-7 items-center justify-center rounded-full bg-pastel-lavender text-[10px] font-extrabold text-brand-700">17<span class="absolute -bottom-0.5 h-1 w-1 rounded-full bg-brand-500"></span></span>
+            <span class="text-[10px] font-semibold text-ink-700">18</span><span class="text-[10px] font-semibold text-ink-700">19</span><span class="text-[10px] font-semibold text-ink-700">20</span><span class="text-[10px] font-semibold text-ink-700">21</span><span class="text-[10px] font-semibold text-ink-700">22</span><span class="text-[10px] font-semibold text-ink-700">23</span>
+            <span class="relative mx-auto flex h-7 w-7 items-center justify-center rounded-full bg-pastel-peach text-[10px] font-extrabold text-peach">24<span class="absolute -bottom-0.5 h-1 w-1 rounded-full bg-peach"></span></span>
+            <span class="text-[10px] font-semibold text-ink-700">25</span><span class="text-[10px] font-semibold text-ink-700">26</span><span class="text-[10px] font-semibold text-ink-700">27</span><span class="text-[10px] font-semibold text-ink-700">28</span><span class="text-[10px] font-semibold text-ink-700">29</span><span class="text-[10px] font-semibold text-ink-700">30</span><span class="text-[10px] font-semibold text-ink-700">31</span>
+          </div>
+          <div class="mt-3 flex items-center justify-between border-t border-ink-50 pt-2.5 text-[9px] font-bold text-ink-400">
+            <span class="flex items-center gap-1"><span class="h-1.5 w-1.5 rounded-full bg-brand-500"></span>SPTJ 17</span>
+            <span class="flex items-center gap-1"><span class="h-1.5 w-1.5 rounded-full bg-peach"></span>BKU 24</span>
+            <span class="flex items-center gap-1"><span class="h-1.5 w-1.5 rounded-full bg-lime-400"></span>Hari ini</span>
+          </div>
+        </section>
+
+        <!-- Agenda -->
+        <section class="rounded-[26px] border border-white bg-white p-4 shadow-card animate-rise" style="animation-delay:440ms">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <div class="flex h-9 w-9 items-center justify-center rounded-2xl bg-pastel-amber text-amber-600">
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+              </div>
+              <div>
+                <h2 class="text-[13px] font-extrabold text-ink-950">Agenda Tahapan</h2>
+                <p class="text-[9.5px] font-medium text-ink-400">Penyaluran &amp; pelaporan</p>
+              </div>
+            </div>
+            <button class="flex h-7 w-7 items-center justify-center rounded-xl bg-lime-400 text-ink-950 shadow-lime transition hover:bg-lime-300"><svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+          </div>
+          <div class="mt-3 space-y-2">
+            <div class="group flex items-center justify-between gap-2 rounded-2xl border border-ink-50 bg-ink-50/40 p-2.5 transition hover:border-lime-300 hover:bg-lime-100/40">
+              <div class="flex min-w-0 items-center gap-2.5">
+                <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-pastel-mint text-mint"><svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+                <div class="min-w-0">
+                  <p class="truncate text-[10.5px] font-extrabold text-ink-900">Tahap 1 BOSP</p>
+                  <p class="text-[9px] font-semibold text-ink-400">Januari – Juni · Rp 640 jt</p>
+                </div>
+              </div>
+              <span class="shrink-0 rounded-full bg-pastel-mint px-2 py-1 text-[8.5px] font-extrabold text-mint">Tersalur</span>
+            </div>
+            <div class="group flex items-center justify-between gap-2 rounded-2xl border border-lime-200 bg-lime-100/40 p-2.5 transition hover:border-lime-300">
+              <div class="flex min-w-0 items-center gap-2.5">
+                <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-lime-300 text-ink-900"><svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></span>
+                <div class="min-w-0">
+                  <p class="truncate text-[10.5px] font-extrabold text-ink-900">Tahap 2 BOSP</p>
+                  <p class="text-[9px] font-semibold text-ink-400">Juli – Desember · Rp 460 jt</p>
+                </div>
+              </div>
+              <span class="shrink-0 rounded-full bg-ink-950 px-2 py-1 text-[8.5px] font-extrabold text-lime-300">Aktif</span>
+            </div>
+            <div class="group flex items-center justify-between gap-2 rounded-2xl border border-ink-50 bg-ink-50/40 p-2.5 transition hover:border-lime-300 hover:bg-lime-100/40">
+              <div class="flex min-w-0 items-center gap-2.5">
+                <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-pastel-amber text-amber-600"><svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M8 2v4M16 2v4M3 10h18"/><rect x="3" y="4" width="18" height="18" rx="3"/></svg></span>
+                <div class="min-w-0">
+                  <p class="truncate text-[10.5px] font-extrabold text-ink-900">Laporan SPTJ</p>
+                  <p class="text-[9px] font-semibold text-ink-400">Batas 25 November 2026</p>
+                </div>
+              </div>
+              <span class="shrink-0 rounded-full bg-pastel-amber px-2 py-1 text-[8.5px] font-extrabold text-amber-600">Terjadwal</span>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+</div>
+
+</body>
+</html>

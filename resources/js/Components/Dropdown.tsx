@@ -53,7 +53,7 @@ const Trigger = ({ children }: PropsWithChildren) => {
 const Content = ({
     align = 'right',
     width = '48',
-    contentClasses = 'py-1 bg-white',
+    contentClasses = 'p-1',
     children,
 }: PropsWithChildren<{
     align?: 'left' | 'right';
@@ -88,15 +88,10 @@ const Content = ({
                 leaveTo="opacity-0 scale-95"
             >
                 <div
-                    className={`absolute z-50 mt-2 rounded-md shadow-lg ${alignmentClasses} ${widthClasses}`}
+                    className={`absolute z-50 mt-2 rounded-2xl border border-white bg-white shadow-float dark:border-white/10 dark:bg-[#15131F] ${alignmentClasses} ${widthClasses}`}
                     onClick={() => setOpen(false)}
                 >
-                    <div
-                        className={
-                            `rounded-md ring-1 ring-black ring-opacity-5 ` +
-                            contentClasses
-                        }
-                    >
+                    <div className={'rounded-2xl ' + contentClasses}>
                         {children}
                     </div>
                 </div>
@@ -114,7 +109,7 @@ const DropdownLink = ({
         <Link
             {...props}
             className={
-                'block w-full px-4 py-2 text-start text-sm leading-5 text-gray-700 transition duration-150 ease-in-out hover:bg-gray-100 focus:bg-gray-100 focus:outline-none ' +
+                'block w-full rounded-xl px-3 py-2 text-start text-[12px] font-semibold leading-5 text-slate-600 transition duration-150 ease-in-out hover:bg-slate-50 hover:text-slate-900 focus:bg-slate-50 focus:outline-none dark:text-slate-300 dark:hover:bg-white/5 dark:hover:text-white dark:focus:bg-white/5 ' +
                 className
             }
         >

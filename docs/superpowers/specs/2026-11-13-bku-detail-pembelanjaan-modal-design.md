@@ -103,3 +103,4 @@ Grid 2 kolom pada layar `md+` (`grid-cols-1 md:grid-cols-2 gap-4`):
 
 - Menjalankan `npm run build` (`tsc && vite build`) dan memastikan TypeScript strict serta bundling Vite sukses tanpa error.
 - Memeriksa bahwa semua token kelas baru pada komponen terkompilasi ke output CSS Vite.
+

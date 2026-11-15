@@ -29,3 +29,4 @@ Acuan Desain: [2026-11-14-sekolah-profile-neo-bento-modals-design.md](file:///c:
 ## Tugas 3 — Verifikasi & Commit
 1. Jalankan `npm run build` (`tsc && vite build`) untuk memastikan tidak ada error TypeScript maupun Vite.
 2. Commit hasil implementasi ke git.
+

@@ -22,8 +22,6 @@
         .header {
             text-align: center;
             margin-bottom: 3px;
-            border-bottom: 2px solid #000;
-            padding-bottom: 5px;
             max-width: 100%;
             page-break-inside: always;
         }
@@ -229,10 +227,10 @@
     @if ($sekolah && $sekolah->kop_surat)
     <div class="header">
         <img src="{{ public_path('storage/' . $sekolah->kop_surat) }}" class="letterhead" alt="Kop Surat">
+        @include('partials.kop_border', ['border' => $sekolah->kop_border ?? 'double'])
     </div>
     @endif
     
-    <div class="separator"></div>
     <div class="tanda-terima-item">
       <!-- Information Section -->
         <div class="info-header">

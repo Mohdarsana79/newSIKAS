@@ -46,9 +46,9 @@ const FullscreenSwitcher = () => {
         <div className="flex items-center justify-center">
             <button
                 onClick={toggleFullscreen}
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all duration-300 shadow-inner"
-                title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
-                aria-label={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
+                className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-100 bg-white text-slate-500 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:text-slate-900 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:text-white"
+                title={isFullscreen ? 'Keluar layar penuh' : 'Layar penuh'}
+                aria-label={isFullscreen ? 'Keluar layar penuh' : 'Layar penuh'}
             >
                 {isFullscreen ? (
                     <svg

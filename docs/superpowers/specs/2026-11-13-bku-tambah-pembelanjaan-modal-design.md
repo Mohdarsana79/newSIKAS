@@ -49,3 +49,4 @@ Urutan step (`1 Detail Transaksi`, `2 Detail Barang/Jasa`, `3 Perhitungan Pajak`
 
 ## 3. Verifikasi
 - Menjalankan `npm run build` (`tsc && vite build`) untuk memastikan tidak ada error kompilasi TypeScript maupun build Vite.
+

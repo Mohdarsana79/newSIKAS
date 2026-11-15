@@ -1,20 +1,45 @@
 import React, { useState, useEffect } from 'react';
-import DatePicker from 'react-datepicker';
-import "react-datepicker/dist/react-datepicker.css";
-import { registerLocale } from "react-datepicker";
-import { id } from 'date-fns/locale/id';
-import { useForm, usePage } from '@inertiajs/react';
+import { format } from 'date-fns';
+import { Layers, Receipt } from 'lucide-react';
+import { usePage } from '@inertiajs/react';
 import axios from 'axios';
-import Select from 'react-select';
-import Modal from '@/Components/Modal';
+import DatePicker from '@/Components/DatePicker';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
 import PrimaryButton from '@/Components/PrimaryButton';
-import SecondaryButton from '@/Components/SecondaryButton';
-import DangerButton from '@/Components/DangerButton';
 import useVariantRoute from '@/Hooks/useVariantRoute';
+import Surface from '@/Components/ui/Surface';
+import DataTable from '@/Components/ui/DataTable';
+import IconTile from '@/Components/ui/IconTile';
+import StatusBadge from '@/Components/ui/StatusBadge';
+import EmptyState from '@/Components/ui/EmptyState';
+import { SkeletonRows } from '@/Components/ui/Skeleton';
+import {
+    LaporanCalculateButton,
+    LaporanDeleteModal,
+    LaporanFormModal,
+    LaporanMetricCard,
+    LaporanPdfPreviewModal,
+    LaporanPrintSettingsModal,
+    LaporanSectionCard,
+    LaporanSelect,
+    LaporanValidationModal,
+} from './LaporanModalPrimitives';
 
-registerLocale('id', id);
+const BULAN_OPTIONS = [
+    { value: '1', label: 'Januari' },
+    { value: '2', label: 'Februari' },
+    { value: '3', label: 'Maret' },
+    { value: '4', label: 'April' },
+    { value: '5', label: 'Mei' },
+    { value: '6', label: 'Juni' },
+    { value: '7', label: 'Juli' },
+    { value: '8', label: 'Agustus' },
+    { value: '9', label: 'September' },
+    { value: '10', label: 'Oktober' },
+    { value: '11', label: 'November' },
+    { value: '12', label: 'Desember' },
+];
 
 interface Sp2bData {
     id: number;
@@ -175,6 +200,11 @@ export default function Sp2bTab() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!formData.tanggal_sp2b) {
+            setValidationMessage('Tanggal SP2B wajib dipilih.');
+            setIsValidationModalOpen(true);
+            return;
+        }
         setIsSaving(true);
         try {
             const payload = {
@@ -274,521 +304,388 @@ export default function Sp2bTab() {
     };
 
     return (
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 animate-fade-in-up">
-            <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-                <div className="flex items-center gap-3">
-                    <div className="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
-                        <svg className="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
+        <div className="space-y-4">
+            {/* Filter & aksi */}
+            <div className="animate-rise" style={{ animationDelay: '60ms' }}>
+                <Surface padding="sm">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="min-w-0 flex-1 sm:max-w-xs">
+                            <TextInput
+                                type="text"
+                                placeholder="Cari Nomor SP2B..."
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                            />
+                        </div>
+                        <PrimaryButton onClick={() => { resetForm(); setIsAddModalOpen(true); }}>
+                            Tambah SP2B
+                        </PrimaryButton>
                     </div>
-                    <div>
-                        <h3 className="text-lg font-bold text-gray-800 dark:text-white">SP2B</h3>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Surat Permintaan Pengesahan Belanja</p>
-                    </div>
-                </div>
-                <div className="flex items-center gap-2">
-                    <input
-                        type="text"
-                        placeholder="Cari Nomor SP2B..."
-                        className="border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                    />
-                    <PrimaryButton onClick={() => { resetForm(); setIsAddModalOpen(true); }}>
-                        Tambah SP2B
-                    </PrimaryButton>
-                </div>
+                </Surface>
             </div>
 
-            <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                    <thead className="bg-gray-50 dark:bg-gray-700">
-                        <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">No</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Nomor SP2B</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Belanja Pegawai</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Belanja Barang dan Jasa</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Belanja Modal</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Periode</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tahun</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                        {loading ? (
-                            <tr><td colSpan={8} className="text-center py-4 text-gray-500">Loading...</td></tr>
-                        ) : data.length === 0 ? (
-                            <tr><td colSpan={8} className="text-center py-4 text-gray-500">Tidak ada data SP2B.</td></tr>
-                        ) : (
-                            data.map((item, index) => {
-                                return (
-                                    <tr key={item.id}>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{index + 1 + (page - 1) * 10}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{item.nomor_sp2b}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{formatCurrency(item.belanja_pegawai)}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{formatCurrency(item.belanja_barang_jasa)}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{formatCurrency(item.belanja_modal)}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                                            {item.jenis_periode === 'bulan' ? `Bulan ${item.bulan}` : `Tahap ${item.tahap}`}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{item.penganggaran?.tahun_anggaran}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                            <div className="flex items-center space-x-2">
-                                                <button
-                                                    onClick={() => { setSelectedPdfUrl(vroute('laporan.sp2b.pdf', item.id)); setIsPreviewModalOpen(true); }}
-                                                    className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-200"
-                                                    title="Preview PDF"
-                                                >
-                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
-                                                </button>
-                                                <button
-                                                    onClick={() => openEdit(item)}
-                                                    className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-200"
-                                                    title="Edit"
-                                                >
-                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDelete(item.id)}
-                                                    className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200"
-                                                    title="Delete"
-                                                >
-                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                );
-                            })
-                        )}
-                    </tbody>
-                </table>
-            </div>
-
-            <div className="flex justify-between items-center mt-4">
-                <button
-                    onClick={() => setPage(prev => Math.max(prev - 1, 1))}
-                    disabled={page === 1}
-                    className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded disabled:opacity-50"
+            {/* Daftar SP2B */}
+            <div className="animate-rise" style={{ animationDelay: '120ms' }}>
+                <DataTable
+                    title="Daftar SP2B"
+                    subtitle="Surat Permintaan Pengesahan Belanja per periode"
+                    icon={
+                        <IconTile tone="violet" size="sm">
+                            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                        </IconTile>
+                    }
+                    actions={<StatusBadge tone="info" dot={false} className="text-sikas-num">{data.length}</StatusBadge>}
+                    contentClassName="mx-4 mb-4"
+                    footer={
+                        <>
+                            <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">
+                                Page <span className="text-sikas-num font-extrabold text-slate-700 dark:text-slate-200">{page}</span> of <span className="text-sikas-num font-extrabold text-slate-700 dark:text-slate-200">{lastPage}</span>
+                            </span>
+                            <div className="flex items-center gap-1">
+                                <button
+                                    onClick={() => setPage(prev => Math.max(prev - 1, 1))}
+                                    disabled={page === 1}
+                                    className="rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-[10px] font-extrabold text-slate-600 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:border-slate-100 disabled:bg-slate-50 disabled:text-slate-300 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10 dark:disabled:border-white/5 dark:disabled:bg-white/5 dark:disabled:text-slate-600"
+                                >
+                                    Previous
+                                </button>
+                                <button
+                                    onClick={() => setPage(prev => Math.min(prev + 1, lastPage))}
+                                    disabled={page === lastPage}
+                                    className="rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-[10px] font-extrabold text-slate-600 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:border-slate-100 disabled:bg-slate-50 disabled:text-slate-300 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10 dark:disabled:border-white/5 dark:disabled:bg-white/5 dark:disabled:text-slate-600"
+                                >
+                                    Next
+                                </button>
+                            </div>
+                        </>
+                    }
                 >
-                    Previous
-                </button>
-                <span className="text-gray-700 dark:text-gray-300">Page {page} of {lastPage}</span>
-                <button
-                    onClick={() => setPage(prev => Math.min(prev + 1, lastPage))}
-                    disabled={page === lastPage}
-                    className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded disabled:opacity-50"
-                >
-                    Next
-                </button>
+                    <table className="min-w-full">
+                        <thead>
+                            <tr>
+                                <th className="text-left">No</th>
+                                <th className="text-left">Nomor SP2B</th>
+                                <th className="text-right">Belanja Pegawai</th>
+                                <th className="text-right">Belanja Barang dan Jasa</th>
+                                <th className="text-right">Belanja Modal</th>
+                                <th className="text-left">Periode</th>
+                                <th className="text-left">Tahun</th>
+                                <th className="text-right">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {loading ? (
+                                <tr><td colSpan={8} className="p-0"><SkeletonRows rows={4} columns={6} /></td></tr>
+                            ) : data.length === 0 ? (
+                                <tr>
+                                    <td colSpan={8} className="px-6 py-4">
+                                        <EmptyState
+                                            className="border-0 bg-transparent py-9 dark:bg-transparent"
+                                            title="Tidak ada data SP2B."
+                                            description="Coba ubah kata kunci pencarian atau tambahkan data SP2B baru."
+                                            icon={
+                                                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                </svg>
+                                            }
+                                        />
+                                    </td>
+                                </tr>
+                            ) : (
+                                data.map((item, index) => {
+                                    return (
+                                        <tr key={item.id}>
+                                            <td className="text-sikas-num whitespace-nowrap">{index + 1 + (page - 1) * 10}</td>
+                                            <td className="text-sikas-num whitespace-nowrap font-bold text-slate-900 dark:text-white">{item.nomor_sp2b}</td>
+                                            <td className="text-sikas-num whitespace-nowrap text-right">{formatCurrency(item.belanja_pegawai)}</td>
+                                            <td className="text-sikas-num whitespace-nowrap text-right">{formatCurrency(item.belanja_barang_jasa)}</td>
+                                            <td className="text-sikas-num whitespace-nowrap text-right">{formatCurrency(item.belanja_modal)}</td>
+                                            <td className="whitespace-nowrap">
+                                                <StatusBadge tone="info" dot={false}>
+                                                    {item.jenis_periode === 'bulan' ? `Bulan ${item.bulan}` : `Tahap ${item.tahap}`}
+                                                </StatusBadge>
+                                            </td>
+                                            <td className="text-sikas-num whitespace-nowrap">{item.penganggaran?.tahun_anggaran}</td>
+                                            <td className="whitespace-nowrap">
+                                                <div className="flex items-center justify-end gap-1.5">
+                                                    <button
+                                                        onClick={() => { setSelectedPdfUrl(vroute('laporan.sp2b.pdf', item.id)); setIsPreviewModalOpen(true); }}
+                                                        className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-slate-100 bg-white text-sky-600 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 hover:text-sky-700 dark:border-white/10 dark:bg-white/5 dark:text-sky-400 dark:hover:bg-white/10"
+                                                        title="Preview PDF"
+                                                    >
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                                                    </button>
+                                                    <button
+                                                        onClick={() => openEdit(item)}
+                                                        className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-slate-100 bg-white text-brand-600 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 hover:text-brand-700 dark:border-white/10 dark:bg-white/5 dark:text-brand-300 dark:hover:bg-white/10"
+                                                        title="Edit"
+                                                    >
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDelete(item.id)}
+                                                        className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-slate-100 bg-white text-rose-600 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 hover:text-rose-700 dark:border-white/10 dark:bg-white/5 dark:text-rose-400 dark:hover:bg-white/10"
+                                                        title="Delete"
+                                                    >
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })
+                            )}
+                        </tbody>
+                    </table>
+                </DataTable>
             </div>
 
             {/* Add/Edit Modal */}
-            <Modal show={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} maxWidth="7xl">
-                <div className="flex flex-col h-[85vh] bg-white dark:bg-gray-800 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 shadow-xl">
-                    <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 shrink-0">
-                        <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                            {formData.id ? 'Edit SP2B' : 'Tambah SP2B'}
-                        </h2>
-                        <p className="mt-2 text-blue-100 text-sm">
-                            Permintaan Pengesahan Belanja (Modal Perhitungan Otomatis)
-                        </p>
-                    </div>
-
-                    <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
-                        <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
-                            <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg border border-gray-100 dark:border-gray-600">
-                                <h3 className="text-sm font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wide mb-4">Informasi Surat</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                                    <div className="col-span-1 md:col-span-2">
-                                        <InputLabel htmlFor="nomor_sp2b" value="Nomor SP2B" className="text-gray-700 dark:text-gray-300 font-medium" />
-                                        <TextInput
-                                            id="nomor_sp2b"
-                                            type="text"
-                                            className="mt-1 block w-full border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-blue-500 rounded-lg shadow-sm text-gray-900"
-                                            value={formData.nomor_sp2b}
-                                            onChange={(e) => setFormData({ ...formData, nomor_sp2b: e.target.value })}
-                                            required
-                                            placeholder="Contoh: 001/SP2b/2025"
-                                        />
-                                    </div>
-                                    <div>
-                                        <InputLabel htmlFor="tanggal_sp2b" value="Tanggal SP2B" className="text-gray-700 dark:text-gray-300 font-medium" />
-                                        <div className="mt-1">
-                                            <DatePicker
-                                                id="tanggal_sp2b"
-                                                selected={formData.tanggal_sp2b ? new Date(formData.tanggal_sp2b) : null}
-                                                onChange={(date: Date | null) => {
-                                                    if (date) {
-                                                        const offset = date.getTimezoneOffset();
-                                                        const localDate = new Date(date.getTime() - (offset * 60 * 1000));
-                                                        const formatted = localDate.toISOString().split('T')[0];
-                                                        setFormData({ ...formData, tanggal_sp2b: formatted });
-                                                    } else {
-                                                        setFormData({ ...formData, tanggal_sp2b: '' });
-                                                    }
-                                                }}
-                                                dateFormat="dd MMMM yyyy"
-                                                locale="id"
-                                                showMonthDropdown
-                                                showYearDropdown
-                                                dropdownMode="select"
-                                                className="block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-blue-500 focus:ring-blue-500 rounded-lg shadow-sm"
-                                                placeholderText="Pilih Tanggal"
-                                                isClearable
-                                                required
-                                            />
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <InputLabel htmlFor="tahun_anggaran" value="Tahun Anggaran" className="text-gray-700 dark:text-gray-300 font-medium" />
-                                        <Select
-                                            id="tahun_anggaran"
-                                            className="mt-1"
-                                            classNamePrefix="react-select"
-                                            options={availableYears.map(year => ({ value: year.tahun_anggaran.toString(), label: year.tahun_anggaran.toString() }))}
-                                            value={availableYears
-                                                .filter(year => String(year.tahun_anggaran) === String(formData.tahun_anggaran))
-                                                .map(year => ({ value: year.tahun_anggaran.toString(), label: year.tahun_anggaran.toString() }))[0] || null
-                                            }
-                                            onChange={(val: any) => {
-                                                const selectedYear = val ? val.value : '';
-                                                const selectedBudget = availableYears.find(y => String(y.tahun_anggaran) === selectedYear);
-                                                setFormData({
-                                                    ...formData,
-                                                    tahun_anggaran: selectedYear,
-                                                    penganggaran_id: selectedBudget ? selectedBudget.id : formData.penganggaran_id
-                                                });
-                                            }}
-                                            placeholder="Pilih Tahun Anggaran..."
-                                            isSearchable
-                                            required
-                                            styles={{
-                                                control: (baseStyles, state) => ({
-                                                    ...baseStyles,
-                                                    borderColor: state.isFocused ? '#6366f1' : '#d1d5db',
-                                                    boxShadow: state.isFocused ? '0 0 0 1px #6366f1' : 'none',
-                                                    '&:hover': { borderColor: state.isFocused ? '#6366f1' : '#9ca3af' },
-                                                    borderRadius: '0.375rem',
-                                                    padding: '0.125rem',
-                                                }),
-                                                singleValue: (base) => ({
-                                                    ...base,
-                                                    color: '#111827', // text-gray-900
-                                                }),
-                                                input: (base) => ({
-                                                    ...base,
-                                                    color: '#111827', // text-gray-900
-                                                    'input': {
-                                                        boxShadow: 'none !important',
-                                                        border: 'none !important',
-                                                        outline: 'none !important',
-                                                    },
-                                                    'input:focus': {
-                                                        boxShadow: 'none !important',
-                                                        border: 'none !important',
-                                                    }
-                                                }),
-                                                option: (base, state) => ({
-                                                    ...base,
-                                                    color: '#111827',
-                                                    backgroundColor: state.isSelected ? '#e5e7eb' : state.isFocused ? '#f3f4f6' : 'transparent',
-                                                }),
-                                                menu: (baseStyles) => ({
-                                                    ...baseStyles,
-                                                    zIndex: 9999,
-                                                })
-                                            }}
-                                        />
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-4">
-                                    <div>
-                                        <InputLabel htmlFor="jenis_periode" value="Jenis Periode" className="text-gray-700 dark:text-gray-300 font-medium" />
-                                        <select
-                                            id="jenis_periode"
-                                            className="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-blue-500 focus:ring-blue-500 rounded-lg shadow-sm"
-                                            value={formData.jenis_periode}
-                                            onChange={(e) => setFormData({ ...formData, jenis_periode: e.target.value as 'bulan' | 'tahap' })}
-                                            required
-                                        >
-                                            <option value="bulan">Bulan</option>
-                                            <option value="tahap">Tahap</option>
-                                        </select>
-                                    </div>
-                                    {formData.jenis_periode === 'bulan' ? (
-                                        <div>
-                                            <InputLabel htmlFor="bulan" value="Bulan" className="text-gray-700 dark:text-gray-300 font-medium" />
-                                            <select
-                                                id="bulan"
-                                                className="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-blue-500 focus:ring-blue-500 rounded-lg shadow-sm"
-                                                value={formData.bulan || ''}
-                                                onChange={(e) => setFormData({ ...formData, bulan: Number(e.target.value) })}
-                                                required
-                                            >
-                                                <option value="1">Januari</option>
-                                                <option value="2">Februari</option>
-                                                <option value="3">Maret</option>
-                                                <option value="4">April</option>
-                                                <option value="5">Mei</option>
-                                                <option value="6">Juni</option>
-                                                <option value="7">Juli</option>
-                                                <option value="8">Agustus</option>
-                                                <option value="9">September</option>
-                                                <option value="10">Oktober</option>
-                                                <option value="11">November</option>
-                                                <option value="12">Desember</option>
-                                            </select>
-                                        </div>
-                                    ) : (
-                                        <div>
-                                            <InputLabel htmlFor="tahap" value="Tahap" className="text-gray-700 dark:text-gray-300 font-medium" />
-                                            <select
-                                                id="tahap"
-                                                className="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-blue-500 focus:ring-blue-500 rounded-lg shadow-sm"
-                                                value={formData.tahap}
-                                                onChange={(e) => setFormData({ ...formData, tahap: e.target.value as '1' | '2' })}
-                                                required
-                                            >
-                                                <option value="1">1</option>
-                                                <option value="2">2</option>
-                                            </select>
-                                        </div>
-                                    )}
-                                    <div className="flex items-end col-span-1 md:col-span-2 justify-end">
-                                        <button
-                                            type="button"
-                                            onClick={handleCalculate}
-                                            disabled={isCalculating}
-                                            className="inline-flex items-center px-4 py-2 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 text-sm font-medium rounded-lg hover:bg-indigo-200 dark:hover:bg-indigo-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors w-full md:w-auto justify-center"
-                                        >
-                                            {isCalculating ? (
-                                                <>
-                                                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-indigo-700 dark:text-indigo-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                                    </svg>
-                                                    Menghitung...
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
-                                                    Hitung Otomatis via API
-                                                </>
-                                            )}
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
-                                    <InputLabel value="Saldo Awal" />
-                                    <input type="text" readOnly className="mt-1 block w-full bg-gray-100 dark:bg-gray-600 border-gray-300 rounded-md" value={formatCurrency(formData.saldo_awal)} />
-                                </div>
-                                <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
-                                    <InputLabel value="Pendapatan" />
-                                    <input type="text" readOnly className="mt-1 block w-full bg-gray-100 dark:bg-gray-600 border-gray-300 rounded-md" value={formatCurrency(formData.pendapatan)} />
-                                </div>
-                            </div>
-
-                            <div className="bg-red-50 dark:bg-red-900/10 p-4 rounded-lg border border-red-100 dark:border-red-900/30">
-                                <h3 className="text-sm font-semibold mb-3 text-red-700">Rincian Belanja</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div>
-                                        <InputLabel value="Belanja Pegawai" />
-                                        <input type="text" readOnly className="w-full bg-white dark:bg-gray-700 border-gray-300 rounded-md mt-1" value={formatCurrency(formData.belanja_pegawai)} />
-                                    </div>
-                                    <div>
-                                        <InputLabel value="Belanja Barang dan Jasa" />
-                                        <input type="text" readOnly className="w-full bg-white dark:bg-gray-700 border-gray-300 rounded-md mt-1" value={formatCurrency(formData.belanja_barang_jasa)} />
-                                    </div>
-                                    <div>
-                                        <InputLabel value="Total Belanja Modal" />
-                                        <input type="text" readOnly className="w-full bg-white dark:bg-gray-700 border-gray-300 rounded-md mt-1" value={formatCurrency(formData.belanja_modal)} />
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="bg-blue-50 dark:bg-blue-900/10 p-4 rounded-lg border border-blue-100 dark:border-blue-900/30">
-                                <h3 className="text-sm font-semibold mb-3 text-blue-700">Rincian Belanja Modal</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div>
-                                        <InputLabel value="Peralatan dan Mesin" />
-                                        <input type="text" readOnly className="w-full bg-white dark:bg-gray-700 border-gray-300 rounded-md mt-1" value={formatCurrency(formData.belanja_modal_peralatan_mesin)} />
-                                    </div>
-                                    <div>
-                                        <InputLabel value="Aset Tetap Lainnya" />
-                                        <input type="text" readOnly className="w-full bg-white dark:bg-gray-700 border-gray-300 rounded-md mt-1" value={formatCurrency(formData.belanja_modal_aset_tetap_lainnya)} />
-                                    </div>
-                                    <div>
-                                        <InputLabel value="Tanah dan Bangunan" />
-                                        <input type="text" readOnly className="w-full bg-white dark:bg-gray-700 border-gray-300 rounded-md mt-1" value={formatCurrency(formData.belanja_modal_tanah_bangunan)} />
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border border-green-200">
-                                <InputLabel value="Saldo Akhir" className="text-green-800 dark:text-green-200 font-bold" />
-                                <input type="text" readOnly className="mt-1 block w-full bg-white dark:bg-gray-700 border-green-300 rounded-md font-bold text-lg text-green-700" value={formatCurrency(formData.saldo_akhir)} />
-                            </div>
-
+            <LaporanFormModal
+                show={isAddModalOpen}
+                onClose={() => setIsAddModalOpen(false)}
+                maxWidth="7xl"
+                tall
+                title={formData.id ? 'Edit SP2B' : 'Tambah SP2B'}
+                subtitle="Permintaan Pengesahan Belanja (Modal Perhitungan Otomatis)"
+                isSaving={isSaving}
+                onSubmit={handleSubmit}
+            >
+                <LaporanSectionCard title="Informasi Surat" tone="neutral">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+                        <div className="col-span-1 md:col-span-2">
+                            <InputLabel htmlFor="nomor_sp2b" value="Nomor SP2B" required />
+                            <TextInput
+                                id="nomor_sp2b"
+                                type="text"
+                                className="w-full"
+                                value={formData.nomor_sp2b}
+                                onChange={(e) => setFormData({ ...formData, nomor_sp2b: e.target.value })}
+                                required
+                                placeholder="Contoh: 001/SP2b/2025"
+                            />
                         </div>
 
-                        <div className="px-6 py-4 bg-gray-50 dark:bg-gray-750 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-3 rounded-b-lg shrink-0">
-                            <SecondaryButton onClick={() => setIsAddModalOpen(false)} disabled={isSaving}>Batal</SecondaryButton>
-                            <PrimaryButton type="submit" disabled={isSaving} className="bg-blue-600 hover:bg-blue-700">Simpan</PrimaryButton>
+                        <div>
+                            <InputLabel htmlFor="tanggal_sp2b" value="Tanggal SP2B" required />
+                            <DatePicker
+                                id="tanggal_sp2b"
+                                value={formData.tanggal_sp2b}
+                                onChange={(date) =>
+                                    setFormData({
+                                        ...formData,
+                                        tanggal_sp2b: date ? format(date, 'yyyy-MM-dd') : '',
+                                    })
+                                }
+                                placeholder="Pilih tanggal SP2B..."
+                            />
                         </div>
-                    </form>
-                </div>
-            </Modal>
 
-            {/* Delete Confirmation Modal */}
-            <Modal show={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} maxWidth="sm">
-                <div className="p-6">
-                    <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">Hapus Data SP2B</h2>
-                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Apakah Anda yakin ingin menghapus data SP2B ini?</p>
-                    <div className="mt-6 flex justify-end gap-3">
-                        <SecondaryButton onClick={() => setIsDeleteModalOpen(false)}>Batal</SecondaryButton>
-                        <DangerButton onClick={confirmDelete}>Hapus</DangerButton>
-                    </div>
-                </div>
-            </Modal>
-
-            {/* Preview and Print Settings Modal -> exactly the same as SPTJ */}
-            <Modal show={isPreviewModalOpen} onClose={() => setIsPreviewModalOpen(false)} maxWidth="5xl">
-                <div id="sp2b-pdf-preview" className="flex flex-col h-[85vh] bg-white dark:bg-gray-900 rounded-2xl overflow-hidden relative shadow-2xl border border-gray-200 dark:border-gray-800">
-
-                    {/* Header */}
-                    <div className="bg-gradient-to-r from-blue-600 to-indigo-700 px-6 py-4 flex justify-between items-center shadow-md z-10">
-                        <div className="flex items-center gap-3">
-                            <div className="bg-white/20 p-2 rounded-lg backdrop-blur-sm">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                </svg>
-                            </div>
-                            <h3 className="font-semibold text-lg text-white tracking-wide">Pratinjau SP2B</h3>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <button
-                                onClick={() => {
-                                    const elem = document.getElementById('sp2b-pdf-preview');
-                                    if (elem) {
-                                        if (!document.fullscreenElement) {
-                                            elem.requestFullscreen().catch(err => console.error(err));
-                                        } else {
-                                            document.exitFullscreen();
-                                        }
-                                    }
+                        <div>
+                            <InputLabel htmlFor="sp2b_tahun_anggaran" value="Tahun Anggaran" required />
+                            <LaporanSelect
+                                inputId="sp2b_tahun_anggaran"
+                                options={availableYears.map((year) => ({
+                                    value: year.tahun_anggaran.toString(),
+                                    label: year.tahun_anggaran.toString(),
+                                }))}
+                                value={formData.tahun_anggaran}
+                                onChange={(selectedYear) => {
+                                    const selectedBudget = availableYears.find(
+                                        (y) => String(y.tahun_anggaran) === selectedYear,
+                                    );
+                                    setFormData({
+                                        ...formData,
+                                        tahun_anggaran: selectedYear,
+                                        penganggaran_id: selectedBudget
+                                            ? selectedBudget.id
+                                            : formData.penganggaran_id,
+                                    });
                                 }}
-                                className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-full transition-all duration-200 focus:outline-none"
-                                title="Fullscreen"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-                                </svg>
-                            </button>
-                            <button
-                                onClick={() => setIsPreviewModalOpen(false)}
-                                className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-full transition-all duration-200 focus:outline-none"
-                                title="Tutup"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* PDF Container */}
-                    <div className="flex-1 bg-gray-100 dark:bg-gray-950 overflow-hidden relative flex justify-center items-center p-4">
-                        <div className="w-full h-full bg-white rounded-lg shadow-inner border border-gray-300 dark:border-gray-700 overflow-hidden">
-                            <iframe
-                                src={`${selectedPdfUrl}?font_size=${printSettings.fontSize}&paper_size=${printSettings.paperSize}`}
-                                className="w-full h-full border-none bg-white rounded-lg"
-                                title="PDF Preview"
+                                placeholder="Pilih Tahun Anggaran..."
+                                isSearchable
                             />
                         </div>
                     </div>
 
-                    {/* Footer */}
-                    <div className="bg-white dark:bg-gray-800 px-6 py-4 flex justify-end gap-3 border-t border-gray-200 dark:border-gray-700">
-                        <button
-                            onClick={() => setIsPreviewModalOpen(false)}
-                            className="px-5 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-4 focus:ring-gray-100 dark:focus:ring-gray-700 transition-all duration-200"
-                        >
-                            Batalkan
-                        </button>
-                        <button
-                            onClick={() => { setIsPreviewModalOpen(false); setIsPrintSettingsModalOpen(true); }}
-                            className="inline-flex items-center px-5 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-xl hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-800 shadow-lg shadow-blue-500/30 transition-all duration-200 transform hover:-translate-y-0.5"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 -ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                            Download PDF
-                        </button>
-                    </div>
-                </div>
-            </Modal>
+                    <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-4">
+                        <div>
+                            <InputLabel htmlFor="sp2b_jenis_periode" value="Jenis Periode" required />
+                            <LaporanSelect
+                                inputId="sp2b_jenis_periode"
+                                options={[
+                                    { value: 'bulan', label: 'Bulan' },
+                                    { value: 'tahap', label: 'Tahap' },
+                                ]}
+                                value={formData.jenis_periode}
+                                onChange={(val) =>
+                                    setFormData({
+                                        ...formData,
+                                        jenis_periode: (val || 'bulan') as 'bulan' | 'tahap',
+                                    })
+                                }
+                                isSearchable={false}
+                            />
+                        </div>
 
-            <Modal show={isPrintSettingsModalOpen} onClose={() => setIsPrintSettingsModalOpen(false)} maxWidth="sm">
-                <div className="p-6">
-                    <h2 className="mb-4 text-lg">Pengaturan Cetak</h2>
-                    <div className="space-y-4">
-                        <div>
-                            <InputLabel value="Ukuran Kertas" />
-                            <select className="w-full rounded text-gray-900" value={printSettings.paperSize} onChange={(e) => setPrintSettings({ ...printSettings, paperSize: e.target.value })}>
-                                <option value="A4">A4</option>
-                                <option value="Letter">Letter</option>
-                                <option value="Folio">Folio</option>
-                                <option value="Legal">Legal</option>
-                            </select>
-                        </div>
-                        <div>
-                            <InputLabel value="Ukuran Font" />
-                            <select className="w-full rounded text-gray-900" value={printSettings.fontSize} onChange={(e) => setPrintSettings({ ...printSettings, fontSize: e.target.value })}>
-                                <option value="8pt">8pt</option>
-                                <option value="9pt">9pt</option>
-                                <option value="10pt">10pt</option>
-                                <option value="11pt">11pt</option>
-                                <option value="12pt">12pt</option>
-                            </select>
+                        {formData.jenis_periode === 'bulan' ? (
+                            <div>
+                                <InputLabel htmlFor="sp2b_bulan" value="Bulan" required />
+                                <LaporanSelect
+                                    inputId="sp2b_bulan"
+                                    options={BULAN_OPTIONS}
+                                    value={formData.bulan ? String(formData.bulan) : ''}
+                                    onChange={(val) =>
+                                        setFormData({
+                                            ...formData,
+                                            bulan: val ? Number(val) : formData.bulan,
+                                        })
+                                    }
+                                    placeholder="Pilih Bulan..."
+                                    isSearchable
+                                />
+                            </div>
+                        ) : (
+                            <div>
+                                <InputLabel htmlFor="sp2b_tahap" value="Tahap" required />
+                                <LaporanSelect
+                                    inputId="sp2b_tahap"
+                                    options={[
+                                        { value: '1', label: 'Tahap 1' },
+                                        { value: '2', label: 'Tahap 2' },
+                                    ]}
+                                    value={formData.tahap}
+                                    onChange={(val) =>
+                                        setFormData({ ...formData, tahap: (val || '1') as '1' | '2' })
+                                    }
+                                    isSearchable={false}
+                                />
+                            </div>
+                        )}
+
+                        <div className="flex items-end justify-end md:col-span-2">
+                            <LaporanCalculateButton
+                                onClick={handleCalculate}
+                                isCalculating={isCalculating}
+                                label="Hitung Otomatis via API"
+                                className="w-full md:w-auto"
+                            />
                         </div>
                     </div>
-                    <div className="mt-6 flex justify-end gap-3">
-                        <SecondaryButton onClick={() => setIsPrintSettingsModalOpen(false)}>Batal</SecondaryButton>
-                        <PrimaryButton onClick={handlePrint}>Cetak PDF</PrimaryButton>
-                    </div>
+                </LaporanSectionCard>
+
+                <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2">
+                    <LaporanMetricCard
+                        label="Saldo Awal"
+                        value={formatCurrency(formData.saldo_awal)}
+                        tone="neutral"
+                    />
+                    <LaporanMetricCard
+                        label="Pendapatan"
+                        value={formatCurrency(formData.pendapatan)}
+                        tone="sky"
+                    />
                 </div>
-            </Modal>
-            
+
+                <LaporanSectionCard
+                    title="Rincian Belanja"
+                    tone="rose"
+                    icon={<Receipt className="h-3.5 w-3.5" />}
+                >
+                    <div className="grid grid-cols-1 gap-3.5 md:grid-cols-3">
+                        <LaporanMetricCard
+                            label="Belanja Pegawai"
+                            value={formatCurrency(formData.belanja_pegawai)}
+                            tone="rose"
+                        />
+                        <LaporanMetricCard
+                            label="Belanja Barang dan Jasa"
+                            value={formatCurrency(formData.belanja_barang_jasa)}
+                            tone="rose"
+                        />
+                        <LaporanMetricCard
+                            label="Total Belanja Modal"
+                            value={formatCurrency(formData.belanja_modal)}
+                            tone="rose"
+                        />
+                    </div>
+                </LaporanSectionCard>
+
+                <LaporanSectionCard
+                    title="Rincian Belanja Modal"
+                    tone="sky"
+                    icon={<Layers className="h-3.5 w-3.5" />}
+                >
+                    <div className="grid grid-cols-1 gap-3.5 md:grid-cols-3">
+                        <LaporanMetricCard
+                            label="Peralatan dan Mesin"
+                            value={formatCurrency(formData.belanja_modal_peralatan_mesin)}
+                            tone="sky"
+                        />
+                        <LaporanMetricCard
+                            label="Aset Tetap Lainnya"
+                            value={formatCurrency(formData.belanja_modal_aset_tetap_lainnya)}
+                            tone="sky"
+                        />
+                        <LaporanMetricCard
+                            label="Tanah dan Bangunan"
+                            value={formatCurrency(formData.belanja_modal_tanah_bangunan)}
+                            tone="sky"
+                        />
+                    </div>
+                </LaporanSectionCard>
+
+                <LaporanMetricCard
+                    label="Saldo Akhir"
+                    value={formatCurrency(formData.saldo_akhir)}
+                    tone={formData.saldo_akhir < 0 ? 'rose' : 'mint'}
+                    sublabel="Akumulasi saldo akhir kas periode terpilih"
+                />
+            </LaporanFormModal>
+
+            {/* Delete Confirmation Modal */}
+            <LaporanDeleteModal
+                show={isDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
+                onConfirm={confirmDelete}
+                title="Hapus Data SP2B"
+                message="Apakah Anda yakin ingin menghapus data SP2B ini? Tindakan ini tidak dapat dibatalkan."
+            />
+
+            {/* Preview Modal */}
+            <LaporanPdfPreviewModal
+                show={isPreviewModalOpen}
+                onClose={() => setIsPreviewModalOpen(false)}
+                previewId="sp2b-pdf-preview"
+                title="Pratinjau SP2B"
+                pdfUrl={`${selectedPdfUrl}?font_size=${printSettings.fontSize}&paper_size=${printSettings.paperSize}`}
+                onOpenPrintSettings={() => {
+                    setIsPreviewModalOpen(false);
+                    setIsPrintSettingsModalOpen(true);
+                }}
+            />
+
+            {/* Print Settings Modal */}
+            <LaporanPrintSettingsModal
+                show={isPrintSettingsModalOpen}
+                onClose={() => setIsPrintSettingsModalOpen(false)}
+                paperSize={printSettings.paperSize}
+                fontSize={printSettings.fontSize}
+                onPaperSizeChange={(paperSize) => setPrintSettings({ ...printSettings, paperSize })}
+                onFontSizeChange={(fontSize) => setPrintSettings({ ...printSettings, fontSize })}
+                onPrint={handlePrint}
+            />
+
             {/* Validation Modal */}
-            <Modal show={isValidationModalOpen} onClose={() => setIsValidationModalOpen(false)} maxWidth="md">
-                <div className="p-6 text-center">
-                    <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <svg className="w-8 h-8 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
-                    </div>
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Peringatan Validasi</h3>
-                    <p className="text-gray-600 dark:text-gray-400 mb-6">
-                        {validationMessage}
-                    </p>
-                    <div className="flex justify-center">
-                        <PrimaryButton 
-                            onClick={() => setIsValidationModalOpen(false)}
-                            className="bg-red-600 hover:bg-red-700"
-                        >
-                            Tutup
-                        </PrimaryButton>
-                    </div>
-                </div>
-            </Modal>
+            <LaporanValidationModal
+                show={isValidationModalOpen}
+                onClose={() => setIsValidationModalOpen(false)}
+                title="Peringatan Validasi"
+                message={validationMessage}
+                hint="Pastikan seluruh isian wajib SP2B telah lengkap dan tombol Hitung Otomatis sudah dijalankan sebelum menyimpan."
+            />
         </div>
     );
 }

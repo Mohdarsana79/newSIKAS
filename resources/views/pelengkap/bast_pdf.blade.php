@@ -7,39 +7,57 @@
     <title>Berita Acara Serah Terima Barang</title>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     <style>
+        @page {
+            margin: 1.5cm 2cm;
+        }
+
         body {
             font-family: Arial, Helvetica, sans-serif;
             font-size: {{ $fontSize ?? '11pt' }};
-            line-height: 1.5;
-            padding: 30px;
+            line-height: 1.25;
+            margin: 0;
+            padding: 0;
         }
 
         .title {
             text-align: center;
             font-weight: bold;
-            font-size: 1.3em;
+            font-size: 1.25em;
             text-decoration: underline;
-            margin-bottom: 5px;
+            margin-bottom: 3px;
         }
 
         .subtitle {
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 8px;
         }
 
         .content {
             text-align: justify;
         }
 
+        .content p {
+            margin: 3px 0;
+        }
+
+        .content ol {
+            margin: 2px 0 5px 0;
+            padding-left: 18px;
+        }
+
+        .content ol li {
+            margin-bottom: 1.5px;
+        }
+
         .identity-table {
             width: 100%;
-            margin-left: 20px;
-            margin-bottom: 10px;
+            margin-left: 16px;
+            margin-bottom: 3px;
         }
         
         .identity-table td {
             vertical-align: top;
-            padding: 2px 0;
+            padding: 1px 0;
         }
 
         .identity-label {
@@ -53,13 +71,13 @@
         .item-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 15px;
-            margin-bottom: 20px;
+            margin-top: 6px;
+            margin-bottom: 6px;
         }
 
         .item-table th, .item-table td {
             border: 1px solid #000;
-            padding: 5px;
+            padding: 3px 5px;
             text-align: center;
         }
 
@@ -78,8 +96,9 @@
 
         .signature-area {
             width: 100%;
-            margin-top: 40px;
+            margin-top: 12px;
             text-align: center;
+            page-break-inside: avoid;
         }
 
         .signature-table {
@@ -177,7 +196,7 @@
                     <th>Jumlah</th>
                     <th>Satuan</th>
                     <th>Kondisi</th>
-                    <th>Harga<br>Satuan<br>(Rp)</th>
+                    <th>Harga Satuan<br>(Rp)</th>
                     <th>Total<br>Harga (Rp)</th>
                 </tr>
             </thead>
@@ -213,32 +232,30 @@
             </tbody>
         </table>
 
-        <div style="page-break-inside: avoid;">
-            <p><strong>Ketentuan Tambahan:</strong></p>
-            <ol>
-                <li>Sejak ditandatanganinya Berita Acara ini, maka barang tersebut beserta segala tanggung jawab, perawatan, dan risikonya beralih menjadi tanggung jawab <strong>PIHAK KEDUA</strong>.</li>
-                <li><strong>PIHAK KEDUA</strong> telah memeriksa dan memastikan bahwa barang yang diserahkan dalam kondisi baik dan sesuai dengan rincian pada tabel di atas.</li>
-                <li>Nilai total barang yang diserah terimakan adalah sebesar Rp {{ number_format($totalKeseluruhan, 0, ',', '.') }} <em>({{ $terbilangText ?? '..................................................................' }})</em></li>
-            </ol>
+        <p style="margin-top: 5px;"><strong>Ketentuan Tambahan:</strong></p>
+        <ol>
+            <li>Sejak ditandatanganinya Berita Acara ini, maka barang tersebut beserta segala tanggung jawab, perawatan, dan risikonya beralih menjadi tanggung jawab <strong>PIHAK KEDUA</strong>.</li>
+            <li><strong>PIHAK KEDUA</strong> telah memeriksa dan memastikan bahwa barang yang diserahkan dalam kondisi baik dan sesuai dengan rincian pada tabel di atas.</li>
+            <li>Nilai total barang yang diserah terimakan adalah sebesar Rp {{ number_format($totalKeseluruhan, 0, ',', '.') }} <em>({{ $terbilangText ?? '..................................................................' }})</em></li>
+        </ol>
 
-            <p>Demikian Berita Acara Serah Terima Barang ini dibuat dengan sebenarnya dalam rangkap 2 (dua) yang masing-masing memiliki kekuatan hukum yang sama, untuk dipergunakan sebagaimana mestinya.</p>
+        <p>Demikian Berita Acara Serah Terima Barang ini dibuat dengan sebenarnya dalam rangkap 2 (dua) yang masing-masing memiliki kekuatan hukum yang sama, untuk dipergunakan sebagaimana mestinya.</p>
 
-            <div class="signature-area">
-                <table class="signature-table" style="margin-top: 30px;">
-                    <tr>
-                        <td style="font-weight: bold;">
-                            PIHAK PERTAMA
-                            <br><br><br><br><br>
-                            _________________________ 
-                        </td>
-                        <td style="font-weight: bold;">
-                            PIHAK KEDUA
-                            <br><br><br><br><br>
-                            _________________________ 
-                        </td>
-                    </tr>
-                </table>
-            </div>
+        <div class="signature-area">
+            <table class="signature-table">
+                <tr>
+                    <td style="font-weight: bold;">
+                        PIHAK PERTAMA
+                        <div style="height: 48px;"></div>
+                        _________________________ 
+                    </td>
+                    <td style="font-weight: bold;">
+                        PIHAK KEDUA
+                        <div style="height: 48px;"></div>
+                        _________________________ 
+                    </td>
+                </tr>
+            </table>
         </div>
     </div>
 </body>

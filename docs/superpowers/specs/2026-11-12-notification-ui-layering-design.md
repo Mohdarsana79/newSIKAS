@@ -151,3 +151,4 @@ Di dalam `resources/js/Components/Navbar.tsx`:
    - Klik "Buka BKU" dan pastikan navigasi ke halaman BKU bulan terkait berjalan sukses.
 4. **Verifikasi Build**:
    - Jalankan `npm run build` untuk memastikan tidak ada error TypeScript maupun Vite.
+

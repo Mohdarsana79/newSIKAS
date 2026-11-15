@@ -40,3 +40,4 @@
 
 1. Jalankan `npm run build` (`tsc && vite build`) dan pastikan exit code 0 tanpa warning/error TypeScript.
 2. Commit implementasi ke branch `main`.
+

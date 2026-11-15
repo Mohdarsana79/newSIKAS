@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { BentoCard } from './BentoCard';
+import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
+import Surface from '@/Components/ui/Surface';
+import IconTile from '@/Components/ui/IconTile';
 
 export type CalendarWidgetProps = {
     className?: string;
@@ -70,38 +71,43 @@ export function CalendarWidget({ className = '' }: CalendarWidgetProps) {
     }
 
     return (
-        <BentoCard className={`p-5 ${className}`}>
-            {/* Header: Bulan & Tombol Navigasi */}
-            <div className="flex items-center justify-between pb-3">
-                <span className="font-display text-sm font-bold tracking-tight text-slate-900 dark:text-white">
-                    {MONTH_NAMES[month]} {year}
-                </span>
+        <Surface
+            className={className}
+            padding="sm"
+            icon={
+                <IconTile tone="ink" size="sm">
+                    <CalendarDays />
+                </IconTile>
+            }
+            title="Kalender Keuangan"
+            subtitle={`${MONTH_NAMES[month]} ${year}`}
+            actions={
                 <div className="flex items-center gap-1">
                     <button
                         type="button"
                         onClick={handlePrev}
-                        className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white transition-colors"
+                        className="flex h-6 w-6 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-50 hover:text-slate-800 dark:text-slate-500 dark:hover:bg-white/5 dark:hover:text-white"
                         aria-label="Bulan sebelumnya"
                     >
-                        <ChevronLeft className="h-4 w-4" />
+                        <ChevronLeft className="h-3.5 w-3.5" />
                     </button>
                     <button
                         type="button"
                         onClick={handleNext}
-                        className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white transition-colors"
+                        className="flex h-6 w-6 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-50 hover:text-slate-800 dark:text-slate-500 dark:hover:bg-white/5 dark:hover:text-white"
                         aria-label="Bulan berikutnya"
                     >
-                        <ChevronRight className="h-4 w-4" />
+                        <ChevronRight className="h-3.5 w-3.5" />
                     </button>
                 </div>
-            </div>
-
+            }
+        >
             {/* Nama Hari */}
-            <div className="grid grid-cols-7 gap-1 text-center mb-1">
+            <div className="grid grid-cols-7 gap-y-1 text-center">
                 {DAYS.map((d, idx) => (
                     <span
                         key={idx}
-                        className="text-[11px] font-semibold uppercase text-slate-400 dark:text-slate-500"
+                        className="text-[8.5px] font-extrabold uppercase tracking-wider text-slate-300 dark:text-slate-600"
                     >
                         {d}
                     </span>
@@ -109,20 +115,20 @@ export function CalendarWidget({ className = '' }: CalendarWidgetProps) {
             </div>
 
             {/* Grid Tanggal */}
-            <div className="grid grid-cols-7 gap-1 text-center">
+            <div className="grid grid-cols-7 gap-y-1 text-center">
                 {calendarCells.map((cell, idx) => {
                     return (
                         <div
                             key={idx}
-                            className="flex h-8 items-center justify-center relative"
+                            className="flex h-7 items-center justify-center"
                         >
                             <span
-                                className={`flex h-7 w-7 items-center justify-center rounded-full text-xs transition-all ${
+                                className={`flex h-7 w-7 items-center justify-center rounded-full text-[10px] transition-all ${
                                     cell.isToday
-                                        ? 'bg-brand-500 font-bold text-white shadow-glow-violet'
+                                        ? 'bg-lime-400 font-extrabold text-slate-950 shadow-lime'
                                         : cell.currentMonth
-                                        ? 'text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10 font-medium'
-                                        : 'text-slate-300 dark:text-slate-600'
+                                        ? 'font-semibold text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/10'
+                                        : 'font-semibold text-slate-300 dark:text-slate-600'
                                 }`}
                             >
                                 {cell.day}
@@ -131,9 +137,8 @@ export function CalendarWidget({ className = '' }: CalendarWidgetProps) {
                     );
                 })}
             </div>
-        </BentoCard>
+        </Surface>
     );
 }
 
 export default CalendarWidget;
-

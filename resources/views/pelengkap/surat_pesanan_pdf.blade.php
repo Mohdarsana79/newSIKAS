@@ -110,8 +110,9 @@
 
 <body>
     @if(isset($suratPesanan->penganggaran->sekolah->kop_surat) && $suratPesanan->penganggaran->sekolah->kop_surat)
-        <div class="header-kop" style="text-align: center; border-bottom: 3px solid #000; margin-bottom: 20px; padding-bottom: 10px;">
+        <div class="header-kop" style="text-align: center; margin-bottom: 20px;">
             <img src="{{ public_path('storage/' . $suratPesanan->penganggaran->sekolah->kop_surat) }}" alt="Kop Surat" style="width: 100%; object-fit: contain;">
+            @include('partials.kop_border', ['border' => $suratPesanan->penganggaran->sekolah->kop_border ?? 'double'])
         </div>
     @else
         <div class="header">

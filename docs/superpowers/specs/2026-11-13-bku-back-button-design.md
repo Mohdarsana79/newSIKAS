@@ -23,3 +23,4 @@
 ## 2. Verifikasi
 
 - Menjalankan `npm run build` (`tsc && vite build`) untuk memastikan TypeScript dan bundling Vite berhasil tanpa error.
+

@@ -39,7 +39,7 @@
     <div class="header">
         @if ($sekolah && $sekolah->kop_surat)
             <img src="{{ public_path('storage/' . $sekolah->kop_surat) }}" class="letterhead" alt="Kop Surat">
-            <div class="separator"></div>
+            @include('partials.kop_border', ['border' => $sekolah->kop_border ?? 'double'])
         @else
             <h3 class="text-bold">PEMERINTAH {{ strtoupper($sekolah->kabupaten_kota ?? 'KABUPATEN') }}</h3>
             <h3 class="text-bold">DINAS PENDIDIKAN DAN KEBUDAYAAN</h3>

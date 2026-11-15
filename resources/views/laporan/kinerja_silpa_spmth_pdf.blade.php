@@ -53,7 +53,7 @@
     @if ($sekolah && $sekolah->kop_surat)
     <div class="header">
         <img src="{{ public_path('storage/' . $sekolah->kop_surat) }}" class="letterhead" alt="Kop Surat">
-        <div class="separator"></div>
+        @include('partials.kop_border', ['border' => $sekolah->kop_border ?? 'double'])
         <h3 class="text-bold" style="margin-bottom: 5px; text-decoration: underline;">SURAT PERNYATAAN TELAH MENERIMA HIBAH (SPTMH)</h3>
         <p style="margin-top: 0;">NOMOR : {{ $spmth->nomor_surat }}</p>
     </div>

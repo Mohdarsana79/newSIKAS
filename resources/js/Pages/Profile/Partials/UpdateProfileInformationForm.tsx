@@ -2,6 +2,7 @@ import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
+import IconTile from '@/Components/ui/IconTile';
 import { Transition } from '@headlessui/react';
 import { Link, useForm, usePage } from '@inertiajs/react';
 import { FormEventHandler } from 'react';
@@ -33,27 +34,31 @@ export default function UpdateProfileInformation({
 
     return (
         <section className={className}>
-            <header className="mb-6 border-b pb-4 border-gray-100 dark:border-gray-700">
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                    <User className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
-                    Biodata Pengguna
-                </h2>
-                <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                    Perbarui informasi profil, username, dan alamat email akun Anda.
-                </p>
+            <header className="mb-5 flex items-start gap-3 border-b border-slate-100 pb-4 dark:border-white/5">
+                <IconTile tone="violet" size="lg">
+                    <User />
+                </IconTile>
+                <div className="min-w-0">
+                    <h2 className="text-[14px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                        Biodata Pengguna
+                    </h2>
+                    <p className="mt-0.5 text-[10.5px] font-medium text-slate-400 dark:text-slate-500">
+                        Perbarui informasi profil, username, dan alamat email akun Anda.
+                    </p>
+                </div>
             </header>
 
-            <form onSubmit={submit} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <form onSubmit={submit} className="space-y-5">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div>
                         <InputLabel htmlFor="name" value="Nama Lengkap" />
-                        <div className="relative mt-2">
+                        <div className="relative">
                             <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                                <User className="h-5 w-5 text-gray-400" />
+                                <User className="h-4 w-4 text-slate-400 dark:text-slate-500" />
                             </div>
                             <TextInput
                                 id="name"
-                                className="block w-full pl-10 text-black dark:text-black"
+                                className="pl-10"
                                 value={data.name}
                                 onChange={(e) => setData('name', e.target.value)}
                                 required
@@ -67,13 +72,13 @@ export default function UpdateProfileInformation({
 
                     <div>
                         <InputLabel htmlFor="username" value="Username" />
-                        <div className="relative mt-2">
+                        <div className="relative">
                             <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                                <AtSign className="h-5 w-5 text-gray-400" />
+                                <AtSign className="h-4 w-4 text-slate-400 dark:text-slate-500" />
                             </div>
                             <TextInput
                                 id="username"
-                                className="block w-full pl-10 text-black dark:text-black"
+                                className="pl-10"
                                 value={data.username}
                                 onChange={(e) => setData('username', e.target.value)}
                                 required
@@ -87,14 +92,14 @@ export default function UpdateProfileInformation({
 
                 <div>
                     <InputLabel htmlFor="email" value="Email" />
-                    <div className="relative mt-2">
+                    <div className="relative">
                         <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                            <Mail className="h-5 w-5 text-gray-400" />
+                            <Mail className="h-4 w-4 text-slate-400 dark:text-slate-500" />
                         </div>
                         <TextInput
                             id="email"
                             type="email"
-                            className="block w-full pl-10 text-black dark:text-black"
+                            className="pl-10"
                             value={data.email}
                             onChange={(e) => setData('email', e.target.value)}
                             required
@@ -106,16 +111,16 @@ export default function UpdateProfileInformation({
                 </div>
 
                 {mustVerifyEmail && user.email_verified_at === null && (
-                    <div className="rounded-md bg-yellow-50 p-4 dark:bg-yellow-900/20">
+                    <div className="rounded-2xl border border-amber-200/70 bg-pastel-amber p-4 dark:border-amber-400/20 dark:bg-amber-400/10">
                         <div className="flex">
                             <div className="ml-3">
-                                <p className="text-sm text-yellow-700 dark:text-yellow-400">
+                                <p className="text-[11.5px] font-medium text-amber-700 dark:text-amber-300">
                                     Alamat email Anda belum diverifikasi.
                                     <Link
                                         href={route('verification.send')}
                                         method="post"
                                         as="button"
-                                        className="ml-1 font-medium underline text-yellow-700 hover:text-yellow-600 dark:text-yellow-400 dark:hover:text-yellow-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                                        className="ml-1 font-bold underline text-amber-800 hover:text-amber-700 dark:text-amber-300 dark:hover:text-amber-200 focus:outline-none focus:ring-2 focus:ring-lime-400 focus:ring-offset-2"
                                     >
                                         Klik di sini untuk mengirim ulang email verifikasi.
                                     </Link>
@@ -123,15 +128,15 @@ export default function UpdateProfileInformation({
                             </div>
                         </div>
                         {status === 'verification-link-sent' && (
-                            <div className="mt-2 text-sm font-medium text-green-600 dark:text-green-400">
+                            <div className="mt-2 text-[10.5px] font-bold text-emerald-600 dark:text-emerald-300">
                                 Tautan verifikasi baru telah dikirim ke alamat email Anda.
                             </div>
                         )}
                     </div>
                 )}
 
-                <div className="flex items-center gap-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-                    <PrimaryButton disabled={processing} className="min-w-[120px] justify-center bg-purple-600 hover:bg-purple-700 dark:bg-purple-500 dark:hover:bg-purple-600">
+                <div className="flex flex-wrap items-center gap-3 border-t border-slate-100 pt-4 dark:border-white/5">
+                    <PrimaryButton disabled={processing} className="min-w-[120px]">
                         Simpan
                     </PrimaryButton>
 
@@ -142,7 +147,7 @@ export default function UpdateProfileInformation({
                         leave="transition ease-in-out"
                         leaveTo="opacity-0"
                     >
-                        <p className="text-sm text-green-600 dark:text-green-400 font-medium bg-green-50 dark:bg-green-900/20 px-3 py-1 rounded-md">
+                        <p className="inline-flex items-center gap-1.5 rounded-full bg-pastel-mint px-3 py-1 text-[10.5px] font-extrabold text-emerald-700 dark:bg-mint/10 dark:text-emerald-300">
                             Berhasil Disimpan!
                         </p>
                     </Transition>

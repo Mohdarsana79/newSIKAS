@@ -1,39 +1,43 @@
 import React from 'react';
 import Modal from '@/Components/Modal';
+import SecondaryButton from '@/Components/SecondaryButton';
+import DangerButton from '@/Components/DangerButton';
+import IconTile from '@/Components/ui/IconTile';
 
 export default function ModalConfirmDelete({ show, onClose, onConfirm, title, message }: { show: boolean, onClose: () => void, onConfirm: () => void, title?: string, message?: string }) {
     return (
         <Modal show={show} onClose={onClose} maxWidth="sm">
-            <div className="p-6 text-center">
-                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900 mb-4">
-                    <svg className="h-6 w-6 text-red-600 dark:text-red-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
+            <div className="relative overflow-hidden px-6 py-6 text-center">
+                <div className="pointer-events-none absolute -right-12 -top-16 h-40 w-40 rounded-full bg-rose-500/10 blur-3xl" />
+                <div className="relative mx-auto mb-4 flex justify-center">
+                    <IconTile tone="rose" size="lg">
+                        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                    </IconTile>
                 </div>
-                <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100 mb-2">
+                <h3 className="relative text-[15px] font-extrabold leading-6 text-slate-900 dark:text-white">
                     {title || 'Konfirmasi Hapus'}
                 </h3>
-                <div className="mt-2">
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                <div className="relative mt-2">
+                    <p className="text-[11.5px] font-medium leading-relaxed text-slate-500 dark:text-slate-400">
                         {message || 'Apakah Anda yakin ingin menghapus data ini? Aksi ini tidak dapat dibatalkan.'}
                     </p>
                 </div>
-                <div className="mt-6 flex justify-center gap-3">
-                    <button
+                <div className="relative mt-6 flex justify-center gap-2">
+                    <SecondaryButton
                         onClick={onClose}
-                        className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
                     >
                         Batal
-                    </button>
-                    <button
+                    </SecondaryButton>
+                    <DangerButton
                         onClick={() => {
                             onConfirm();
                             onClose();
                         }}
-                        className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
                     >
                         Ya, Hapus
-                    </button>
+                    </DangerButton>
                 </div>
             </div>
         </Modal>

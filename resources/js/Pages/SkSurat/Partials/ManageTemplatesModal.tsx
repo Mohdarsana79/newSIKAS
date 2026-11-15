@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Modal from '@/Components/Modal';
 import TextInput from '@/Components/TextInput';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import IconTile from '@/Components/ui/IconTile';
 import { router } from '@inertiajs/react';
-import { FileText, Trash2, Upload, Tag, AlertCircle, ArrowLeft, X } from 'lucide-react';
+import { FileText, Trash2, Upload, Tag, AlertCircle, ArrowLeft, X, RefreshCw, CheckCircle2, AlertTriangle } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
 
 interface SkTemplate {
@@ -32,15 +32,52 @@ export default function ManageTemplatesModal({ show, onClose, folderId, template
     const [judul, setJudul] = useState('');
     const [file, setFile] = useState<File | null>(null);
     const [loading, setLoading] = useState(false);
+    const [rescanningId, setRescanningId] = useState<number | null>(null);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    const [statusNotice, setStatusNotice] = useState<{
+        tone: 'success' | 'warning';
+        message: string;
+        detail?: string;
+        showSyntaxHint?: boolean;
+    } | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Delete confirmation state
     const [templateToDelete, setTemplateToDelete] = useState<SkTemplate | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
 
+    useEffect(() => {
+        if (show) {
+            setErrorMsg(null);
+            setStatusNotice(null);
+        } else {
+            setJudul('');
+            setFile(null);
+            setErrorMsg(null);
+            setStatusNotice(null);
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
+        }
+    }, [show]);
+
+    const applyFlashNotice = (page: any, fallbackMessage: string) => {
+        const flashSuccess = page?.props?.flash?.success as string | undefined;
+        const flashWarning = page?.props?.flash?.warning as string | undefined;
+        const message = flashSuccess || fallbackMessage;
+        const hasZeroVars = message.includes('belum ada tag') || message.includes('belum ditemukan tag') || message.includes('0 variabel');
+        setStatusNotice({
+            tone: hasZeroVars || Boolean(flashWarning) ? 'warning' : 'success',
+            message,
+            detail: flashWarning,
+            showSyntaxHint: hasZeroVars,
+        });
+    };
+
     const handleUpload = (e: React.FormEvent) => {
         e.preventDefault();
         setErrorMsg(null);
+        setStatusNotice(null);
 
         if (!judul.trim() || !file) {
             setErrorMsg('Judul dan berkas .docx template wajib diisi.');
@@ -54,15 +91,40 @@ export default function ManageTemplatesModal({ show, onClose, folderId, template
         setLoading(true);
         router.post(route('sk-surat.template.store', folderId), formData, {
             forceFormData: true,
-            onSuccess: () => {
+            onSuccess: (page) => {
                 setJudul('');
                 setFile(null);
+                if (fileInputRef.current) {
+                    fileInputRef.current.value = '';
+                }
+                applyFlashNotice(page, 'Master template berhasil diunggah.');
             },
             onError: (err) => {
                 setErrorMsg(Object.values(err).join(', '));
             },
             onFinish: () => setLoading(false),
         });
+    };
+
+    const handleRescan = (tpl: SkTemplate) => {
+        setErrorMsg(null);
+        setStatusNotice(null);
+        setRescanningId(tpl.id);
+
+        router.post(
+            route('sk-surat.template.rescan', tpl.id),
+            {},
+            {
+                preserveScroll: true,
+                onSuccess: (page) => {
+                    applyFlashNotice(page, `Deteksi ulang selesai untuk "${tpl.judul}".`);
+                },
+                onError: (err) => {
+                    setErrorMsg(Object.values(err).join(', '));
+                },
+                onFinish: () => setRescanningId(null),
+            }
+        );
     };
 
     const confirmDelete = () => {
@@ -119,6 +181,34 @@ export default function ManageTemplatesModal({ show, onClose, folderId, template
                             </div>
                         )}
 
+                        {/* Status Notice (Success / Zero-variable Warning) */}
+                        {statusNotice && (
+                            <div
+                                className={`flex items-start gap-2 rounded-2xl border p-3 text-[11px] font-semibold ${
+                                    statusNotice.tone === 'warning'
+                                        ? 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-400/20 dark:bg-amber-500/10 dark:text-amber-300'
+                                        : 'border-emerald-200 bg-pastel-mint text-emerald-800 dark:border-emerald-400/20 dark:bg-mint/10 dark:text-emerald-300'
+                                }`}
+                            >
+                                {statusNotice.tone === 'warning' ? (
+                                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                                ) : (
+                                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+                                )}
+                                <div className="space-y-1">
+                                    <p>{statusNotice.message}</p>
+                                    {statusNotice.detail && (
+                                        <p className="text-[10.5px] font-medium opacity-95">{statusNotice.detail}</p>
+                                    )}
+                                    {statusNotice.showSyntaxHint && (
+                                        <p className="text-[10px] font-medium opacity-90">
+                                            Pastikan penulisan tag di file Word menggunakan format <code className="font-mono font-bold">{'${nama_variabel}'}</code> (bukan <code className="font-mono">{'{{...}}'}</code> atau <code className="font-mono">{'[...]'}</code>), lalu klik tombol Deteksi Ulang jika berkas sudah diperbarui.
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
                         {/* Form Upload Template - Khusus Bendahara */}
                         {!isKepalaSekolah && (
                             <form onSubmit={handleUpload} className="space-y-3 rounded-2xl border border-slate-100 bg-slate-50/70 p-4 dark:border-white/5 dark:bg-white/[0.03]">
@@ -141,6 +231,7 @@ export default function ManageTemplatesModal({ show, onClose, folderId, template
                                 <div>
                                     <label className={LABEL_CLASS}>Berkas Dokumen (.docx)</label>
                                     <input
+                                        ref={fileInputRef}
                                         type="file"
                                         accept=".docx"
                                         onChange={(e) => setFile(e.target.files?.[0] || null)}
@@ -188,14 +279,26 @@ export default function ManageTemplatesModal({ show, onClose, folderId, template
                                                 </div>
 
                                                 {!isKepalaSekolah && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setTemplateToDelete(tpl)}
-                                                        className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-xl text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 dark:text-slate-500 dark:hover:bg-rose-500/10 dark:hover:text-rose-300"
-                                                        title="Hapus Template"
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </button>
+                                                    <div className="flex shrink-0 items-center gap-1">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleRescan(tpl)}
+                                                            disabled={rescanningId === tpl.id}
+                                                            className="inline-flex h-7 items-center gap-1 rounded-xl border border-slate-200 bg-slate-50 px-2 text-[10px] font-bold text-slate-600 transition hover:border-brand-300 hover:bg-pastel-lavender hover:text-brand-700 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-brand-500/15 dark:hover:text-brand-300"
+                                                            title="Deteksi Ulang Tag Variabel"
+                                                        >
+                                                            <RefreshCw className={`h-3 w-3 ${rescanningId === tpl.id ? 'animate-spin' : ''}`} />
+                                                            <span>{rescanningId === tpl.id ? 'Memindai...' : 'Deteksi Ulang'}</span>
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setTemplateToDelete(tpl)}
+                                                            className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-xl text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 dark:text-slate-500 dark:hover:bg-rose-500/10 dark:hover:text-rose-300"
+                                                            title="Hapus Template"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
                                                 )}
                                             </div>
 

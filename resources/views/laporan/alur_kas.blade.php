@@ -150,8 +150,9 @@
 
     <div class="header-table">
         @if (isset($anggaran['sekolah']['kop_surat']) && $anggaran['sekolah']['kop_surat'] && !($is_excel ?? false))
-            <div style="text-align: center; border-bottom: 3px solid black; padding-bottom: 10px; margin-bottom: 15px;">
+            <div style="text-align: center; margin-bottom: 15px;">
                 <img src="{{ public_path('storage/' . $anggaran['sekolah']['kop_surat']) }}" style="height: 120px; width: auto; max-width: 100%;" alt="Kop Surat">
+                @include('partials.kop_border', ['border' => $anggaran['sekolah']['kop_border'] ?? 'double'])
             </div>
         @endif
     </div>

@@ -435,7 +435,7 @@ Dibuat otomatis oleh SIKAS AI DeepSeek Suite`;
 
                                     {/* Analisis Akar Masalah (Root Causes) */}
                                     {rootCauses.length > 0 && (
-                                        <div className="bg-white dark:bg-gray-850 p-4 rounded-xl border border-gray-200/80 dark:border-gray-700/80 shadow-sm space-y-2">
+                                        <div className="bg-white dark:bg-gray-900 p-4 rounded-xl border border-gray-200/80 dark:border-gray-700/80 shadow-sm space-y-2">
                                             <div className="flex items-center gap-2 text-gray-800 dark:text-gray-200 font-bold text-sm">
                                                 <HelpCircle className="w-4 h-4 text-indigo-600" />
                                                 Penyebab Selisih & Diagnosa AI

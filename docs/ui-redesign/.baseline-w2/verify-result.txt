@@ -1,0 +1,22 @@
+File diperiksa: 27
+
+18 masalah ditemukan:
+
+ - FiturPelengkap\Kwitansi\Index.tsx: token 'on_click' berubah -> hilang={'_': 4}
+ - FiturPelengkap\Kwitansi\Index.tsx: token 'on_change' berubah -> baru={'_': 1}
+ - FiturPelengkap\Kwitansi\TabKinerja.tsx: token 'on_click' berubah -> baru={'_': 3}
+ - FiturPelengkap\Kwitansi\TabKinerjaSilpa.tsx: token 'on_click' berubah -> baru={'_': 3}
+ - FiturPelengkap\Kwitansi\TabReguler.tsx: token 'on_click' berubah -> baru={'_': 3}
+ - FiturPelengkap\Kwitansi\TabSilpa.tsx: token 'on_click' berubah -> baru={'_': 3}
+ - FiturPelengkap\TandaTerima\Index.tsx: token 'on_click' berubah -> hilang={'_': 4}
+ - FiturPelengkap\TandaTerima\Index.tsx: token 'on_change' berubah -> baru={'_': 1}
+ - FiturPelengkap\TandaTerima\TabKinerja.tsx: token 'on_click' berubah -> baru={'_': 3}
+ - FiturPelengkap\TandaTerima\TabKinerjaSilpa.tsx: token 'on_click' berubah -> baru={'_': 3}
+ - FiturPelengkap\TandaTerima\TabReguler.tsx: token 'on_click' berubah -> baru={'_': 3}
+ - FiturPelengkap\TandaTerima\TabSilpa.tsx: token 'on_click' berubah -> baru={'_': 3}
+ - Penatausahaan\Dokumen\components\TabKinerja.tsx: token 'on_click' berubah -> baru={'_': 1}
+ - Penatausahaan\Dokumen\components\TabKinerjaSilpa.tsx: token 'on_click' berubah -> baru={'_': 1}
+ - Penatausahaan\Dokumen\components\TabReguler.tsx: token 'on_click' berubah -> baru={'_': 1}
+ - Penatausahaan\Dokumen\components\TabSilpa.tsx: token 'on_click' berubah -> baru={'_': 1}
+ - Penatausahaan\Dokumen\Index.tsx: token 'on_click' berubah -> hilang={'_': 4}
+ - Penatausahaan\Dokumen\Index.tsx: token 'on_change' berubah -> baru={'_': 1}

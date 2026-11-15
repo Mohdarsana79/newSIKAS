@@ -79,20 +79,23 @@ export default function SearchableSelect({
             {/* Input Trigger */}
             <div
                 className={`
-                    w-full min-h-[42px] px-3 py-2 bg-white dark:bg-gray-900 border rounded-md shadow-sm cursor-pointer flex items-center justify-between
-                    ${error ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-300 dark:border-gray-700 hover:border-indigo-500'}
-                    focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500
+                    flex min-h-[42px] w-full cursor-pointer items-center justify-between rounded-xl border bg-white px-3.5 py-2.5 text-[12px] font-semibold shadow-sm transition
+                    dark:bg-white/5 dark:text-white
+                    ${error
+                        ? 'border-rose-400 ring-4 ring-rose-100 dark:border-rose-500/50 dark:ring-rose-500/10'
+                        : 'border-slate-200/90 hover:border-lime-400 dark:border-white/10 dark:hover:border-lime-400/60'}
+                    focus-within:border-lime-400 focus-within:ring-4 focus-within:ring-lime-200/60 dark:focus-within:border-lime-400/70
                 `}
                 onClick={() => {
                     setIsOpen(!isOpen);
                     // if opening, maybe allow searching immediately?
                 }}
             >
-                <div className="flex-1 truncate text-gray-700 dark:text-gray-300 text-sm">
-                    {displayLabel || <span className="text-gray-400">{placeholder}</span>}
+                <div className="flex-1 truncate text-slate-800 dark:text-slate-100">
+                    {displayLabel || <span className="text-slate-400 dark:text-slate-500">{placeholder}</span>}
                 </div>
                 <div className="ml-2 flex flex-col items-center justify-center">
-                    <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className={`h-4 w-4 text-slate-400 transition-transform duration-200 dark:text-slate-500 ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
                 </div>
@@ -100,13 +103,13 @@ export default function SearchableSelect({
 
             {/* Dropdown Panel */}
             {isOpen && (
-                <div className="absolute z-50 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg max-h-[400px] overflow-hidden flex flex-col min-w-[600px] -left-0 md:left-0">
+                <div className="absolute -left-0 z-50 mt-1 flex max-h-[400px] w-full min-w-[600px] flex-col overflow-hidden rounded-2xl border border-white bg-white shadow-float dark:border-white/10 dark:bg-[#15131F] md:left-0">
 
                     {/* Search Bar */}
-                    <div className="p-2 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 sticky top-0">
+                    <div className="sticky top-0 border-b border-slate-100 bg-slate-50/80 p-2 dark:border-white/5 dark:bg-white/[0.03]">
                         <input
                             type="text"
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+                            className="w-full rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-[12px] font-semibold text-slate-800 placeholder:text-slate-400 focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:placeholder:text-slate-500"
                             placeholder="Cari..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
@@ -116,8 +119,8 @@ export default function SearchableSelect({
                     </div>
 
                     {/* Table Header */}
-                    <div className="grid border-b border-gray-200 dark:border-gray-700 bg-blue-600 text-white text-xs font-semibold uppercase tracking-wider sticky top-[53px]">
-                        <div className="flex px-4 py-2">
+                    <div className="sticky top-[53px] grid border-b border-slate-100 bg-slate-50/70 text-[9px] font-extrabold uppercase tracking-[0.12em] text-slate-400 dark:border-white/5 dark:bg-white/[0.03] dark:text-slate-500">
+                        <div className="flex px-3 py-2">
                             {displayColumns.map((col, idx) => (
                                 <div key={idx} className={`${col.width || 'flex-1'} px-2`}>
                                     {col.header}
@@ -127,14 +130,14 @@ export default function SearchableSelect({
                     </div>
 
                     {/* Options List */}
-                    <div className="overflow-y-auto max-h-[300px]">
+                    <div className="sikas-scroll max-h-[300px] overflow-y-auto">
                         {filteredOptions.length > 0 ? (
                             filteredOptions.map((option) => (
                                 <div
                                     key={option.id}
                                     className={`
-                                        flex px-4 py-2 cursor-pointer border-b border-gray-100 dark:border-gray-700 last:border-0 hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors
-                                        ${value === option.id ? 'bg-blue-50 dark:bg-gray-700' : ''}
+                                        flex cursor-pointer border-b border-slate-100 px-3 py-2 transition-colors last:border-0 hover:bg-lime-50/60 dark:border-white/5 dark:hover:bg-white/5
+                                        ${value === option.id ? 'bg-lime-100/60 dark:bg-lime-400/10' : ''}
                                     `}
                                     onClick={(e) => {
                                         e.stopPropagation();
@@ -142,14 +145,14 @@ export default function SearchableSelect({
                                     }}
                                 >
                                     {displayColumns.map((col, idx) => (
-                                        <div key={idx} className={`${col.width || 'flex-1'} px-2 text-sm text-gray-700 dark:text-gray-300 ${col.className || ''}`}>
+                                        <div key={idx} className={`${col.width || 'flex-1'} px-2 text-[11.5px] font-semibold text-slate-700 dark:text-slate-300 ${col.className || ''}`}>
                                             {option[col.field] ?? '-'}
                                         </div>
                                     ))}
                                 </div>
                             ))
                         ) : (
-                            <div className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                            <div className="px-4 py-8 text-center text-[11px] font-semibold text-slate-400 dark:text-slate-500">
                                 Tidak ada data yang cocok.
                             </div>
                         )}
@@ -157,7 +160,7 @@ export default function SearchableSelect({
                 </div>
             )}
 
-            {error && <p className="text-sm text-red-600 mt-1">{error}</p>}
+            {error && <p className="mt-1 text-[10px] font-semibold text-rose-500">{error}</p>}
         </div>
     );
 }

@@ -11,13 +11,13 @@ export default function TabAlurKas({ anggaran, tahapanData, months, onPrint }: T
     };
 
     return (
-        <div className="space-y-8 animate-fade-in-up">
+        <div className="space-y-4">
             {/* Action Button */}
-            <div className="flex justify-end mb-4">
-                <div className="flex gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                     <button
                         onClick={() => onPrint('alur_kas')}
-                        className="bg-indigo-600 text-white hover:bg-indigo-700 px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 shadow-sm transition-colors">
+                        className="inline-flex items-center gap-2 rounded-2xl bg-lime-400 px-4 py-2.5 text-[11.5px] font-extrabold text-slate-950 shadow-lime transition-all duration-200 hover:-translate-y-0.5 hover:bg-lime-300">
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                         </svg>
@@ -27,7 +27,7 @@ export default function TabAlurKas({ anggaran, tahapanData, months, onPrint }: T
                         href={route('rkas.export-alur-kas-excel', anggaran.id)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="bg-green-600 text-white hover:bg-green-700 px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 shadow-sm transition-colors">
+                        className="inline-flex items-center gap-2 rounded-2xl border border-emerald-200/80 bg-emerald-50 px-4 py-2.5 text-[11.5px] font-bold text-emerald-700 shadow-pill transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-300 hover:bg-emerald-100 dark:border-emerald-400/20 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/15">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
@@ -36,60 +36,60 @@ export default function TabAlurKas({ anggaran, tahapanData, months, onPrint }: T
                 </div>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 p-8 border border-gray-200 dark:border-gray-700 shadow-sm rounded-lg print:border-none print:shadow-none overflow-x-auto">
+            <div className="bg-white dark:bg-[#15131F] p-8 border border-slate-200 dark:border-white/10 shadow-sm rounded-lg print:border-none print:shadow-none overflow-x-auto">
                 {/* Report Header */}
                 <div className="text-center mb-8">
-                    <h2 className="text-lg font-bold uppercase tracking-wider text-gray-900 dark:text-gray-100">ALUR KAS</h2>
-                    <h3 className="text-md font-medium uppercase text-gray-600 dark:text-gray-400 mt-1">BANTUAN OPERASIONAL SATUAN PENDIDIKAN (BOSP)</h3>
-                    <h3 className="text-md font-medium uppercase text-gray-600 dark:text-gray-400 mt-1">TAHUN ANGGARAN : {anggaran.tahun_anggaran}</h3>
+                    <h2 className="text-lg font-bold uppercase tracking-wider text-slate-900 dark:text-slate-100">ALUR KAS</h2>
+                    <h3 className="text-md font-medium uppercase text-slate-600 dark:text-slate-400 mt-1">BANTUAN OPERASIONAL SATUAN PENDIDIKAN (BOSP)</h3>
+                    <h3 className="text-md font-medium uppercase text-slate-600 dark:text-slate-400 mt-1">TAHUN ANGGARAN : {anggaran.tahun_anggaran}</h3>
                 </div>
 
                 {/* School Info */}
                 <div className="mb-6 grid grid-cols-[150px_10px_1fr] gap-1 text-sm">
-                    <div className="text-gray-600 dark:text-gray-400">NPSN</div>
+                    <div className="text-slate-600 dark:text-slate-400">NPSN</div>
                     <div>:</div>
-                    <div className="font-medium text-gray-900 dark:text-gray-100">{anggaran.sekolah?.npsn || '-'}</div>
+                    <div className="font-medium text-slate-900 dark:text-slate-100">{anggaran.sekolah?.npsn || '-'}</div>
 
-                    <div className="text-gray-600 dark:text-gray-400">Nama Sekolah</div>
+                    <div className="text-slate-600 dark:text-slate-400">Nama Sekolah</div>
                     <div>:</div>
-                    <div className="font-medium text-gray-900 dark:text-gray-100">{anggaran.sekolah?.nama_sekolah || '-'}</div>
+                    <div className="font-medium text-slate-900 dark:text-slate-100">{anggaran.sekolah?.nama_sekolah || '-'}</div>
 
-                    <div className="text-gray-600 dark:text-gray-400">Alamat</div>
+                    <div className="text-slate-600 dark:text-slate-400">Alamat</div>
                     <div>:</div>
-                    <div className="font-medium text-gray-900 dark:text-gray-100">{anggaran.sekolah?.alamat || '-'}</div>
+                    <div className="font-medium text-slate-900 dark:text-slate-100">{anggaran.sekolah?.alamat || '-'}</div>
 
-                    <div className="text-gray-600 dark:text-gray-400">Kabupaten</div>
+                    <div className="text-slate-600 dark:text-slate-400">Kabupaten</div>
                     <div>:</div>
-                    <div className="font-medium text-gray-900 dark:text-gray-100">{anggaran.sekolah?.kabupaten_kota || '-'}</div>
+                    <div className="font-medium text-slate-900 dark:text-slate-100">{anggaran.sekolah?.kabupaten_kota || '-'}</div>
 
-                    <div className="text-gray-600 dark:text-gray-400">Provinsi</div>
+                    <div className="text-slate-600 dark:text-slate-400">Provinsi</div>
                     <div>:</div>
-                    <div className="font-medium text-gray-900 dark:text-gray-100">{anggaran.sekolah?.provinsi || '-'}</div>
+                    <div className="font-medium text-slate-900 dark:text-slate-100">{anggaran.sekolah?.provinsi || '-'}</div>
                 </div>
 
                 <div className="space-y-6 min-w-[1200px]">
                     {/* A. PENERIMAAN */}
                     <div>
-                        <h4 className="text-sm font-bold text-gray-900 dark:text-white mb-1">A. Penerimaan</h4>
-                        <div className="text-sm italic mb-1 text-gray-600">Sumber Dana :</div>
-                        <div className="border border-gray-900 dark:border-gray-600">
-                            <table className="min-w-full text-sm border-collapse border border-gray-900 dark:border-gray-600">
-                                <thead className="bg-gray-100 dark:bg-gray-700">
+                        <h4 className="text-sm font-bold text-slate-900 dark:text-white mb-1">A. Penerimaan</h4>
+                        <div className="text-sm italic mb-1 text-slate-600">Sumber Dana :</div>
+                        <div className="border border-slate-900 dark:border-white/20">
+                            <table className="min-w-full text-sm border-collapse border border-slate-900 dark:border-white/20">
+                                <thead className="bg-slate-100 dark:bg-white/[0.06]">
                                     <tr>
-                                        <th className="px-4 py-2 text-center font-bold text-gray-900 dark:text-gray-100 border border-gray-900 dark:border-gray-600 w-32">Nomor Kode</th>
-                                        <th className="px-4 py-2 text-center font-bold text-gray-900 dark:text-gray-100 border border-gray-900 dark:border-gray-600">Penerimaan</th>
-                                        <th className="px-4 py-2 text-center font-bold text-gray-900 dark:text-gray-100 border border-gray-900 dark:border-gray-600 w-48">Jumlah</th>
-                                        <th className="px-4 py-2 text-center font-bold text-gray-900 dark:text-gray-100 border border-gray-900 dark:border-gray-600 w-48">Tahap I</th>
-                                        <th className="px-4 py-2 text-center font-bold text-gray-900 dark:text-gray-100 border border-gray-900 dark:border-gray-600 w-48">Tahap II</th>
+                                        <th className="px-4 py-2 text-center font-bold text-slate-900 dark:text-slate-100 border border-slate-900 dark:border-white/20 w-32">Nomor Kode</th>
+                                        <th className="px-4 py-2 text-center font-bold text-slate-900 dark:text-slate-100 border border-slate-900 dark:border-white/20">Penerimaan</th>
+                                        <th className="px-4 py-2 text-center font-bold text-slate-900 dark:text-slate-100 border border-slate-900 dark:border-white/20 w-48">Jumlah</th>
+                                        <th className="px-4 py-2 text-center font-bold text-slate-900 dark:text-slate-100 border border-slate-900 dark:border-white/20 w-48">Tahap I</th>
+                                        <th className="px-4 py-2 text-center font-bold text-slate-900 dark:text-slate-100 border border-slate-900 dark:border-white/20 w-48">Tahap II</th>
                                     </tr>
                                 </thead>
-                                <tbody className="bg-white dark:bg-gray-800">
+                                <tbody className="bg-white dark:bg-[#15131F]">
                                     <tr>
-                                        <td className="px-4 py-2 border border-gray-900 dark:border-gray-600 text-center font-medium">4.3.1.01</td>
-                                        <td className="px-4 py-2 border border-gray-900 dark:border-gray-600 text-center">{anggaran.sumber_dana || 'BOS Reguler'}</td>
-                                        <td className="px-4 py-2 text-right border border-gray-900 dark:border-gray-600 font-medium">Rp {formatCurrency(anggaran.pagu_anggaran)}</td>
-                                        <td className="px-4 py-2 text-right border border-gray-900 dark:border-gray-600 font-medium">Rp {formatCurrency(anggaran.pagu_anggaran / 2)}</td>
-                                        <td className="px-4 py-2 text-right border border-gray-900 dark:border-gray-600 font-medium">Rp {formatCurrency(anggaran.pagu_anggaran / 2)}</td>
+                                        <td className="px-4 py-2 border border-slate-900 dark:border-white/20 text-center font-medium">4.3.1.01</td>
+                                        <td className="px-4 py-2 border border-slate-900 dark:border-white/20 text-center">{anggaran.sumber_dana || 'BOS Reguler'}</td>
+                                        <td className="px-4 py-2 text-right border border-slate-900 dark:border-white/20 font-medium">Rp {formatCurrency(anggaran.pagu_anggaran)}</td>
+                                        <td className="px-4 py-2 text-right border border-slate-900 dark:border-white/20 font-medium">Rp {formatCurrency(anggaran.pagu_anggaran / 2)}</td>
+                                        <td className="px-4 py-2 text-right border border-slate-900 dark:border-white/20 font-medium">Rp {formatCurrency(anggaran.pagu_anggaran / 2)}</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -98,27 +98,27 @@ export default function TabAlurKas({ anggaran, tahapanData, months, onPrint }: T
 
                     {/* B. BELANJA */}
                     <div>
-                        <h4 className="text-sm font-bold text-gray-900 dark:text-white mb-1">B. Belanja</h4>
+                        <h4 className="text-sm font-bold text-slate-900 dark:text-white mb-1">B. Belanja</h4>
                         <div className="overflow-x-auto">
-                            <table className="min-w-full text-sm border-collapse border border-gray-900 dark:border-gray-600">
-                                <thead className="bg-gray-100 dark:bg-gray-700">
+                            <table className="min-w-full text-sm border-collapse border border-slate-900 dark:border-white/20">
+                                <thead className="bg-slate-100 dark:bg-white/[0.06]">
                                     <tr>
-                                        <th rowSpan={2} className="px-2 py-2 text-center font-bold text-gray-900 dark:text-gray-100 align-middle w-24 bg-gray-200 dark:bg-gray-600 border border-gray-900 dark:border-gray-600">KODE KEGIATAN</th>
-                                        <th rowSpan={2} className="px-4 py-2 text-center font-bold text-gray-900 dark:text-gray-100 align-middle w-64 bg-gray-200 dark:bg-gray-600 border border-gray-900 dark:border-gray-600">PROGRAM DAN KEGIATAN</th>
-                                        <th rowSpan={2} className="px-2 py-2 text-center font-bold text-gray-900 dark:text-gray-100 align-middle w-32 bg-gray-200 dark:bg-gray-600 border border-gray-900 dark:border-gray-600">PAGU ANGGARAN</th>
-                                        <th colSpan={6} className="px-2 py-2 text-center font-bold text-gray-900 dark:text-gray-100 bg-orange-200 dark:bg-orange-900/50 border border-gray-900 dark:border-gray-600">TAHAP I (SATU)</th>
-                                        <th colSpan={6} className="px-2 py-2 text-center font-bold text-gray-900 dark:text-gray-100 bg-orange-200 dark:bg-orange-900/50 border border-gray-900 dark:border-gray-600">TAHAP II (DUA)</th>
+                                        <th rowSpan={2} className="px-2 py-2 text-center font-bold text-slate-900 dark:text-slate-100 align-middle w-24 bg-slate-200 dark:bg-white/10 border border-slate-900 dark:border-white/20">KODE KEGIATAN</th>
+                                        <th rowSpan={2} className="px-4 py-2 text-center font-bold text-slate-900 dark:text-slate-100 align-middle w-64 bg-slate-200 dark:bg-white/10 border border-slate-900 dark:border-white/20">PROGRAM DAN KEGIATAN</th>
+                                        <th rowSpan={2} className="px-2 py-2 text-center font-bold text-slate-900 dark:text-slate-100 align-middle w-32 bg-slate-200 dark:bg-white/10 border border-slate-900 dark:border-white/20">PAGU ANGGARAN</th>
+                                        <th colSpan={6} className="px-2 py-2 text-center font-bold text-slate-900 dark:text-slate-100 bg-orange-200 dark:bg-orange-900/50 border border-slate-900 dark:border-white/20">TAHAP I (SATU)</th>
+                                        <th colSpan={6} className="px-2 py-2 text-center font-bold text-slate-900 dark:text-slate-100 bg-orange-200 dark:bg-orange-900/50 border border-slate-900 dark:border-white/20">TAHAP II (DUA)</th>
                                     </tr>
                                     <tr>
                                         {months.slice(0, 6).map((m) => (
-                                            <th key={m} className="px-2 py-1 text-center font-bold text-gray-900 dark:text-gray-100 text-xs bg-green-200 dark:bg-green-900/50 w-24 border border-gray-900 dark:border-gray-600">{m.substring(0, 3)}</th>
+                                            <th key={m} className="px-2 py-1 text-center font-bold text-slate-900 dark:text-slate-100 text-xs bg-green-200 dark:bg-green-900/50 w-24 border border-slate-900 dark:border-white/20">{m.substring(0, 3)}</th>
                                         ))}
                                         {months.slice(6, 12).map((m) => (
-                                            <th key={m} className="px-2 py-1 text-center font-bold text-gray-900 dark:text-gray-100 text-xs bg-green-200 dark:bg-green-900/50 w-24 border border-gray-900 dark:border-gray-600">{m.substring(0, 3)}</th>
+                                            <th key={m} className="px-2 py-1 text-center font-bold text-slate-900 dark:text-slate-100 text-xs bg-green-200 dark:bg-green-900/50 w-24 border border-slate-900 dark:border-white/20">{m.substring(0, 3)}</th>
                                         ))}
                                     </tr>
                                 </thead>
-                                <tbody className="bg-white dark:bg-gray-800">
+                                <tbody className="bg-white dark:bg-[#15131F]">
                                     {(() => {
                                         const alurKasRows: any[] = [];
                                         let totalPagu = 0;
@@ -161,32 +161,32 @@ export default function TabAlurKas({ anggaran, tahapanData, months, onPrint }: T
                                         return (
                                             <>
                                                 {alurKasRows.map((row, idx) => (
-                                                    <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                                                        <td className="px-2 py-2 text-center text-sm font-medium text-gray-900 dark:text-gray-100 align-top border border-gray-900 dark:border-gray-600">{row.kode_kegiatan}</td>
-                                                        <td className="px-2 py-2 text-sm text-gray-800 dark:text-gray-200 align-top border border-gray-900 dark:border-gray-600">{row.uraian}</td>
-                                                        <td className="px-2 py-2 text-right text-sm font-medium text-gray-900 dark:text-gray-100 align-top border border-gray-900 dark:border-gray-600">{formatCurrency(row.pagu)}</td>
+                                                    <tr key={idx} className="hover:bg-lime-100/40 dark:hover:bg-white/5">
+                                                        <td className="px-2 py-2 text-center text-sm font-medium text-slate-900 dark:text-slate-100 align-top border border-slate-900 dark:border-white/20">{row.kode_kegiatan}</td>
+                                                        <td className="px-2 py-2 text-sm text-slate-800 dark:text-slate-200 align-top border border-slate-900 dark:border-white/20">{row.uraian}</td>
+                                                        <td className="px-2 py-2 text-right text-sm font-medium text-slate-900 dark:text-slate-100 align-top border border-slate-900 dark:border-white/20">{formatCurrency(row.pagu)}</td>
                                                         {months.map(m => (
-                                                            <td key={m} className="px-2 py-2 text-right text-sm text-gray-800 dark:text-gray-200 align-top border border-gray-900 dark:border-gray-600">
+                                                            <td key={m} className="px-2 py-2 text-right text-sm text-slate-800 dark:text-slate-200 align-top border border-slate-900 dark:border-white/20">
                                                                 {row.bulanan[m] > 0 ? formatCurrency(row.bulanan[m]) : ''}
                                                             </td>
                                                         ))}
                                                     </tr>
                                                 ))}
-                                                <tr className="bg-gray-100 dark:bg-gray-700 font-bold">
-                                                    <td colSpan={2} className="px-4 py-2 text-center text-gray-900 dark:text-gray-100 border border-gray-900 dark:border-gray-600">Jumlah</td>
-                                                    <td className="px-2 py-2 text-right text-gray-900 dark:text-gray-100 border border-gray-900 dark:border-gray-600">{formatCurrency(totalPagu)}</td>
+                                                <tr className="bg-slate-100 dark:bg-white/[0.06] font-bold">
+                                                    <td colSpan={2} className="px-4 py-2 text-center text-slate-900 dark:text-slate-100 border border-slate-900 dark:border-white/20">Jumlah</td>
+                                                    <td className="px-2 py-2 text-right text-slate-900 dark:text-slate-100 border border-slate-900 dark:border-white/20">{formatCurrency(totalPagu)}</td>
                                                     {months.map(m => (
-                                                        <td key={m} className="px-2 py-2 text-right text-gray-900 dark:text-gray-100 border border-gray-900 dark:border-gray-600">
+                                                        <td key={m} className="px-2 py-2 text-right text-slate-900 dark:text-slate-100 border border-slate-900 dark:border-white/20">
                                                             {totalBulan[m as keyof typeof totalBulan] > 0 ? formatCurrency(totalBulan[m as keyof typeof totalBulan]) : ''}
                                                         </td>
                                                     ))}
                                                 </tr>
-                                                <tr className="bg-gray-100 dark:bg-gray-800 font-bold">
-                                                    <td colSpan={3} className="px-4 py-2 text-center border border-gray-900 dark:border-gray-600"></td>
-                                                    <td colSpan={6} className="px-2 py-3 text-center text-gray-900 dark:text-gray-100 border border-gray-900 dark:border-gray-600">
+                                                <tr className="bg-slate-100 dark:bg-[#15131F] font-bold">
+                                                    <td colSpan={3} className="px-4 py-2 text-center border border-slate-900 dark:border-white/20"></td>
+                                                    <td colSpan={6} className="px-2 py-3 text-center text-slate-900 dark:text-slate-100 border border-slate-900 dark:border-white/20">
                                                         {formatCurrency(months.slice(0, 6).reduce((acc, m) => acc + totalBulan[m as keyof typeof totalBulan], 0))}
                                                     </td>
-                                                    <td colSpan={6} className="px-2 py-3 text-center text-gray-900 dark:text-gray-100 border border-gray-900 dark:border-gray-600">
+                                                    <td colSpan={6} className="px-2 py-3 text-center text-slate-900 dark:text-slate-100 border border-slate-900 dark:border-white/20">
                                                         {formatCurrency(months.slice(6, 12).reduce((acc, m) => acc + totalBulan[m as keyof typeof totalBulan], 0))}
                                                     </td>
                                                 </tr>

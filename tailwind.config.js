@@ -14,7 +14,7 @@ export default {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['Figtree', ...defaultTheme.fontFamily.sans],
+                sans: ['"Plus Jakarta Sans"', 'Figtree', ...defaultTheme.fontFamily.sans],
                 // Hanya dipakai oleh landing page (resources/js/Components/Landing/*).
                 display: ['Fraunces', 'Georgia', 'Cambria', '"Times New Roman"', 'serif'],
                 landing: ['"Plus Jakarta Sans"', 'Figtree', ...defaultTheme.fontFamily.sans],
@@ -79,6 +79,28 @@ export default {
                     800: '#2E1B84',
                     900: '#1B1046',
                 },
+                // === SIKAS App Shell v2 — Neo-Bento Full-Color ===
+                lime: {
+                    100: '#F8FDE8',
+                    200: '#F0FBCB',
+                    300: '#E5F7A3',
+                    400: '#D8F275',
+                    500: '#C5E84E',
+                    600: '#A9CE2F',
+                    700: '#83A122',
+                },
+                canvas: '#F4F5FA',
+                pastel: {
+                    lavender: '#EFEAFF',
+                    mint: '#E4F8EE',
+                    peach: '#FFE9DC',
+                    sky: '#E7F0FF',
+                    amber: '#FFF4D6',
+                    rose: '#FFE7E9',
+                },
+                peach: '#F47B45',
+                mint: '#10B981',
+                sky: '#3B82F6',
             },
             borderRadius: {
                 lg: "var(--radius)",
@@ -94,6 +116,12 @@ export default {
                 'card-light': '0 30px 70px -34px rgba(20, 18, 26, 0.28)',
                 hairline: 'inset 0 1px 0 0 rgba(255, 255, 255, 0.08)',
                 'hairline-light': 'inset 0 1px 0 0 rgba(255, 255, 255, 0.9)',
+                card: '0 18px 45px -28px rgba(20, 19, 31, 0.35)',
+                'card-hover': '0 28px 60px -30px rgba(20, 19, 31, 0.45)',
+                float: '0 30px 60px -30px rgba(9, 9, 20, 0.55)',
+                lime: '0 12px 30px -12px rgba(197, 232, 78, 0.75)',
+                nav: '0 10px 30px -18px rgba(15, 23, 42, 0.25)',
+                pill: '0 6px 18px -10px rgba(20, 19, 31, 0.4)',
             },
             transitionTimingFunction: {
                 luxe: 'cubic-bezier(0.22, 1, 0.36, 1)',
@@ -141,6 +169,22 @@ export default {
                     '0%': { opacity: '0', transform: 'translateY(18px)' },
                     '100%': { opacity: '1', transform: 'translateY(0)' },
                 },
+                'pulse-soft': {
+                    '0%, 100%': { opacity: '0.55', transform: 'scale(1)' },
+                    '50%': { opacity: '1', transform: 'scale(1.08)' },
+                },
+                'grow-bar': {
+                    '0%': { transform: 'scaleY(0)' },
+                    '100%': { transform: 'scaleY(1)' },
+                },
+                'slide-in': {
+                    '0%': { opacity: '0', transform: 'translateX(14px)' },
+                    '100%': { opacity: '1', transform: 'translateX(0)' },
+                },
+                'fade-in': {
+                    '0%': { opacity: '0' },
+                    '100%': { opacity: '1' },
+                },
             },
             animation: {
                 aurora: 'aurora 22s ease-in-out infinite',
@@ -153,6 +197,11 @@ export default {
                 'spin-slow': 'spin-slow 28s linear infinite',
                 'gradient-x': 'gradient-x 8s ease infinite',
                 rise: 'rise 0.8s cubic-bezier(0.22, 1, 0.36, 1) both',
+                'rise-fast': 'rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both',
+                'pulse-soft': 'pulse-soft 4.5s ease-in-out infinite',
+                'grow-bar': 'grow-bar 0.9s cubic-bezier(0.22, 1, 0.36, 1) both',
+                'slide-in': 'slide-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both',
+                'fade-in': 'fade-in 0.4s ease-out both',
             },
             backgroundImage: {
                 'grid-faint':

@@ -1,0 +1,37 @@
+{
+  "innerWidth": 360,
+  "docScrollWidth": 360,
+  "bodyScrollWidth": 360,
+  "bodyWidth": 360,
+  "shellWidth": 360,
+  "frameWidth": 360,
+  "offenders": [
+    {
+      "tag": "div",
+      "cls": "absolute -left-40 -top-44 h-[520px] w-[520px] rounded-full bg-[#E5DBFF] opacity-70 blur-[120px]",
+      "left": -160,
+      "right": 360,
+      "width": 520,
+      "pos": "absolute",
+      "overflowX": "visible"
+    },
+    {
+      "tag": "div",
+      "cls": "absolute -right-36 bottom-[-16%] h-[480px] w-[480px] rounded-full bg-[#FBDCC6] opacity-60 blur-[120px]",
+      "left": 24,
+      "right": 504,
+      "width": 480,
+      "pos": "absolute",
+      "overflowX": "visible"
+    },
+    {
+      "tag": "span",
+      "cls": "auth-sheen",
+      "left": -120,
+      "right": 25,
+      "width": 144,
+      "pos": "absolute",
+      "overflowX": "visible"
+    }
+  ]
+}

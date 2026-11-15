@@ -5,6 +5,7 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import InputLabel from '@/Components/InputLabel';
 import CurrencyInput from '@/Components/CurrencyInput';
 import DatePicker from '@/Components/DatePicker'; // Assuming you have this or use standard input type="date"
+import IconTile from '@/Components/ui/IconTile';
 import axios from 'axios';
 import { useForm } from '@inertiajs/react';
 import useVariantRoute from '@/Hooks/useVariantRoute';
@@ -71,29 +72,39 @@ export default function TrkSaldoAwalModal({ show, onClose, tahun, onSuccess }: T
 
     return (
         <Modal show={show} onClose={onClose} maxWidth="md">
-            <div className="p-6">
-                <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
-                    TRK Saldo Awal (Tahun {tahun})
-                </h2>
-
-                <div className="space-y-4">
-                    <div className="flex items-start">
-                        <div className="flex items-center h-5">
-                            <input
-                                id="is_trk"
-                                type="checkbox"
-                                className="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded"
-                                checked={isTrk}
-                                onChange={(e) => setIsTrk(e.target.checked)}
-                            />
-                        </div>
-                        <div className="ml-3 text-sm">
-                            <label htmlFor="is_trk" className="font-medium text-gray-700 dark:text-gray-300">
-                                Apakah saldo awal sudah pernah ditarik / SILPA sudah digunakan?
-                            </label>
-                            <p className="text-gray-500 dark:text-gray-400">Centang jika ya.</p>
-                        </div>
+            <div className="relative overflow-hidden">
+                <div className="pointer-events-none absolute -right-10 -top-16 h-40 w-40 rounded-full bg-brand-500/10 blur-3xl" />
+                <div className="relative flex items-center gap-3 border-b border-slate-100 px-6 py-4 dark:border-white/5">
+                    <IconTile tone="violet" size="md">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M3 3v18h18" />
+                            <path d="M7 15v2M11 11v6M15 8v9M19 5v12" />
+                        </svg>
+                    </IconTile>
+                    <div>
+                        <h2 className="text-[14px] font-extrabold text-slate-900 dark:text-white">
+                            TRK Saldo Awal (Tahun {tahun})
+                        </h2>
+                        <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500">
+                            Tandai jika saldo awal sudah pernah ditarik / SiLPA sudah digunakan.
+                        </p>
                     </div>
+                </div>
+
+                <div className="space-y-4 px-6 py-5">
+                    <label className="flex items-start gap-3 rounded-2xl border border-slate-100 bg-slate-50/60 p-3 dark:border-white/5 dark:bg-white/[0.02]">
+                        <input
+                            id="is_trk"
+                            type="checkbox"
+                            className="mt-0.5 h-4 w-4 rounded border-slate-300 text-lime-500 shadow-sm focus:ring-lime-400 dark:border-white/20 dark:bg-white/5"
+                            checked={isTrk}
+                            onChange={(e) => setIsTrk(e.target.checked)}
+                        />
+                        <span className="text-[11px] font-semibold leading-relaxed text-slate-600 dark:text-slate-300">
+                            Apakah saldo awal sudah pernah ditarik / SILPA sudah digunakan?
+                            <span className="mt-0.5 block text-[9.5px] font-medium text-slate-400 dark:text-slate-500">Centang jika ya.</span>
+                        </span>
+                    </label>
 
                     {isTrk && (
                         <>
@@ -137,13 +148,13 @@ export default function TrkSaldoAwalModal({ show, onClose, tahun, onSuccess }: T
                             </div>
                         </>
                     )}
-                </div>
 
-                <div className="flex justify-end gap-3 mt-6">
-                    <SecondaryButton onClick={onClose}>Batal</SecondaryButton>
-                    <PrimaryButton onClick={handleSave} disabled={isSaving || isLoading}>
-                        {isSaving ? 'Menyimpan...' : 'Simpan'}
-                    </PrimaryButton>
+                    <div className="flex justify-end gap-2 border-t border-slate-100 pt-4 dark:border-white/5">
+                        <SecondaryButton onClick={onClose}>Batal</SecondaryButton>
+                        <PrimaryButton onClick={handleSave} disabled={isSaving || isLoading}>
+                            {isSaving ? 'Menyimpan...' : 'Simpan'}
+                        </PrimaryButton>
+                    </div>
                 </div>
             </div>
         </Modal>

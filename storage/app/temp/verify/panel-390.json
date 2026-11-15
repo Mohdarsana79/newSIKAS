@@ -1,0 +1,30 @@
+{
+  "vp": {
+    "w": 390,
+    "h": 844
+  },
+  "targets": [
+    {
+      "label": "aside-a-0",
+      "text": "Dibuat oleh Moh Gian Darsana, S.Pd., Gr",
+      "color": "rgb(107, 94, 134)",
+      "size": "10px",
+      "weight": "500",
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0
+    },
+    {
+      "label": "mobile-footer",
+      "text": "© 2026 SIKAS · Sistem Informasi Keuangan",
+      "color": "rgb(122, 112, 133)",
+      "size": "9.5px",
+      "weight": "400",
+      "x": 29,
+      "y": 734,
+      "w": 332,
+      "h": 14
+    }
+  ]
+}

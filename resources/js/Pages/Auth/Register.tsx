@@ -1,10 +1,18 @@
-import InputError from '@/Components/InputError';
-import InputLabel from '@/Components/InputLabel';
-import PrimaryButton from '@/Components/PrimaryButton';
-import TextInput from '@/Components/TextInput';
+import AuthButton from '@/Components/Auth/AuthButton';
+import AuthField from '@/Components/Auth/AuthField';
+import AuthHeading, { AuthAccent } from '@/Components/Auth/AuthHeading';
+import { AuthBackLink, AuthLockBadge } from '@/Components/Auth/AuthLockedState';
 import GuestLayout from '@/Layouts/GuestLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { FormEventHandler, useState } from 'react';
+import {
+    AtSign,
+    Eye,
+    EyeOff,
+    LockKeyhole,
+    ShieldCheck,
+    UserRound,
+} from 'lucide-react';
 
 export default function Register({ isLocked = false }: { isLocked?: boolean }) {
     const { data, setData, post, processing, errors, reset } = useForm({
@@ -25,32 +33,62 @@ export default function Register({ isLocked = false }: { isLocked?: boolean }) {
         });
     };
 
+    // Tampilan saja — kondisinya identik dengan versi sebelumnya.
+    const strength =
+        data.password.length < 8
+            ? 'weak'
+            : !/(?=.*[a-z])(?=.*[A-Z])(?=.*[\W_])/.test(data.password)
+              ? 'medium'
+              : 'strong';
+
+    const strengthMeta = {
+        weak: {
+            label: 'Lemah (Minimal 8 karakter)',
+            filled: 1,
+            color: '#D96A4E',
+            textClassName: 'text-[#B3462C]',
+        },
+        medium: {
+            label: 'Sedang (Gunakan huruf besar & simbol)',
+            filled: 2,
+            color: '#D9A53F',
+            textClassName: 'text-[#9A6B1E]',
+        },
+        strong: {
+            label: 'Kuat',
+            filled: 3,
+            color: '#7FA277',
+            textClassName: 'text-[#4F7A4C]',
+        },
+    } as const;
+
+    const passwordFeedback = strengthMeta[strength];
+
     if (isLocked) {
         return (
             <GuestLayout>
                 <Head title="Registrasi Terkunci" />
-                <div className="flex min-h-[400px] flex-col items-center justify-center text-center px-4">
-                    <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30 mb-6 shadow-sm border border-red-200 dark:border-red-800">
-                        <svg className="h-10 w-10 text-red-600 dark:text-red-500" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" aria-hidden="true">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-                        </svg>
-                    </div>
-                    <h2 className="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white mb-4">
-                        Akses Registrasi Terkunci
-                    </h2>
-                    <p className="mt-2 text-base text-gray-600 dark:text-gray-400 max-w-sm mx-auto leading-relaxed">
-                        Sistem mendeteksi bahwa sudah ada pengguna yang terdaftar. Pendaftaran tambahan saat ini ditutup demi keamanan sistem.
+
+                <div className="auth-rise flex flex-col items-center px-1 text-center">
+                    <AuthLockBadge />
+
+                    <p className="mt-6 flex items-center gap-2.5 text-[10px] font-bold uppercase tracking-[0.26em] text-[#6B5E86]">
+                        <span aria-hidden="true" className="h-px w-5 bg-[#C9B9E8]" />
+                        Akses terbatas
+                        <span aria-hidden="true" className="h-px w-5 bg-[#C9B9E8]" />
                     </p>
-                    <div className="mt-8">
-                        <Link
-                            href={route('login')}
-                            className="inline-flex items-center justify-center rounded-full bg-indigo-600 px-8 py-3 text-sm font-semibold text-white shadow-md hover:bg-indigo-500 hover:shadow-lg hover:-translate-y-0.5 transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
-                        >
-                            <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
-                            </svg>
-                            Kembali ke Halaman Masuk
-                        </Link>
+
+                    <h1 className="mt-3 max-w-[19ch] font-display text-[clamp(1.85rem,2.4vw,2.25rem)] font-semibold leading-[1.05] tracking-[-0.025em] text-[#221C33]">
+                        Registrasi <span className="text-[#4A2FB0]">terkunci</span>.
+                    </h1>
+
+                    <p className="mt-3 max-w-[36ch] text-[13px] leading-relaxed text-[#6B6178]">
+                        Sistem mendeteksi bahwa sudah ada pengguna terdaftar di instalasi ini.
+                        Pendaftaran akun tambahan ditutup demi keamanan data sekolah.
+                    </p>
+
+                    <div className="auth-rise mt-7 w-full sm:w-auto" style={{ animationDelay: '170ms' }}>
+                        <AuthBackLink href={route('login')}>Kembali ke halaman masuk</AuthBackLink>
                     </div>
                 </div>
             </GuestLayout>
@@ -61,178 +99,167 @@ export default function Register({ isLocked = false }: { isLocked?: boolean }) {
         <GuestLayout>
             <Head title="Register" />
 
-            <div className="text-center mb-10">
-                <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-                    Buat Akun Baru
-                </h2>
-                <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                    Daftarkan sekolah Anda ke dalam sistem SIKAS
-                </p>
+            <div className="auth-rise">
+                <AuthHeading
+                    eyebrow="Daftar akun"
+                    title={
+                        <>
+                            Buat akun <AuthAccent>sekolah</AuthAccent>.
+                        </>
+                    }
+                    subtitle="Daftarkan akun admin sekolah untuk mengurus RKAS, buku kas, dan laporan."
+                />
             </div>
 
-            <form onSubmit={submit} className="space-y-5">
-                <div>
-                    <InputLabel htmlFor="name" value="Nama Lengkap" />
-                    <div className="relative mt-2">
-                        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                            <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                            </svg>
-                        </div>
-                        <TextInput
-                            id="name"
-                            name="name"
-                            value={data.name}
-                            className="block w-full pl-10 py-3 text-gray-900"
-                            autoComplete="name"
-                            isFocused={true}
-                            onChange={(e) => setData('name', e.target.value)}
-                            required
-                            placeholder="Nama Lengkap Pengguna"
-                        />
-                    </div>
-                    <InputError message={errors.name} className="mt-2" />
+            <form onSubmit={submit} className="mt-6 space-y-[18px]">
+                <div className="auth-rise" style={{ animationDelay: '110ms' }}>
+                    <AuthField
+                        id="name"
+                        type="text"
+                        name="name"
+                        label="Nama lengkap"
+                        icon={<UserRound className="h-[17px] w-[17px]" strokeWidth={1.7} />}
+                        value={data.name}
+                        autoComplete="name"
+                        autoFocus
+                        onChange={(e) => setData('name', e.target.value)}
+                        placeholder="Nama lengkap pengguna"
+                        error={errors.name}
+                        required
+                    />
                 </div>
 
-                <div>
-                    <InputLabel htmlFor="username" value="Username" />
-                    <div className="relative mt-2">
-                        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                            <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                        </div>
-                        <TextInput
-                            id="username"
-                            type="text"
-                            name="username"
-                            value={data.username}
-                            className="block w-full pl-10 py-3 text-gray-900"
-                            autoComplete="username"
-                            onChange={(e) => setData('username', e.target.value)}
-                            required
-                            placeholder="Buat username unik"
-                        />
-                    </div>
-                    <InputError message={errors.username} className="mt-2" />
+                <div className="auth-rise" style={{ animationDelay: '165ms' }}>
+                    <AuthField
+                        id="username"
+                        type="text"
+                        name="username"
+                        label="Username"
+                        icon={<AtSign className="h-[17px] w-[17px]" strokeWidth={1.7} />}
+                        value={data.username}
+                        autoComplete="username"
+                        onChange={(e) => setData('username', e.target.value)}
+                        placeholder="Buat username unik"
+                        error={errors.username}
+                        required
+                    />
                 </div>
 
-                <div>
-                    <InputLabel htmlFor="password" value="Password" />
-                    <div className="relative mt-2">
-                        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                            <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                            </svg>
-                        </div>
-                        <TextInput
-                            id="password"
-                            type={showPassword ? 'text' : 'password'}
-                            name="password"
-                            value={data.password}
-                            className="block w-full pl-10 pr-10 py-3 text-gray-900"
-                            autoComplete="new-password"
-                            onChange={(e) => setData('password', e.target.value)}
-                            required
-                            placeholder="Minimal 8 karakter dan karakter unik"
-                        />
-                        <button
-                            type="button"
-                            className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 focus:outline-none"
-                            onClick={() => setShowPassword(!showPassword)}
-                        >
-                            {showPassword ? (
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
-                                </svg>
-                            ) : (
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                </svg>
-                            )}
-                        </button>
-                    </div>
+                <div className="auth-rise" style={{ animationDelay: '220ms' }}>
+                    <AuthField
+                        id="password"
+                        type={showPassword ? 'text' : 'password'}
+                        name="password"
+                        label="Password"
+                        icon={<LockKeyhole className="h-[17px] w-[17px]" strokeWidth={1.7} />}
+                        value={data.password}
+                        autoComplete="new-password"
+                        onChange={(e) => setData('password', e.target.value)}
+                        placeholder="Min. 8 karakter + simbol"
+                        error={errors.password}
+                        required
+                        trailing={
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
+                                aria-pressed={showPassword}
+                                className="mr-1 flex h-9 w-9 items-center justify-center rounded-[10px] text-[#857A93] transition-colors duration-200 hover:bg-[#F1E9FF] hover:text-[#5B3DF5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6D4DE0]/30"
+                            >
+                                {showPassword ? (
+                                    <EyeOff className="h-[17px] w-[17px]" strokeWidth={1.7} aria-hidden="true" />
+                                ) : (
+                                    <Eye className="h-[17px] w-[17px]" strokeWidth={1.7} aria-hidden="true" />
+                                )}
+                            </button>
+                        }
+                    />
 
                     {data.password && (
-                        <div className="mt-2">
-                            <div className="h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
-                                <div
-                                    className={`h-full transition-all duration-300 ${data.password.length < 8 ? 'bg-red-500 w-1/3' :
-                                        !/(?=.*[a-z])(?=.*[A-Z])(?=.*[\W_])/.test(data.password) ? 'bg-yellow-500 w-2/3' :
-                                            'bg-green-500 w-full'
-                                        }`}
-                                ></div>
+                        <div className="auth-fade mt-2.5">
+                            <div aria-hidden="true" className="flex items-center gap-1.5">
+                                {[1, 2, 3].map((segment) => (
+                                    <span
+                                        key={segment}
+                                        className="h-1.5 flex-1 rounded-full bg-[#EFE7D8] transition-colors duration-300 ease-out"
+                                        style={
+                                            segment <= passwordFeedback.filled
+                                                ? { backgroundColor: passwordFeedback.color }
+                                                : undefined
+                                        }
+                                    />
+                                ))}
                             </div>
-                            <p className={`text-xs mt-1 ${data.password.length < 8 ? 'text-red-500' :
-                                !/(?=.*[a-z])(?=.*[A-Z])(?=.*[\W_])/.test(data.password) ? 'text-yellow-600' :
-                                    'text-green-600'
-                                }`}>
-                                {data.password.length < 8 ? 'Lemah (Minimal 8 karakter)' :
-                                    !/(?=.*[a-z])(?=.*[A-Z])(?=.*[\W_])/.test(data.password) ? 'Sedang (Gunakan huruf besar & simbol)' :
-                                        'Kuat'}
+                            <p
+                                aria-live="polite"
+                                className={`mt-1.5 text-[11.5px] font-medium leading-snug ${passwordFeedback.textClassName}`}
+                            >
+                                {passwordFeedback.label}
                             </p>
                         </div>
                     )}
-
-                    <InputError message={errors.password} className="mt-2" />
                 </div>
 
-                <div>
-                    <InputLabel htmlFor="password_confirmation" value="Konfirmasi Password" />
-                    <div className="relative mt-2">
-                        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                            <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                        </div>
-                        <TextInput
-                            id="password_confirmation"
-                            type={showConfirmPassword ? 'text' : 'password'}
-                            name="password_confirmation"
-                            value={data.password_confirmation}
-                            className="block w-full pl-10 pr-10 py-3 text-gray-900"
-                            autoComplete="new-password"
-                            onChange={(e) => setData('password_confirmation', e.target.value)}
-                            required
-                            placeholder="Ulangi password"
-                        />
-                        <button
-                            type="button"
-                            className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 focus:outline-none"
-                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        >
-                            {showConfirmPassword ? (
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
-                                </svg>
-                            ) : (
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                </svg>
-                            )}
-                        </button>
-                    </div>
-                    <InputError message={errors.password_confirmation} className="mt-2" />
+                <div className="auth-rise" style={{ animationDelay: '275ms' }}>
+                    <AuthField
+                        id="password_confirmation"
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        name="password_confirmation"
+                        label="Konfirmasi password"
+                        icon={<LockKeyhole className="h-[17px] w-[17px]" strokeWidth={1.7} />}
+                        value={data.password_confirmation}
+                        autoComplete="new-password"
+                        onChange={(e) => setData('password_confirmation', e.target.value)}
+                        placeholder="Ulangi password"
+                        error={errors.password_confirmation}
+                        required
+                        trailing={
+                            <button
+                                type="button"
+                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                aria-label={
+                                    showConfirmPassword
+                                        ? 'Sembunyikan konfirmasi password'
+                                        : 'Tampilkan konfirmasi password'
+                                }
+                                aria-pressed={showConfirmPassword}
+                                className="mr-1 flex h-9 w-9 items-center justify-center rounded-[10px] text-[#857A93] transition-colors duration-200 hover:bg-[#F1E9FF] hover:text-[#5B3DF5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6D4DE0]/30"
+                            >
+                                {showConfirmPassword ? (
+                                    <EyeOff className="h-[17px] w-[17px]" strokeWidth={1.7} aria-hidden="true" />
+                                ) : (
+                                    <Eye className="h-[17px] w-[17px]" strokeWidth={1.7} aria-hidden="true" />
+                                )}
+                            </button>
+                        }
+                    />
                 </div>
 
-                <div className="pt-4">
-                    <PrimaryButton className="w-full justify-center py-3 text-base" disabled={processing}>
-                        Daftar
-                    </PrimaryButton>
+                <div className="auth-rise pt-1" style={{ animationDelay: '330ms' }}>
+                    <AuthButton processing={processing}>Buat akun</AuthButton>
                 </div>
-
-                <p className="text-center text-sm text-gray-600 dark:text-gray-400">
-                    Sudah punya akun?{' '}
-                    <Link
-                        href={route('login')}
-                        className="font-semibold text-indigo-600 hover:text-indigo-500 dark:text-indigo-400"
-                    >
-                        Masuk disini
-                    </Link>
-                </p>
             </form>
+
+            <div
+                className="auth-rise mt-6 flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1 text-[12px] text-[#6B6178]"
+                style={{ animationDelay: '385ms' }}
+            >
+                <span>Sudah punya akun?</span>
+                <Link
+                    href={route('login')}
+                    className="auth-link text-[12px] font-semibold text-[#5B3DF5] transition-colors hover:text-[#4A2FB0]"
+                >
+                    Masuk
+                </Link>
+            </div>
+
+            <div
+                className="auth-rise mt-5 flex items-center justify-center gap-1.5 text-[10.5px] tracking-[0.02em] text-[#7A7085]"
+                style={{ animationDelay: '440ms' }}
+            >
+                <ShieldCheck aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-[#8FAE8B]" strokeWidth={1.8} />
+                <span>Registrasi hanya untuk satu akun sekolah.</span>
+            </div>
         </GuestLayout>
     );
 }

@@ -78,23 +78,7 @@ Route::middleware('auth')->group(function () {
         Route::delete('/folder/{folder}', [SkSuratController::class, 'destroyFolder'])->name('folder.destroy');
         Route::get('/folder/{folder}', [SkSuratController::class, 'show'])->name('show');
         Route::post('/folder/{folder}/template', [SkSuratController::class, 'storeTemplate'])->name('template.store');
-        Route::delete('/template/{template}', [SkSuratController::class, 'destroyTemplate'])->name('template.destroy');
-        Route::post('/folder/{folder}/dokumen', [SkSuratController::class, 'storeDokumen'])->name('dokumen.store');
-        Route::put('/dokumen/{dokumen}', [SkSuratController::class, 'updateDokumen'])->name('dokumen.update');
-        Route::post('/folder/{folder}/upload-arsip', [SkSuratController::class, 'uploadArsip'])->name('dokumen.upload-arsip');
-        Route::delete('/dokumen/{dokumen}', [SkSuratController::class, 'destroyDokumen'])->name('dokumen.destroy');
-        Route::get('/dokumen/{dokumen}/download-docx', [SkSuratController::class, 'downloadDocx'])->name('dokumen.download-docx');
-        Route::get('/dokumen/{dokumen}/export-pdf', [SkSuratController::class, 'exportPdf'])->name('dokumen.export-pdf');
-        Route::get('/dokumen/{dokumen}/download-archive', [SkSuratController::class, 'downloadArchive'])->name('dokumen.download-archive');
-    });
-
-    Route::prefix('sk-surat')->name('sk-surat.')->group(function () {
-        Route::get('/', [SkSuratController::class, 'index'])->name('index');
-        Route::post('/folder', [SkSuratController::class, 'storeFolder'])->name('folder.store');
-        Route::put('/folder/{folder}', [SkSuratController::class, 'updateFolder'])->name('folder.update');
-        Route::delete('/folder/{folder}', [SkSuratController::class, 'destroyFolder'])->name('folder.destroy');
-        Route::get('/folder/{folder}', [SkSuratController::class, 'show'])->name('show');
-        Route::post('/folder/{folder}/template', [SkSuratController::class, 'storeTemplate'])->name('template.store');
+        Route::post('/template/{template}/rescan', [SkSuratController::class, 'rescanTemplate'])->name('template.rescan');
         Route::delete('/template/{template}', [SkSuratController::class, 'destroyTemplate'])->name('template.destroy');
         Route::post('/folder/{folder}/dokumen', [SkSuratController::class, 'storeDokumen'])->name('dokumen.store');
         Route::put('/dokumen/{dokumen}', [SkSuratController::class, 'updateDokumen'])->name('dokumen.update');

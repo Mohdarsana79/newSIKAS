@@ -549,3 +549,246 @@ html.landing-active {
 .dark .bento-table-wrapper table tbody tr:hover {
   background-color: rgba(255, 255, 255, 0.04);
 }
+
+/* ==========================================================================
+   SIKAS App Shell v2 — "Neo-Bento Full-Color"
+   Lapisan aditif (2026-11-12): token & utilitas untuk seluruh halaman aplikasi.
+   Hanya dipakai oleh AuthenticatedLayout + halaman dalam; Landing & Auth tetap.
+   ========================================================================== */
+
+/* --- Kanvas aurora: violet / lime / peach lembut di atas kanvas ice --- */
+.sikas-canvas {
+  background-color: #f4f5fa;
+  background-image:
+    radial-gradient(60rem 40rem at 8% -10%, rgba(124, 92, 255, 0.2), transparent 60%),
+    radial-gradient(50rem 34rem at 96% 4%, rgba(216, 242, 117, 0.28), transparent 62%),
+    radial-gradient(46rem 30rem at 82% 92%, rgba(255, 180, 137, 0.2), transparent 65%),
+    radial-gradient(40rem 28rem at 18% 96%, rgba(124, 92, 255, 0.14), transparent 60%);
+  background-attachment: fixed;
+}
+
+.dark .sikas-canvas {
+  background-color: #0b0a12;
+  background-image:
+    radial-gradient(60rem 40rem at 8% -10%, rgba(124, 92, 255, 0.18), transparent 60%),
+    radial-gradient(50rem 34rem at 96% 4%, rgba(197, 232, 78, 0.1), transparent 62%),
+    radial-gradient(46rem 30rem at 82% 92%, rgba(255, 139, 92, 0.08), transparent 65%);
+}
+
+/* --- Permukaan kartu bento --- */
+.sikas-card {
+  border-radius: 1.625rem;
+  border: 1px solid #ffffff;
+  background-color: #ffffff;
+  box-shadow: 0 18px 45px -28px rgba(20, 19, 31, 0.35);
+  transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 300ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 300ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.dark .sikas-card {
+  border-color: rgba(255, 255, 255, 0.08);
+  background-color: #15131f;
+  box-shadow: 0 24px 50px -30px rgba(0, 0, 0, 0.8);
+}
+
+.sikas-card-hover:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 28px 60px -30px rgba(20, 19, 31, 0.45);
+  border-color: rgba(216, 242, 117, 0.65);
+}
+
+.dark .sikas-card-hover:hover {
+  border-color: rgba(216, 242, 117, 0.35);
+  box-shadow: 0 30px 60px -28px rgba(0, 0, 0, 0.9);
+}
+
+/* --- Navbar kaca --- */
+.sikas-glass {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(18px) saturate(1.4);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+}
+
+.dark .sikas-glass {
+  background: rgba(13, 15, 23, 0.74);
+}
+
+/* --- Navigasi sidebar aktif: pil lime --- */
+.nav-active {
+  background: linear-gradient(120deg, #e5f7a3 0%, #d8f275 55%, #cbec58 100%);
+  color: #14131f;
+  box-shadow: 0 12px 28px -14px rgba(197, 232, 78, 0.85),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+/* --- Angka tabular untuk nominal & tabel --- */
+.sikas-num,
+.text-sikas-num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+/* --- Grid grafik --- */
+.chart-grid {
+  background-image: linear-gradient(to bottom, rgba(30, 29, 46, 0.07) 1px, transparent 1px);
+  background-size: 100% 48px;
+}
+
+.dark .chart-grid {
+  background-image: linear-gradient(to bottom, rgba(255, 255, 255, 0.07) 1px, transparent 1px);
+}
+
+/* --- Ring donut via conic-gradient --- */
+.donut-ring {
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 16px), #000 calc(100% - 15px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 16px), #000 calc(100% - 15px));
+}
+
+/* --- Scrollbar tipis untuk panel scroll --- */
+.sikas-scroll::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.sikas-scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(100, 100, 130, 0.28);
+}
+
+/* --- Tombol ikon lembut --- */
+.sikas-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.75rem;
+  border: 1px solid rgb(241 245 249);
+  background-color: #ffffff;
+  color: rgb(100 116 139);
+  box-shadow: 0 1px 2px 0 rgba(15, 23, 42, 0.05);
+  transition: all 200ms ease;
+}
+
+.sikas-icon-btn:hover {
+  color: rgb(15 23 42);
+  transform: translateY(-1px);
+}
+
+.dark .sikas-icon-btn {
+  border-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(255, 255, 255, 0.05);
+  color: rgb(148 163 184);
+}
+
+.dark .sikas-icon-btn:hover {
+  color: #ffffff;
+}
+
+/* --- Tabel bento v2: header halus, baris hover lime, angka tabular --- */
+.bento-table-wrapper {
+  overflow-x: auto;
+  overflow-y: hidden;
+  border-radius: 1.5rem;
+  border: 1px solid rgb(241 245 249);
+  background: #ffffff;
+}
+
+.dark .bento-table-wrapper {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: #15131f;
+}
+
+.bento-table-wrapper table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.bento-table-wrapper table th {
+  background-color: rgba(248, 250, 252, 0.75);
+  font-weight: 800;
+  font-size: 0.5625rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: rgb(148 163 184);
+  border-bottom: 1px solid rgb(241 245 249);
+  padding: 0.65rem 1rem;
+  white-space: nowrap;
+}
+
+.dark .bento-table-wrapper table th {
+  background-color: rgba(255, 255, 255, 0.03);
+  color: rgba(148, 163, 184, 0.9);
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+.bento-table-wrapper table td {
+  padding: 0.7rem 1rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: rgb(51 65 85);
+  border-bottom: 1px solid rgb(248 250 252);
+  vertical-align: middle;
+}
+
+.dark .bento-table-wrapper table td {
+  color: rgb(203 213 225);
+  border-bottom-color: rgba(255, 255, 255, 0.05);
+}
+
+.bento-table-wrapper table tbody tr {
+  transition: background-color 150ms ease;
+}
+
+.bento-table-wrapper table tbody tr:hover {
+  background-color: rgba(248, 253, 232, 0.7);
+}
+
+.dark .bento-table-wrapper table tbody tr:hover {
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+.bento-table-wrapper table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+/* Bila tabel dibungkus di dalam DataTable/sikas-card, jangan tampilkan
+   chrome kartu ganda — cukup styling header/barisnya. */
+.sikas-card .bento-table-wrapper {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+/* --- Tab pil v2 --- */
+.bento-tab-active {
+  background-color: #d8f275;
+  color: #14131f;
+  box-shadow: 0 10px 25px -12px rgba(197, 232, 78, 0.8);
+}
+
+/* --- Fokus aksesibel --- */
+.sikas-focus:focus-visible {
+  outline: 2px solid #a9ce2f;
+  outline-offset: 2px;
+}
+
+/* --- Hormati preferensi reduce motion untuk komponen app shell v2 --- */
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise,
+  .animate-rise-fast,
+  .animate-slide-in,
+  .animate-float,
+  .animate-float-slow,
+  .animate-pulse-soft,
+  .animate-shimmer,
+  .animate-grow-bar {
+    animation: none !important;
+  }
+
+  .sikas-card,
+  .sikas-card-hover:hover {
+    transition: none !important;
+    transform: none !important;
+  }
+}

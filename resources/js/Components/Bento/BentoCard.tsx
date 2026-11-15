@@ -18,9 +18,10 @@ export type BentoCardProps = {
 };
 
 /**
- * Kontainer Kartu Bento khas Eduplex & SIKAS Neo-Bento:
- * Sudut rounded-3xl membulat (28px), border presisi, latar bersih putih/ink-soft,
- * dan bayangan halus. Opsional tilt 3D kursor.
+ * Kontainer Kartu Bento khas SIKAS Neo-Bento:
+ * permukaan `sikas-card` (rounded 26px, border putih, shadow card),
+ * tile ikon pastel, judul sans-serif, dan slot badge/aksi di kanan.
+ * Opsional tilt 3D kursor (hanya untuk kartu statistik).
  */
 export function BentoCard({
     children,
@@ -38,40 +39,40 @@ export function BentoCard({
     const cardContent = (
         <div
             className={cn(
-                'relative flex flex-col overflow-hidden rounded-[1.75rem] border border-slate-200/80 bg-white p-6 shadow-sm transition-all duration-300 dark:border-white/10 dark:bg-[#151324] dark:shadow-card-dark',
+                'sikas-card relative flex flex-col overflow-hidden p-5',
                 className,
             )}
         >
             {(title || icon || action || badge) && (
-                <div className={cn('mb-5 flex items-start justify-between gap-3', headerClassName)}>
-                    <div className="flex items-center gap-3">
+                <div className={cn('mb-4 flex items-start justify-between gap-3', headerClassName)}>
+                    <div className="flex min-w-0 items-center gap-3">
                         {icon && (
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-white">
+                            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-slate-700 ring-1 ring-slate-200/70 dark:bg-white/5 dark:text-slate-200 dark:ring-white/10 [&>svg]:h-[18px] [&>svg]:w-[18px]">
                                 {icon}
-                            </div>
+                            </span>
                         )}
-                        <div>
+                        <div className="min-w-0">
                             {title && (
-                                <h3 className="font-display text-base font-semibold tracking-tight text-slate-900 dark:text-white">
+                                <h3 className="truncate text-[13.5px] font-extrabold tracking-tight text-slate-900 dark:text-white">
                                     {title}
                                 </h3>
                             )}
                             {subtitle && (
-                                <p className="text-xs text-slate-500 dark:text-slate-400">
+                                <p className="truncate text-[10px] font-medium text-slate-400 dark:text-slate-500">
                                     {subtitle}
                                 </p>
                             )}
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex shrink-0 items-center gap-2">
                         {badge}
                         {action}
                     </div>
                 </div>
             )}
 
-            <div className={cn('flex-1', bodyClassName)}>
+            <div className={cn('min-w-0 flex-1', bodyClassName)}>
                 {children}
             </div>
         </div>
@@ -89,4 +90,3 @@ export function BentoCard({
 }
 
 export default BentoCard;
-

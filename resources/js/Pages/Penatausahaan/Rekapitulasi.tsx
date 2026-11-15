@@ -11,6 +11,8 @@ import CheckStsModal from './Partials/CheckStsModal';
 import TrkSaldoAwalModal from './Partials/TrkSaldoAwalModal';
 import BkuAuditModal from '@/Components/Ai/BkuAuditModal';
 import { Sparkles } from 'lucide-react';
+import PageHeader from '@/Components/ui/PageHeader';
+import StatusBadge from '@/Components/ui/StatusBadge';
 
 interface RekapitulasiProps {
     auth: any;
@@ -693,56 +695,62 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
     };
 
     return (
-        <AuthenticatedLayout
-            header={
-                <h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
-                    Rekapan BKU
-                </h2>
-            }
-        >
+        <AuthenticatedLayout>
             <Head title="Rekapan BKU" />
 
-            <div className="py-12">
-                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
-                    <div>
-                        <h1 className="text-2xl font-bold text-blue-600 dark:text-blue-400">Rekapan Buku Kas</h1>
-                        <p className="text-gray-600 dark:text-gray-400">Rekap Buku Kas Pembantu</p>
-                    </div>
+            <div className="space-y-4">
+                <PageHeader
+                    className="animate-rise"
+                    breadcrumb={[
+                        { label: 'Dashboard' },
+                        { label: 'Penatausahaan' },
+                        { label: 'Rekapan BKU' },
+                    ]}
+                    title="Rekapan Buku Kas"
+                    badge={<StatusBadge tone="info">BKU</StatusBadge>}
+                    subtitle="Rekap Buku Kas Pembantu"
+                />
 
-                    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                <div className="animate-rise" style={{ animationDelay: '60ms' }}>
+                    <div className="sikas-card p-2">
                         {/* Tabs */}
-                        <div className="flex flex-wrap gap-2 border-b border-gray-200 dark:border-gray-700 pb-4 mb-6 text-sm overflow-x-auto whitespace-nowrap">
+                        <div className="no-scrollbar flex items-center gap-1 overflow-x-auto p-0.5">
                             {tabs.map(tab => (
                                 <button
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id)}
-                                    className={`px-4 py-2 font-medium rounded-md transition-colors
-                                        ${activeTab === tab.id
-                                            ? 'text-gray-900 bg-gray-100 dark:bg-gray-700 dark:text-white'
-                                            : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                                    className={`flex shrink-0 items-center gap-1.5 rounded-xl px-3.5 py-2 text-[11px] font-bold transition-all duration-200 ${activeTab === tab.id
+                                            ? 'bg-slate-900 text-white shadow-pill dark:bg-white dark:text-slate-900'
+                                            : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-white'
                                         }`}
                                 >
+                                    {activeTab === tab.id && <span className="h-1.5 w-1.5 rounded-full bg-lime-300" />}
                                     {tab.label}
                                 </button>
                             ))}
                         </div>
+                    </div>
+                </div>
+
+                <div className="animate-rise" style={{ animationDelay: '120ms' }}>
+                    <div className="sikas-card p-5">
 
                         {/* Content Area */}
                         {activeTab === 'bkp_bank' && (
-                            <div className="space-y-8 animate-fade-in-up">
+                            <div className="space-y-5 animate-rise">
                                 {/* Control Bar - 2 Baris Terstruktur */}
-                                <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg border border-gray-200 dark:border-gray-700 space-y-3">
+                                <div className="rounded-[22px] border border-slate-100 bg-slate-50/70 p-4 dark:border-white/5 dark:bg-white/[0.03] space-y-3">
                                     {/* Baris 1: Filter Bulan & Aksi Dokumen Output */}
                                     <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
                                         <div className="flex items-center gap-3 w-full sm:w-auto">
-                                            <label htmlFor="bulanBank" className="text-sm font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                                            <label htmlFor="bulanBank" className="whitespace-nowrap text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
                                                 Pilih Bulan:
                                             </label>
                                             <select
                                                 id="bulanBank"
                                                 value={bulanBank.toLowerCase()}
                                                 onChange={(e) => setBulanBank(e.target.value)}
-                                                className="border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 px-3 py-2 text-gray-700 dark:text-gray-300 w-full sm:w-48 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent capitalize shadow-sm"
+                                                className="w-full sm:w-48 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-[11.5px] font-semibold capitalize text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-slate-900 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
                                             >
                                                 {monthList.map((m) => (
                                                     <option key={m} value={m}>
@@ -755,7 +763,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                         <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                                             <button
                                                 onClick={handleExportExcelBkpBank}
-                                                className="inline-flex items-center px-4 py-2 bg-green-800 dark:bg-green-700 hover:bg-green-700 dark:hover:bg-green-600 text-white rounded-md font-semibold text-xs uppercase tracking-widest shadow-sm transition ease-in-out duration-150"
+                                                className="inline-flex items-center gap-1.5 rounded-2xl border border-emerald-200 bg-pastel-mint px-3.5 py-2 text-[11px] font-extrabold text-emerald-700 transition hover:-translate-y-0.5 hover:bg-emerald-100 dark:border-emerald-400/20 dark:bg-mint/10 dark:text-emerald-300 dark:hover:bg-mint/15"
                                             >
                                                 <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -765,7 +773,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
 
                                             <button
                                                 onClick={() => setShowPrintModal(true)}
-                                                className="inline-flex items-center px-4 py-2 bg-gray-800 dark:bg-gray-900 hover:bg-gray-700 dark:hover:bg-gray-800 text-white rounded-md font-semibold text-xs uppercase tracking-widest shadow-sm transition ease-in-out duration-150"
+                                                className="inline-flex items-center gap-1.5 rounded-2xl bg-slate-900 px-3.5 py-2 text-[11px] font-extrabold text-white shadow-pill transition hover:-translate-y-0.5 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
                                             >
                                                 <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -776,9 +784,9 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                     </div>
 
                                     {/* Baris 2: Alat Pemeriksaan & Validasi Kas Bank (AI, Saldo Awal, STS) */}
-                                    <div className="pt-3 border-t border-gray-200 dark:border-gray-600/70 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
-                                        <div className="flex items-center gap-2 text-xs font-medium text-gray-500 dark:text-gray-400">
-                                            <span className="inline-block w-2 h-2 rounded-full bg-blue-500"></span>
+                                    <div className="flex flex-col items-start justify-between gap-3 border-t border-slate-200/70 pt-3 dark:border-white/10 md:flex-row md:items-center">
+                                        <div className="flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                                            <span className="inline-block h-2 w-2 rounded-full bg-brand-500"></span>
                                             <span>Alat Pemeriksaan & Validasi Kas Bank:</span>
                                         </div>
 
@@ -787,7 +795,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
 
                                             <button
                                                 onClick={() => setShowTrkSaldoAwalModal(true)}
-                                                className="inline-flex items-center px-4 py-2 bg-yellow-600 dark:bg-yellow-500 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-yellow-500 dark:hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 transition ease-in-out duration-150 shadow-sm"
+                                                className="inline-flex items-center gap-1.5 rounded-2xl border border-amber-300/60 bg-pastel-amber px-3.5 py-2 text-[11px] font-extrabold text-amber-700 transition hover:-translate-y-0.5 hover:bg-amber-100 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-300"
                                             >
                                                 <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -797,7 +805,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
 
                                             <button
                                                 onClick={() => setShowCheckStsModal(true)}
-                                                className="inline-flex items-center px-4 py-2 bg-green-600 dark:bg-green-500 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-500 dark:hover:bg-green-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition ease-in-out duration-150 shadow-sm"
+                                                className="inline-flex items-center gap-1.5 rounded-2xl border border-emerald-200 bg-pastel-mint px-3.5 py-2 text-[11px] font-extrabold text-emerald-700 transition hover:-translate-y-0.5 hover:bg-emerald-100 dark:border-emerald-400/20 dark:bg-mint/10 dark:text-emerald-300 dark:hover:bg-mint/15"
                                             >
                                                 <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -837,7 +845,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                 />
 
                                 {/* Report Paper */}
-                                <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-x-auto">
+                                <div className="sikas-card overflow-x-auto p-6">
                                     <div className="min-w-[900px]">
                                         {/* Report Header */}
                                         <div className="text-center mb-8">
@@ -1103,16 +1111,16 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
 
 
                         {activeTab === 'bkp_umum' && (
-                            <div className="space-y-8 animate-fade-in-up">
+                            <div className="space-y-5 animate-rise">
                                 {/* Control Bar */}
-                                <div className="flex flex-col md:flex-row justify-between items-center bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+                                <div className="flex flex-col items-center justify-between gap-4 rounded-[22px] border border-slate-100 bg-slate-50/70 p-4 dark:border-white/5 dark:bg-white/[0.03] md:flex-row">
                                     <div className="flex items-center gap-4 w-full md:w-auto">
-                                        <label htmlFor="bulanUmum" className="text-sm font-medium text-gray-700 dark:text-gray-300">Pilih Bulan:</label>
+                                        <label htmlFor="bulanUmum" className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">Pilih Bulan:</label>
                                         <select
                                             id="bulanUmum"
                                             value={bulanUmum.toLowerCase()}
                                             onChange={(e) => setBulanUmum(e.target.value)}
-                                            className="border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 px-3 py-2 text-gray-700 dark:text-gray-300 w-full md:w-48 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent capitalize"
+                                            className="w-full md:w-48 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-[11.5px] font-semibold capitalize text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
                                         >
                                             {monthList.map((m) => (
                                                 <option key={m} value={m}>
@@ -1125,7 +1133,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                         {renderAuditButton('bkp_umum')}
                                         <button
                                             onClick={handleExportExcelBkpUmum}
-                                            className="inline-flex items-center px-4 py-2 bg-green-800 dark:bg-green-200 border border-transparent rounded-md font-semibold text-xs text-white dark:text-green-800 uppercase tracking-widest hover:bg-green-700 dark:hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition ease-in-out duration-150"
+                                            className="inline-flex items-center gap-1.5 rounded-2xl border border-emerald-200 bg-pastel-mint px-3.5 py-2 text-[11px] font-extrabold text-emerald-700 transition hover:-translate-y-0.5 hover:bg-emerald-100 dark:border-emerald-400/20 dark:bg-mint/10 dark:text-emerald-300 dark:hover:bg-mint/15"
                                         >
                                             <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -1134,7 +1142,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                         </button>
                                         <button
                                             onClick={() => setShowPrintBkpUmumModal(true)}
-                                            className="inline-flex items-center px-4 py-2 bg-gray-800 dark:bg-gray-200 border border-transparent rounded-md font-semibold text-xs text-white dark:text-gray-800 uppercase tracking-widest hover:bg-gray-700 dark:hover:bg-white focus:bg-gray-700 dark:focus:bg-white active:bg-gray-900 dark:active:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150"
+                                            className="inline-flex items-center gap-1.5 rounded-2xl bg-slate-900 px-3.5 py-2 text-[11px] font-extrabold text-white shadow-pill transition hover:-translate-y-0.5 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
                                         >
                                             <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -1153,7 +1161,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                 />
 
                                 {/* Report Paper */}
-                                <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-x-auto">
+                                <div className="sikas-card overflow-x-auto p-6">
                                     <div className="min-w-[900px]">
                                         {/* Report Header */}
                                         <div className="text-center mb-8">
@@ -1397,16 +1405,16 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                             </div>
                         )}
                         {activeTab === 'bkp_pajak' && (
-                            <div className="space-y-8 animate-fade-in-up">
+                            <div className="space-y-5 animate-rise">
                                 {/* Control Bar */}
-                                <div className="flex flex-col md:flex-row justify-between items-center bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+                                <div className="flex flex-col items-center justify-between gap-4 rounded-[22px] border border-slate-100 bg-slate-50/70 p-4 dark:border-white/5 dark:bg-white/[0.03] md:flex-row">
                                     <div className="flex items-center gap-4 w-full md:w-auto">
-                                        <label htmlFor="bulanPajak" className="text-sm font-medium text-gray-700 dark:text-gray-300">Pilih Bulan:</label>
+                                        <label htmlFor="bulanPajak" className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">Pilih Bulan:</label>
                                         <select
                                             id="bulanPajak"
                                             value={bulanPajak.toLowerCase()}
                                             onChange={(e) => setBulanPajak(e.target.value)}
-                                            className="border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 px-3 py-2 text-gray-700 dark:text-gray-300 w-full md:w-48 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent capitalize"
+                                            className="w-full md:w-48 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-[11.5px] font-semibold capitalize text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
                                         >
                                             {monthList.map((m) => (
                                                 <option key={m} value={m}>
@@ -1419,7 +1427,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                         {renderAuditButton('bkp_pajak')}
                                         <button
                                             onClick={handleExportExcelBkpPajak}
-                                            className="inline-flex items-center px-4 py-2 bg-green-800 dark:bg-green-200 border border-transparent rounded-md font-semibold text-xs text-white dark:text-green-800 uppercase tracking-widest hover:bg-green-700 dark:hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition ease-in-out duration-150"
+                                            className="inline-flex items-center gap-1.5 rounded-2xl border border-emerald-200 bg-pastel-mint px-3.5 py-2 text-[11px] font-extrabold text-emerald-700 transition hover:-translate-y-0.5 hover:bg-emerald-100 dark:border-emerald-400/20 dark:bg-mint/10 dark:text-emerald-300 dark:hover:bg-mint/15"
                                         >
                                             <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -1428,7 +1436,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                         </button>
                                         <button
                                             onClick={() => setShowPrintBkpPajakModal(true)}
-                                            className="inline-flex items-center px-4 py-2 bg-gray-800 dark:bg-gray-200 border border-transparent rounded-md font-semibold text-xs text-white dark:text-gray-800 uppercase tracking-widest hover:bg-gray-700 dark:hover:bg-white focus:bg-gray-700 dark:focus:bg-white active:bg-gray-900 dark:active:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150"
+                                            className="inline-flex items-center gap-1.5 rounded-2xl bg-slate-900 px-3.5 py-2 text-[11px] font-extrabold text-white shadow-pill transition hover:-translate-y-0.5 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
                                         >
                                             <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -1448,7 +1456,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                 />
 
                                 {/* Report Paper */}
-                                <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-x-auto">
+                                <div className="sikas-card overflow-x-auto p-6">
                                     <div className="min-w-[1000px]">
                                         {/* Report Header */}
                                         <div className="text-center mb-8">
@@ -1632,12 +1640,12 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                         {activeTab === 'rob' && (
                             <div className="space-y-6">
                                 {/* Header Section */}
-                                <div className="flex flex-col md:flex-row justify-between items-start md:items-center p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-700">
+                                <div className="flex flex-col items-start justify-between gap-3 rounded-[22px] border border-slate-100 bg-slate-50/70 p-4 dark:border-white/5 dark:bg-white/[0.03] md:flex-row md:items-center">
                                     <div className="w-full md:w-64 mb-4 md:mb-0">
                                         <select
                                             value={bulanRob.toLowerCase()}
                                             onChange={(e) => setBulanRob(e.target.value)}
-                                            className="border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 px-3 py-2 text-gray-700 dark:text-gray-300 w-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent capitalize"
+                                            className="w-full rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-[11.5px] font-semibold capitalize text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
                                         >
                                             {monthList.map((m) => (
                                                 <option key={m} value={m}>
@@ -1647,13 +1655,13 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                         </select>
                                     </div>
                                     <div className="flex flex-wrap items-center gap-3">
-                                        <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 uppercase hidden md:block">
+                                        <h3 className="hidden text-[11.5px] font-extrabold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400 md:block">
                                             BUKU PEMBANTU RINCIAN OBJEK BELANJA - {bulanRob.toUpperCase()} {tahun}
                                         </h3>
                                         {renderAuditButton('rob')}
                                         <button
                                             onClick={() => setShowPrintBkpRobModal(true)}
-                                            className="inline-flex items-center px-4 py-2 bg-gray-800 dark:bg-gray-200 border border-transparent rounded-md font-semibold text-xs text-white dark:text-gray-800 uppercase tracking-widest hover:bg-gray-700 dark:hover:bg-white focus:bg-gray-700 dark:focus:bg-white active:bg-gray-900 dark:active:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150"
+                                            className="inline-flex items-center gap-1.5 rounded-2xl bg-slate-900 px-3.5 py-2 text-[11px] font-extrabold text-white shadow-pill transition hover:-translate-y-0.5 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
                                         >
                                             <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -1673,7 +1681,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
 
 
                                 {/* School Info Header */}
-                                <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 text-sm">
+                                <div className="sikas-card p-4 text-sm">
                                     <div className="grid grid-cols-[150px_1fr] gap-2">
                                         <div className="font-semibold text-gray-600 dark:text-gray-400">NPSN</div>
                                         <div className="text-gray-900 dark:text-gray-100">: {bkpRobData?.data?.sekolah?.npsn || '-'}</div>
@@ -1793,16 +1801,16 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                         )}
 
                         {activeTab === 'reg' && (
-                            <div className="mt-6 flex flex-col gap-6 animate-fade-in-up">
+                            <div className="mt-6 flex flex-col gap-6 animate-rise">
                                 {/* Header Controls */}
-                                <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                                <div className="flex flex-col items-center justify-between gap-4 rounded-[22px] border border-slate-100 bg-slate-50/70 p-4 dark:border-white/5 dark:bg-white/[0.03] md:flex-row">
                                     <div className="flex items-center gap-4">
-                                        <label htmlFor="bulanReg" className="text-sm font-medium text-gray-700 dark:text-gray-300">Pilih Bulan:</label>
+                                        <label htmlFor="bulanReg" className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">Pilih Bulan:</label>
                                         <select
                                             id="bulanReg"
                                             value={bulanReg}
                                             onChange={(e) => setBulanReg(e.target.value)}
-                                            className="block w-40 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                            className="block w-40 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-[11.5px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
                                         >
                                             {monthList.map((m) => (
                                                 <option key={m} value={m} className="capitalize">{m.charAt(0).toUpperCase() + m.slice(1)}</option>
@@ -1813,7 +1821,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                         {renderAuditButton('reg')}
                                         <button
                                             onClick={() => setShowPrintBkpRegModal(true)}
-                                            className="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 focus:bg-indigo-700 active:bg-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150"
+                                            className="inline-flex items-center gap-1.5 rounded-2xl bg-lime-400 px-3.5 py-2 text-[11px] font-extrabold text-slate-950 shadow-lime transition hover:-translate-y-0.5 hover:bg-lime-300"
                                         >
                                             CETAK REGISTER BKP
                                         </button>
@@ -1829,7 +1837,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                 />
 
                                 {/* Report Header */}
-                                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                                <div className="sikas-card p-6">
                                     <div className="text-center mb-6 border-b pb-4 border-gray-200 dark:border-gray-700">
                                         <h2 className="text-xl font-bold text-gray-900 dark:text-white uppercase tracking-wide">Formulir BOS-K7B</h2>
                                         <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 uppercase mt-1">REGISTER PENUTUPAN KAS</h3>
@@ -1970,16 +1978,16 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                         )}
 
                         {activeTab === 'ba' && (
-                            <div className="mt-6 flex flex-col gap-6 animate-fade-in-up">
+                            <div className="mt-6 flex flex-col gap-6 animate-rise">
                                 {/* Header Controls */}
-                                <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                                <div className="flex flex-col items-center justify-between gap-4 rounded-[22px] border border-slate-100 bg-slate-50/70 p-4 dark:border-white/5 dark:bg-white/[0.03] md:flex-row">
                                     <div className="flex items-center gap-4">
-                                        <label htmlFor="bulanBa" className="text-sm font-medium text-gray-700 dark:text-gray-300">Pilih Bulan:</label>
+                                        <label htmlFor="bulanBa" className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">Pilih Bulan:</label>
                                         <select
                                             id="bulanBa"
                                             value={bulanBa}
                                             onChange={(e) => setBulanBa(e.target.value)}
-                                            className="block w-40 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                            className="block w-40 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-[11.5px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
                                         >
                                             {monthList.map((m) => (
                                                 <option key={m} value={m} className="capitalize">{m.charAt(0).toUpperCase() + m.slice(1)}</option>
@@ -1990,7 +1998,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                         {renderAuditButton('ba')}
                                         <button
                                             onClick={() => setShowPrintBkpBaModal(true)}
-                                            className="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 focus:bg-indigo-700 active:bg-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150"
+                                            className="inline-flex items-center gap-1.5 rounded-2xl bg-lime-400 px-3.5 py-2 text-[11px] font-extrabold text-slate-950 shadow-lime transition hover:-translate-y-0.5 hover:bg-lime-300"
                                         >
                                             CETAK BERITA ACARA
                                         </button>
@@ -2006,7 +2014,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                 />
 
                                 {/* Report Content */}
-                                <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                                <div className="sikas-card p-6">
                                     {isLoading ? (
                                         <div className="text-center py-10 text-gray-500">Memuat data...</div>
                                     ) : (
@@ -2103,12 +2111,12 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
 
 
                         {activeTab === 'realisasi' && (
-                            <div className="mt-6 flex flex-col gap-6 animate-fade-in-up">
+                            <div className="mt-6 flex flex-col gap-6 animate-rise">
                                 {/* Header Controls */}
-                                <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                                <div className="flex flex-col items-center justify-between gap-4 rounded-[22px] border border-slate-100 bg-slate-50/70 p-4 dark:border-white/5 dark:bg-white/[0.03] md:flex-row">
                                     <div className="flex flex-col md:flex-row items-center gap-4">
                                         <div className="flex items-center gap-2">
-                                            <label htmlFor="jenisLaporanRealisasi" className="text-sm font-medium text-gray-700 dark:text-gray-300">Jenis:</label>
+                                            <label htmlFor="jenisLaporanRealisasi" className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">Jenis:</label>
                                             <select
                                                 id="jenisLaporanRealisasi"
                                                 value={jenisLaporanRealisasi}
@@ -2123,7 +2131,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                                         setPeriodeRealisasi(''); // Tahunan usually ignores periode, or set to a placeholder
                                                     }
                                                 }}
-                                                className="block w-40 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                                className="block w-40 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-[11.5px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
                                             >
                                                 <option value="bulanan">Bulanan</option>
                                                 <option value="tahap">Tahap</option>
@@ -2133,12 +2141,12 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
 
                                         {jenisLaporanRealisasi === 'bulanan' && (
                                             <div className="flex items-center gap-2">
-                                                <label htmlFor="periodeRealisasi" className="text-sm font-medium text-gray-700 dark:text-gray-300">Bulan:</label>
+                                                <label htmlFor="periodeRealisasi" className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">Bulan:</label>
                                                 <select
                                                     id="periodeRealisasi"
                                                     value={periodeRealisasi}
                                                     onChange={(e) => setPeriodeRealisasi(e.target.value)}
-                                                    className="block w-40 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                                    className="block w-40 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-[11.5px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
                                                 >
                                                     {monthList.map((m) => (
                                                         <option key={m} value={m} className="capitalize">{m.charAt(0).toUpperCase() + m.slice(1)}</option>
@@ -2149,12 +2157,12 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
 
                                         {jenisLaporanRealisasi === 'tahap' && (
                                             <div className="flex items-center gap-2">
-                                                <label htmlFor="periodeRealisasi" className="text-sm font-medium text-gray-700 dark:text-gray-300">Tahap:</label>
+                                                <label htmlFor="periodeRealisasi" className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">Tahap:</label>
                                                 <select
                                                     id="periodeRealisasi"
                                                     value={periodeRealisasi}
                                                     onChange={(e) => setPeriodeRealisasi(e.target.value)}
-                                                    className="block w-40 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                                    className="block w-40 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-[11.5px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
                                                 >
                                                     <option value="Tahap 1">Tahap 1</option>
                                                     <option value="Tahap 2">Tahap 2</option>
@@ -2167,7 +2175,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                         {renderAuditButton('realisasi')}
                                         <button
                                             onClick={() => setShowPrintRealisasiModal(true)}
-                                            className="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 focus:bg-indigo-700 active:bg-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150"
+                                            className="inline-flex items-center gap-1.5 rounded-2xl bg-lime-400 px-3.5 py-2 text-[11px] font-extrabold text-slate-950 shadow-lime transition hover:-translate-y-0.5 hover:bg-lime-300"
                                         >
                                             CETAK REALISASI
                                         </button>
@@ -2183,7 +2191,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                 />
 
                                 {/* Report Content */}
-                                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-x-auto">
+                                <div className="sikas-card overflow-x-auto p-6">
                                     {isLoading ? (
                                         <div className="text-center py-10 text-gray-500">Memuat data...</div>
                                     ) : (
@@ -2321,20 +2329,20 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                         )}
 
                         {activeTab === 'rek_realisasi' && (
-                            <div className="mt-6 flex flex-col gap-6 animate-fade-in-up">
+                            <div className="mt-6 flex flex-col gap-6 animate-rise">
                                 {/* Header Controls */}
-                                <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                                <div className="flex flex-col items-center justify-between gap-4 rounded-[22px] border border-slate-100 bg-slate-50/70 p-4 dark:border-white/5 dark:bg-white/[0.03] md:flex-row">
                                     <div className="flex items-center gap-4">
                                         {/* No controls needed for now as per design */}
                                     </div>
                                     <div className="flex items-center gap-4">
                                         <div className="flex items-center gap-2">
-                                            <label htmlFor="faseRekRealisasi" className="text-sm font-medium text-gray-700 dark:text-gray-300">Pilih:</label>
+                                            <label htmlFor="faseRekRealisasi" className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">Pilih:</label>
                                             <select
                                                 id="faseRekRealisasi"
                                                 value={faseRekRealisasi}
                                                 onChange={(e) => setFaseRekRealisasi(e.target.value)}
-                                                className="block w-40 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                                className="block w-40 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-[11.5px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
                                             >
                                                 <option value="Tahap 1">Tahap 1</option>
                                                 <option value="Tahap 2">Tahap 2</option>
@@ -2344,7 +2352,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                         {renderAuditButton('rek_realisasi')}
                                         <button
                                             onClick={handlePrintRekRealisasi}
-                                            className="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 focus:bg-indigo-700 active:bg-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150"
+                                            className="inline-flex items-center gap-1.5 rounded-2xl bg-lime-400 px-3.5 py-2 text-[11px] font-extrabold text-slate-950 shadow-lime transition hover:-translate-y-0.5 hover:bg-lime-300"
                                         >
                                             CETAK REK. REALISASI
                                         </button>
@@ -2352,7 +2360,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                 </div>
 
                                 {/* Report Content */}
-                                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-x-auto">
+                                <div className="sikas-card overflow-x-auto p-6">
                                     {isLoading ? (
                                         <div className="text-center py-10 text-gray-500">Memuat data...</div>
                                     ) : (
@@ -2464,16 +2472,16 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                             </div>
                         )}
                         {activeTab === 'bkp_pembantu' && (
-                            <div className="space-y-8 animate-fade-in-up">
+                            <div className="space-y-5 animate-rise">
                                 {/* Control Bar */}
-                                <div className="flex flex-col md:flex-row justify-between items-center bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+                                <div className="flex flex-col items-center justify-between gap-4 rounded-[22px] border border-slate-100 bg-slate-50/70 p-4 dark:border-white/5 dark:bg-white/[0.03] md:flex-row">
                                     <div className="flex items-center gap-4 w-full md:w-auto">
-                                        <label htmlFor="bulanPembantu" className="text-sm font-medium text-gray-700 dark:text-gray-300">Pilih Bulan:</label>
+                                        <label htmlFor="bulanPembantu" className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">Pilih Bulan:</label>
                                         <select
                                             id="bulanPembantu"
                                             value={bulanPembantu.toLowerCase()}
                                             onChange={(e) => setBulanPembantu(e.target.value)}
-                                            className="border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 px-3 py-2 text-gray-700 dark:text-gray-300 w-full md:w-48 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent capitalize"
+                                            className="w-full md:w-48 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-[11.5px] font-semibold capitalize text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
                                         >
                                             {monthList.map((m) => (
                                                 <option key={m} value={m}>
@@ -2486,7 +2494,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                         {renderAuditButton('bkp_pembantu')}
                                         <button
                                             onClick={handleExportExcelBkpTunai}
-                                            className="inline-flex items-center px-4 py-2 bg-green-800 dark:bg-green-200 border border-transparent rounded-md font-semibold text-xs text-white dark:text-green-800 uppercase tracking-widest hover:bg-green-700 dark:hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition ease-in-out duration-150"
+                                            className="inline-flex items-center gap-1.5 rounded-2xl border border-emerald-200 bg-pastel-mint px-3.5 py-2 text-[11px] font-extrabold text-emerald-700 transition hover:-translate-y-0.5 hover:bg-emerald-100 dark:border-emerald-400/20 dark:bg-mint/10 dark:text-emerald-300 dark:hover:bg-mint/15"
                                         >
                                             <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -2495,7 +2503,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                         </button>
                                         <button
                                             onClick={() => setShowPrintBkpTunaiModal(true)}
-                                            className="inline-flex items-center px-4 py-2 bg-gray-800 dark:bg-gray-200 border border-transparent rounded-md font-semibold text-xs text-white dark:text-gray-800 uppercase tracking-widest hover:bg-gray-700 dark:hover:bg-white focus:bg-gray-700 dark:focus:bg-white active:bg-gray-900 dark:active:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150"
+                                            className="inline-flex items-center gap-1.5 rounded-2xl bg-slate-900 px-3.5 py-2 text-[11px] font-extrabold text-white shadow-pill transition hover:-translate-y-0.5 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
                                         >
                                             <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -2515,7 +2523,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                 />
 
                                 {/* Report Paper */}
-                                <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-x-auto">
+                                <div className="sikas-card overflow-x-auto p-6">
                                     <div className="min-w-[900px]">
                                         {/* Report Header */}
                                         <div className="text-center mb-8">
@@ -2726,11 +2734,11 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                         )}
 
                         {activeTab === 'bhp' && (
-                            <div className="mt-6 flex flex-col gap-6 animate-fade-in-up">
-                                <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                            <div className="mt-6 flex flex-col gap-6 animate-rise">
+                                <div className="flex flex-col items-center justify-between gap-4 rounded-[22px] border border-slate-100 bg-slate-50/70 p-4 dark:border-white/5 dark:bg-white/[0.03] md:flex-row">
                                     <div className="flex flex-col md:flex-row items-center gap-4">
                                         <div className="flex items-center gap-2">
-                                            <label htmlFor="jenisLaporanBhp" className="text-sm font-medium text-gray-700 dark:text-gray-300">Jenis:</label>
+                                            <label htmlFor="jenisLaporanBhp" className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">Jenis:</label>
                                             <select
                                                 id="jenisLaporanBhp"
                                                 value={jenisLaporanBhp}
@@ -2745,7 +2753,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                                         setPeriodeBhp('');
                                                     }
                                                 }}
-                                                className="block w-40 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                                className="block w-40 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-[11.5px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
                                             >
                                                 <option value="bulanan">Bulanan</option>
                                                 <option value="tahap">Tahap</option>
@@ -2755,12 +2763,12 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
 
                                         {jenisLaporanBhp === 'bulanan' && (
                                             <div className="flex items-center gap-2">
-                                                <label htmlFor="periodeBhp" className="text-sm font-medium text-gray-700 dark:text-gray-300">Bulan:</label>
+                                                <label htmlFor="periodeBhp" className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">Bulan:</label>
                                                 <select
                                                     id="periodeBhp"
                                                     value={periodeBhp}
                                                     onChange={(e) => setPeriodeBhp(e.target.value)}
-                                                    className="block w-40 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                                    className="block w-40 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-[11.5px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
                                                 >
                                                     {monthList.map((m) => (
                                                         <option key={m} value={m} className="capitalize">{m.charAt(0).toUpperCase() + m.slice(1)}</option>
@@ -2771,12 +2779,12 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
 
                                         {jenisLaporanBhp === 'tahap' && (
                                             <div className="flex items-center gap-2">
-                                                <label htmlFor="periodeBhpTahap" className="text-sm font-medium text-gray-700 dark:text-gray-300">Tahap:</label>
+                                                <label htmlFor="periodeBhpTahap" className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">Tahap:</label>
                                                 <select
                                                     id="periodeBhpTahap"
                                                     value={periodeBhp}
                                                     onChange={(e) => setPeriodeBhp(e.target.value)}
-                                                    className="block w-40 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                                    className="block w-40 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-[11.5px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
                                                 >
                                                     <option value="Tahap 1">Tahap 1</option>
                                                     <option value="Tahap 2">Tahap 2</option>
@@ -2788,7 +2796,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                         {renderAuditButton('bhp')}
                                         <PrimaryButton 
                                             onClick={() => setShowPrintBhpModal(true)}
-                                            className="bg-indigo-600 hover:bg-indigo-700"
+
                                         >
                                             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -2798,10 +2806,10 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                     </div>
                                 </div>
 
-                                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-                                    <div className="p-6 border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
-                                        <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-3">
-                                            <span className="p-2 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 rounded-lg">
+                                <div className="sikas-card overflow-hidden">
+                                    <div className="border-b border-slate-100 bg-slate-50/70 p-6 dark:border-white/5 dark:bg-white/[0.03]">
+                                        <h3 className="flex items-center gap-3 text-[13.5px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                                            <span className="rounded-xl bg-pastel-lavender p-2 text-brand-600 dark:bg-brand-500/15 dark:text-brand-300">
                                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
                                             </span>
                                             Data Barang Habis Pakai (BHP)
@@ -2871,11 +2879,11 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                         />
 
                         {activeTab === 'bhm' && (
-                            <div className="mt-6 flex flex-col gap-6 animate-fade-in-up">
-                                <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                            <div className="mt-6 flex flex-col gap-6 animate-rise">
+                                <div className="flex flex-col items-center justify-between gap-4 rounded-[22px] border border-slate-100 bg-slate-50/70 p-4 dark:border-white/5 dark:bg-white/[0.03] md:flex-row">
                                     <div className="flex flex-col md:flex-row items-center gap-4">
                                         <div className="flex items-center gap-2">
-                                            <label htmlFor="jenisLaporanBhm" className="text-sm font-medium text-gray-700 dark:text-gray-300">Jenis:</label>
+                                            <label htmlFor="jenisLaporanBhm" className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">Jenis:</label>
                                             <select
                                                 id="jenisLaporanBhm"
                                                 value={jenisLaporanBhm}
@@ -2890,7 +2898,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                                         setPeriodeBhm('');
                                                     }
                                                 }}
-                                                className="block w-40 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                                className="block w-40 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-[11.5px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
                                             >
                                                 <option value="bulanan">Bulanan</option>
                                                 <option value="tahap">Tahap</option>
@@ -2900,12 +2908,12 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
 
                                         {jenisLaporanBhm === 'bulanan' && (
                                             <div className="flex items-center gap-2">
-                                                <label htmlFor="periodeBhm" className="text-sm font-medium text-gray-700 dark:text-gray-300">Bulan:</label>
+                                                <label htmlFor="periodeBhm" className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">Bulan:</label>
                                                 <select
                                                     id="periodeBhm"
                                                     value={periodeBhm}
                                                     onChange={(e) => setPeriodeBhm(e.target.value)}
-                                                    className="block w-40 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                                    className="block w-40 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-[11.5px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
                                                 >
                                                     {monthList.map((m) => (
                                                         <option key={m} value={m} className="capitalize">{m.charAt(0).toUpperCase() + m.slice(1)}</option>
@@ -2916,12 +2924,12 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
 
                                         {jenisLaporanBhm === 'tahap' && (
                                             <div className="flex items-center gap-2">
-                                                <label htmlFor="periodeBhmTahap" className="text-sm font-medium text-gray-700 dark:text-gray-300">Tahap:</label>
+                                                <label htmlFor="periodeBhmTahap" className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">Tahap:</label>
                                                 <select
                                                     id="periodeBhmTahap"
                                                     value={periodeBhm}
                                                     onChange={(e) => setPeriodeBhm(e.target.value)}
-                                                    className="block w-40 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                                    className="block w-40 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-[11.5px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
                                                 >
                                                     <option value="Tahap 1">Tahap 1</option>
                                                     <option value="Tahap 2">Tahap 2</option>
@@ -2933,7 +2941,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                         {renderAuditButton('bhm')}
                                         <PrimaryButton 
                                             onClick={() => setShowPrintBhmModal(true)}
-                                            className="bg-indigo-600 hover:bg-indigo-700"
+
                                         >
                                             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -2943,10 +2951,10 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                     </div>
                                 </div>
 
-                                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-                                    <div className="p-6 border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
-                                        <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-3">
-                                            <span className="p-2 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 rounded-lg">
+                                <div className="sikas-card overflow-hidden">
+                                    <div className="border-b border-slate-100 bg-slate-50/70 p-6 dark:border-white/5 dark:bg-white/[0.03]">
+                                        <h3 className="flex items-center gap-3 text-[13.5px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                                            <span className="rounded-xl bg-pastel-lavender p-2 text-brand-600 dark:bg-brand-500/15 dark:text-brand-300">
                                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
                                             </span>
                                             Data Barang Modal / Aset (BHM)
@@ -3016,11 +3024,11 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                         />
 
                         {activeTab !== 'bkp_bank' && activeTab !== 'bkp_pembantu' && activeTab !== 'bkp_umum' && activeTab !== 'bkp_pajak' && activeTab !== 'rob' && activeTab !== 'reg' && activeTab !== 'ba' && activeTab !== 'realisasi' && activeTab !== 'rek_realisasi' && activeTab !== 'bhp' && activeTab !== 'bhm' && (
-                            <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-                                <svg className="w-12 h-12 mx-auto mb-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <div className="py-12 text-center text-slate-400 dark:text-slate-500">
+                                <svg className="mx-auto mb-4 h-12 w-12 text-slate-300 dark:text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                                 </svg>
-                                <p>Konten {tabs.find(t => t.id === activeTab)?.label} sedang dikembangkan</p>
+                                <p className="text-[11.5px] font-semibold">Konten {tabs.find(t => t.id === activeTab)?.label} sedang dikembangkan</p>
                             </div>
                         )}
                     </div>

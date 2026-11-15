@@ -1,0 +1,92 @@
+{
+  "url": "/forgot-password",
+  "viewport": {
+    "w": 1440,
+    "h": 900
+  },
+  "docScrollWidth": 1440,
+  "bodyScrollWidth": 1440,
+  "hasHorizontalOverflow": false,
+  "pageHeight": 900,
+  "vScroll": false,
+  "shell": {
+    "x": 0,
+    "y": 0,
+    "w": 1440,
+    "h": 900,
+    "bottom": 900
+  },
+  "card": {
+    "x": 855,
+    "y": 222,
+    "w": 452,
+    "h": 456,
+    "bottom": 678
+  },
+  "inputs": [
+    {
+      "id": "email",
+      "name": "",
+      "type": "email",
+      "required": false,
+      "readOnly": false,
+      "autoComplete": "email",
+      "hasLabelFor": true,
+      "ariaInvalid": null,
+      "ariaDescribedBy": null,
+      "describedExists": null,
+      "w": 386,
+      "h": 52
+    }
+  ],
+  "buttons": [
+    {
+      "text": "Kirim kode OTP",
+      "ariaLabel": null,
+      "ariaPressed": null,
+      "type": "button",
+      "disabled": true,
+      "busy": null,
+      "w": 386,
+      "h": 52
+    }
+  ],
+  "headings": [
+    {
+      "tag": "H2",
+      "text": "Anggaran sekolah, rapi dari hulu ke hilir.",
+      "size": "36.72px",
+      "family": "Fraunces"
+    },
+    {
+      "tag": "H1",
+      "text": "Lupa password?",
+      "size": "34.56px",
+      "family": "Fraunces"
+    }
+  ],
+  "animCounts": {
+    "authRise": 9,
+    "authDraw": 2,
+    "authSceneEnter": 1,
+    "authSceneSun": 1,
+    "authSceneDrift": 2,
+    "authSceneSteam": 2,
+    "authSceneSway": 3,
+    "authSceneBob": 2,
+    "authSceneBobAlt": 1,
+    "authSceneSparkle": 4
+  },
+  "lowContrast": [],
+  "minContrast": {
+    "text": "Sistem Informasi Keuangan Sekolah",
+    "size": 9,
+    "weight": "600",
+    "color": "rgb(122, 108, 150)",
+    "bg": "rgb(253,249,242)",
+    "ratio": 4.54
+  },
+  "darkHtml": true,
+  "bodyBg": "rgb(2, 8, 23)",
+  "shellBg": "rgb(250, 244, 232)"
+}

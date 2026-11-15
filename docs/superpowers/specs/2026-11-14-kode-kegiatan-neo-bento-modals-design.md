@@ -118,3 +118,4 @@ Halaman `Data Master → Kode Kegiatan` memiliki 4 modal yang saat ini masih inl
 
 - Jalankan `npm run build` (`tsc && vite build`) dan pastikan TypeScript strict check serta Vite production bundle selesai dengan 0 error.
 - Verifikasi tidak ada token warna Tailwind tidak valid (`sky-200`, `sky-400`, `sky-500`, dll.) dan semua modal menjaga payload/route Laravel yang sama (`kode-kegiatan.store`, `kode-kegiatan.update`, `kode-kegiatan.destroy`, `kode-kegiatan.import`, `kode-kegiatan.download-template`).
+

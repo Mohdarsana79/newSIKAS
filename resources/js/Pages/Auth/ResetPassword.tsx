@@ -1,11 +1,10 @@
-import InputError from '@/Components/InputError';
-import InputLabel from '@/Components/InputLabel';
-import PrimaryButton from '@/Components/PrimaryButton';
-import TextInput from '@/Components/TextInput';
+import AuthButton from '@/Components/Auth/AuthButton';
+import AuthField from '@/Components/Auth/AuthField';
+import AuthHeading, { AuthAccent } from '@/Components/Auth/AuthHeading';
 import GuestLayout from '@/Layouts/GuestLayout';
-import { Head, useForm } from '@inertiajs/react';
+import { Head, Link, useForm } from '@inertiajs/react';
 import { FormEventHandler, useState } from 'react';
-import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck } from 'lucide-react';
 
 export default function ResetPassword({
     token,
@@ -36,114 +35,119 @@ export default function ResetPassword({
         <GuestLayout>
             <Head title="Reset Password" />
 
-            <div className="text-center mb-10">
-                <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-                    Buat Password Baru
-                </h2>
-                <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                    Silakan masukkan password baru untuk akun Anda
-                </p>
+            <div className="auth-rise">
+                <AuthHeading
+                    eyebrow="Reset password"
+                    title={
+                        <>
+                            Buat <AuthAccent>password</AuthAccent> baru.
+                        </>
+                    }
+                    subtitle="Silakan masukkan password baru untuk akun Anda."
+                />
             </div>
 
-            <form onSubmit={submit} className="space-y-6">
-                <div>
-                    <InputLabel htmlFor="email" value="Email" />
-                    <div className="relative mt-2">
-                        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                            <Mail className="h-5 w-5 text-gray-400" />
-                        </div>
-                        <TextInput
-                            id="email"
-                            type="email"
-                            name="email"
-                            value={data.email}
-                            className="block w-full pl-10 py-3 text-gray-900 bg-gray-50 cursor-not-allowed" // Readonly visual cue
-                            autoComplete="username"
-                            onChange={(e) => setData('email', e.target.value)}
-                            readOnly
-                        />
-                    </div>
-                    <InputError message={errors.email} className="mt-2" />
-                </div>
-
-                <div>
-                    <InputLabel htmlFor="password" value="Password Baru" />
-                    <div className="relative mt-2">
-                        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                            <Lock className="h-5 w-5 text-gray-400" />
-                        </div>
-                        <TextInput
-                            id="password"
-                            type={showPassword ? 'text' : 'password'}
-                            name="password"
-                            value={data.password}
-                            className="block w-full pl-10 pr-10 py-3 text-gray-900"
-                            autoComplete="new-password"
-                            isFocused={true}
-                            onChange={(e) => setData('password', e.target.value)}
-                            placeholder="Minimal 8 karakter"
-                        />
-                        <button
-                            type="button"
-                            className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 focus:outline-none"
-                            onClick={() => setShowPassword(!showPassword)}
-                        >
-                            {showPassword ? (
-                                <EyeOff className="h-5 w-5" />
-                            ) : (
-                                <Eye className="h-5 w-5" />
-                            )}
-                        </button>
-                    </div>
-                    <InputError message={errors.password} className="mt-2" />
-                </div>
-
-                <div>
-                    <InputLabel
-                        htmlFor="password_confirmation"
-                        value="Konfirmasi Password Baru"
-                    />
-
-                    <div className="relative mt-2">
-                        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                            <Lock className="h-5 w-5 text-gray-400" />
-                        </div>
-                        <TextInput
-                            type={showConfirmPassword ? 'text' : 'password'}
-                            name="password_confirmation"
-                            value={data.password_confirmation}
-                            className="block w-full pl-10 pr-10 py-3 text-gray-900"
-                            autoComplete="new-password"
-                            onChange={(e) =>
-                                setData('password_confirmation', e.target.value)
-                            }
-                            placeholder="Ulangi password baru"
-                        />
-                        <button
-                            type="button"
-                            className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 focus:outline-none"
-                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        >
-                            {showConfirmPassword ? (
-                                <EyeOff className="h-5 w-5" />
-                            ) : (
-                                <Eye className="h-5 w-5" />
-                            )}
-                        </button>
-                    </div>
-
-                    <InputError
-                        message={errors.password_confirmation}
-                        className="mt-2"
+            <form onSubmit={submit} className="mt-6 space-y-[18px]">
+                <div className="auth-rise" style={{ animationDelay: '110ms' }}>
+                    <AuthField
+                        id="email"
+                        type="email"
+                        name="email"
+                        label="Email"
+                        icon={<Mail className="h-[17px] w-[17px]" strokeWidth={1.7} />}
+                        value={data.email}
+                        autoComplete="username"
+                        readOnly
+                        onChange={(e) => setData('email', e.target.value)}
+                        className="cursor-not-allowed bg-[#F5EEE2] text-[#6B6178] hover:border-[#E3D9C9] focus:border-[#E3D9C9] focus:ring-0"
+                        error={errors.email}
                     />
                 </div>
 
-                <div className="pt-2">
-                    <PrimaryButton className="w-full justify-center py-3 text-base" disabled={processing}>
-                        Reset Password Saya
-                    </PrimaryButton>
+                <div className="auth-rise" style={{ animationDelay: '170ms' }}>
+                    <AuthField
+                        id="password"
+                        type={showPassword ? 'text' : 'password'}
+                        name="password"
+                        label="Password baru"
+                        icon={<LockKeyhole className="h-[17px] w-[17px]" strokeWidth={1.7} />}
+                        value={data.password}
+                        autoComplete="new-password"
+                        autoFocus
+                        onChange={(e) => setData('password', e.target.value)}
+                        placeholder="Minimal 8 karakter"
+                        error={errors.password}
+                        trailing={
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
+                                aria-pressed={showPassword}
+                                className="mr-1 flex h-9 w-9 items-center justify-center rounded-[10px] text-[#857A93] transition-colors duration-200 hover:bg-[#F1E9FF] hover:text-[#5B3DF5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6D4DE0]/30"
+                            >
+                                {showPassword ? (
+                                    <EyeOff className="h-[17px] w-[17px]" strokeWidth={1.7} aria-hidden="true" />
+                                ) : (
+                                    <Eye className="h-[17px] w-[17px]" strokeWidth={1.7} aria-hidden="true" />
+                                )}
+                            </button>
+                        }
+                    />
+                </div>
+
+                <div className="auth-rise" style={{ animationDelay: '230ms' }}>
+                    <AuthField
+                        id="password_confirmation"
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        name="password_confirmation"
+                        label="Konfirmasi password baru"
+                        icon={<LockKeyhole className="h-[17px] w-[17px]" strokeWidth={1.7} />}
+                        value={data.password_confirmation}
+                        autoComplete="new-password"
+                        onChange={(e) => setData('password_confirmation', e.target.value)}
+                        placeholder="Ulangi password baru"
+                        error={errors.password_confirmation}
+                        trailing={
+                            <button
+                                type="button"
+                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                aria-label={
+                                    showConfirmPassword
+                                        ? 'Sembunyikan konfirmasi password'
+                                        : 'Tampilkan konfirmasi password'
+                                }
+                                aria-pressed={showConfirmPassword}
+                                className="mr-1 flex h-9 w-9 items-center justify-center rounded-[10px] text-[#857A93] transition-colors duration-200 hover:bg-[#F1E9FF] hover:text-[#5B3DF5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6D4DE0]/30"
+                            >
+                                {showConfirmPassword ? (
+                                    <EyeOff className="h-[17px] w-[17px]" strokeWidth={1.7} aria-hidden="true" />
+                                ) : (
+                                    <Eye className="h-[17px] w-[17px]" strokeWidth={1.7} aria-hidden="true" />
+                                )}
+                            </button>
+                        }
+                    />
+                </div>
+
+                <div className="auth-rise pt-1" style={{ animationDelay: '290ms' }}>
+                    <AuthButton processing={processing}>Reset password</AuthButton>
                 </div>
             </form>
+
+            <div className="auth-rise mt-6 flex flex-col items-center gap-3" style={{ animationDelay: '350ms' }}>
+                <div className="flex items-center justify-center gap-1.5 text-center text-[10.5px] tracking-[0.02em] text-[#7A7085]">
+                    <ShieldCheck aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-[#8FAE8B]" strokeWidth={1.8} />
+                    <span>Tautan reset ini hanya berlaku sekali pakai.</span>
+                </div>
+
+                <Link
+                    href={route('login')}
+                    className="auth-link inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#5B3DF5] transition-colors hover:text-[#4A2FB0]"
+                >
+                    <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+                    Kembali ke halaman masuk
+                </Link>
+            </div>
         </GuestLayout>
     );
 }

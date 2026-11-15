@@ -63,3 +63,4 @@ Memanfaatkan dukungan bawaan `@headlessui/react` (`^2.0.0`) pada `<PopoverPanel>
 
 - Menjalankan `npm run build` (`tsc && vite build`) untuk memastikan kompilasi TypeScript strict dan production bundle Vite berjalan tanpa error.
 - Memverifikasi penggunaan kelas Tailwind tetap valid sesuai konfigurasi tema project.
+

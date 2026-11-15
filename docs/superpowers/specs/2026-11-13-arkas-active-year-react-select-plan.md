@@ -38,3 +38,4 @@ Acuan Desain: [2026-11-13-arkas-active-year-react-select-design.md](file:///c:/l
 1. Perbarui `tests/Unit/ArkasToolTest.php` untuk menguji `activeYears` & `defaultYear` berbasis Penganggaran varian aktif.
 2. Jalankan `vendor/bin/pint` pada file PHP yang diubah, `composer test`, dan `npm run build` (`tsc && vite build`).
 3. Commit perubahan dengan pesan commit yang bersih.
+
