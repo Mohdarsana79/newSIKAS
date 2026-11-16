@@ -84,6 +84,7 @@
 </head>
 <body>
     @foreach($reportData as $report)
+    @include('partials.doc_kop_surat', ['docKey' => 'bku_bkp_umum', 'sekolah' => $report['sekolah'] ?? null])
     <div class="header">
         BUKU KAS UMUM<br>
         BULAN : {{ strtoupper($report['bulan']) }} TAHUN : {{ $report['tahun'] }}

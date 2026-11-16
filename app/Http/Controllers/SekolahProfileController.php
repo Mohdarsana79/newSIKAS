@@ -184,9 +184,50 @@ class SekolahProfileController extends Controller
             $updateData['kop_surat'] = $request->file('generated_kop')->store('kop_surat', 'public');
         }
 
+        // 4. Handle Kop Dokumen settings if provided
+        if ($request->has('kop_dokumen')) {
+            $kopDokumen = $request->input('kop_dokumen');
+            if (is_string($kopDokumen)) {
+                $kopDokumen = json_decode($kopDokumen, true);
+            }
+            if (is_array($kopDokumen)) {
+                $updateData['kop_dokumen'] = $kopDokumen;
+            }
+        }
+
         $sekolah->update($updateData);
 
         return redirect()->back()->with('success', 'Kop Surat berhasil digenerate dan disimpan.');
+    }
+
+    /**
+     * Update Kop Surat Document Selection Options
+     */
+    public function updateKopDokumen(Request $request, string $id)
+    {
+        $request->validate([
+            'kop_dokumen' => 'nullable',
+        ]);
+
+        $sekolah = SekolahProfile::findOrFail($id);
+        $kopDokumen = $request->input('kop_dokumen');
+        if (is_string($kopDokumen)) {
+            $kopDokumen = json_decode($kopDokumen, true);
+        }
+
+        $sekolah->update([
+            'kop_dokumen' => is_array($kopDokumen) ? $kopDokumen : [],
+        ]);
+
+        if ($request->wantsJson() && ! $request->header('X-Inertia')) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Pengaturan penggunaan kop surat pada dokumen berhasil disimpan.',
+                'kop_dokumen' => $sekolah->kop_dokumen,
+            ]);
+        }
+
+        return redirect()->back()->with('success', 'Pengaturan penggunaan kop surat pada dokumen berhasil disimpan.');
     }
 
     /**

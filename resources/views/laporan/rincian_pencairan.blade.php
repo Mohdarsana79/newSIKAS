@@ -98,6 +98,7 @@
     </style>
 </head>
 <body>
+    @include('partials.doc_kop_surat', ['docKey' => 'rkas_rincian_pencairan', 'sekolah' => $anggaran['sekolah'] ?? null])
 
     <table class="header-table">
         <tr>

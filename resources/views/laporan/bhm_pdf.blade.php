@@ -64,6 +64,7 @@
     </style>
 </head>
 <body>
+    @include('partials.doc_kop_surat', ['docKey' => 'bku_bhm', 'sekolah' => $sekolah ?? null])
     <div style="position: absolute; top: 0; right: 0; border: 1px solid black; padding: 5px 15px; font-weight: bold; font-size: 14pt;">BHM</div>
     <div class="header">
         <span style="font-size: 1.1em;">REKAPITULASI REALISASI BELANJA DANA BOSP ( BARANG MODAL / ASET )</span><br>

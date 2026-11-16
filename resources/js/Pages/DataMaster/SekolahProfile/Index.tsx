@@ -388,22 +388,12 @@ export default function Index({ auth, sekolah, licensedNpsn }: PageProps<{ sekol
                                                     <Sparkles className="w-4 h-4" />
                                                     Buka Editor Kop (Tiptap)
                                                 </PrimaryButton>
-                                                <div className="flex gap-2">
-                                                    <SecondaryButton
-                                                        onClick={() => setIsUploadOpen(true)}
-                                                        className="flex-1 justify-center text-[11px]"
-                                                    >
-                                                        <svg className="w-3.5 h-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                                                        </svg>
-                                                        Upload Gambar
-                                                    </SecondaryButton>
-                                                    <DangerButton onClick={handleDeleteKop} className="px-3">
-                                                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                        </svg>
-                                                    </DangerButton>
-                                                </div>
+                                                <DangerButton onClick={handleDeleteKop} className="w-full justify-center text-[11px]">
+                                                    <svg className="w-3.5 h-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                    </svg>
+                                                    Hapus Kop Surat
+                                                </DangerButton>
                                             </div>
                                         </div>
                                     ) : (
@@ -416,12 +406,7 @@ export default function Index({ auth, sekolah, licensedNpsn }: PageProps<{ sekol
                                                     </svg>
                                                 }
                                                 title="Kop Surat Belum Ada"
-                                                description={
-                                                    <>
-                                                        <span className="block">Format: .jpg, .jpeg, .png (Maks. 2MB)</span>
-                                                        <span className="mt-1 block font-bold text-brand-600 dark:text-brand-300">Disarankan: Lebar 2480 px &amp; Tinggi 588 px</span>
-                                                    </>
-                                                }
+                                                description="Gunakan fitur Kop Surat Builder interaktif untuk membuat kop surat resmi berstandar dinas dengan logo pemda dan logo sekolah."
                                                 action={
                                                     <div className="w-full max-w-xs space-y-2">
                                                         <PrimaryButton
@@ -430,19 +415,8 @@ export default function Index({ auth, sekolah, licensedNpsn }: PageProps<{ sekol
                                                             className="w-full justify-center text-[11px]"
                                                         >
                                                             <Sparkles className="w-4 h-4" />
-                                                            Desain Kop Sendiri (Tiptap)
+                                                            Desain Kop Surat (Tiptap)
                                                         </PrimaryButton>
-
-                                                        <SecondaryButton
-                                                            onClick={() => setIsUploadOpen(true)}
-                                                            disabled={!sekolah}
-                                                            className="w-full justify-center text-[11px]"
-                                                        >
-                                                            <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                                                            </svg>
-                                                            Upload Gambar Jadi
-                                                        </SecondaryButton>
 
                                                         {!sekolah && <p className="mt-2 rounded-lg bg-rose-50 px-2 py-1 text-[10.5px] font-semibold text-rose-600 dark:bg-rose-500/10 dark:text-rose-300">Input data sekolah dulu!</p>}
                                                     </div>

@@ -55,14 +55,14 @@ class RkasPerubahanController extends Controller
 
     public function index(Request $request, $id)
     {
-        $penganggaran = ($this->Penganggaran)::findOrFail($id);
+        $penganggaran = ($this->Penganggaran)::with('persetujuanUser:id,name,role')->findOrFail($id);
         $penganggaran->setAttribute('sumber_dana', VariantConfig::title($this->variant));
 
         $kodeKegiatans = KodeKegiatan::all();
         $rekeningBelanjas = RekeningBelanja::all();
 
         // Get all RKAS Perubahan items
-        $itemsRaw = ($this->RkasPerubahan)::with(['kodeKegiatan', 'rekeningBelanja'])
+        $itemsRaw = ($this->RkasPerubahan)::with(['kodeKegiatan', 'rekeningBelanja', 'review.user:id,name,role'])
             ->where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
             ->get();
 
@@ -115,8 +115,10 @@ class RkasPerubahanController extends Controller
             }
         }
 
+        $reviewableType = $this->RkasPerubahan;
+
         // Transform items for frontend
-        $items = $itemsRaw->map(function ($item) {
+        $items = $itemsRaw->map(function ($item) use ($reviewableType) {
             return [
                 'id' => $item->id,
                 'program' => $item->kodeKegiatan->program ?? '-',
@@ -132,6 +134,16 @@ class RkasPerubahanController extends Controller
                 'bulan' => $item->bulan,
                 'kode_id' => $item->kode_id, // For Edit
                 'kode_rekening_id' => $item->kode_rekening_id, // For Edit
+                'reviewable_type' => $reviewableType,
+                'review' => $item->review ? [
+                    'id' => $item->review->id,
+                    'status' => $item->review->status,
+                    'catatan' => $item->review->catatan,
+                    'tanggapan_bendahara' => $item->review->tanggapan_bendahara,
+                    'revisi_diajukan_at' => $item->review->revisi_diajukan_at?->format('d/m/Y H:i'),
+                    'user_name' => $item->review->user?->name ?? 'Kepala Sekolah',
+                    'created_at' => $item->review->updated_at?->format('d/m/Y H:i'),
+                ] : null,
             ];
         });
 
@@ -150,8 +162,15 @@ class RkasPerubahanController extends Controller
                 'id' => $penganggaran->id,
                 'tahun' => (string) $penganggaran->tahun_anggaran,
                 'pagu_total' => number_format($paguAnggaran, 0, ',', '.'),
-                'sumber_dana' => 'BOSP Reguler (Perubahan)',
+                'sumber_dana' => VariantConfig::title($this->variant).' (Perubahan)',
                 'status' => 'Aktif',
+                'status_persetujuan' => $penganggaran->status_persetujuan ?? 'draft',
+                'persetujuan_user' => $penganggaran->persetujuanUser ? [
+                    'id' => $penganggaran->persetujuanUser->id,
+                    'name' => $penganggaran->persetujuanUser->name,
+                ] : null,
+                'tanggal_persetujuan' => $penganggaran->tanggal_persetujuan?->format('d/m/Y H:i'),
+                'catatan_persetujuan' => $penganggaran->catatan_persetujuan,
                 'tahap_1' => [
                     'periode' => 'Januari - Juni',
                     'persen' => $paguAnggaran > 0 ? number_format(($totalTahap1 / $paguAnggaran) * 100, 2).'%' : '0.00%',
@@ -463,16 +482,28 @@ class RkasPerubahanController extends Controller
 
         DB::beginTransaction();
         try {
-            // Delete old group
-            ($this->RkasPerubahan)::where(VariantConfig::penganggaranFk($this->variant), $target->{VariantConfig::penganggaranFk($this->variant)})
+            // Capture existing reviews before deleting old group rows
+            $oldGroupQuery = ($this->RkasPerubahan)::where(VariantConfig::penganggaranFk($this->variant), $target->{VariantConfig::penganggaranFk($this->variant)})
                 ->where('kode_id', $target->kode_id)
                 ->where('kode_rekening_id', $target->kode_rekening_id)
-                ->where('uraian', $target->uraian)
-                ->delete();
+                ->where('uraian', $target->uraian);
+
+            $oldGroupItems = (clone $oldGroupQuery)->with('review')->get();
+            $reviewsByMonth = [];
+            foreach ($oldGroupItems as $oldRow) {
+                if ($oldRow->review) {
+                    $reviewsByMonth[$oldRow->bulan] = $oldRow->review;
+                }
+            }
+
+            // Delete old group
+            $oldGroupQuery->delete();
 
             // Create new
+            $createdByMonth = [];
+            $firstCreatedRow = null;
             for ($i = 0; $i < count($request->bulan); $i++) {
-                ($this->RkasPerubahan)::create([
+                $newRow = ($this->RkasPerubahan)::create([
                     VariantConfig::penganggaranFk($this->variant) => $target->{VariantConfig::penganggaranFk($this->variant)},
                     'kode_id' => $request->kode_id,
                     'kode_rekening_id' => $request->kode_rekening_id,
@@ -482,6 +513,22 @@ class RkasPerubahanController extends Controller
                     'jumlah' => $request->jumlah[$i],
                     'satuan' => $request->satuan[$i],
                 ]);
+                $createdByMonth[$request->bulan[$i]] = $newRow;
+                if (! $firstCreatedRow) {
+                    $firstCreatedRow = $newRow;
+                }
+            }
+
+            // Re-bind existing reviews to the newly created items
+            $boundTargetIds = [];
+            foreach ($reviewsByMonth as $month => $existingReview) {
+                $targetRow = $createdByMonth[$month] ?? $firstCreatedRow;
+                if ($targetRow && ! in_array($targetRow->id, $boundTargetIds, true)) {
+                    $existingReview->update([
+                        'reviewable_id' => $targetRow->id,
+                    ]);
+                    $boundTargetIds[] = $targetRow->id;
+                }
             }
 
             $this->logAction($target->{VariantConfig::penganggaranFk($this->variant)}, 'update', 'Mengupdate data RKAS Perubahan: '.$request->uraian, ['old_uraian' => $target->uraian], $request->all());
@@ -2272,6 +2319,7 @@ class RkasPerubahanController extends Controller
             'anggaran' => $penganggaran->toArray(),
             'rincianData' => $rincianData,
             'tahap' => $tahap,
+            'is_perubahan' => true,
             'paper_size' => $request->paper_size ?? 'A4',
             'orientation' => $request->orientation ?? 'portrait',
             'font_size' => $request->font_size ?? '12pt',

@@ -104,6 +104,12 @@
     </head>
 
     <body>
+        @php
+            $docKey = (!empty($is_perubahan) || request()->routeIs('*perubahan*') || str_contains(request()->path(), 'perubahan') || str_contains($anggaran['sumber_dana'] ?? '', 'Perubahan'))
+                ? 'rkas_perubahan_rincian'
+                : 'rkas_rincian';
+        @endphp
+        @include('partials.doc_kop_surat', ['docKey' => $docKey, 'sekolah' => $anggaran['sekolah'] ?? null])
         <div class="header">
             <h3 class="uppercase font-bold">KERTAS KERJA RENCANA KEGIATAN DAN ANGGARAN SEKOLAH (RKAS) RINCIAN</h3>
             <h4 class="uppercase font-bold">TAHUN ANGGARAN : {{ $anggaran['tahun_anggaran'] }}

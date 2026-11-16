@@ -315,6 +315,8 @@
         $pajakData = $data['pajakData'];
         @endphp
 
+        @include('partials.doc_kop_surat', ['docKey' => 'pelengkap_kwitansi', 'sekolah' => $data['sekolah'] ?? ($sekolah ?? null)])
+
         <!-- Bagian Header (Informasi Program dan Anggaran) -->
         <div>
             <table class="info-table">

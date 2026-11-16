@@ -53,6 +53,7 @@ Route::post('/penganggaran/{id}/approve', [PenganggaranApprovalController::class
 Route::post('/penganggaran/{id}/unapprove', [PenganggaranApprovalController::class, 'unapprove'])->name('penganggaran.unapprove');
 Route::post('/rkas/{id}/ai-executive-review', [RkasAiReviewController::class, 'review'])->name('rkas.ai-executive-review');
 Route::post('/rkas-review/item', [RkasReviewController::class, 'store'])->name('rkas-review.store');
+Route::post('/rkas-review/item/{id}/resubmit', [RkasReviewController::class, 'resubmit'])->name('rkas-review.resubmit');
 Route::delete('/rkas-review/item/{id}', [RkasReviewController::class, 'destroy'])->name('rkas-review.destroy');
 // RKAS
 // Place specific routes BEFORE wildcard routes to prevent conflicts
@@ -154,6 +155,7 @@ Route::resource('sts', StsController::class);
 // Data Master
 Route::post('sekolah-profile/{id}/upload-kop', [SekolahProfileController::class, 'uploadKop'])->name('sekolah-profile.upload-kop');
 Route::post('sekolah-profile/{id}/save-builder-kop', [SekolahProfileController::class, 'saveBuilderKop'])->name('sekolah-profile.save-builder-kop');
+Route::post('sekolah-profile/{id}/kop-dokumen', [SekolahProfileController::class, 'updateKopDokumen'])->name('sekolah-profile.update-kop-dokumen');
 Route::delete('sekolah-profile/{id}/delete-kop', [SekolahProfileController::class, 'destroyKop'])->name('sekolah-profile.delete-kop');
 Route::resource('sekolah-profile', SekolahProfileController::class);
 Route::get('kode-kegiatan/download-template', [KodeKegiatanController::class, 'downloadTemplate'])->name('kode-kegiatan.download-template');

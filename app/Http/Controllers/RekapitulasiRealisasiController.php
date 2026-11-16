@@ -1223,6 +1223,7 @@ class RekapitulasiRealisasiController extends Controller
                 'defaultFont' => 'Arial',
                 'isHtml5ParserEnabled' => true,
                 'isRemoteEnabled' => true,
+                'chroot' => [base_path(), public_path(), storage_path('app/public')],
                 'dpi' => 150,
                 'fontHeightRatio' => 0.7,
             ]);

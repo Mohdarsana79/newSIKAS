@@ -27,6 +27,7 @@ interface PenganggaranItem {
     title: string;
     pagu: string;
     status: 'regular' | 'perubahan';
+    status_persetujuan?: string;
     has_perubahan: boolean;
     has_bku: boolean;
     reports?: string[];
@@ -56,7 +57,7 @@ export default function Index({
     anggarans = [], 
     can_create = false
 }: PageProps<{ items: PenganggaranItem[], anggarans: Anggaran[], can_create: boolean }>) {
-    
+    const isKepalaSekolah = Boolean(auth?.user?.is_kepala_sekolah || auth?.user?.role === 'kepala_sekolah');
     const vroute = useVariantRoute();
     const routePrefix = usePage<any>().props.routePrefix || '';
     
@@ -312,12 +313,14 @@ export default function Index({
                     }
                     subtitle="Kelola Rencana Kegiatan dan Anggaran Sekolah (RKAS) Anda di sini."
                     actions={
-                        <PrimaryButton onClick={handleCreate}>
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                            </svg>
-                            Buat Anggaran Baru
-                        </PrimaryButton>
+                        !isKepalaSekolah ? (
+                            <PrimaryButton onClick={handleCreate}>
+                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                </svg>
+                                Buat Anggaran Baru
+                            </PrimaryButton>
+                        ) : undefined
                     }
                 />
 
@@ -483,12 +486,14 @@ export default function Index({
                                 </svg>
                             }
                             action={
-                                <PrimaryButton onClick={handleCreate}>
-                                    <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                        <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-                                    </svg>
-                                    Buat Anggaran
-                                </PrimaryButton>
+                                !isKepalaSekolah ? (
+                                    <PrimaryButton onClick={handleCreate}>
+                                        <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                            <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                                        </svg>
+                                        Buat Anggaran
+                                    </PrimaryButton>
+                                ) : undefined
                             }
                         />
                     ) : (
@@ -528,6 +533,12 @@ export default function Index({
                                                     <StatusBadge tone={item.status === 'perubahan' ? 'warning' : 'violet'}>
                                                         {item.status === 'perubahan' ? 'Perubahan' : 'RKAS Awal'}
                                                     </StatusBadge>
+                                                    <StatusBadge
+                                                        tone={item.status_persetujuan === 'disetujui' ? 'success' : 'warning'}
+                                                        dot
+                                                    >
+                                                        {item.status_persetujuan === 'disetujui' ? 'Disahkan Kepsek' : 'Belum Disahkan'}
+                                                    </StatusBadge>
                                                     <span className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2 py-1 text-[9px] font-bold text-slate-500 dark:bg-white/5 dark:text-slate-400">
                                                         <svg className="h-2.5 w-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
                                                             <rect x="3" y="4" width="18" height="18" rx="3" />
@@ -553,7 +564,7 @@ export default function Index({
 
                                     <div className="mt-3 flex flex-wrap items-center justify-end gap-1.5 border-t border-slate-100 pt-3 dark:border-white/5">
                                         {/* Edit Button - Conditional */}
-                                        {item.status === 'regular' && (
+                                        {!isKepalaSekolah && item.status === 'regular' && (
                                             <button
                                                 onClick={() => handleEdit(item.id)}
                                                 className="inline-flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-500 dark:hover:bg-white/5 dark:hover:text-white"
@@ -574,14 +585,14 @@ export default function Index({
                                                     : 'bg-lime-200 text-slate-900 ring-lime-300/70 hover:bg-lime-300 dark:bg-lime-400/15 dark:text-lime-300 dark:ring-lime-400/25 dark:hover:bg-lime-400/20'
                                             }`}
                                         >
-                                            Detail RKAS
+                                            {isKepalaSekolah ? 'Telaah & Sahkan RKAS' : 'Detail RKAS'}
                                             <svg className="h-2.5 w-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round">
                                                 <path d="m9 18 6-6-6-6" />
                                             </svg>
                                         </Link>
 
                                         {/* Tarik ARKAS Button for Perubahan */}
-                                        {item.status === 'perubahan' && (
+                                        {!isKepalaSekolah && item.status === 'perubahan' && (
                                             <button
                                                 onClick={() => handleCheckArkasPerubahan(item.id, item.tahun)}
                                                 disabled={isCheckingArkas && activeCheckingId === item.id}
@@ -614,15 +625,17 @@ export default function Index({
                                         </Link>
 
                                         {/* Delete Button */}
-                                        <button
-                                            onClick={() => handleDelete(item.id, item.status)}
-                                            className="inline-flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 dark:text-slate-500 dark:hover:bg-white/5 dark:hover:text-rose-300"
-                                            title="Hapus Anggaran"
-                                        >
-                                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                            </svg>
-                                        </button>
+                                        {!isKepalaSekolah && (
+                                            <button
+                                                onClick={() => handleDelete(item.id, item.status)}
+                                                className="inline-flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 dark:text-slate-500 dark:hover:bg-white/5 dark:hover:text-rose-300"
+                                                title="Hapus Anggaran"
+                                            >
+                                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                            </button>
+                                        )}
                                     </div>
                                 </article>
                             ))}

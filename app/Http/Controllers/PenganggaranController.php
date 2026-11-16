@@ -92,6 +92,7 @@ class PenganggaranController extends Controller
                 'title' => "RKAS {$variantTitle} ".$anggaran->tahun_anggaran,
                 'pagu' => 'Rp '.number_format($anggaran->pagu_anggaran, 0, ',', '.'),
                 'status' => 'regular',
+                'status_persetujuan' => $anggaran->status_persetujuan ?? 'draft',
                 'has_perubahan' => $hasPerubahan, // Flag to disable button / hide edit
                 'has_bku' => $hasBkuReguler,
                 'reports' => $reports,
@@ -105,6 +106,7 @@ class PenganggaranController extends Controller
                     'title' => "RKAS Perubahan {$variantTitle} ".$anggaran->tahun_anggaran,
                     'pagu' => 'Rp '.number_format($anggaran->pagu_anggaran, 0, ',', '.'),
                     'status' => 'perubahan',
+                    'status_persetujuan' => $anggaran->status_persetujuan ?? 'draft',
                     'has_perubahan' => true,
                     'has_bku' => $hasBkuPerubahan,
                     'tahun' => $anggaran->tahun_anggaran,

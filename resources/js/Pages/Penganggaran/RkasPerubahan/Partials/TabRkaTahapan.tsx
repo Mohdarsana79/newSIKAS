@@ -1,6 +1,7 @@
 import React, { Fragment } from 'react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
+import DocKopSuratHeader from '@/Components/DocKopSuratHeader';
 
 
 interface TabRkaTahapanProps {
@@ -71,6 +72,7 @@ export default function TabRkaTahapan({ anggaran, tahapanData, onPrint, onExport
                                 </div>
 
                                 <div className="bg-white dark:bg-[#15131F] p-8 border border-slate-200 dark:border-white/10 shadow-sm rounded-lg print:border-none print:shadow-none">
+                                    <DocKopSuratHeader docKey="rkas_perubahan_rka_tahapan" sekolah={anggaran?.sekolah} />
                                     {/* Report Header */}
                                     <div className="text-center mb-8">
                                         <h2 className="text-lg font-bold uppercase tracking-wider text-slate-900 dark:text-slate-100">KERTAS KERJA RKAS PERUBAHAN PER TAHAP</h2>

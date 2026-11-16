@@ -1,3 +1,5 @@
+import DocKopSuratHeader from '@/Components/DocKopSuratHeader';
+
 interface TabAlurKasProps {
     anggaran: any;
     tahapanData: any;
@@ -37,6 +39,8 @@ export default function TabAlurKas({ anggaran, tahapanData, months, onPrint }: T
             </div>
 
             <div className="bg-white dark:bg-[#15131F] p-8 border border-slate-200 dark:border-white/10 shadow-sm rounded-lg print:border-none print:shadow-none overflow-x-auto">
+                <DocKopSuratHeader docKey="rkas_alur_kas" sekolah={anggaran?.sekolah} />
+
                 {/* Report Header */}
                 <div className="text-center mb-8">
                     <h2 className="text-lg font-bold uppercase tracking-wider text-slate-900 dark:text-slate-100">ALUR KAS</h2>

@@ -12,6 +12,7 @@ import IconTile from '@/Components/ui/IconTile';
 import StatusBadge from '@/Components/ui/StatusBadge';
 import EmptyState from '@/Components/ui/EmptyState';
 import { SkeletonRows } from '@/Components/ui/Skeleton';
+import DocKopSuratHeader from '@/Components/DocKopSuratHeader';
 
 interface TabRincianPerubahanProps {
     rincianData: any;
@@ -388,6 +389,7 @@ export default function TabRincianPerubahan({ rincianData, onPrint, onExportExce
 
             {/* Tabel Rincian Belanja Perubahan */}
             <div className="animate-rise" style={{ animationDelay: '80ms' }}>
+                <DocKopSuratHeader docKey="rkas_perubahan_rincian" className="mb-4" />
                 <DataTable
                     title="Rincian Belanja Perubahan"
                     subtitle="Daftar rincian belanja perubahan per sub program."

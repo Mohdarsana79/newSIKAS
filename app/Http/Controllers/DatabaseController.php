@@ -237,6 +237,22 @@ class DatabaseController extends Controller
             'backup_name' => 'nullable|string|max:255|regex:/^[a-zA-Z0-9_-]+$/',
         ]);
 
+        $result = $this->createBackupArchive($request->backup_name);
+
+        if (! $result['success']) {
+            return back()->with('error', $result['message']);
+        }
+
+        return back()->with('success', $result['message']);
+    }
+
+    /**
+     * Membuat berkas arsip backup (.rsv) secara terprogram (dipakai oleh menu Backup & Auto-Backup sebelum Pembaharuan)
+     *
+     * @return array{success: bool, file_name?: string, full_path?: string, message: string}
+     */
+    public function createBackupArchive(?string $customPrefix = null): array
+    {
         @ini_set('max_execution_time', '600');
         @ini_set('memory_limit', '1024M');
 
@@ -248,7 +264,8 @@ class DatabaseController extends Controller
 
             // Membuat nama file backup
             $timestamp = Carbon::now()->format('Y-m-d_H-i-s');
-            $backupBaseName = $request->backup_name ? $request->backup_name.'_'.$timestamp : 'backup_'.$timestamp;
+            $cleanPrefix = $customPrefix ? preg_replace('/[^a-zA-Z0-9_-]/', '_', $customPrefix) : null;
+            $backupBaseName = $cleanPrefix ? $cleanPrefix.'_'.$timestamp : 'backup_'.$timestamp;
             $fileName = $backupBaseName.'.rsv';
 
             // Path untuk menyimpan backup
@@ -266,7 +283,10 @@ class DatabaseController extends Controller
             // Gunakan executable pg_dump
             $pgDumpPath = $this->getPostgresBinaryPath('pg_dump');
             if (! file_exists($pgDumpPath)) {
-                return back()->with('error', "Executable pg_dump tidak ditemukan di server: {$pgDumpPath}. Pastikan path PostgreSQL terkonfigurasi dengan benar.");
+                return [
+                    'success' => false,
+                    'message' => "Executable pg_dump tidak ditemukan di server: {$pgDumpPath}. Pastikan path PostgreSQL terkonfigurasi dengan benar.",
+                ];
             }
 
             // Dump database ke file temporary database.sql
@@ -324,13 +344,19 @@ class DatabaseController extends Controller
                 $errorMsg = $returnVar !== 0 ? implode("\n", $output) : (! $sqlExists ? 'File dump database tidak terbuat' : 'File dump database kosong');
                 Log::error('Backup Failed during pg_dump:', ['error' => $errorMsg]);
 
-                return back()->with('error', 'Backup database gagal: '.$errorMsg);
+                return [
+                    'success' => false,
+                    'message' => 'Backup database gagal: '.$errorMsg,
+                ];
             }
 
             // Inisialisasi ZipArchive untuk mengemas database.sql dan file storage pengguna
             $zip = new ZipArchive;
             if ($zip->open($fullPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
-                return back()->with('error', 'Gagal membuat file arsip zip untuk backup: '.$fileName);
+                return [
+                    'success' => false,
+                    'message' => 'Gagal membuat file arsip zip untuk backup: '.$fileName,
+                ];
             }
 
             // 1. Masukkan database.sql
@@ -361,11 +387,19 @@ class DatabaseController extends Controller
 
             Log::info("Backup successful: {$fileName} (DB + {$totalFilesCount} storage files)");
 
-            return back()->with('success', "Backup database & berkas berhasil dibuat: {$fileName} (Database + {$totalFilesCount} berkas unggahan)");
+            return [
+                'success' => true,
+                'file_name' => $fileName,
+                'full_path' => $fullPath,
+                'message' => "Backup database & berkas berhasil dibuat: {$fileName} (Database + {$totalFilesCount} berkas unggahan)",
+            ];
         } catch (Exception $e) {
             Log::error('Backup Exception:', ['error' => $e->getMessage()]);
 
-            return back()->with('error', 'Backup gagal: '.$e->getMessage());
+            return [
+                'success' => false,
+                'message' => 'Backup gagal: '.$e->getMessage(),
+            ];
         } finally {
             if (file_exists($sqlTempFile)) {
                 @unlink($sqlTempFile);
@@ -374,6 +408,29 @@ class DatabaseController extends Controller
                 @rmdir($tempDir);
             }
         }
+    }
+
+    /**
+     * Ringkasan informasi backup terakhir untuk ditampilkan di halaman sistem lain (misal Pembaharuan)
+     */
+    public function getLatestBackupSummary(): array
+    {
+        $files = $this->getBackupFiles();
+        if (count($files) === 0) {
+            return [
+                'count' => 0,
+                'latest_name' => null,
+                'latest_date' => '-',
+                'latest_size' => '0 B',
+            ];
+        }
+
+        return [
+            'count' => count($files),
+            'latest_name' => $files[0]['name'],
+            'latest_date' => $files[0]['created_at'],
+            'latest_size' => $files[0]['size'],
+        ];
     }
 
     /**

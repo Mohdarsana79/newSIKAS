@@ -2,7 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Models\BukuKasUmum;
+use App\Models\BukuKasUmumUraianDetail;
+use App\Models\KodeKegiatan;
 use App\Models\Penganggaran;
+use App\Models\RekeningBelanja;
+use App\Models\Rkas;
 use App\Models\RkasItemReview;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -317,5 +322,248 @@ class RoleKepalaSekolahTest extends TestCase
 
         $responseEmail->assertRedirect('/dashboard');
         $this->assertAuthenticatedAs($user);
+    }
+
+    public function test_rkas_index_includes_approval_and_item_reviews_props(): void
+    {
+        $penganggaran = Penganggaran::create([
+            'pagu_anggaran' => 50000000,
+            'tahun_anggaran' => 2026,
+            'kepala_sekolah' => 'Nama Kepsek',
+            'sk_kepala_sekolah' => 'SK-001',
+            'bendahara' => 'Nama Bendahara',
+            'sk_bendahara' => 'SK-002',
+            'komite' => 'Nama Komite',
+            'nip_kepala_sekolah' => '198001012005011001',
+            'nip_bendahara' => '198501012010012002',
+            'tanggal_sk_kepala_sekolah' => '2026-01-02',
+            'tanggal_sk_bendahara' => '2026-01-02',
+            'status_persetujuan' => 'disetujui',
+            'persetujuan_oleh' => $this->kepsek->id,
+            'tanggal_persetujuan' => now(),
+            'catatan_persetujuan' => 'Disahkan untuk tahun anggaran 2026',
+        ]);
+
+        $kegiatan = KodeKegiatan::create([
+            'kode' => '03.03.19',
+            'program' => 'Pengembangan Standar Proses',
+            'sub_program' => 'Pelaksanaan Kegiatan Pembelajaran',
+            'uraian' => 'Belanja ATK',
+        ]);
+
+        $rekening = RekeningBelanja::create([
+            'kode_rekening' => '5.1.02.01.01.0024',
+            'rincian_objek' => 'Belanja Alat/Bahan untuk Kegiatan Kantor-Alat Tulis Kantor',
+            'kategori' => 'Barang dan Jasa',
+        ]);
+
+        $rkasItem = Rkas::create([
+            'penganggaran_id' => $penganggaran->id,
+            'kode_id' => $kegiatan->id,
+            'kode_rekening_id' => $rekening->id,
+            'uraian' => 'Kertas HVS F4 80gr',
+            'harga_satuan' => 55000,
+            'bulan' => 'Januari',
+            'jumlah' => 10,
+            'satuan' => 'Rim',
+        ]);
+
+        RkasItemReview::create([
+            'user_id' => $this->kepsek->id,
+            'reviewable_type' => Rkas::class,
+            'reviewable_id' => $rkasItem->id,
+            'status' => 'perlu_revisi',
+            'catatan' => 'Sesuaikan harga satuan dengan SSH terbaru',
+        ]);
+
+        $response = $this
+            ->actingAs($this->kepsek)
+            ->get("/rkas/{$penganggaran->id}");
+
+        $response->assertOk();
+        $response->assertInertia(fn ($page) => $page
+            ->component('Penganggaran/Rkas/Index')
+            ->where('anggaran.status_persetujuan', 'disetujui')
+            ->where('anggaran.persetujuan_user.name', $this->kepsek->name)
+            ->where('anggaran.catatan_persetujuan', 'Disahkan untuk tahun anggaran 2026')
+            ->where('items.0.reviewable_type', Rkas::class)
+            ->where('items.0.review.status', 'perlu_revisi')
+            ->where('items.0.review.catatan', 'Sesuaikan harga satuan dengan SSH terbaru')
+        );
+    }
+
+    public function test_kepala_sekolah_cannot_review_fully_spent_rkas_item(): void
+    {
+        $penganggaran = Penganggaran::create([
+            'pagu_anggaran' => 50000000,
+            'tahun_anggaran' => 2026,
+            'kepala_sekolah' => 'Nama Kepsek',
+            'sk_kepala_sekolah' => 'SK-001',
+            'bendahara' => 'Nama Bendahara',
+            'sk_bendahara' => 'SK-002',
+            'komite' => 'Nama Komite',
+            'nip_kepala_sekolah' => '198001012005011001',
+            'nip_bendahara' => '198501012010012002',
+            'tanggal_sk_kepala_sekolah' => '2026-01-02',
+            'tanggal_sk_bendahara' => '2026-01-02',
+        ]);
+
+        $kegiatan = KodeKegiatan::create([
+            'kode' => '03.03.19',
+            'program' => 'Pengembangan Standar Proses',
+            'sub_program' => 'Pelaksanaan Kegiatan Pembelajaran',
+            'uraian' => 'Belanja ATK',
+        ]);
+
+        $rekening = RekeningBelanja::create([
+            'kode_rekening' => '5.1.02.01.01.0024',
+            'rincian_objek' => 'Belanja Alat/Bahan untuk Kegiatan Kantor-Alat Tulis Kantor',
+            'kategori' => 'Barang dan Jasa',
+        ]);
+
+        $rkasItem = Rkas::create([
+            'penganggaran_id' => $penganggaran->id,
+            'kode_id' => $kegiatan->id,
+            'kode_rekening_id' => $rekening->id,
+            'uraian' => 'Kertas HVS F4 80gr',
+            'harga_satuan' => 55000,
+            'bulan' => 'Januari',
+            'jumlah' => 10,
+            'satuan' => 'Rim',
+        ]);
+
+        $bku = BukuKasUmum::create([
+            'penganggaran_id' => $penganggaran->id,
+            'kode_kegiatan_id' => $kegiatan->id,
+            'rekening_belanja_id' => $rekening->id,
+            'tanggal_transaksi' => '2026-01-15',
+            'jenis_transaksi' => 'tunai',
+            'uraian' => 'Belanja ATK',
+            'total_transaksi_kotor' => 550000,
+        ]);
+
+        BukuKasUmumUraianDetail::create([
+            'buku_kas_umum_id' => $bku->id,
+            'penganggaran_id' => $penganggaran->id,
+            'rkas_id' => $rkasItem->id,
+            'kode_kegiatan_id' => $kegiatan->id,
+            'rekening_belanja_id' => $rekening->id,
+            'uraian' => 'Kertas HVS F4 80gr',
+            'satuan' => 'Rim',
+            'harga_satuan' => 55000,
+            'volume' => 10,
+            'subtotal' => 550000,
+        ]);
+
+        $response = $this
+            ->actingAs($this->kepsek)
+            ->postJson('/rkas-review/item', [
+                'reviewable_type' => Rkas::class,
+                'reviewable_id' => $rkasItem->id,
+                'status' => 'perlu_revisi',
+                'catatan' => 'Mencoba menelaah belanja yang sudah terbelanja penuh',
+            ]);
+
+        $response->assertStatus(422)
+            ->assertJson([
+                'success' => false,
+                'message' => 'Belanja ini sudah terealisasi penuh pada BKU sehingga tidak dapat ditelaah.',
+            ]);
+    }
+
+    public function test_bendahara_can_update_rkas_preserving_review_and_resubmit_to_kepala_sekolah(): void
+    {
+        $penganggaran = Penganggaran::create([
+            'pagu_anggaran' => 50000000,
+            'tahun_anggaran' => 2026,
+            'kepala_sekolah' => 'Nama Kepsek',
+            'sk_kepala_sekolah' => 'SK-001',
+            'bendahara' => 'Nama Bendahara',
+            'sk_bendahara' => 'SK-002',
+            'komite' => 'Nama Komite',
+            'nip_kepala_sekolah' => '198001012005011001',
+            'nip_bendahara' => '198501012010012002',
+            'tanggal_sk_kepala_sekolah' => '2026-01-02',
+            'tanggal_sk_bendahara' => '2026-01-02',
+        ]);
+
+        $kegiatan = KodeKegiatan::create([
+            'kode' => '03.03.19',
+            'program' => 'Pengembangan Standar Proses',
+            'sub_program' => 'Pelaksanaan Kegiatan Pembelajaran',
+            'uraian' => 'Belanja ATK',
+        ]);
+
+        $rekening = RekeningBelanja::create([
+            'kode_rekening' => '5.1.02.01.01.0024',
+            'rincian_objek' => 'Belanja Alat/Bahan untuk Kegiatan Kantor-Alat Tulis Kantor',
+            'kategori' => 'Barang dan Jasa',
+        ]);
+
+        $rkasItem = Rkas::create([
+            'penganggaran_id' => $penganggaran->id,
+            'kode_id' => $kegiatan->id,
+            'kode_rekening_id' => $rekening->id,
+            'uraian' => 'Kertas HVS F4 80gr',
+            'harga_satuan' => 55000,
+            'bulan' => 'Januari',
+            'jumlah' => 10,
+            'satuan' => 'Rim',
+        ]);
+
+        // 1. Kepala Sekolah memberikan telaah perlu_revisi
+        $review = RkasItemReview::create([
+            'user_id' => $this->kepsek->id,
+            'reviewable_type' => Rkas::class,
+            'reviewable_id' => $rkasItem->id,
+            'status' => 'perlu_revisi',
+            'catatan' => 'Kurangi volume menjadi 5 Rim',
+        ]);
+
+        // 2. Bendahara mengedit grup RKAS (volume dikurangi menjadi 5 Rim)
+        $updateResponse = $this
+            ->actingAs($this->bendahara)
+            ->post('/rkas/update-group', [
+                'original_id' => $rkasItem->id,
+                'kegiatan_id' => $kegiatan->id,
+                'rekening_id' => $rekening->id,
+                'uraian' => 'Kertas HVS F4 80gr',
+                'harga_satuan' => 55000,
+                'alokasi' => [
+                    [
+                        'month' => 'Januari',
+                        'quantity' => 5,
+                        'unit' => 'Rim',
+                    ],
+                ],
+            ]);
+
+        $updateResponse->assertRedirect();
+
+        $newRkasItem = Rkas::where('penganggaran_id', $penganggaran->id)
+            ->where('bulan', 'Januari')
+            ->firstOrFail();
+
+        // Pastikan review otomatis terhubung ke ID baris RKAS yang baru
+        $review->refresh();
+        $this->assertEquals($newRkasItem->id, $review->reviewable_id);
+        $this->assertSame('perlu_revisi', $review->status);
+
+        // 3. Bendahara mengajukan kembali perbaikan kepada Kepala Sekolah
+        $resubmitResponse = $this
+            ->actingAs($this->bendahara)
+            ->postJson("/rkas-review/item/{$review->id}/resubmit", [
+                'tanggapan_bendahara' => 'Volume sudah disesuaikan menjadi 5 Rim sesuai arahan.',
+            ]);
+
+        $resubmitResponse->assertOk()
+            ->assertJson([
+                'success' => true,
+            ]);
+
+        $review->refresh();
+        $this->assertSame('sudah_diperbaiki', $review->status);
+        $this->assertSame('Volume sudah disesuaikan menjadi 5 Rim sesuai arahan.', $review->tanggapan_bendahara);
+        $this->assertNotNull($review->revisi_diajukan_at);
     }
 }

@@ -1,6 +1,7 @@
 import { Fragment } from 'react';
 import DataTable from '@/Components/ui/DataTable';
 import IconTile from '@/Components/ui/IconTile';
+import DocKopSuratHeader from '@/Components/DocKopSuratHeader';
 
 interface TabRincianProps {
     rincianData: any[];
@@ -52,6 +53,8 @@ export default function TabRincian({ rincianData, onPrint, onExportExcel }: TabR
                     </button>
                 </div>
             </div>
+
+            <DocKopSuratHeader docKey="rkas_rincian" className="px-1" />
 
             <DataTable contentClassName="bento-table-wrapper mx-1 mt-4">
                 <table className="min-w-full">

@@ -346,6 +346,7 @@ class KwitansiController extends Controller
                 'totalAmount' => $totalAmount,
                 'tanggalLunas' => $this->formatTanggalLunas($kwitansi->bukuKasUmum->tanggal_transaksi),
                 'pajakData' => $pajakData,
+                'sekolah' => $kwitansi->sekolah,
                 'tahapRoman' => $tahapRoman,
                 'fontSize' => $fontSize,
             ];
@@ -436,6 +437,7 @@ class KwitansiController extends Controller
                     'totalAmount' => $totalAmount,
                     'tanggalLunas' => $this->formatTanggalLunas($kwitansi->bukuKasUmum->tanggal_transaksi),
                     'pajakData' => $pajakData,
+                    'sekolah' => $kwitansi->sekolah,
                     'tahapRoman' => $tahap,
                 ];
             }
@@ -671,6 +673,7 @@ class KwitansiController extends Controller
                 'totalAmount' => $totalAmount,
                 'tanggalLunas' => $this->formatTanggalLunas($kwitansi->bukuKasUmum->tanggal_transaksi),
                 'pajakData' => $pajakData,
+                'sekolah' => $kwitansi->sekolah,
                 'tahapRoman' => $tahapRoman,
                 'fontSize' => $fontSize,
             ];
@@ -761,6 +764,7 @@ class KwitansiController extends Controller
                     'totalAmount' => $totalAmount,
                     'tanggalLunas' => $this->formatTanggalLunas($kwitansi->bukuKasUmum->tanggal_transaksi),
                     'pajakData' => $pajakData,
+                    'sekolah' => $kwitansi->sekolah,
                     'tahapRoman' => $tahap,
                 ];
             }

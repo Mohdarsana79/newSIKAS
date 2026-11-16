@@ -15,8 +15,6 @@
         .text-left { text-align: left; }
         
         .header { text-align: center; margin-bottom: 25px; }
-        .separator { border-top: 3px solid #000; margin-top: 8px; margin-bottom: 2px; border-bottom: 1px solid #000; height: 1px; }
-        .letterhead { width: 100%; height: auto; display: block; margin: 0 auto; }
         
         .title {
             text-align: center;
@@ -99,17 +97,7 @@
 </head>
 <body>
     <div class="header">
-        @if ($sekolah && $sekolah->kop_surat)
-            <img src="{{ public_path('storage/' . $sekolah->kop_surat) }}" class="letterhead" alt="Kop Surat">
-            @include('partials.kop_border', ['border' => $sekolah->kop_border ?? 'double'])
-        @else
-            <h3 class="text-bold" style="margin: 0;">PEMERINTAH {{ strtoupper($sekolah->kabupaten_kota ?? 'KABUPATEN') }}</h3>
-            <h3 class="text-bold" style="margin: 0;">DINAS PENDIDIKAN DAN KEBUDAYAAN</h3>
-            <h2 class="text-bold" style="margin: 5px 0;">{{ strtoupper($sekolah->nama_sekolah ?? 'NAMA SEKOLAH') }}</h2>
-            <p style="font-size: 0.9em; margin: 0;">Alamat : {{ $sekolah->alamat }} {{ $sekolah->kecamatan }} NPSN : {{ $sekolah->npsn }} Kode Pos : {{ $sekolah->kode_pos }}</p>
-            <p style="font-size: 0.9em; margin: 0;">Email : {{ $sekolah->email ?? '-' }}</p>
-            <div class="separator"></div>
-        @endif
+        @include('partials.doc_kop_surat', ['docKey' => 'laporan_sp2b', 'sekolah' => $sekolah ?? null])
         
         <div class="title">SURAT PERMINTAAN PENGESAHAN BELANJA (SP2B)</div>
         <div class="text-bold text-center" style="font-size: 1.1em;">SATUAN PENDIDIKAN {{ strtoupper($sekolah->status_sekolah ?? 'NEGERI') }}</div>

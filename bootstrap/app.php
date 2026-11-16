@@ -2,7 +2,9 @@
 
 use App\Http\Middleware\CheckNpsnLicense;
 use App\Http\Middleware\DetectVariant;
+use App\Http\Middleware\EnsureRole;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\PreventKepalaSekolahMutations;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -20,10 +22,12 @@ $app = Application::configure(basePath: dirname(__DIR__))
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
             CheckNpsnLicense::class,
+            PreventKepalaSekolahMutations::class,
         ]);
 
         $middleware->alias([
             'variant' => DetectVariant::class,
+            'role' => EnsureRole::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -101,6 +101,7 @@
     </head>
 
     <body>
+        @include('partials.doc_kop_surat', ['docKey' => 'rkas_perubahan_rka_rekap', 'sekolah' => $anggaran['sekolah'] ?? null])
         <div class="header">
             <h3 class="uppercase font-bold">REKAPITULASI RENCANA KEGIATAN DAN ANGGARAN SEKOLAH (RKAS PERUBAHAN)</h3>
             <h4 class="uppercase font-bold">TAHUN ANGGARAN : {{ $anggaran['tahun_anggaran'] }}</h4>

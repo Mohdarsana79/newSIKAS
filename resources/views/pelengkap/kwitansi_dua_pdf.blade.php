@@ -96,6 +96,7 @@
 
 <body>
     <div class="kwitansi-container">
+        @include('partials.doc_kop_surat', ['docKey' => 'pelengkap_kwitansi', 'sekolah' => $sekolah ?? null])
         <!-- Header Information -->
         <table class="header-table">
             <tr>

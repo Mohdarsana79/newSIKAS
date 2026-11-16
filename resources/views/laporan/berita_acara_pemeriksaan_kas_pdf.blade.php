@@ -71,6 +71,7 @@
 </head>
 <body>
     @foreach($reports as $report)
+    @include('partials.doc_kop_surat', ['docKey' => 'bku_ba', 'sekolah' => $report['sekolah'] ?? null])
     <div class="header">
         BERITA ACARA PEMERIKSAAN KAS
     </div>

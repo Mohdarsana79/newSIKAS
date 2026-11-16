@@ -80,6 +80,7 @@
     </style>
 </head>
 <body>
+    @include('partials.doc_kop_surat', ['docKey' => 'bku_realisasi', 'sekolah' => $sekolah ?? null])
     <div class="header">
         <span style="font-size: 1.1em;">REKAPITULASI REALISASI PENGGUNAAN DANA BOSP</span><br>
         <span style="font-size: 0.9em; font-weight: normal; margin-top: 5px; display: inline-block;">

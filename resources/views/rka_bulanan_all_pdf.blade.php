@@ -108,6 +108,7 @@
     <body>
         @foreach ($allData as $month => $rkaBulananData)
             <div style="{{ !$loop->last ? 'page-break-after: always;' : '' }}">
+                @include('partials.doc_kop_surat', ['docKey' => 'rkas_rka_bulanan', 'sekolah' => $anggaran['sekolah'] ?? null])
                 <div class="header">
                     <h3 class="uppercase font-bold">KERTAS KERJA RENCANA KEGIATAN DAN ANGGARAN SEKOLAH (RKAS) PER BULAN
                         {{ strtoupper($month) }}</h3>

@@ -3,8 +3,24 @@ export interface User {
     name: string;
     email: string;
     username: string;
+    role?: string;
+    is_kepala_sekolah?: boolean;
+    is_bendahara?: boolean;
     is_security_code_enabled: boolean;
     email_verified_at?: string;
+}
+
+export interface SharedSekolah {
+    id: number;
+    nama_sekolah: string;
+    npsn: string;
+    kop_surat?: string;
+    kop_border?: 'double' | 'single' | 'none';
+    kop_dokumen?: Record<string, boolean>;
+    kop_mode?: '1_logo' | '2_logo';
+    kop_teks_html?: string;
+    logo_daerah?: string;
+    logo_sekolah?: string;
 }
 
 export type PageProps<
@@ -13,4 +29,5 @@ export type PageProps<
     auth: {
         user: User;
     };
+    sekolah?: SharedSekolah | null;
 };

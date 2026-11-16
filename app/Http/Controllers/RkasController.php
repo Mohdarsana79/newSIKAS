@@ -52,14 +52,14 @@ class RkasController extends Controller
 
     public function index(Request $request, $id)
     {
-        $penganggaran = ($this->Penganggaran)::findOrFail($id);
+        $penganggaran = ($this->Penganggaran)::with('persetujuanUser:id,name,role')->findOrFail($id);
         $penganggaran->setAttribute('sumber_dana', VariantConfig::title($this->variant));
 
         $kodeKegiatans = KodeKegiatan::all();
         $rekeningBelanjas = RekeningBelanja::all();
 
         // Get all RKAS items
-        $itemsRaw = ($this->Rkas)::with(['kodeKegiatan', 'rekeningBelanja'])
+        $itemsRaw = ($this->Rkas)::with(['kodeKegiatan', 'rekeningBelanja', 'review.user:id,name,role'])
             ->where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
             ->get();
 
@@ -115,8 +115,10 @@ class RkasController extends Controller
             }
         }
 
+        $reviewableType = $this->Rkas;
+
         // Transform items for frontend
-        $items = $itemsRaw->map(function ($item) {
+        $items = $itemsRaw->map(function ($item) use ($reviewableType) {
             return [
                 'id' => $item->id,
                 'program' => $item->kodeKegiatan->program ?? '-',
@@ -129,6 +131,16 @@ class RkasController extends Controller
                 'harga' => number_format($item->harga_satuan, 0, ',', '.'),
                 'total' => number_format($item->jumlah * $item->harga_satuan, 0, ',', '.'),
                 'bulan' => $item->bulan,
+                'reviewable_type' => $reviewableType,
+                'review' => $item->review ? [
+                    'id' => $item->review->id,
+                    'status' => $item->review->status,
+                    'catatan' => $item->review->catatan,
+                    'tanggapan_bendahara' => $item->review->tanggapan_bendahara,
+                    'revisi_diajukan_at' => $item->review->revisi_diajukan_at?->format('d/m/Y H:i'),
+                    'user_name' => $item->review->user?->name ?? 'Kepala Sekolah',
+                    'created_at' => $item->review->updated_at?->format('d/m/Y H:i'),
+                ] : null,
             ];
         });
 
@@ -158,6 +170,13 @@ class RkasController extends Controller
                 'pagu_total' => number_format($paguAnggaran, 0, ',', '.'),
                 'sumber_dana' => VariantConfig::title($this->variant),
                 'status' => 'Aktif',
+                'status_persetujuan' => $penganggaran->status_persetujuan ?? 'draft',
+                'persetujuan_user' => $penganggaran->persetujuanUser ? [
+                    'id' => $penganggaran->persetujuanUser->id,
+                    'name' => $penganggaran->persetujuanUser->name,
+                ] : null,
+                'tanggal_persetujuan' => $penganggaran->tanggal_persetujuan?->format('d/m/Y H:i'),
+                'catatan_persetujuan' => $penganggaran->catatan_persetujuan,
                 'tahap_1' => [
                     'periode' => 'Januari - Juni',
                     'persen' => $paguAnggaran > 0 ? number_format(($totalTahap1 / $paguAnggaran) * 100, 2).'%' : '0.00%',
@@ -739,17 +758,28 @@ class RkasController extends Controller
                 }
             }
 
-            // 1. Delete the OLD group
-            ($this->Rkas)::where(VariantConfig::penganggaranFk($this->variant), $original->{VariantConfig::penganggaranFk($this->variant)})
+            // 0. Capture existing reviews before deleting old group rows
+            $oldGroupQuery = ($this->Rkas)::where(VariantConfig::penganggaranFk($this->variant), $original->{VariantConfig::penganggaranFk($this->variant)})
                 ->where('kode_id', $original->kode_id)
                 ->where('kode_rekening_id', $original->kode_rekening_id)
-                ->where('uraian', $original->uraian)
-                ->delete();
+                ->where('uraian', $original->uraian);
+
+            $oldGroupItems = (clone $oldGroupQuery)->with('review')->get();
+            $reviewsByMonth = [];
+            foreach ($oldGroupItems as $oldRow) {
+                if ($oldRow->review) {
+                    $reviewsByMonth[$oldRow->bulan] = $oldRow->review;
+                }
+            }
+
+            // 1. Delete the OLD group
+            $oldGroupQuery->delete();
 
             // 2. Create the NEW items (essentially replacing them)
-            // Note: We use the original penganggaran_id
+            $createdByMonth = [];
+            $firstCreatedRow = null;
             foreach ($request->alokasi as $alloc) {
-                ($this->Rkas)::create([
+                $newRow = ($this->Rkas)::create([
                     VariantConfig::penganggaranFk($this->variant) => $original->{VariantConfig::penganggaranFk($this->variant)},
                     'kode_id' => $request->kegiatan_id,
                     'kode_rekening_id' => $request->rekening_id,
@@ -759,6 +789,22 @@ class RkasController extends Controller
                     'jumlah' => $alloc['quantity'],
                     'satuan' => $alloc['unit'],
                 ]);
+                $createdByMonth[$alloc['month']] = $newRow;
+                if (! $firstCreatedRow) {
+                    $firstCreatedRow = $newRow;
+                }
+            }
+
+            // 3. Re-bind existing reviews to the newly created items
+            $boundTargetIds = [];
+            foreach ($reviewsByMonth as $month => $existingReview) {
+                $targetRow = $createdByMonth[$month] ?? $firstCreatedRow;
+                if ($targetRow && ! in_array($targetRow->id, $boundTargetIds, true)) {
+                    $existingReview->update([
+                        'reviewable_id' => $targetRow->id,
+                    ]);
+                    $boundTargetIds[] = $targetRow->id;
+                }
             }
 
             DB::commit();

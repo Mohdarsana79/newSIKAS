@@ -1,3 +1,4 @@
+import DangerButton from '@/Components/DangerButton';
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import Modal from '@/Components/Modal';
@@ -7,18 +8,17 @@ import TextInput from '@/Components/TextInput';
 import IconTile from '@/Components/ui/IconTile';
 import StatusBadge from '@/Components/ui/StatusBadge';
 import EmptyState from '@/Components/ui/EmptyState';
-import { useForm, usePage } from '@inertiajs/react';
+import { router, useForm, usePage } from '@inertiajs/react';
 import axios from 'axios';
-import { 
-    Users, 
-    UserPlus, 
-    Shield, 
-    Key, 
-    Trash2, 
-    Edit, 
-    CheckCircle, 
+import {
+    Users,
+    UserPlus,
+    Shield,
+    Trash2,
+    Edit,
     AlertTriangle,
-    Loader2
+    Loader2,
+    X,
 } from 'lucide-react';
 import { FormEventHandler, useEffect, useState } from 'react';
 
@@ -44,6 +44,8 @@ export default function UserManagementForm({
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const [selectedUser, setSelectedUser] = useState<UserItem | null>(null);
+    const [userToDelete, setUserToDelete] = useState<UserItem | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     // Form Tambah User
     const createForm = useForm({
@@ -92,8 +94,21 @@ export default function UserManagementForm({
         });
     };
 
+    const closeCreateModal = () => {
+        if (createForm.processing) return;
+        setShowCreateModal(false);
+        createForm.clearErrors();
+    };
+
+    const closeEditModal = () => {
+        if (editForm.processing) return;
+        setShowEditModal(false);
+        editForm.clearErrors();
+    };
+
     const handleOpenEdit = (user: UserItem) => {
         setSelectedUser(user);
+        editForm.clearErrors();
         editForm.setData({
             name: user.name,
             username: user.username,
@@ -119,16 +134,20 @@ export default function UserManagementForm({
         });
     };
 
-    const handleDeleteUser = (user: UserItem) => {
-        if (confirm(`Apakah Anda yakin ingin menghapus akun "${user.name}" (${user.username})?`)) {
-            axios.delete(route('user-management.destroy', user.id))
-                .then(() => {
-                    fetchUsers();
-                })
-                .catch((err) => {
-                    alert('Gagal menghapus pengguna: ' + (err.response?.data?.message || err.message));
-                });
-        }
+    const confirmDeleteUser = () => {
+        if (!userToDelete) return;
+        setIsDeleting(true);
+
+        router.delete(route('user-management.destroy', userToDelete.id), {
+            preserveScroll: true,
+            onSuccess: () => {
+                setUserToDelete(null);
+                fetchUsers();
+            },
+            onFinish: () => {
+                setIsDeleting(false);
+            },
+        });
     };
 
     return (
@@ -139,20 +158,26 @@ export default function UserManagementForm({
                         <Users />
                     </IconTile>
                     <div className="min-w-0">
-                        <h2 className="text-[14px] font-extrabold tracking-tight text-slate-900 dark:text-white">
-                            Manajemen Pengguna & Role
-                        </h2>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <h2 className="text-[14px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                                Manajemen Pengguna &amp; Role
+                            </h2>
+                            <StatusBadge tone="violet" dot={false}>
+                                Akses Sekolah
+                            </StatusBadge>
+                        </div>
                         <p className="mt-0.5 text-[10.5px] font-medium text-slate-400 dark:text-slate-500">
-                            Kelola akun pengguna yang memiliki akses ke SIKAS. Anda dapat mendaftarkan akun untuk <strong className="font-bold text-slate-600 dark:text-slate-300">Kepala Sekolah</strong> agar dapat menelaah dan menyetujui anggaran RKAS.
+                            Kelola akun pengguna yang memiliki akses ke SIKAS. Anda dapat mendaftarkan akun untuk{' '}
+                            <strong className="font-bold text-slate-600 dark:text-slate-300">Kepala Sekolah</strong> agar dapat menelaah anggaran RKAS dan laporan BKU.
                         </p>
                     </div>
                 </div>
 
-                <PrimaryButton 
-                    onClick={() => setShowCreateModal(true)} 
+                <PrimaryButton
+                    onClick={() => setShowCreateModal(true)}
                     className="shrink-0 self-start sm:self-auto"
                 >
-                    <UserPlus className="h-4 w-4" />
+                    <UserPlus className="mr-1.5 h-4 w-4" />
                     Tambah Pengguna
                 </PrimaryButton>
             </header>
@@ -166,9 +191,7 @@ export default function UserManagementForm({
                     </div>
                 ) : users.length === 0 ? (
                     <EmptyState
-                        icon={
-                            <Users className="h-6 w-6" />
-                        }
+                        icon={<Users className="h-6 w-6" />}
                         title="Belum ada pengguna"
                         description="Tambahkan akun pengguna untuk mengelola akses SIKAS."
                     />
@@ -207,30 +230,32 @@ export default function UserManagementForm({
                                             <td>
                                                 {isKepsek ? (
                                                     <StatusBadge tone="success" dot={false}>
-                                                        <Shield className="w-3 h-3" /> Kepala Sekolah (Read-Only)
+                                                        <Shield className="h-3 w-3" /> Kepala Sekolah (Read-Only)
                                                     </StatusBadge>
                                                 ) : (
                                                     <StatusBadge tone="violet" dot={false}>
-                                                        <Shield className="w-3 h-3" /> Bendahara / Admin
+                                                        <Shield className="h-3 w-3" /> Bendahara / Admin
                                                     </StatusBadge>
                                                 )}
                                             </td>
                                             <td>
                                                 <div className="flex items-center justify-end gap-2">
                                                     <button
+                                                        type="button"
                                                         onClick={() => handleOpenEdit(u)}
                                                         className="sikas-icon-btn h-8 w-8"
                                                         title="Edit / Reset Password"
                                                     >
-                                                        <Edit className="w-4 h-4" />
+                                                        <Edit className="h-4 w-4" />
                                                     </button>
                                                     {!isCurrent && (
                                                         <button
-                                                            onClick={() => handleDeleteUser(u)}
-                                                            className="sikas-icon-btn h-8 w-8"
+                                                            type="button"
+                                                            onClick={() => setUserToDelete(u)}
+                                                            className="sikas-icon-btn h-8 w-8 hover:text-rose-500"
                                                             title="Hapus Pengguna"
                                                         >
-                                                            <Trash2 className="w-4 h-4" />
+                                                            <Trash2 className="h-4 w-4" />
                                                         </button>
                                                     )}
                                                 </div>
@@ -244,24 +269,42 @@ export default function UserManagementForm({
                 )}
             </div>
 
-            {/* Modal Tambah Pengguna */}
-            <Modal show={showCreateModal} onClose={() => setShowCreateModal(false)} maxWidth="md">
-                <form onSubmit={handleCreateSubmit} className="flex max-h-[90vh] flex-col overflow-hidden">
-                    <div className="flex shrink-0 items-start gap-3 border-b border-slate-100 px-6 py-5 dark:border-white/5">
-                        <IconTile tone="lime" size="lg">
-                            <UserPlus />
-                        </IconTile>
-                        <div className="min-w-0">
-                            <h2 className="text-[16px] font-extrabold tracking-tight text-slate-900 dark:text-white">
-                                Tambah Pengguna Baru
-                            </h2>
-                            <p className="mt-0.5 text-[10.5px] font-medium text-slate-400 dark:text-slate-500">
-                                Daftarkan akun baru beserta role dan kata sandi awal.
-                            </p>
-                        </div>
+            {/* Modal Tambah Pengguna (Neo-Bento) */}
+            <Modal show={showCreateModal} onClose={closeCreateModal} maxWidth="md">
+                <form
+                    onSubmit={handleCreateSubmit}
+                    className="relative flex max-h-[90vh] flex-col overflow-hidden rounded-[26px] bg-white dark:bg-[#15131F]"
+                >
+                    <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[26px]">
+                        <div className="absolute -right-12 -top-16 h-40 w-40 rounded-full bg-lime-400/15 blur-3xl" />
+                        <div className="absolute -bottom-16 -left-12 h-40 w-40 rounded-full bg-brand-500/10 blur-3xl" />
                     </div>
 
-                    <div className="sikas-scroll flex-1 space-y-4 overflow-y-auto px-6 py-5">
+                    <div className="relative flex shrink-0 items-start justify-between gap-3 border-b border-slate-100 px-6 py-5 dark:border-white/5">
+                        <div className="flex min-w-0 items-start gap-3">
+                            <IconTile tone="lime" size="lg">
+                                <UserPlus />
+                            </IconTile>
+                            <div className="min-w-0">
+                                <h2 className="text-[15px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                                    Tambah Pengguna Baru
+                                </h2>
+                                <p className="mt-0.5 text-[10.5px] font-medium text-slate-400 dark:text-slate-500">
+                                    Daftarkan akun Kepala Sekolah atau Bendahara beserta kata sandi awal.
+                                </p>
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={closeCreateModal}
+                            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-slate-50 text-slate-400 transition hover:bg-slate-100 hover:text-slate-800 dark:bg-white/5 dark:hover:bg-white/10 dark:hover:text-white"
+                            aria-label="Tutup"
+                        >
+                            <X className="h-3.5 w-3.5" />
+                        </button>
+                    </div>
+
+                    <div className="sikas-scroll relative flex-1 space-y-4 overflow-y-auto px-6 py-5">
                         <div>
                             <InputLabel htmlFor="create_role" value="Role Pengguna" />
                             <select
@@ -270,7 +313,7 @@ export default function UserManagementForm({
                                 onChange={(e) => createForm.setData('role', e.target.value)}
                                 className="mt-1 block w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-[12px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
                             >
-                                <option value="kepala_sekolah">Kepala Sekolah (Read-Only, Review RKAS & Approval)</option>
+                                <option value="kepala_sekolah">Kepala Sekolah (Read-Only, Telaah RKAS &amp; BKU)</option>
                                 <option value="bendahara">Bendahara / Operator (Akses Penuh)</option>
                             </select>
                             <InputError message={createForm.errors.role} className="mt-1" />
@@ -333,8 +376,8 @@ export default function UserManagementForm({
                         </div>
                     </div>
 
-                    <div className="flex shrink-0 items-center justify-end gap-2 border-t border-slate-100 px-6 py-4 dark:border-white/5">
-                        <SecondaryButton onClick={() => setShowCreateModal(false)}>
+                    <div className="relative flex shrink-0 items-center justify-end gap-2 border-t border-slate-100 px-6 py-4 dark:border-white/5">
+                        <SecondaryButton onClick={closeCreateModal} disabled={createForm.processing}>
                             Batal
                         </SecondaryButton>
                         <PrimaryButton disabled={createForm.processing}>
@@ -344,24 +387,42 @@ export default function UserManagementForm({
                 </form>
             </Modal>
 
-            {/* Modal Edit / Reset Password */}
-            <Modal show={showEditModal} onClose={() => setShowEditModal(false)} maxWidth="md">
-                <form onSubmit={handleEditSubmit} className="flex max-h-[90vh] flex-col overflow-hidden">
-                    <div className="flex shrink-0 items-start gap-3 border-b border-slate-100 px-6 py-5 dark:border-white/5">
-                        <IconTile tone="amber" size="lg">
-                            <Edit />
-                        </IconTile>
-                        <div className="min-w-0">
-                            <h2 className="text-[16px] font-extrabold tracking-tight text-slate-900 dark:text-white">
-                                Edit Data Pengguna / Reset Password
-                            </h2>
-                            <p className="mt-0.5 text-[10.5px] font-medium text-slate-400 dark:text-slate-500">
-                                Perbarui identitas, role, atau reset kata sandi pengguna.
-                            </p>
-                        </div>
+            {/* Modal Edit / Reset Password (Neo-Bento) */}
+            <Modal show={showEditModal} onClose={closeEditModal} maxWidth="md">
+                <form
+                    onSubmit={handleEditSubmit}
+                    className="relative flex max-h-[90vh] flex-col overflow-hidden rounded-[26px] bg-white dark:bg-[#15131F]"
+                >
+                    <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[26px]">
+                        <div className="absolute -right-12 -top-16 h-40 w-40 rounded-full bg-amber-400/15 blur-3xl" />
+                        <div className="absolute -bottom-16 -left-12 h-40 w-40 rounded-full bg-brand-500/10 blur-3xl" />
                     </div>
 
-                    <div className="sikas-scroll flex-1 space-y-4 overflow-y-auto px-6 py-5">
+                    <div className="relative flex shrink-0 items-start justify-between gap-3 border-b border-slate-100 px-6 py-5 dark:border-white/5">
+                        <div className="flex min-w-0 items-start gap-3">
+                            <IconTile tone="amber" size="lg">
+                                <Edit />
+                            </IconTile>
+                            <div className="min-w-0">
+                                <h2 className="text-[15px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                                    Edit Data Pengguna / Reset Password
+                                </h2>
+                                <p className="mt-0.5 text-[10.5px] font-medium text-slate-400 dark:text-slate-500">
+                                    Perbarui identitas, role, atau reset kata sandi pengguna.
+                                </p>
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={closeEditModal}
+                            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-slate-50 text-slate-400 transition hover:bg-slate-100 hover:text-slate-800 dark:bg-white/5 dark:hover:bg-white/10 dark:hover:text-white"
+                            aria-label="Tutup"
+                        >
+                            <X className="h-3.5 w-3.5" />
+                        </button>
+                    </div>
+
+                    <div className="sikas-scroll relative flex-1 space-y-4 overflow-y-auto px-6 py-5">
                         <div>
                             <InputLabel htmlFor="edit_role" value="Role Pengguna" />
                             <select
@@ -405,6 +466,19 @@ export default function UserManagementForm({
                         </div>
 
                         <div>
+                            <InputLabel htmlFor="edit_email" value="Email (Opsional)" />
+                            <TextInput
+                                id="edit_email"
+                                type="email"
+                                value={editForm.data.email}
+                                onChange={(e) => editForm.setData('email', e.target.value)}
+                                className="mt-1 block w-full"
+                                placeholder="kepsek@sekolah.sch.id"
+                            />
+                            <InputError message={editForm.errors.email} className="mt-1" />
+                        </div>
+
+                        <div>
                             <InputLabel htmlFor="edit_password" value="Password Baru (Kosongkan jika tidak diubah)" />
                             <TextInput
                                 id="edit_password"
@@ -418,8 +492,8 @@ export default function UserManagementForm({
                         </div>
                     </div>
 
-                    <div className="flex shrink-0 items-center justify-end gap-2 border-t border-slate-100 px-6 py-4 dark:border-white/5">
-                        <SecondaryButton onClick={() => setShowEditModal(false)}>
+                    <div className="relative flex shrink-0 items-center justify-end gap-2 border-t border-slate-100 px-6 py-4 dark:border-white/5">
+                        <SecondaryButton onClick={closeEditModal} disabled={editForm.processing}>
                             Batal
                         </SecondaryButton>
                         <PrimaryButton disabled={editForm.processing}>
@@ -427,6 +501,58 @@ export default function UserManagementForm({
                         </PrimaryButton>
                     </div>
                 </form>
+            </Modal>
+
+            {/* Modal Konfirmasi Hapus Pengguna (Neo-Bento) */}
+            <Modal show={Boolean(userToDelete)} onClose={() => !isDeleting && setUserToDelete(null)} maxWidth="sm">
+                <div className="relative overflow-hidden rounded-[26px] bg-white dark:bg-[#15131F]">
+                    <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[26px]">
+                        <div className="absolute -right-12 -top-16 h-36 w-36 rounded-full bg-rose-500/15 blur-3xl" />
+                    </div>
+
+                    <div className="relative flex items-start justify-between gap-3 border-b border-slate-100 px-6 py-4 dark:border-white/5">
+                        <div className="flex items-center gap-3">
+                            <IconTile tone="rose" size="md">
+                                <AlertTriangle />
+                            </IconTile>
+                            <div>
+                                <h2 className="text-[14px] font-extrabold text-slate-900 dark:text-white">
+                                    Hapus Akun Pengguna
+                                </h2>
+                                <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500">
+                                    Konfirmasi penghapusan akses
+                                </p>
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => !isDeleting && setUserToDelete(null)}
+                            className="flex h-7 w-7 items-center justify-center rounded-xl bg-slate-50 text-slate-400 transition hover:bg-slate-100 hover:text-slate-800 dark:bg-white/5 dark:hover:bg-white/10 dark:hover:text-white"
+                            aria-label="Tutup"
+                        >
+                            <X className="h-3.5 w-3.5" />
+                        </button>
+                    </div>
+
+                    <div className="relative space-y-4 px-6 py-5">
+                        <p className="text-[12px] font-medium leading-relaxed text-slate-600 dark:text-slate-300">
+                            Apakah Anda yakin ingin menghapus akun{' '}
+                            <strong className="font-extrabold text-slate-900 dark:text-white">
+                                {userToDelete?.name}
+                            </strong>{' '}
+                            (<code className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-bold text-slate-700 dark:bg-white/10 dark:text-slate-200">{userToDelete?.username}</code>)?
+                        </p>
+
+                        <div className="flex justify-end gap-2 border-t border-slate-100 pt-4 dark:border-white/5">
+                            <SecondaryButton onClick={() => setUserToDelete(null)} disabled={isDeleting}>
+                                Batal
+                            </SecondaryButton>
+                            <DangerButton onClick={confirmDeleteUser} disabled={isDeleting}>
+                                {isDeleting ? 'Menghapus...' : 'Ya, Hapus Akun'}
+                            </DangerButton>
+                        </div>
+                    </div>
+                </div>
             </Modal>
         </section>
     );

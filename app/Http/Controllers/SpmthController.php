@@ -172,8 +172,8 @@ class SpmthController extends Controller
             'sisa' => 'required|numeric',
             'tanggal_spmth' => 'nullable|date',
         ], [
-             'nomor_surat.unique' => 'SPMTH Tahap Tersebut Sudah Ada',
-         ]);
+            'nomor_surat.unique' => 'SPMTH Tahap Tersebut Sudah Ada',
+        ]);
 
         $spmth->update($validated);
 

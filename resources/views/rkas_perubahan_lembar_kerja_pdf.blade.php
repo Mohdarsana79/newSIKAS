@@ -104,6 +104,7 @@
     </head>
 
     <body>
+        @include('partials.doc_kop_surat', ['docKey' => 'rkas_perubahan_lembar_kerja_221', 'sekolah' => $anggaran['sekolah'] ?? null])
         <div class="header-title">
             <h2>LEMBAR KERTAS KERJA</h2>
             <h3>TAHUN ANGGARAN {{ $anggaran['tahun_anggaran'] }}</h3>

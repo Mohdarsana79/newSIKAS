@@ -12,9 +12,10 @@ interface NavLinkProps {
     children: ReactNode;
     icon?: ReactNode;
     isSidebarOpen?: boolean;
+    badge?: string;
 }
 
-const NavLink = ({ href, active, children, icon, isSidebarOpen = true }: NavLinkProps) => (
+const NavLink = ({ href, active, children, icon, isSidebarOpen = true, badge }: NavLinkProps) => (
     <Link
         href={href}
         aria-current={active ? 'page' : undefined}
@@ -35,7 +36,19 @@ const NavLink = ({ href, active, children, icon, isSidebarOpen = true }: NavLink
         >
             {children}
         </span>
-        {active && isSidebarOpen && (
+        {badge && isSidebarOpen && (
+            <span
+                className={`shrink-0 rounded-full px-1.5 py-0.5 text-[8.5px] font-extrabold uppercase tracking-wider ${
+                    active ? 'bg-slate-950 text-lime-300' : 'bg-lime-400 text-slate-950 shadow-sm'
+                }`}
+            >
+                {badge}
+            </span>
+        )}
+        {badge && !isSidebarOpen && (
+            <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-lime-400 ring-2 ring-[#1E1D2E]" />
+        )}
+        {active && isSidebarOpen && !badge && (
             <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-slate-900/60" />
         )}
     </Link>
@@ -57,6 +70,7 @@ export default function Sidebar({
     const { props } = usePage();
     const user = (props as any)?.auth?.user;
     const isKepalaSekolah = user?.is_kepala_sekolah ?? false;
+    const hasSystemUpdate = Boolean((props as any)?.systemUpdate?.hasUpdate);
     const [isDataMasterOpen, setIsDataMasterOpen] = useState(true);
     const [isFiturPelengkapOpen, setIsFiturPelengkapOpen] = useState(true);
     const [isIntegrasiOpen, setIsIntegrasiOpen] = useState(true);
@@ -283,9 +297,20 @@ export default function Sidebar({
                         {!isKepalaSekolah && (
                             <div className="pt-4">
                                 <SectionTitle isVisible={isOpen}>Sistem</SectionTitle>
-                                <NavLink href={route('backup.index')} active={route().current('backup.*')} isSidebarOpen={isOpen} icon={<IconBackup />}>
-                                    Backup Database
-                                </NavLink>
+                                <div className="space-y-1">
+                                    <NavLink href={route('backup.index')} active={route().current('backup.*')} isSidebarOpen={isOpen} icon={<IconBackup />}>
+                                        Backup Database
+                                    </NavLink>
+                                    <NavLink
+                                        href={route('system-update.index')}
+                                        active={route().current('system-update.*')}
+                                        isSidebarOpen={isOpen}
+                                        icon={<IconUpdate />}
+                                        badge={hasSystemUpdate ? 'BARU' : undefined}
+                                    >
+                                        Pembaharuan
+                                    </NavLink>
+                                </div>
                             </div>
                         )}
                     </nav>
@@ -596,5 +621,14 @@ const IconSkSurat = () => (
     <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
         <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2z" />
         <path d="M5 8h2m-2 4h2" />
+    </svg>
+);
+
+const IconUpdate = () => (
+    <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+        <path d="M3 3v5h5" />
+        <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
+        <path d="M16 16h5v5" />
     </svg>
 );

@@ -29,7 +29,7 @@ export default function ChangelogModal() {
                         Informasi Rilis
                     </h2>
                     <span className="bg-indigo-100 text-indigo-800 text-sm font-semibold px-3 py-1 rounded-full dark:bg-indigo-900 dark:text-indigo-300">
-                        SIKAS V.2026.29
+                        SIKAS V.2026.31
                     </span>
                 </div>
 
@@ -44,16 +44,16 @@ export default function ChangelogModal() {
                         </h3>
                         <ul className="list-disc pl-6 text-sm text-gray-700 dark:text-gray-300 space-y-2 leading-relaxed">
                             <li>
-                                <span className="font-medium">Penambahan Integrasi AI:</span> Penambahan fitur API Key dan Model AI (DeepSeek) pada halaman Settings. Memungkinkan pengguna untuk menggunakan AI untuk analisis dan perancangan.
+                                <span className="font-medium">Pembaruan tampilan UI/UX:</span> Pembaharuan tampilan aplikasi dengan gaya lebih halus dan nyaman.
                             </li>
                             <li>
-                                <span className="font-medium">Penambahan Chat AI:</span> Penambahan fitur Chat AI untuk membantu pengguna dalam menjawab pertanyaan dan memberikan informasi terkait dengan SIKAS dan mampu membantu pengguna untuk menyusun perencanaan yang lebih baik dan penyusunan laporan dengan mencegah terjadinya temuan.
+                                <span className="font-medium">Penambahan Kop Surat:</span> Penambahan Kop Surat Builder pada profile sekolah untuk memudahkan pengguna dalam membuat kop surat.
                             </li>
                             <li>
-                                <span className="font-medium">Penambahan Pra Audit AI:</span> Penambahan fitur Pra Audit untuk membantu pengguna dalam melakukan audit internal pada pembukuan yang telah di lakukan. agar mengantisipasi terjadinya temuan. 
+                                <span className="font-medium">Penambahan fitur Sk & Surat:</span> Penambahan fitur SK & Surat untuk memudahkan pengguna menambahkan sediri file SK dan Surat ataupun dokumen yang dibutuhkan dalam pelaporan LPJ. file yang di upload dalam bentuk word. sistem akan membaca file tersebut secara otomatis agar pengguna bisa mengisi form yang sudah di tag.
                             </li>
                             <li>
-                                <span className="font-medium">Penambahan Analisis Tarik Data Arkas AI:</span> Penambahan fitur Analisis Tarik Data AI pada halaman BKU untuk membantu pengguna dalam melakukan pengecekan data yang di tarik dari aplikasi arkas. hal ini bisa mencegah terjadinya penimpaan data yang beresiko salah.
+                                <span className="font-medium">Penambahan Role Akun Kepala Sekolah:</span> Penambahan Role Akun kepala sekolah untuk memudahkan kepala sekolah meninjau perencanaan RKAS Awal dan RKAS Perubahan.
                             </li>
                         </ul>
                     </div>
@@ -67,9 +67,9 @@ export default function ChangelogModal() {
                             Perbaikan
                         </h3>
                         <ul className="list-disc pl-6 text-sm text-gray-700 dark:text-gray-300 space-y-2 leading-relaxed">
-                            <li><span className="font-medium">Perbaikan BKP Pembantu Tunai:</span> Perbaikan Saldo awal pada BKP Pembantu tunai yang lebih dulu tampil daripada tarik tunai. </li>
-                            <li><span className="font-medium">Perbaikan Keamanan Sistem:</span> Perbaikan pada peningkatan keamanan sistem lisensi untuk kenyamanan pengguna. </li>
-                            <li><span className="font-medium">Perbaikan Edit Penganggaran:</span> Perbaikan pada fitur edit penganggaran pada rkas awal dan mengaktifkannya kembali walaupun rkas perubahan telah di lakukan. </li>
+                            <li><span className="font-medium">Upload kop gambar non aktif:</span> Upload Kop Sekolah menggunakan gambar di non-aktifkan dan di gantikan oleh kop sekolah builder. </li>
+                            <li><span className="font-medium">Perbaikan Penganggaran dan Penatausahaan:</span> Perbaikan pada fitur penganggaran dan penatausahaan. jika pengguna ingin menggunakan kop sekolah pada penganggaran dan penatausahaan maka sistem akan mengizinkan hal tersebut dengan mengikuti pilihan yang telah di simpan pada kop sekolah builder. </li>
+                            <li><span className="font-medium">Perbaikan pada mode dark:</span> Perbaikan pada Mode Dark agar lebih nyaman dan halus. </li>
                         </ul>
                     </div>
                 </div>

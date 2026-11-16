@@ -5,6 +5,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DatabaseController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SkSuratController;
+use App\Http\Controllers\SystemUpdateController;
 use App\Http\Controllers\UserManagementController;
 use App\Http\Middleware\CheckNpsnLicense;
 use App\Http\Middleware\HandleInertiaRequests;
@@ -52,6 +53,18 @@ Route::get('/backup/restore-progress/{restoreId}', [DatabaseController::class, '
     ])
     ->name('backup.restore-progress');
 
+// Endpoint pelacakan progres pembaharuan aplikasi (bebas session/DB middleware agar merespons cepat saat server restart)
+Route::get('/pembaharuan/progress/{updateId}', [SystemUpdateController::class, 'progress'])
+    ->withoutMiddleware([
+        StartSession::class,
+        ShareErrorsFromSession::class,
+        ValidateCsrfToken::class,
+        PreventRequestForgery::class,
+        HandleInertiaRequests::class,
+        CheckNpsnLicense::class,
+    ])
+    ->name('system-update.progress');
+
 Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
 Route::get('/dashboard/data', [DashboardController::class, 'getDashboardNewData'])->middleware(['auth', 'verified'])->name('dashboard.data');
 
@@ -69,6 +82,13 @@ Route::middleware('auth')->group(function () {
         Route::post('/user-management', [UserManagementController::class, 'store'])->name('user-management.store');
         Route::put('/user-management/{id}', [UserManagementController::class, 'update'])->name('user-management.update');
         Route::delete('/user-management/{id}', [UserManagementController::class, 'destroy'])->name('user-management.destroy');
+    });
+
+    Route::prefix('pembaharuan')->name('system-update.')->group(function () {
+        Route::get('/', [SystemUpdateController::class, 'index'])->name('index');
+        Route::post('/check', [SystemUpdateController::class, 'check'])->name('check');
+        Route::post('/start-online', [SystemUpdateController::class, 'startOnline'])->name('start-online');
+        Route::post('/upload-manual', [SystemUpdateController::class, 'uploadManual'])->name('upload-manual');
     });
 
     Route::prefix('sk-surat')->name('sk-surat.')->group(function () {

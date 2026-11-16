@@ -224,12 +224,7 @@
 <body>
     <!-- Loop melalui semua tanda terima -->
     @foreach($tandaTerimas as $index => $item)
-    @if ($sekolah && $sekolah->kop_surat)
-    <div class="header">
-        <img src="{{ public_path('storage/' . $sekolah->kop_surat) }}" class="letterhead" alt="Kop Surat">
-        @include('partials.kop_border', ['border' => $sekolah->kop_border ?? 'double'])
-    </div>
-    @endif
+    @include('partials.doc_kop_surat', ['docKey' => 'pelengkap_tanda_terima', 'sekolah' => $sekolah ?? null])
     
     <div class="tanda-terima-item">
       <!-- Information Section -->

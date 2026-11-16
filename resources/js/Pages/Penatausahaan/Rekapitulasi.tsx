@@ -13,6 +13,7 @@ import BkuAuditModal from '@/Components/Ai/BkuAuditModal';
 import { Sparkles } from 'lucide-react';
 import PageHeader from '@/Components/ui/PageHeader';
 import StatusBadge from '@/Components/ui/StatusBadge';
+import DocKopSuratHeader from '@/Components/DocKopSuratHeader';
 
 interface RekapitulasiProps {
     auth: any;
@@ -847,6 +848,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                 {/* Report Paper */}
                                 <div className="sikas-card overflow-x-auto p-6">
                                     <div className="min-w-[900px]">
+                                        <DocKopSuratHeader docKey="bku_bkp_bank" />
                                         {/* Report Header */}
                                         <div className="text-center mb-8">
                                             <h2 className="text-lg font-bold uppercase underline underline-offset-4 text-gray-900 dark:text-gray-100">BUKU KAS PEMBANTU BANK</h2>
@@ -1163,6 +1165,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                 {/* Report Paper */}
                                 <div className="sikas-card overflow-x-auto p-6">
                                     <div className="min-w-[900px]">
+                                        <DocKopSuratHeader docKey="bku_bkp_umum" />
                                         {/* Report Header */}
                                         <div className="text-center mb-8">
                                             <h2 className="text-lg font-bold uppercase underline underline-offset-4 text-gray-900 dark:text-gray-100">BUKU KAS UMUM</h2>
@@ -1458,6 +1461,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                 {/* Report Paper */}
                                 <div className="sikas-card overflow-x-auto p-6">
                                     <div className="min-w-[1000px]">
+                                        <DocKopSuratHeader docKey="bku_bkp_pajak" />
                                         {/* Report Header */}
                                         <div className="text-center mb-8">
                                             <h2 className="text-lg font-bold uppercase text-gray-900 dark:text-gray-100">BUKU PEMBANTU PAJAK</h2>
@@ -1682,6 +1686,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
 
                                 {/* School Info Header */}
                                 <div className="sikas-card p-4 text-sm">
+                                    <DocKopSuratHeader docKey="bku_rob" className="mb-4" />
                                     <div className="grid grid-cols-[150px_1fr] gap-2">
                                         <div className="font-semibold text-gray-600 dark:text-gray-400">NPSN</div>
                                         <div className="text-gray-900 dark:text-gray-100">: {bkpRobData?.data?.sekolah?.npsn || '-'}</div>
@@ -1838,6 +1843,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
 
                                 {/* Report Header */}
                                 <div className="sikas-card p-6">
+                                    <DocKopSuratHeader docKey="bku_reg" className="mb-4" />
                                     <div className="text-center mb-6 border-b pb-4 border-gray-200 dark:border-gray-700">
                                         <h2 className="text-xl font-bold text-gray-900 dark:text-white uppercase tracking-wide">Formulir BOS-K7B</h2>
                                         <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 uppercase mt-1">REGISTER PENUTUPAN KAS</h3>
@@ -2019,6 +2025,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                         <div className="text-center py-10 text-gray-500">Memuat data...</div>
                                     ) : (
                                         <div className="max-w-4xl mx-auto space-y-6 text-gray-900 dark:text-gray-100 font-serif leading-relaxed">
+                                            <DocKopSuratHeader docKey="bku_ba" className="mb-4" />
                                             <div className="text-center mb-8">
                                                 <h2 className="text-lg font-bold uppercase underline underline-offset-4">BERITA ACARA PEMERIKSAAN KAS</h2>
                                             </div>
@@ -2196,6 +2203,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                         <div className="text-center py-10 text-gray-500">Memuat data...</div>
                                     ) : (
                                         <div className="min-w-[1200px]">
+                                            <DocKopSuratHeader docKey="bku_realisasi" />
                                             <div className="text-center mb-6">
                                                 <h2 className="text-lg font-bold uppercase">REKAPITULASI REALISASI PENGGUNAAN DANA BOSP</h2>
                                                 <p className="text-sm uppercase font-semibold">PERIODE TANGGAL: {realisasiData?.periode_info?.periode_awal} s.d {realisasiData?.periode_info?.periode_akhir}</p>
@@ -2365,6 +2373,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                         <div className="text-center py-10 text-gray-500">Memuat data...</div>
                                     ) : (
                                         <div className="min-w-[1200px]">
+                                            <DocKopSuratHeader docKey="bku_rek_realisasi" />
                                             <div className="text-center mb-6">
                                                 <h2 className="text-lg font-bold uppercase">{rekRealisasiData?.sekolah?.nama_unit}</h2>
                                                 <h3 className="text-lg font-bold uppercase">
@@ -2525,6 +2534,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                 {/* Report Paper */}
                                 <div className="sikas-card overflow-x-auto p-6">
                                     <div className="min-w-[900px]">
+                                        <DocKopSuratHeader docKey="bku_bkp_pembantu" />
                                         {/* Report Header */}
                                         <div className="text-center mb-8">
                                             <h2 className="text-lg font-bold uppercase underline underline-offset-4 text-gray-900 dark:text-gray-100">BUKU KAS PEMBANTU TUNAI</h2>
@@ -2807,6 +2817,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                 </div>
 
                                 <div className="sikas-card overflow-hidden">
+                                    <DocKopSuratHeader docKey="bku_bhp" className="p-4 pb-0" />
                                     <div className="border-b border-slate-100 bg-slate-50/70 p-6 dark:border-white/5 dark:bg-white/[0.03]">
                                         <h3 className="flex items-center gap-3 text-[13.5px] font-extrabold tracking-tight text-slate-900 dark:text-white">
                                             <span className="rounded-xl bg-pastel-lavender p-2 text-brand-600 dark:bg-brand-500/15 dark:text-brand-300">
@@ -2952,6 +2963,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                 </div>
 
                                 <div className="sikas-card overflow-hidden">
+                                    <DocKopSuratHeader docKey="bku_bhm" className="p-4 pb-0" />
                                     <div className="border-b border-slate-100 bg-slate-50/70 p-6 dark:border-white/5 dark:bg-white/[0.03]">
                                         <h3 className="flex items-center gap-3 text-[13.5px] font-extrabold tracking-tight text-slate-900 dark:text-white">
                                             <span className="rounded-xl bg-pastel-lavender p-2 text-brand-600 dark:bg-brand-500/15 dark:text-brand-300">

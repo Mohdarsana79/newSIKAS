@@ -68,6 +68,7 @@
 </head>
 <body>
     @foreach($reports as $report)
+    @include('partials.doc_kop_surat', ['docKey' => 'bku_reg', 'sekolah' => $report['sekolah'] ?? null])
     <div class="header">
         Formulir BOS-K7B<br>
         REGISTER PENUTUPAN KAS

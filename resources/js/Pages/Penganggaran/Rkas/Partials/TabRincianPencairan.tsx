@@ -11,6 +11,7 @@ import IconTile from '@/Components/ui/IconTile';
 import StatusBadge from '@/Components/ui/StatusBadge';
 import EmptyState from '@/Components/ui/EmptyState';
 import { SkeletonRows } from '@/Components/ui/Skeleton';
+import DocKopSuratHeader from '@/Components/DocKopSuratHeader';
 interface TabRincianPencairanProps {
     anggaran: any;
     tahapanData: any;
@@ -832,6 +833,8 @@ export default function TabRincianPencairan({ anggaran, tahapanData, variant, on
     return (
         <div className="space-y-4">
             <Surface padding="md" className="animate-rise">
+                <DocKopSuratHeader docKey="rkas_rincian_pencairan" sekolah={anggaran?.sekolah} />
+
                 {/* Header Info */}
                 <div className="mb-6">
                     <table className="text-sm text-slate-900 dark:text-white">

@@ -23,6 +23,7 @@ class ReferensiKodeSeeder extends Seeder
         $jsonPath = database_path('data/arkas_kode_kegiatan.json');
         if (! File::exists($jsonPath)) {
             $this->command?->warn("File {$jsonPath} tidak ditemukan, melewati seeding kegiatan.");
+
             return;
         }
 
@@ -66,6 +67,7 @@ class ReferensiKodeSeeder extends Seeder
         $jsonPath = database_path('data/arkas_rekening_belanja.json');
         if (! File::exists($jsonPath)) {
             $this->command?->warn("File {$jsonPath} tidak ditemukan, melewati seeding rekening.");
+
             return;
         }
 

@@ -17,6 +17,12 @@ class RkasItemReview extends Model
         'reviewable_id',
         'status',
         'catatan',
+        'tanggapan_bendahara',
+        'revisi_diajukan_at',
+    ];
+
+    protected $casts = [
+        'revisi_diajukan_at' => 'datetime',
     ];
 
     public function user()

@@ -3,6 +3,7 @@
 namespace App\Models\Traits;
 
 use App\Models\SekolahProfile;
+use App\Models\User;
 use Carbon\Carbon;
 
 /**
@@ -76,6 +77,10 @@ trait HasPenganggaranBehavior
             'is_trk_saldo_awal',
             'tanggal_trk_saldo_awal',
             'jumlah_trk_saldo_awal',
+            'status_persetujuan',
+            'persetujuan_oleh',
+            'tanggal_persetujuan',
+            'catatan_persetujuan',
         ]));
 
         $this->casts = array_merge($this->casts ?? [], [
@@ -86,6 +91,7 @@ trait HasPenganggaranBehavior
             'is_trk_saldo_awal' => 'boolean',
             'tanggal_trk_saldo_awal' => 'date',
             'jumlah_trk_saldo_awal' => 'decimal:2',
+            'tanggal_persetujuan' => 'datetime',
         ]);
     }
 
@@ -94,6 +100,11 @@ trait HasPenganggaranBehavior
     public function sekolah()
     {
         return $this->belongsTo(SekolahProfile::class, 'sekolah_id');
+    }
+
+    public function persetujuanUser()
+    {
+        return $this->belongsTo(User::class, 'persetujuan_oleh');
     }
 
     public function rkas()

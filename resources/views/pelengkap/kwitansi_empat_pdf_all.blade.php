@@ -28,30 +28,6 @@
             margin-bottom: 20px;
         }
 
-        .header-kop {
-            width: 100%;
-            margin-bottom: 10px;
-        }
-
-        .header-kop img {
-            width: 100%;
-            object-fit: contain;
-        }
-
-        /* If no image, fallback header */
-        .fallback-header {
-            text-align: center;
-            width: 100%;
-            border-bottom: 3px solid #000;
-            margin-bottom: 10px;
-            padding-bottom: 10px;
-        }
-        
-        .fallback-header h2, .fallback-header h3 {
-            margin: 0;
-            padding: 2px;
-        }
-
         .info-table {
             width: 100%;
             border-collapse: collapse;
@@ -147,19 +123,7 @@
         @endphp
         
         <!-- Header Information -->
-        @if(isset($sekolah->kop_surat) && $sekolah->kop_surat)
-            <div class="header-kop">
-                <img src="{{ public_path('storage/' . $sekolah->kop_surat) }}" alt="Kop Surat">
-                @include('partials.kop_border', ['border' => $sekolah->kop_border ?? 'double'])
-            </div>
-        @else
-            <div class="fallback-header">
-                <h2>PEMERINTAH KABUPATEN TOLITOLI</h2>
-                <h2>KORWIL DINAS PENDIDIKAN DAN KEBUDAYAAN</h2>
-                <h3>{{ strtoupper($sekolah->nama_sekolah ?? 'SEKOLAH') }}</h3>
-                <p style="margin: 5px 0 0 0; font-size: 10pt;">Alamat: {{ $sekolah->alamat ?? '-' }}</p>
-            </div>
-        @endif
+        @include('partials.doc_kop_surat', ['docKey' => 'pelengkap_kwitansi', 'sekolah' => $sekolah ?? null])
 
         <table class="info-table" style="width: 100%; border-collapse: collapse;">
             <tr>

@@ -4,6 +4,7 @@ namespace App\Models\Traits;
 
 use App\Models\KodeKegiatan;
 use App\Models\RekeningBelanja;
+use App\Models\RkasItemReview;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -85,6 +86,16 @@ trait HasRkasBehavior
     public function bkuUraianDetails()
     {
         return $this->hasMany($this->bkuUraianDetailModelClass(), $this->rkasForeignKey());
+    }
+
+    public function review()
+    {
+        return $this->morphOne(RkasItemReview::class, 'reviewable');
+    }
+
+    public function reviews()
+    {
+        return $this->morphMany(RkasItemReview::class, 'reviewable');
     }
 
     // ─── Accessors ─────────────────────────────────────────────────

@@ -14,8 +14,6 @@
         .text-right { text-align: right; }
         
         .header { text-align: center; margin-bottom: 20px; }
-        .separator { border-top: 3px solid #000; margin-top: 5px; margin-bottom: 5px; border-bottom: 1px solid #000; height: 1px; }
-        .letterhead { width: 100%; height: auto; }
         
         .title {
             text-align: center;
@@ -37,17 +35,7 @@
 </head>
 <body>
     <div class="header">
-        @if ($sekolah && $sekolah->kop_surat)
-            <img src="{{ public_path('storage/' . $sekolah->kop_surat) }}" class="letterhead" alt="Kop Surat">
-            @include('partials.kop_border', ['border' => $sekolah->kop_border ?? 'double'])
-        @else
-            <h3 class="text-bold">PEMERINTAH {{ strtoupper($sekolah->kabupaten_kota ?? 'KABUPATEN') }}</h3>
-            <h3 class="text-bold">DINAS PENDIDIKAN DAN KEBUDAYAAN</h3>
-            <h2 class="text-bold">{{ $sekolah->nama_sekolah ?? 'NAMA SEKOLAH' }}</h2>
-            <p style="font-size: 0.9em;">Alamat : {{ $sekolah->alamat }} {{ $sekolah->kecamatan }} NPSN : {{ $sekolah->npsn }} Kode Pos : {{ $sekolah->kode_pos }}</p>
-            <p style="font-size: 0.9em;">Email : {{ $sekolah->email ?? '-' }}</p>
-            <div class="separator"></div>
-        @endif
+        @include('partials.doc_kop_surat', ['docKey' => 'laporan_sptj', 'sekolah' => $sekolah ?? null])
         
         <div class="title">SURAT PERNYATAAN TANGGUNG JAWAB MUTLAK</div>
     </div>

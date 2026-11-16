@@ -59,6 +59,7 @@ import {
     SlidersHorizontal,
     FileText,
     Maximize2,
+    FileSpreadsheet,
 } from 'lucide-react';
 
 interface Sekolah {
@@ -79,7 +80,59 @@ interface Sekolah {
     kop_border?: 'double' | 'single' | 'none';
     kop_teks_html?: string;
     kop_jenis?: string;
+    kop_dokumen?: Record<string, boolean>;
 }
+
+interface DocOptionItem {
+    key: string;
+    label: string;
+    desc: string;
+}
+
+const RKAS_AWAL_DOCS: DocOptionItem[] = [
+    { key: 'rkas_alur_kas', label: 'Alur Kas', desc: 'Laporan alur kas dan rencana penerimaan' },
+    { key: 'rkas_lembar_kerja_221', label: 'Lembar Kerja 2.2.1', desc: 'Indikator & tolok ukur kinerja belanja langsung' },
+    { key: 'rkas_rincian', label: 'Rincian Belanja', desc: 'Rincian belanja per sub program dan kode rekening' },
+    { key: 'rkas_rincian_pencairan', label: 'Rincian Pencairan', desc: 'Rincian rencana pencairan per tahapan & bulan' },
+    { key: 'rkas_rka_bulanan', label: 'RKA Bulanan', desc: 'Matriks rencana alokasi belanja bulanan' },
+    { key: 'rkas_rka_rekap', label: 'RKA Rekapitulasi', desc: 'Rekapitulasi anggaran per program & sumber dana' },
+    { key: 'rkas_rka_tahapan', label: 'RKA Tahapan', desc: 'Alokasi belanja per tahapan pencairan (Tahap 1 & 2)' },
+    { key: 'rkas_rka_tahapan_v1', label: 'RKA Tahapan V1', desc: 'Format alternatif RKA Tahapan detail rekening' },
+];
+
+const RKAS_PERUBAHAN_DOCS: DocOptionItem[] = [
+    { key: 'rkas_perubahan_alur_kas', label: 'Alur Kas Perubahan', desc: 'Laporan arus kas pada periode perubahan' },
+    { key: 'rkas_perubahan_lembar_kerja_221', label: 'Lembar Kerja 2.2.1 Perubahan', desc: 'Kertas kerja evaluasi tolok ukur belanja perubahan' },
+    { key: 'rkas_perubahan_rincian', label: 'Rincian Belanja Perubahan', desc: 'Perbandingan rincian sebelum dan sesudah perubahan' },
+    { key: 'rkas_perubahan_rka_bulanan', label: 'RKA Bulanan Perubahan', desc: 'Matriks alokasi anggaran bulanan periode perubahan' },
+    { key: 'rkas_perubahan_rka_rekap', label: 'RKA Rekapitulasi Perubahan', desc: 'Rekapitulasi anggaran pergeseran dan perubahan' },
+    { key: 'rkas_perubahan_rka_tahapan', label: 'RKA Tahapan Perubahan', desc: 'Alokasi tahapan belanja pada RKAS Perubahan' },
+    { key: 'rkas_perubahan_rka_tahapan_v1', label: 'RKA Tahapan V1 Perubahan', desc: 'Format rincian tahapan V1 periode perubahan' },
+    { key: 'rkas_perubahan_rka_tahapan_v2', label: 'RKA Tahapan V2 Perubahan', desc: 'Format komparasi tahapan V2 periode perubahan' },
+];
+
+const BKU_DOCS: DocOptionItem[] = [
+    { key: 'bku_bkp_bank', label: 'Buku Pembantu Bank', desc: 'Buku transaksi penerimaan & penarikan bank' },
+    { key: 'bku_bkp_pembantu', label: 'Buku Pembantu Kas (Tunai)', desc: 'Buku transaksi arus kas tunai bendahara' },
+    { key: 'bku_bkp_umum', label: 'Buku Kas Umum (BKU)', desc: 'Buku induk transaksi penatausahaan kas sekolah' },
+    { key: 'bku_bkp_pajak', label: 'Buku Pembantu Pajak', desc: 'Buku pungutan & penyetoran PPh 21, 23, PPN' },
+    { key: 'bku_rob', label: 'Rincian Objek Belanja (ROB)', desc: 'Realisasi belanja per rincian objek belanja (ROB)' },
+    { key: 'bku_reg', label: 'Buku Pembantu Kas Reguler', desc: 'Buku register transaksi kas reguler' },
+    { key: 'bku_ba', label: 'Berita Acara Rekonsiliasi Kas', desc: 'Berita acara penutupan dan pemeriksaan kas' },
+    { key: 'bku_realisasi', label: 'Laporan Realisasi Anggaran', desc: 'Laporan pertanggungjawaban realisasi belanja BOSP' },
+    { key: 'bku_rek_realisasi', label: 'Rekap Realisasi Belanja', desc: 'Rekapitulasi total realisasi belanja per program' },
+    { key: 'bku_bhp', label: 'Buku Pembantu Persediaan (BHP)', desc: 'Buku penerimaan & pengeluaran barang persediaan' },
+    { key: 'bku_bhm', label: 'Buku Pembantu BMD (BHM)', desc: 'Buku pencatatan barang inventaris milik daerah' },
+];
+
+const PELENGKAP_DOCS: DocOptionItem[] = [
+    { key: 'pelengkap_kwitansi', label: 'Kwitansi', desc: 'Kwitansi pembayaran Format 1, 2, 3, 4 & Download Semua' },
+    { key: 'pelengkap_tanda_terima', label: 'Tanda Terima', desc: 'Tanda terima honor/kegiatan satuan & Download Semua' },
+    { key: 'laporan_sptj', label: 'SPTJ', desc: 'Surat Pernyataan Tanggung Jawab Mutlak' },
+    { key: 'laporan_spmth', label: 'SPMTH', desc: 'Surat Pernyataan Telah Menerima Hibah' },
+    { key: 'laporan_sp2b', label: 'SP2B', desc: 'Surat Permintaan Pengesahan Belanja' },
+    { key: 'laporan_lph', label: 'LPH', desc: 'Laporan Penggunaan Hibah' },
+];
 
 interface KopSuratBuilderProps {
     sekolah: Sekolah;
@@ -363,6 +416,70 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
         message: '',
     });
 
+    // Pilihan Dokumen yang Menggunakan Kop Surat
+    const [kopDokumen, setKopDokumen] = useState<Record<string, boolean>>(
+        sekolah.kop_dokumen || {}
+    );
+    const [isSavingDocs, setIsSavingDocs] = useState(false);
+
+    const toggleDoc = (key: string) => {
+        setKopDokumen((prev) => ({
+            ...prev,
+            [key]: !prev[key],
+        }));
+    };
+
+    const selectAllDocs = (items: DocOptionItem[]) => {
+        setKopDokumen((prev) => {
+            const next = { ...prev };
+            items.forEach((item) => {
+                next[item.key] = true;
+            });
+            return next;
+        });
+    };
+
+    const deselectAllDocs = (items: DocOptionItem[]) => {
+        setKopDokumen((prev) => {
+            const next = { ...prev };
+            items.forEach((item) => {
+                next[item.key] = false;
+            });
+            return next;
+        });
+    };
+
+    const handleSaveKopDokumen = () => {
+        setIsSavingDocs(true);
+        router.post(
+            route('sekolah-profile.update-kop-dokumen', sekolah.id),
+            { kop_dokumen: kopDokumen },
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    setStatusModal({
+                        isOpen: true,
+                        type: 'success',
+                        title: 'Pengaturan Dokumen Berhasil Disimpan',
+                        message: 'Pilihan penggunaan kop surat pada dokumen laporan & pelengkap berhasil diperbarui.',
+                    });
+                },
+                onError: (err) => {
+                    const firstErr = Object.values(err)[0] || 'Terjadi kesalahan sistem.';
+                    setStatusModal({
+                        isOpen: true,
+                        type: 'error',
+                        title: 'Gagal Menyimpan Pengaturan',
+                        message: String(firstErr),
+                    });
+                },
+                onFinish: () => {
+                    setIsSavingDocs(false);
+                },
+            }
+        );
+    };
+
     // State Dropdown Toolbar
     const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
     const [isHighlightPickerOpen, setIsHighlightPickerOpen] = useState(false);
@@ -567,6 +684,7 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
             formData.append('kop_mode', kopMode);
             formData.append('kop_border', kopBorder);
             formData.append('kop_teks_html', editor.getHTML());
+            formData.append('kop_dokumen', JSON.stringify(kopDokumen));
 
             if (logoDaerahFile) {
                 formData.append('logo_daerah', logoDaerahFile);
@@ -704,6 +822,127 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
             value: activeLineHeight,
             label: activeLineHeight,
         };
+
+    const renderCategoryCard = (
+        title: string,
+        subtitle: string,
+        tone: 'mint' | 'violet' | 'amber' | 'sky',
+        items: DocOptionItem[]
+    ) => {
+        const activeCount = items.filter((item) => Boolean(kopDokumen[item.key])).length;
+        const totalCount = items.length;
+        const badgeTone =
+            activeCount === 0
+                ? 'neutral'
+                : tone === 'mint'
+                  ? 'success'
+                  : tone === 'violet'
+                    ? 'violet'
+                    : tone === 'sky'
+                      ? 'info'
+                      : 'warning';
+
+        return (
+            <div className="flex flex-col rounded-[22px] border border-slate-200/80 bg-slate-50/50 p-4 dark:border-white/10 dark:bg-white/[0.02]">
+                <div className="flex items-start justify-between gap-2 border-b border-slate-200/70 pb-3 dark:border-white/10">
+                    <div>
+                        <div className="flex items-center gap-2">
+                            <h5 className="text-[13px] font-extrabold text-slate-900 dark:text-white">
+                                {title}
+                            </h5>
+                            <StatusBadge
+                                tone={badgeTone}
+                                dot={false}
+                                className="text-[10px]"
+                            >
+                                {activeCount} / {totalCount} Aktif
+                            </StatusBadge>
+                        </div>
+                        <p className="mt-0.5 text-[10.5px] font-medium text-slate-400 dark:text-slate-500">
+                            {subtitle}
+                        </p>
+                    </div>
+                </div>
+
+                {/* Quick select buttons */}
+                <div className="my-2.5 flex items-center justify-between gap-2">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                        Pilihan Dokumen
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                        <button
+                            type="button"
+                            onClick={() => selectAllDocs(items)}
+                            className="rounded-lg px-2 py-1 text-[10px] font-bold text-brand-600 hover:bg-brand-50 dark:text-brand-300 dark:hover:bg-brand-500/10 transition-colors"
+                        >
+                            Pilih Semua
+                        </button>
+                        <span className="text-slate-300 dark:text-white/20">|</span>
+                        <button
+                            type="button"
+                            onClick={() => deselectAllDocs(items)}
+                            className="rounded-lg px-2 py-1 text-[10px] font-bold text-slate-500 hover:bg-slate-200/60 dark:text-slate-400 dark:hover:bg-white/5 transition-colors"
+                        >
+                            Batal Semua
+                        </button>
+                    </div>
+                </div>
+
+                {/* List of items */}
+                <div className="flex flex-col gap-2 overflow-y-auto max-h-[380px] pr-1">
+                    {items.map((item) => {
+                        const isChecked = Boolean(kopDokumen[item.key]);
+                        return (
+                            <button
+                                key={item.key}
+                                type="button"
+                                onClick={() => toggleDoc(item.key)}
+                                className={cn(
+                                    'group flex w-full items-start gap-2.5 rounded-xl border p-2.5 text-left transition-all duration-150',
+                                    isChecked
+                                        ? 'border-emerald-300 bg-emerald-50/70 shadow-sm dark:border-mint/30 dark:bg-mint/10'
+                                        : 'border-slate-200/70 bg-white hover:border-slate-300 dark:border-white/10 dark:bg-white/[0.02] dark:hover:border-white/20'
+                                )}
+                            >
+                                <div
+                                    className={cn(
+                                        'mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-md border transition-colors',
+                                        isChecked
+                                            ? 'border-emerald-600 bg-emerald-600 text-white dark:border-mint dark:bg-mint dark:text-slate-950'
+                                            : 'border-slate-300 bg-white dark:border-white/20 dark:bg-transparent'
+                                    )}
+                                >
+                                    {isChecked && <Check className="h-3 w-3 stroke-[3]" />}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <div className="flex items-center justify-between gap-1">
+                                        <span
+                                            className={cn(
+                                                'text-[11.5px] font-bold transition-colors',
+                                                isChecked
+                                                    ? 'text-emerald-950 dark:text-white'
+                                                    : 'text-slate-700 dark:text-slate-200'
+                                            )}
+                                        >
+                                            {item.label}
+                                        </span>
+                                        {isChecked && (
+                                            <span className="shrink-0 text-[9.5px] font-extrabold text-emerald-600 dark:text-mint">
+                                                Gunakan Kop
+                                            </span>
+                                        )}
+                                    </div>
+                                    <p className="mt-0.5 text-[10px] leading-tight text-slate-400 dark:text-slate-500 line-clamp-2">
+                                        {item.desc}
+                                    </p>
+                                </div>
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+        );
+    };
 
     return (
         <div className="space-y-5">
@@ -1789,6 +2028,88 @@ export default function KopSuratBuilder({ sekolah }: KopSuratBuilderProps) {
                             )}
                         </PrimaryButton>
                     </div>
+                </div>
+            </Surface>
+
+            {/* BAGIAN 5: PENERAPAN KOP SURAT PADA DOKUMEN */}
+            <Surface padding="none" className="animate-rise" bodyClassName="flex flex-col">
+                <div className="flex flex-col justify-between gap-3 border-b border-slate-100 bg-slate-50/70 px-5 py-4 sm:flex-row sm:items-center dark:border-white/5 dark:bg-white/[0.03]">
+                    <div className="flex items-center gap-3">
+                        <IconTile tone="sky" size="md">
+                            <FileSpreadsheet />
+                        </IconTile>
+                        <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                                <h4 className="truncate text-[13.5px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                                    Penerapan Kop Surat pada Dokumen Laporan
+                                </h4>
+                                <StatusBadge tone="info" dot={false}>
+                                    {Object.values(kopDokumen).filter(Boolean).length} / {RKAS_AWAL_DOCS.length + RKAS_PERUBAHAN_DOCS.length + BKU_DOCS.length + PELENGKAP_DOCS.length} Dokumen Aktif
+                                </StatusBadge>
+                            </div>
+                            <p className="mt-0.5 text-[10.5px] font-medium text-slate-400 dark:text-slate-500">
+                                Centang dokumen yang ingin menampilkan kop surat resmi. Dokumen yang tidak dicentang akan menggunakan format header standar.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <PrimaryButton
+                            onClick={handleSaveKopDokumen}
+                            disabled={isSavingDocs}
+                            className="flex items-center gap-1.5 py-2 text-xs shadow-sm"
+                        >
+                            {isSavingDocs ? (
+                                <>
+                                    <svg className="-ml-1 mr-1.5 h-3.5 w-3.5 animate-spin text-current" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                    </svg>
+                                    Menyimpan...
+                                </>
+                            ) : (
+                                <>
+                                    <Save className="h-3.5 w-3.5" />
+                                    Simpan Pengaturan Dokumen
+                                </>
+                            )}
+                        </PrimaryButton>
+                    </div>
+                </div>
+
+                {/* Bento 4 Columns Grid */}
+                <div className="grid grid-cols-1 gap-5 p-5 md:grid-cols-2 xl:grid-cols-4">
+                    {/* Kolom 1: RKAS Awal */}
+                    {renderCategoryCard(
+                        'RKAS Awal (Murni)',
+                        'Format dokumen perencanaan anggaran awal',
+                        'mint',
+                        RKAS_AWAL_DOCS
+                    )}
+
+                    {/* Kolom 2: RKAS Perubahan */}
+                    {renderCategoryCard(
+                        'RKAS Perubahan',
+                        'Format dokumen pergeseran & perubahan',
+                        'violet',
+                        RKAS_PERUBAHAN_DOCS
+                    )}
+
+                    {/* Kolom 3: Penatausahaan BKU */}
+                    {renderCategoryCard(
+                        'Penatausahaan (BKU)',
+                        'Buku Kas Umum dan Buku Pembantu BKU',
+                        'amber',
+                        BKU_DOCS
+                    )}
+
+                    {/* Kolom 4: Pelengkap & Laporan */}
+                    {renderCategoryCard(
+                        'Pelengkap & Laporan',
+                        'Kwitansi, Tanda Terima, SPTJ, SPMTH, SP2B, LPH',
+                        'sky',
+                        PELENGKAP_DOCS
+                    )}
                 </div>
             </Surface>
 

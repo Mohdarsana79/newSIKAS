@@ -147,6 +147,7 @@ class BhmController extends Controller
                 'defaultFont' => 'Arial',
                 'isHtml5ParserEnabled' => true,
                 'isRemoteEnabled' => true,
+                'chroot' => [base_path(), public_path(), storage_path('app/public')],
             ]);
 
             return $pdf->stream("Rekapitulasi_BHM_{$periode}_{$tahun}.pdf");

@@ -2,6 +2,7 @@ import Dropdown from '@/Components/Dropdown';
 import DarkModeSwitcher from '@/Components/DarkModeSwitcher';
 import FullscreenSwitcher from '@/Components/FullscreenSwitcher';
 import NotificationDropdown from '@/Components/NotificationDropdown';
+import StatusBadge from '@/Components/ui/StatusBadge';
 import { usePage } from '@inertiajs/react';
 import { MessageSquare, Search } from 'lucide-react';
 import type { CopilotWindowState } from '@/Layouts/AuthenticatedLayout';
@@ -26,7 +27,9 @@ export default function Navbar({
     setCopilotState,
 }: NavbarProps) {
     const user = usePage().props.auth.user;
-    const fullName = user?.name || 'Bendahara';
+    const isKepalaSekolah = Boolean(user?.is_kepala_sekolah || user?.role === 'kepala_sekolah');
+    const roleLabel = isKepalaSekolah ? 'Kepala Sekolah' : 'Bendahara Sekolah';
+    const fullName = user?.name || roleLabel;
     const copilotActive = copilotState !== 'closed';
 
     return (
@@ -127,7 +130,7 @@ export default function Navbar({
                                             {user.name}
                                         </span>
                                         <span className="block text-[9.5px] font-semibold text-slate-400 dark:text-slate-500">
-                                            Bendahara Sekolah
+                                            {roleLabel}
                                         </span>
                                     </span>
                                     <svg className="hidden h-3 w-3 text-slate-400 xl:block dark:text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
@@ -138,6 +141,16 @@ export default function Navbar({
                         </Dropdown.Trigger>
 
                         <Dropdown.Content>
+                            <div className="border-b border-slate-100 px-3.5 py-2.5 dark:border-white/5">
+                                <p className="truncate text-[11.5px] font-extrabold text-slate-900 dark:text-white">
+                                    {user.name}
+                                </p>
+                                <div className="mt-1">
+                                    <StatusBadge tone={isKepalaSekolah ? 'violet' : 'success'} dot>
+                                        {roleLabel}
+                                    </StatusBadge>
+                                </div>
+                            </div>
                             <Dropdown.Link href={route('profile.edit')}>
                                 Profil Saya
                             </Dropdown.Link>

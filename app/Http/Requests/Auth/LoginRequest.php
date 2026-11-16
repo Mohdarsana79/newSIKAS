@@ -44,7 +44,14 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        $user = User::where('username', $this->username)->first();
+        $rawInput = trim((string) $this->username);
+        $identifier = preg_match('/^[0-9\s]+$/', $rawInput)
+            ? (preg_replace('/\s+/', '', $rawInput) ?? $rawInput)
+            : $rawInput;
+
+        $user = User::where('username', $identifier)
+            ->orWhere('email', $identifier)
+            ->first();
 
         if (! $user) {
             RateLimiter::hit($this->throttleKey());
@@ -82,7 +89,7 @@ class LoginRequest extends FormRequest
         $seconds = RateLimiter::availableIn($this->throttleKey());
 
         throw ValidationException::withMessages([
-            'email' => trans('auth.throttle', [
+            'username' => trans('auth.throttle', [
                 'seconds' => $seconds,
                 'minutes' => ceil($seconds / 60),
             ]),

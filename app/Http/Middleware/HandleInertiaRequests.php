@@ -2,6 +2,8 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\SekolahProfile;
+use App\Services\SystemUpdaterService;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -45,6 +47,19 @@ class HandleInertiaRequests extends Middleware
                     ]);
                 },
             ],
+            'systemUpdate' => fn () => app(SystemUpdaterService::class)->getSharedUpdateSummary(),
+            'sekolah' => fn () => ($s = SekolahProfile::first()) ? [
+                'id' => $s->id,
+                'nama_sekolah' => $s->nama_sekolah,
+                'npsn' => $s->npsn,
+                'kop_surat' => $s->kop_surat,
+                'kop_border' => $s->kop_border,
+                'kop_dokumen' => $s->kop_dokumen ?? [],
+                'kop_mode' => $s->kop_mode,
+                'kop_teks_html' => $s->kop_teks_html,
+                'logo_daerah' => $s->logo_daerah,
+                'logo_sekolah' => $s->logo_sekolah,
+            ] : null,
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'warning' => fn () => $request->session()->get('warning'),

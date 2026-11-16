@@ -73,6 +73,7 @@
     </style>
 </head>
 <body>
+    @include('partials.doc_kop_surat', ['docKey' => 'laporan_lph', 'sekolah' => $sekolah ?? null])
     <div class="header">
         <div class="title">LAPORAN PENGGUNAAN HIBAH DANA {{ strtoupper($sumberDana ?? 'BOSP REGULER') }}</div>
         <div class="subtitle">Semester {{ $lph->semester }} Tahun {{ $lph->penganggaran->tahun_anggaran }}</div>

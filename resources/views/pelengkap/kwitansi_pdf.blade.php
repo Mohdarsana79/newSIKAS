@@ -303,6 +303,7 @@
 
 <body>
     <div class="kwitansi-container">
+        @include('partials.doc_kop_surat', ['docKey' => 'pelengkap_kwitansi', 'sekolah' => $sekolah ?? null])
         <!-- Bagian Header (Informasi Program dan Anggaran) -->
         <div>
             <table class="info-table">

@@ -103,6 +103,13 @@
     </head>
 
     <body>
+        @php
+            $docKey = (!empty($is_perubahan) || str_contains($anggaran['sumber_dana'] ?? '', 'Perubahan'))
+                ? 'rkas_perubahan_lembar_kerja_221'
+                : 'rkas_lembar_kerja_221';
+        @endphp
+        @include('partials.doc_kop_surat', ['docKey' => $docKey])
+
         <div class="header">
             <h3 class="uppercase">LEMBAR KERTAS KERJA</h3>
             <h4 class="uppercase">TAHUN ANGGARAN {{ $anggaran['tahun_anggaran'] }}</h4>

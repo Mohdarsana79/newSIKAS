@@ -65,6 +65,16 @@ class KinerjaRkasPerubahan extends Model
         ]);
     }
 
+    public function review()
+    {
+        return $this->morphOne(RkasItemReview::class, 'reviewable');
+    }
+
+    public function reviews()
+    {
+        return $this->morphMany(RkasItemReview::class, 'reviewable');
+    }
+
     public static function getBulanList()
     {
         return [

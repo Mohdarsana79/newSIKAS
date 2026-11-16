@@ -3,7 +3,7 @@ import { Head, Link, useForm, router } from '@inertiajs/react';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import { PageProps } from '@/types';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Modal from '@/Components/Modal';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
@@ -16,6 +16,10 @@ import IconTile from '@/Components/ui/IconTile';
 import PageHeader from '@/Components/ui/PageHeader';
 import StatusBadge from '@/Components/ui/StatusBadge';
 import Surface from '@/Components/ui/Surface';
+import RkasApprovalBanner from '@/Components/Rkas/RkasApprovalBanner';
+import RkasItemReviewModal, { RkasItemReviewData } from '@/Components/Rkas/RkasItemReviewModal';
+import RkasAiReviewModal from '@/Components/Rkas/RkasAiReviewModal';
+import { AlertTriangle, ArrowLeft, Brain, CheckCircle2, Clock, MessageSquare } from 'lucide-react';
 
 interface Option {
     id: number;
@@ -42,6 +46,8 @@ interface RkasItem {
     harga: string;
     total: string;
     bulan: string;
+    reviewable_type?: string;
+    review?: RkasItemReviewData | null;
 }
 
 interface MonthFilter {
@@ -65,6 +71,10 @@ interface Props extends Record<string, unknown> {
         pagu_total: string;
         sumber_dana: string;
         status: string;
+        status_persetujuan?: string;
+        persetujuan_user?: { id: number; name: string } | null;
+        tanggal_persetujuan?: string | null;
+        catatan_persetujuan?: string | null;
         tahap_1: { periode: string; persen: string; sisa: string };
         tahap_2: { periode: string; persen: string; sisa: string };
     };
@@ -76,6 +86,32 @@ interface Props extends Record<string, unknown> {
 }
 
 export default function Index({ auth, anggaran, items, months, kegiatanOptions, rekeningOptions, routePrefix = '' }: PageProps<Props>) {
+    const isKepalaSekolah = Boolean(auth?.user?.is_kepala_sekolah || auth?.user?.role === 'kepala_sekolah');
+    const [localItems, setLocalItems] = useState<RkasItem[]>(items);
+    const [reviewItem, setReviewItem] = useState<RkasItem | null>(null);
+    const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+    const [isAiReviewOpen, setIsAiReviewOpen] = useState(false);
+
+    useEffect(() => {
+        setLocalItems(items);
+    }, [items]);
+
+    const handleOpenReview = (item: RkasItem) => {
+        setReviewItem(item);
+        setIsReviewModalOpen(true);
+    };
+
+    const handleReviewSuccess = (itemId: number, updatedReview: RkasItemReviewData | null) => {
+        setLocalItems((prev) =>
+            prev.map((it) => (it.id === itemId ? { ...it, review: updatedReview } : it)),
+        );
+    };
+
+    const reviewStats = {
+        disetujui: localItems.filter((it) => it.review?.status === 'disetujui').length,
+        perluRevisi: localItems.filter((it) => it.review?.status === 'perlu_revisi').length,
+        sudahDiperbaiki: localItems.filter((it) => it.review?.status === 'sudah_diperbaiki').length,
+    };
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
     const [isDetailModal2Open, setIsDetailModal2Open] = useState(false);
@@ -466,7 +502,7 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
         return acc + (qty * price);
     }, 0);
 
-    const filteredItems = items.filter(item => {
+    const filteredItems = localItems.filter(item => {
         const matchesMonth = selectedMonth ? item.bulan === selectedMonth : true;
         const query = searchQuery.toLowerCase();
         const matchesSearch = !searchQuery ||
@@ -491,65 +527,72 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                 <PageHeader
                     className="animate-rise"
                     breadcrumb={[
-                        { label: 'Dashboard' },
-                        { label: 'Penganggaran' },
+                        { label: 'Dashboard', href: route('dashboard') },
+                        { label: 'Penganggaran', href: route(`${routePrefix}penganggaran.index`) },
                         { label: 'RKAS Perubahan' },
                     ]}
+                    icon={
+                        <Link
+                            href={route(`${routePrefix}penganggaran.index`)}
+                            title="Kembali ke Penganggaran"
+                            aria-label="Kembali ke Penganggaran"
+                            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-slate-200/90 bg-white text-slate-600 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-300 hover:bg-pastel-lavender/50 hover:text-brand-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:border-brand-400/40 dark:hover:bg-brand-500/15 dark:hover:text-brand-300"
+                        >
+                            <ArrowLeft className="h-4 w-4" />
+                        </Link>
+                    }
                     title="RKAS Perubahan"
                     badge={
                         <StatusBadge tone="warning">
                             Perubahan
                         </StatusBadge>
                     }
-                    subtitle={
-                        <span className="flex flex-wrap items-center gap-2">
-                            <span>{anggaran.sumber_dana} {anggaran.tahun}</span>
-                            <span className="text-slate-300 dark:text-slate-700">·</span>
-                            <Link
-                                href={route(`${routePrefix}penganggaran.index`)}
-                                className="inline-flex items-center gap-1 font-bold text-brand-600 transition hover:text-brand-700 dark:text-brand-300 dark:hover:text-brand-200"
-                            >
-                                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                                </svg>
-                                Kembali ke Penganggaran
-                            </Link>
-                        </span>
-                    }
+                    subtitle={`${anggaran.sumber_dana} · Tahun Anggaran ${anggaran.tahun}`}
                     actions={
                         <>
-                            <PrimaryButton
-                                onClick={() => {
-                                    reset();
-                                    setIsEditMode(false);
-                                    setIsSisipMode(false);
-                                    setEditId(null);
-                                    setIsModalOpen(true);
-                                }}
+                            <Link
+                                href={route(`${routePrefix}penganggaran.index`)}
+                                className="inline-flex items-center gap-1.5 rounded-2xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-[11px] font-extrabold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-brand-300 hover:bg-slate-50 hover:text-slate-900 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10 dark:hover:text-white"
                             >
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                                </svg>
-                                Tambah
-                            </PrimaryButton>
+                                <ArrowLeft className="h-4 w-4" />
+                                Kembali
+                            </Link>
+                            {!isKepalaSekolah && (
+                                <>
+                                    <PrimaryButton
+                                        onClick={() => {
+                                            reset();
+                                            setIsEditMode(false);
+                                            setIsSisipMode(false);
+                                            setEditId(null);
+                                            setIsModalOpen(true);
+                                        }}
+                                    >
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                        </svg>
+                                        Tambah
+                                    </PrimaryButton>
 
-                            <button
-                                onClick={handleCheckArkas}
-                                disabled={isCheckingArkas}
-                                className="inline-flex items-center gap-1.5 rounded-2xl border border-emerald-200 bg-pastel-mint px-3.5 py-2.5 text-[11px] font-extrabold text-emerald-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-400/20 dark:bg-mint/10 dark:text-emerald-300 dark:hover:bg-mint/15"
-                            >
-                                {isCheckingArkas ? (
-                                    <svg className="animate-spin h-4 w-4 text-emerald-600 dark:text-emerald-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                ) : (
-                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                    </svg>
-                                )}
-                                Tarik dari ARKAS
-                            </button>
+                                    <button
+                                        onClick={handleCheckArkas}
+                                        disabled={isCheckingArkas}
+                                        className="inline-flex items-center gap-1.5 rounded-2xl border border-emerald-200 bg-pastel-mint px-3.5 py-2.5 text-[11px] font-extrabold text-emerald-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-400/20 dark:bg-mint/10 dark:text-emerald-300 dark:hover:bg-mint/15"
+                                    >
+                                        {isCheckingArkas ? (
+                                            <svg className="animate-spin h-4 w-4 text-emerald-600 dark:text-emerald-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                        ) : (
+                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                            </svg>
+                                        )}
+                                        Tarik dari ARKAS
+                                    </button>
+                                </>
+                            )}
 
                             {/* Tombol Perubahan Disabled or Active Style */}
                             <button disabled className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-2xl bg-slate-100 px-3.5 py-2.5 text-[11px] font-extrabold text-slate-400 dark:bg-white/5 dark:text-slate-500">
@@ -570,6 +613,15 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                                 Rekaman Perubahan
                             </button>
 
+                            <button
+                                type="button"
+                                onClick={() => setIsAiReviewOpen(true)}
+                                className="inline-flex items-center gap-1.5 rounded-2xl border border-brand-500/20 bg-pastel-lavender px-3.5 py-2.5 text-[11px] font-extrabold text-brand-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-brand-500/15 dark:border-brand-400/25 dark:bg-brand-500/15 dark:text-brand-300"
+                            >
+                                <Brain className="h-4 w-4" />
+                                Telaah AI
+                            </button>
+
                             <Link
                                 href={route(`${routePrefix}rkas-perubahan.summary`, anggaran.id)}
                                 className="inline-flex items-center gap-1.5 rounded-2xl bg-slate-900 px-3.5 py-2.5 text-[11px] font-extrabold text-white shadow-pill transition hover:-translate-y-0.5 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
@@ -581,6 +633,14 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                             </Link>
                         </>
                     }
+                />
+
+                {/* Banner Persetujuan Kepala Sekolah */}
+                <RkasApprovalBanner
+                    anggaran={anggaran}
+                    routePrefix={routePrefix}
+                    isKepalaSekolah={isKepalaSekolah}
+                    reviewStats={reviewStats}
                 />
 
                 {/* Kartu ringkas */}
@@ -777,6 +837,12 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                                                 const isBelanja = item.dibelanjakan >= item.dianggaran;
                                                 const textClass = isBelanja ? '!text-slate-400 dark:!text-slate-500' : '';
                                                 const boldTextClass = isBelanja ? '!text-slate-400 dark:!text-slate-500' : '!text-slate-900 dark:!text-white';
+                                                const showReviewBadge = Boolean(
+                                                    item.review && (isKepalaSekolah || item.review.status !== 'disetujui'),
+                                                );
+                                                const showReviewAction = isKepalaSekolah
+                                                    ? !isBelanja || Boolean(item.review)
+                                                    : Boolean(item.review);
 
                                                 return (
                                                     <tr key={item.id} className={`transition ${isBelanja ? 'bg-slate-50/70 dark:bg-white/[0.03]' : ''}`}>
@@ -784,66 +850,156 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                                                         <td className={`max-w-[150px] text-[11px] font-semibold ${textClass}`}>{item.program}</td>
                                                         <td className={`max-w-[150px] ${textClass}`}>{item.kegiatan}</td>
                                                         <td className={`max-w-[150px] ${textClass}`}>{item.rekening}</td>
-                                                        <td className={`max-w-[150px] ${textClass}`}>{item.uraian}</td>
+                                                        <td className={`max-w-[180px] ${textClass}`}>
+                                                            <div>{item.uraian}</div>
+                                                            {showReviewBadge && item.review && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleOpenReview(item)}
+                                                                    className={`mt-1.5 inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 text-[10px] font-extrabold transition ${
+                                                                        item.review.status === 'perlu_revisi'
+                                                                            ? 'border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-400/30 dark:bg-amber-500/15 dark:text-amber-300'
+                                                                            : item.review.status === 'sudah_diperbaiki'
+                                                                              ? 'border-sky/40 bg-pastel-sky text-sky hover:bg-sky/20 dark:border-sky/30 dark:bg-sky/15 dark:text-sky'
+                                                                              : 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-400/30 dark:bg-emerald-500/15 dark:text-emerald-300'
+                                                                    }`}
+                                                                    title={
+                                                                        item.review.tanggapan_bendahara ||
+                                                                        item.review.catatan ||
+                                                                        'Klik untuk melihat detail telaah Kepala Sekolah'
+                                                                    }
+                                                                >
+                                                                    {item.review.status === 'perlu_revisi' ? (
+                                                                        <AlertTriangle className="h-3 w-3 shrink-0" />
+                                                                    ) : item.review.status === 'sudah_diperbaiki' ? (
+                                                                        <Clock className="h-3 w-3 shrink-0" />
+                                                                    ) : (
+                                                                        <CheckCircle2 className="h-3 w-3 shrink-0" />
+                                                                    )}
+                                                                    <span>
+                                                                        {item.review.status === 'perlu_revisi'
+                                                                            ? 'Perlu Revisi'
+                                                                            : item.review.status === 'sudah_diperbaiki'
+                                                                              ? isKepalaSekolah
+                                                                                  ? 'Menunggu Verifikasi'
+                                                                                  : 'Sedang Diajukan'
+                                                                              : 'Disetujui Kepsek'}
+                                                                    </span>
+                                                                    {(item.review.catatan || item.review.tanggapan_bendahara) && (
+                                                                        <MessageSquare className="h-2.5 w-2.5 shrink-0 opacity-80" />
+                                                                    )}
+                                                                </button>
+                                                            )}
+                                                        </td>
                                                         <td className={`text-center text-sikas-num ${textClass}`}>{item.dianggaran}</td>
                                                         <td className={`text-center text-sikas-num !font-extrabold ${textClass}`}>{item.dibelanjakan}</td>
                                                         <td className={`${textClass}`}>{item.satuan}</td>
                                                         <td className={`whitespace-nowrap text-sikas-num ${textClass}`}>Rp {item.harga}</td>
                                                         <td className={`whitespace-nowrap text-sikas-num !font-extrabold ${boldTextClass}`}>Rp {item.total}</td>
                                                         <td className="whitespace-nowrap text-center">
-                                                            <Dropdown>
-                                                                <Dropdown.Trigger>
-                                                                    <button className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-400 shadow-sm transition hover:bg-slate-50 hover:text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-500 dark:hover:bg-white/10 dark:hover:text-white">
-                                                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2" />
-                                                                        </svg>
+                                                            <div className="inline-flex items-center justify-center gap-1">
+                                                                {showReviewAction && (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => handleOpenReview(item)}
+                                                                        className={`inline-flex h-7 w-7 items-center justify-center rounded-lg border shadow-sm transition ${
+                                                                            item.review
+                                                                                ? item.review.status === 'perlu_revisi'
+                                                                                    ? 'border-amber-300 bg-amber-50 text-amber-600 hover:bg-amber-100 dark:border-amber-400/30 dark:bg-amber-500/15 dark:text-amber-300'
+                                                                                    : item.review.status === 'sudah_diperbaiki'
+                                                                                      ? 'border-sky/40 bg-pastel-sky text-sky hover:bg-sky/20 dark:border-sky/30 dark:bg-sky/15 dark:text-sky'
+                                                                                      : 'border-emerald-300 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 dark:border-emerald-400/30 dark:bg-emerald-500/15 dark:text-emerald-300'
+                                                                                : 'border-slate-200 bg-white text-brand-500 hover:bg-brand-50 dark:border-white/10 dark:bg-white/5 dark:text-brand-300 dark:hover:bg-white/10'
+                                                                        }`}
+                                                                        title={
+                                                                            item.review?.status === 'disetujui'
+                                                                                ? 'Disetujui Kepala Sekolah (Klik untuk detail)'
+                                                                                : item.review?.status === 'sudah_diperbaiki'
+                                                                                  ? isKepalaSekolah
+                                                                                      ? 'Perbaikan diajukan Bendahara — Klik untuk verifikasi'
+                                                                                      : 'Sedang diajukan ke Kepala Sekolah'
+                                                                                  : isKepalaSekolah
+                                                                                    ? 'Beri Telaah / Komentar Belanja'
+                                                                                    : 'Lihat Catatan Kepala Sekolah'
+                                                                        }
+                                                                    >
+                                                                        {item.review?.status === 'disetujui' ? (
+                                                                            <CheckCircle2 className="h-4 w-4" />
+                                                                        ) : item.review?.status === 'sudah_diperbaiki' ? (
+                                                                            <Clock className="h-3.5 w-3.5" />
+                                                                        ) : (
+                                                                            <MessageSquare className="h-3.5 w-3.5" />
+                                                                        )}
                                                                     </button>
-                                                                </Dropdown.Trigger>
-                                                                <Dropdown.Content contentClasses="p-1">
-                                                                    {!isBelanja && (
+                                                                )}
+                                                                <Dropdown>
+                                                                    <Dropdown.Trigger>
+                                                                        <button className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-400 shadow-sm transition hover:bg-slate-50 hover:text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-500 dark:hover:bg-white/10 dark:hover:text-white">
+                                                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2" />
+                                                                            </svg>
+                                                                        </button>
+                                                                    </Dropdown.Trigger>
+                                                                    <Dropdown.Content contentClasses="p-1">
+                                                                        {showReviewAction && (
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={(e) => {
+                                                                                    e.preventDefault();
+                                                                                    e.stopPropagation();
+                                                                                    handleOpenReview(item);
+                                                                                }}
+                                                                                className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-[11.5px] font-semibold text-slate-600 transition hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-white/5"
+                                                                            >
+                                                                                <MessageSquare className="h-4 w-4 text-brand-500" />
+                                                                                {isKepalaSekolah ? 'Telaah / Komentar' : 'Catatan Kepsek'}
+                                                                            </button>
+                                                                        )}
+                                                                        {!isKepalaSekolah && !isBelanja && (
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={(e) => {
+                                                                                    e.preventDefault();
+                                                                                    e.stopPropagation();
+                                                                                    handleEdit(item.id);
+                                                                                }}
+                                                                                className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-[11.5px] font-semibold text-slate-600 transition hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-white/5"
+                                                                            >
+                                                                                <svg className="w-4 h-4 text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                                                </svg>
+                                                                                Edit
+                                                                            </button>
+                                                                        )}
                                                                         <button
                                                                             type="button"
                                                                             onClick={(e) => {
                                                                                 e.preventDefault();
                                                                                 e.stopPropagation();
-                                                                                handleEdit(item.id);
+                                                                                handleDetail(item.id);
                                                                             }}
                                                                             className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-[11.5px] font-semibold text-slate-600 transition hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-white/5"
                                                                         >
-                                                                            <svg className="w-4 h-4 text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                                            <svg className="w-4 h-4 text-mint" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                                                             </svg>
-                                                                            Edit
+                                                                            Detail
                                                                         </button>
-                                                                    )}
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={(e) => {
-                                                                            e.preventDefault();
-                                                                            e.stopPropagation();
-                                                                            handleDetail(item.id);
-                                                                        }}
-                                                                        className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-[11.5px] font-semibold text-slate-600 transition hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-white/5"
-                                                                    >
-                                                                        <svg className="w-4 h-4 text-mint" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                                        </svg>
-                                                                        Detail
-                                                                    </button>
-                                                                    {!isBelanja && (
-                                                                        <Dropdown.Link as="button" href="#" onClick={(e) => {
-                                                                            e.preventDefault();
-                                                                            handleSisip(item.id);
-                                                                        }} className="flex w-full items-center gap-2 text-left">
-                                                                            <svg className="w-4 h-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                                                                            </svg>
-                                                                            Sisip Uraian
-                                                                        </Dropdown.Link>
-                                                                    )}
-                                                                </Dropdown.Content>
-                                                            </Dropdown>
+                                                                        {!isKepalaSekolah && !isBelanja && (
+                                                                            <Dropdown.Link as="button" href="#" onClick={(e) => {
+                                                                                e.preventDefault();
+                                                                                handleSisip(item.id);
+                                                                            }} className="flex w-full items-center gap-2 text-left">
+                                                                                <svg className="w-4 h-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                                                                </svg>
+                                                                                Sisip Uraian
+                                                                            </Dropdown.Link>
+                                                                        )}
+                                                                    </Dropdown.Content>
+                                                                </Dropdown>
+                                                            </div>
                                                         </td>
                                                     </tr>
                                                 );
@@ -1497,6 +1653,25 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                     </div>
                 </div>
             </Modal>
+
+            {/* Modal Telaah & Catatan Belanja */}
+            <RkasItemReviewModal
+                show={isReviewModalOpen}
+                onClose={() => setIsReviewModalOpen(false)}
+                item={reviewItem}
+                routePrefix={routePrefix}
+                isKepalaSekolah={isKepalaSekolah}
+                onSuccess={handleReviewSuccess}
+            />
+
+            {/* Modal Telaah Cerdas AI Eksekutif */}
+            <RkasAiReviewModal
+                show={isAiReviewOpen}
+                onClose={() => setIsAiReviewOpen(false)}
+                anggaranId={anggaran.id}
+                isPerubahan={true}
+                routePrefix={routePrefix}
+            />
         </AuthenticatedLayout>
     );
 }

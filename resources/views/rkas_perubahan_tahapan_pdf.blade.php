@@ -124,6 +124,7 @@
     </head>
 
     <body>
+        @include('partials.doc_kop_surat', ['docKey' => 'rkas_perubahan_rka_tahapan', 'sekolah' => $anggaran['sekolah'] ?? null])
         <div class="header">
             <h3 class="uppercase font-bold">KERTAS KERJA RENCANA KEGIATAN DAN ANGGARAN SEKOLAH (RKAS PERUBAHAN) PER TAHAP
             </h3>

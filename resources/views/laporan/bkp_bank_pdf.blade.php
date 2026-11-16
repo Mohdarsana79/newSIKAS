@@ -74,6 +74,7 @@
 </head>
 <body>
     @foreach($reportData as $index => $report)
+    @include('partials.doc_kop_surat', ['docKey' => 'bku_bkp_bank', 'sekolah' => $report['sekolah'] ?? null])
     <div class="header">
         BUKU KAS PEMBANTU BANK<br>
         BULAN : {{ strtoupper($report['bulan']) }} TAHUN : {{ $report['tahun'] }}

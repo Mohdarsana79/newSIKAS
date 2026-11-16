@@ -10,6 +10,7 @@ import TabAlurKas from './Partials/TabAlurKas';
 import TabRincianPencairan from '../Rkas/Partials/TabRincianPencairan';
 import TabRkaTahapanV1 from './Partials/TabRkaTahapanV1';
 import TabRkaTahapanV2 from './Partials/TabRkaTahapanV2';
+import DocKopSuratHeader from '@/Components/DocKopSuratHeader';
 
 interface SummaryProps extends Record<string, unknown> {
     anggaran: {
@@ -508,6 +509,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, taha
                                 </div>
 
                                 <div className="bg-white dark:bg-[#15131F] p-8 border border-slate-200 dark:border-white/10 shadow-sm rounded-lg print:border-none print:shadow-none">
+                                    <DocKopSuratHeader docKey="rkas_perubahan_rka_tahapan" sekolah={anggaran.sekolah} />
                                     {/* Report Header */}
                                     <div className="text-center mb-8">
                                         <h2 className="text-lg font-bold uppercase tracking-wider text-gray-900 dark:text-gray-100">KERTAS KERJA RKAS PERUBAHAN PER TAHAP</h2>
@@ -843,6 +845,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, taha
                                 </div>
 
                                 <div className="bg-white dark:bg-[#15131F] p-8 border border-slate-200 dark:border-white/10 shadow-sm rounded-lg">
+                                    <DocKopSuratHeader docKey="rkas_perubahan_rka_rekap" sekolah={anggaran.sekolah} />
                                     {/* Report Header */}
                                     <div className="text-center mb-8 font-bold text-gray-900 dark:text-gray-100 uppercase">
                                         <h2 className="text-lg">LEMBAR KERTAS KERJA</h2>
@@ -977,6 +980,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, taha
                                 </div>
 
                                 <div className="bg-white dark:bg-[#15131F] p-8 border border-slate-200 dark:border-white/10 shadow-sm rounded-lg print:border-none print:shadow-none">
+                                    <DocKopSuratHeader docKey="rkas_perubahan_lembar_kerja_221" sekolah={anggaran.sekolah} />
                                     {/* Report Header */}
                                     <div className="text-center mb-8">
                                         <h2 className="text-lg font-bold uppercase tracking-wider text-gray-900 dark:text-gray-100">Lembar Kertas Kerja</h2>
@@ -1126,6 +1130,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, taha
                                 </div>
 
                                 <div className="bg-white dark:bg-[#15131F] p-8 border border-slate-200 dark:border-white/10 shadow-sm rounded-lg print:border-none print:shadow-none">
+                                    <DocKopSuratHeader docKey="rkas_perubahan_rka_bulanan" sekolah={anggaran.sekolah} />
                                     {/* Report Header */}
                                     <div className="text-center mb-8">
                                         <h2 className="text-lg font-bold uppercase tracking-wider text-gray-900 dark:text-gray-100 underline decoration-1 underline-offset-4">RENCANA KERTAS KERJA PER BULAN {selectedMonth.toUpperCase()}</h2>
@@ -1380,6 +1385,8 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, taha
                                         </button>
                                     </div>
                                 </div>
+
+                                <DocKopSuratHeader docKey="rkas_perubahan_rincian" sekolah={anggaran.sekolah} />
 
                                 <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
                                     <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">

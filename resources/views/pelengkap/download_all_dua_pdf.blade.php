@@ -114,6 +114,8 @@
         $tahapRoman = $data['tahapRoman'] ?? 'THP-I';
         @endphp
 
+        @include('partials.doc_kop_surat', ['docKey' => 'pelengkap_kwitansi', 'sekolah' => $data['sekolah'] ?? ($sekolah ?? null)])
+
         <!-- Header Information -->
         <table class="header-table">
             <tr>
