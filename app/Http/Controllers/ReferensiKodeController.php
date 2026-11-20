@@ -4,10 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\KodeKegiatan;
 use App\Models\RekeningBelanja;
+use App\Services\ArkasEngineService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
-use Symfony\Component\Process\Process;
 
 class ReferensiKodeController extends Controller
 {
@@ -25,73 +24,11 @@ class ReferensiKodeController extends Controller
             return response()->json(['status' => 'error', 'message' => 'Tipe referensi tidak valid']);
         }
 
-        $pythonPath = storage_path('app/arkas_engine/python.exe');
-        $scriptPath = storage_path('app/arkas_engine/dump_reference.py');
-
-        if (! file_exists($pythonPath) || ! file_exists($scriptPath)) {
-            return response()->json(['status' => 'error', 'message' => 'Arkas Engine tidak ditemukan.']);
-        }
-
-        $env = $_SERVER;
-        unset($env['OPENSSL_CONF']);
-
-        $appdata = $env['APPDATA'] ?? null;
-        $userprofile = $env['USERPROFILE'] ?? null;
-
-        if (empty($appdata)) {
-            $appdata = trim(shell_exec("powershell -Command \"[Environment]::GetFolderPath('ApplicationData')\""));
-        }
-
-        if (empty($userprofile)) {
-            $userprofile = trim(shell_exec("powershell -Command \"[Environment]::GetFolderPath('UserProfile')\""));
-        }
-
-        if (empty($userprofile) && ! empty($appdata)) {
-            $userprofile = dirname(dirname($appdata));
-        }
-
-        if (empty($appdata) && ! empty($userprofile)) {
-            $appdata = $userprofile.'\\AppData\\Roaming';
-        }
-
-        $env['SystemRoot'] = $env['SystemRoot'] ?? 'C:\\Windows';
-        $env['SystemDrive'] = $env['SystemDrive'] ?? 'C:';
-        $env['USERPROFILE'] = $userprofile ?: ($env['USERPROFILE'] ?? 'C:\\Users\\Digitalisasi');
-        $env['APPDATA'] = $appdata ?: ($env['APPDATA'] ?? 'C:\\Users\\Digitalisasi\\AppData\\Roaming');
-        $env['LOCALAPPDATA'] = $env['LOCALAPPDATA'] ?? ($userprofile ? $userprofile.'\\AppData\\Local' : '');
-        $env['TEMP'] = $env['TEMP'] ?? ($userprofile ? $userprofile.'\\AppData\\Local\\Temp' : '');
-        $env['TMP'] = $env['TMP'] ?? $env['TEMP'];
-
-        // Pastikan path dasar Windows tersedia (Sangat Penting untuk Python & SQLCipher)
-        $env['SystemRoot'] = $env['SystemRoot'] ?? 'C:\\Windows';
-        $env['SystemDrive'] = $env['SystemDrive'] ?? 'C:';
-        $env['USERPROFILE'] = ! empty($userprofile) ? $userprofile : ($env['USERPROFILE'] ?? 'C:\\Users\\Digitalisasi');
-        $env['APPDATA'] = ! empty($appdata) ? $appdata : ($env['APPDATA'] ?? 'C:\\Users\\Digitalisasi\\AppData\\Roaming');
-        $env['LOCALAPPDATA'] = $env['LOCALAPPDATA'] ?? (empty($userprofile) ? '' : $userprofile.'\\AppData\\Local');
-        $env['TEMP'] = $env['TEMP'] ?? (empty($userprofile) ? '' : $userprofile.'\\AppData\\Local\\Temp');
-        $env['TMP'] = $env['TMP'] ?? $env['TEMP'];
-
-        Log::info('Arkas Referensi Fetch ENV Final', [
-            'APPDATA' => $env['APPDATA'],
-            'USERPROFILE' => $env['USERPROFILE'],
-            'SystemDrive' => $env['SystemDrive'],
-        ]);
-
-        $dbPathManual = env('ARKAS_DB_PATH', '');
-        $dbPathManual = trim($dbPathManual, '"\' ');
-        $dbPathManual = str_replace('\\', '/', $dbPathManual);
-
-        $process = new Process([$pythonPath, $scriptPath, $tipe, $year, $dbPathManual], null, $env);
-        // Bisa memakan waktu lebih lama karena data > 5000 baris
-        $process->setTimeout(60);
-        $process->run();
-
-        if (! $process->isSuccessful()) {
-            return response()->json(['status' => 'error', 'message' => 'Gagal mengeksekusi engine ARKAS. '.$process->getErrorOutput()]);
-        }
-
-        $output = $process->getOutput();
-        $result = json_decode($output, true);
+        $result = app(ArkasEngineService::class)->runScriptRaw(
+            'dump_reference.py',
+            [(string) $tipe, (string) $year],
+            60
+        );
 
         if (isset($result['error'])) {
             return response()->json(['status' => 'error', 'message' => $result['error']]);
@@ -182,64 +119,11 @@ class ReferensiKodeController extends Controller
             return response()->json(['status' => 'error', 'message' => 'Tipe referensi tidak valid']);
         }
 
-        $pythonPath = storage_path('app/arkas_engine/python.exe');
-        $scriptPath = storage_path('app/arkas_engine/dump_reference.py');
-
-        if (! file_exists($pythonPath) || ! file_exists($scriptPath)) {
-            return response()->json(['status' => 'error', 'message' => 'Arkas Engine tidak ditemukan.']);
-        }
-
-        $env = $_SERVER;
-        unset($env['OPENSSL_CONF']);
-
-        $appdata = $env['APPDATA'] ?? null;
-        $userprofile = $env['USERPROFILE'] ?? null;
-
-        if (empty($appdata)) {
-            $appdata = trim(shell_exec("powershell -Command \"[Environment]::GetFolderPath('ApplicationData')\""));
-        }
-
-        if (empty($userprofile)) {
-            $userprofile = trim(shell_exec("powershell -Command \"[Environment]::GetFolderPath('UserProfile')\""));
-        }
-
-        if (empty($userprofile) && ! empty($appdata)) {
-            $userprofile = dirname(dirname($appdata));
-        }
-
-        if (empty($appdata) && ! empty($userprofile)) {
-            $appdata = $userprofile.'\\AppData\\Roaming';
-        }
-
-        // Pastikan path dasar Windows tersedia (Sangat Penting untuk Python & SQLCipher)
-        $env['SystemRoot'] = $env['SystemRoot'] ?? 'C:\\Windows';
-        $env['SystemDrive'] = $env['SystemDrive'] ?? 'C:';
-        $env['USERPROFILE'] = ! empty($userprofile) ? $userprofile : ($env['USERPROFILE'] ?? 'C:\\Users\\Digitalisasi');
-        $env['APPDATA'] = ! empty($appdata) ? $appdata : ($env['APPDATA'] ?? 'C:\\Users\\Digitalisasi\\AppData\\Roaming');
-        $env['LOCALAPPDATA'] = $env['LOCALAPPDATA'] ?? (empty($userprofile) ? '' : $userprofile.'\\AppData\\Local');
-        $env['TEMP'] = $env['TEMP'] ?? (empty($userprofile) ? '' : $userprofile.'\\AppData\\Local\\Temp');
-        $env['TMP'] = $env['TMP'] ?? $env['TEMP'];
-
-        Log::info('Arkas Referensi Sync ENV Final', [
-            'APPDATA' => $env['APPDATA'],
-            'USERPROFILE' => $env['USERPROFILE'],
-            'SystemDrive' => $env['SystemDrive'],
-        ]);
-
-        $dbPathManual = env('ARKAS_DB_PATH', '');
-        $dbPathManual = trim($dbPathManual, '"\' ');
-        $dbPathManual = str_replace('\\', '/', $dbPathManual);
-
-        $process = new Process([$pythonPath, $scriptPath, $tipe, $year, $dbPathManual], null, $env);
-        $process->setTimeout(120);
-        $process->run();
-
-        if (! $process->isSuccessful()) {
-            return response()->json(['status' => 'error', 'message' => 'Gagal mengeksekusi engine ARKAS. '.$process->getErrorOutput()]);
-        }
-
-        $output = $process->getOutput();
-        $result = json_decode($output, true);
+        $result = app(ArkasEngineService::class)->runScriptRaw(
+            'dump_reference.py',
+            [(string) $tipe, (string) $year],
+            120
+        );
 
         if (isset($result['error'])) {
             return response()->json(['status' => 'error', 'message' => $result['error']]);

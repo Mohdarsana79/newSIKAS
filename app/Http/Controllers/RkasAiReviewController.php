@@ -41,8 +41,10 @@ class RkasAiReviewController extends Controller
 
         $apiKey = $user->deepseek_api_key;
         if (empty($apiKey)) {
-            $bendaharaKey = User::whereNotNull('deepseek_api_key')->value('deepseek_api_key');
-            $apiKey = $bendaharaKey ?: env('DEEPSEEK_API_KEY');
+            $bendaharaKey = User::query()
+                ->whereNotNull('deepseek_api_key')
+                ->value('deepseek_api_key');
+            $apiKey = $bendaharaKey ?: config('services.deepseek.api_key');
         }
 
         if (empty($apiKey)) {

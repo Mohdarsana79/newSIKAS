@@ -11,7 +11,7 @@ class DeepSeekService
 
     public function __construct(?string $baseUrl = null)
     {
-        $this->baseUrl = rtrim($baseUrl ?: env('DEEPSEEK_BASE_URL', 'https://api.deepseek.com'), '/');
+        $this->baseUrl = rtrim($baseUrl ?: (string) config('services.deepseek.base_url', 'https://api.deepseek.com'), '/');
     }
 
     /**

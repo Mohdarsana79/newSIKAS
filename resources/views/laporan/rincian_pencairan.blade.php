@@ -192,7 +192,8 @@
                                             if($jumlahAnggaran > 0) {
                                                 $currentUraianGabungan = $tahap == 1 ? ($item['uraian_gabungan_t1'] ?? null) : ($item['uraian_gabungan_t2'] ?? null);
                                                 $displayUraian = !empty($currentUraianGabungan) ? $currentUraianGabungan : $item['uraian'];
-                                                $key = $item['kode_rekening_id'] . '-' . $displayUraian;
+                                                $groupIdentityUraian = !empty($currentUraianGabungan) ? $currentUraianGabungan : ($item['uraian_sikas'] ?? $item['uraian']);
+                                                $key = $item['kode_rekening_id'] . '-' . $groupIdentityUraian;
                                                 
                                                 if (!isset($groupedItems[$key])) {
                                                     $groupedItems[$key] = $item;

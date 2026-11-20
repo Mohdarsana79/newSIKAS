@@ -1,23 +1,35 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import IconTile from '@/Components/ui/IconTile';
+import PageHeader from '@/Components/ui/PageHeader';
+import StatusBadge from '@/Components/ui/StatusBadge';
 import { PageProps } from '@/types';
-import { Head, usePage } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
+import { ShieldCheck } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import DeepSeekApiForm from './Partials/DeepSeekApiForm';
+import ProfileHeroCard from './Partials/ProfileHeroCard';
 import SecurityCodeForm from './Partials/SecurityCodeForm';
 import UpdatePasswordForm from './Partials/UpdatePasswordForm';
 import UpdateProfileInformationForm from './Partials/UpdateProfileInformationForm';
-import UserManagementForm from './Partials/UserManagementForm';
-import { ShieldCheck } from 'lucide-react';
-import PageHeader from '@/Components/ui/PageHeader';
-import Surface from '@/Components/ui/Surface';
-import IconTile from '@/Components/ui/IconTile';
-import StatusBadge from '@/Components/ui/StatusBadge';
 
 export default function Edit({
+    auth,
+    sekolah,
     mustVerifyEmail,
     status,
-}: PageProps<{ mustVerifyEmail: boolean; status?: string }>) {
-    const { auth } = usePage().props as any;
-    const isKepalaSekolah = Boolean(auth?.user?.is_kepala_sekolah || auth?.user?.role === 'kepala_sekolah');
+    hasDeepSeekKey = false,
+}: PageProps<{
+    mustVerifyEmail: boolean;
+    status?: string;
+    hasDeepSeekKey?: boolean;
+}>) {
+    const [securityEnabled, setSecurityEnabled] = useState(
+        Boolean(auth.user.is_security_code_enabled),
+    );
+
+    useEffect(() => {
+        setSecurityEnabled(Boolean(auth.user.is_security_code_enabled));
+    }, [auth.user.is_security_code_enabled]);
 
     return (
         <AuthenticatedLayout>
@@ -42,45 +54,55 @@ export default function Edit({
                             Akun
                         </StatusBadge>
                     }
-                    subtitle="Kelola biodata, kata sandi, manajemen akun Kepala Sekolah, konfigurasi AI, dan keamanan akun Anda di satu tempat."
+                    subtitle="Kelola biodata, kata sandi, konfigurasi AI DeepSeek, dan keamanan akun pribadi Anda di satu tempat."
                 />
 
-                <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-                    <div className="animate-rise" style={{ animationDelay: '60ms' }}>
-                        <Surface padding="md">
-                            <UpdateProfileInformationForm
-                                mustVerifyEmail={mustVerifyEmail}
-                                status={status}
-                                className="max-w-xl"
-                            />
-                        </Surface>
+                {/* Baris 1: Hero Identitas Pengguna + 3 Status Ringkas */}
+                <div className="animate-rise" style={{ animationDelay: '40ms' }}>
+                    <ProfileHeroCard
+                        user={auth.user}
+                        sekolah={sekolah}
+                        hasDeepSeekKey={Boolean(hasDeepSeekKey)}
+                        isSecurityCodeEnabled={securityEnabled}
+                        mustVerifyEmail={mustVerifyEmail}
+                    />
+                </div>
+
+                {/* Baris 2: Bento Grid Asimetris 7:5 — Biodata & Kata Sandi */}
+                <div className="grid grid-cols-1 items-stretch gap-4 xl:grid-cols-12">
+                    <div
+                        className="animate-rise xl:col-span-7"
+                        style={{ animationDelay: '90ms' }}
+                    >
+                        <UpdateProfileInformationForm
+                            mustVerifyEmail={mustVerifyEmail}
+                            status={status}
+                        />
                     </div>
 
-                    <div className="animate-rise" style={{ animationDelay: '110ms' }}>
-                        <Surface padding="md">
-                            <UpdatePasswordForm className="max-w-xl" />
-                        </Surface>
+                    <div
+                        className="animate-rise xl:col-span-5"
+                        style={{ animationDelay: '130ms' }}
+                    >
+                        <UpdatePasswordForm />
                     </div>
                 </div>
 
-                {!isKepalaSekolah && (
-                    <div className="animate-rise" style={{ animationDelay: '140ms' }}>
-                        <Surface padding="md">
-                            <UserManagementForm />
-                        </Surface>
+                {/* Baris 3: Bento Grid Asimetris 7:5 — Konfigurasi AI DeepSeek & Keamanan Akun */}
+                <div className="grid grid-cols-1 items-stretch gap-4 xl:grid-cols-12">
+                    <div
+                        className="animate-rise xl:col-span-7"
+                        style={{ animationDelay: '170ms' }}
+                    >
+                        <DeepSeekApiForm />
                     </div>
-                )}
 
-                <div className="animate-rise" style={{ animationDelay: '180ms' }}>
-                    <Surface padding="md">
-                        <DeepSeekApiForm className="max-w-4xl" />
-                    </Surface>
-                </div>
-
-                <div className="animate-rise" style={{ animationDelay: '220ms' }}>
-                    <Surface padding="md">
-                        <SecurityCodeForm className="max-w-3xl" />
-                    </Surface>
+                    <div
+                        className="animate-rise xl:col-span-5"
+                        style={{ animationDelay: '210ms' }}
+                    >
+                        <SecurityCodeForm onStatusChange={setSecurityEnabled} />
+                    </div>
                 </div>
             </div>
         </AuthenticatedLayout>

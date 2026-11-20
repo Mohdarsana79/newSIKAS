@@ -158,6 +158,43 @@ export default function Bku({
         ntpn: '',
     });
 
+    // Toggle Lihat Uraian Arkas / SIKAS
+    const [showArkasUraian, setShowArkasUraian] = useState(false);
+
+    const getDisplayBkuIdTransaksi = (item: any): string => {
+        if (showArkasUraian && typeof item?.id_transaksi_arkas === 'string' && item.id_transaksi_arkas.trim() !== '') {
+            return item.id_transaksi_arkas.trim();
+        }
+        return item?.id_transaksi || '-';
+    };
+
+    const getDisplayBkuUraian = (item: any): string => {
+        if (showArkasUraian) {
+            const rekeningNama = typeof item?.rekening_belanja?.rincian_objek === 'string'
+                ? item.rekening_belanja.rincian_objek.trim()
+                : '';
+            if (rekeningNama !== '') {
+                return rekeningNama;
+            }
+            if (typeof item?.uraian_arkas === 'string' && item.uraian_arkas.trim() !== '') {
+                return item.uraian_arkas.trim();
+            }
+        }
+        return item?.uraian_opsional || item?.uraian || '-';
+    };
+
+    const getDisplayRkasItemUraian = (item: any): { primary: string; secondary: string | null } => {
+        const sikasUraian = typeof item?.uraian === 'string' ? item.uraian.trim() : '';
+        const arkasUraian = typeof item?.uraian_arkas === 'string' ? item.uraian_arkas.trim() : '';
+        if (showArkasUraian && arkasUraian !== '') {
+            return {
+                primary: arkasUraian,
+                secondary: sikasUraian !== '' && sikasUraian.toLowerCase() !== arkasUraian.toLowerCase() ? sikasUraian : null,
+            };
+        }
+        return { primary: sikasUraian || arkasUraian || '-', secondary: null };
+    };
+
     // ARKAS BKU Monthly Pull State
     const [isArkasMonthlyModalOpen, setIsArkasMonthlyModalOpen] = useState(false);
     const [arkasMonthlyLoading, setArkasMonthlyLoading] = useState(false);
@@ -351,22 +388,70 @@ export default function Bku({
         }
     }, [selectedActivityId, selectedAccountId, tahun, bulan, isEditMode, editingBkuId]);
 
-    // When fetchedRkasItems updates during edit mode, sync sisa_volume_limit
+    // When fetchedRkasItems updates during edit mode, consolidate multi-month details into their group ID,
+    // sync sisa_volume_limit, and enrich uraian_arkas
     useEffect(() => {
         if (isEditMode && fetchedRkasItems.length > 0 && data.items.length > 0) {
-            const updatedItems = data.items.map((item: any) => {
-                const matchingRkas = fetchedRkasItems.find((r: any) => Number(r.id) === Number(item.rkas_id));
+            const consolidated: any[] = [];
+            const groupedIndexByRkasId = new Map<number, number>();
+
+            data.items.forEach((item: any) => {
+                const itemIdNum = Number(item.rkas_id) || 0;
+                const matchingRkas = itemIdNum > 0
+                    ? fetchedRkasItems.find((r: any) => {
+                        if (Number(r.id) === itemIdNum) return true;
+                        return Array.isArray(r.rkas_ids) && r.rkas_ids.some((rid: any) => Number(rid) === itemIdNum);
+                    })
+                    : undefined;
+
                 if (matchingRkas) {
-                    return {
+                    const canonicalId = Number(matchingRkas.id);
+                    const resolvedArkasUraian =
+                        (typeof matchingRkas.uraian_arkas === 'string' && matchingRkas.uraian_arkas.trim() !== ''
+                            ? matchingRkas.uraian_arkas.trim()
+                            : '') ||
+                        (typeof item.uraian_arkas === 'string' ? item.uraian_arkas : '');
+
+                    if (groupedIndexByRkasId.has(canonicalId)) {
+                        const existingIdx = groupedIndexByRkasId.get(canonicalId)!;
+                        const existing = consolidated[existingIdx];
+                        const mergedVolume = Number(existing.volume || 0) + Number(item.volume || 0);
+                        consolidated[existingIdx] = {
+                            ...existing,
+                            volume: mergedVolume,
+                            total: mergedVolume * Number(existing.harga_satuan || matchingRkas.harga_satuan || 0),
+                            sisa_volume_limit: Number(matchingRkas.sisa_volume || 0),
+                            uraian_arkas: resolvedArkasUraian || existing.uraian_arkas || '',
+                        };
+                    } else {
+                        groupedIndexByRkasId.set(canonicalId, consolidated.length);
+                        consolidated.push({
+                            ...item,
+                            rkas_id: canonicalId,
+                            sisa_volume_limit: Number(matchingRkas.sisa_volume || 0),
+                            uraian_arkas: resolvedArkasUraian,
+                        });
+                    }
+                } else {
+                    consolidated.push({
                         ...item,
-                        sisa_volume_limit: Number(matchingRkas.sisa_volume || 0)
-                    };
+                        rkas_id: itemIdNum,
+                    });
                 }
-                return item;
             });
-            const isDifferent = updatedItems.some((item, idx) => item.sisa_volume_limit !== data.items[idx]?.sisa_volume_limit);
+
+            const isDifferent =
+                consolidated.length !== data.items.length ||
+                consolidated.some(
+                    (item, idx) =>
+                        (Number(item.rkas_id) || 0) !== (Number(data.items[idx]?.rkas_id) || 0) ||
+                        (Number(item.volume) || 0) !== (Number(data.items[idx]?.volume) || 0) ||
+                        (Number(item.sisa_volume_limit) || 0) !== (Number(data.items[idx]?.sisa_volume_limit) || 0) ||
+                        String(item.uraian_arkas || '') !== String(data.items[idx]?.uraian_arkas || ''),
+                );
+
             if (isDifferent) {
-                setData('items', updatedItems);
+                setData('items', consolidated);
             }
         }
     }, [fetchedRkasItems, isEditMode]);
@@ -404,6 +489,7 @@ export default function Bku({
             newItems.push({
                 rkas_id: rkasItem.id,
                 uraian: rkasItem.uraian,
+                uraian_arkas: rkasItem.uraian_arkas || '',
                 volume: rkasItem.sisa_volume || 0,
                 sisa_volume_limit: rkasItem.sisa_volume || 0,
                 satuan: rkasItem.satuan,
@@ -414,14 +500,14 @@ export default function Bku({
             });
         } else {
             // Remove item
-            newItems = newItems.filter(i => i.rkas_id !== rkasItem.id);
+            newItems = newItems.filter(i => Number(i.rkas_id) !== Number(rkasItem.id));
         }
         setData('items', newItems);
     };
 
     const handleSelectAll = (isChecked: boolean) => {
         let newItems = [...data.items];
-        const visibleIds = availableRkasItems.map(item => item.id);
+        const visibleIds = availableRkasItems.map(item => Number(item.id));
 
         if (isChecked) {
             availableRkasItems.forEach(item => {
@@ -429,6 +515,7 @@ export default function Bku({
                     newItems.push({
                         rkas_id: item.id,
                         uraian: item.uraian,
+                        uraian_arkas: item.uraian_arkas || '',
                         volume: item.sisa_volume || 0,
                         sisa_volume_limit: item.sisa_volume || 0,
                         satuan: item.satuan,
@@ -440,7 +527,7 @@ export default function Bku({
                 }
             });
         } else {
-            newItems = newItems.filter(i => !visibleIds.includes(i.rkas_id));
+            newItems = newItems.filter(i => !visibleIds.includes(Number(i.rkas_id)));
         }
         setData('items', newItems);
     };
@@ -1073,6 +1160,7 @@ export default function Bku({
                 return {
                     id: item.rkas_id,
                     uraian_text: item.uraian,
+                    uraian_arkas: item.uraian_arkas || null,
                     satuan: item.satuan,
                     jumlah_belanja: item.total,
                     volume: item.volume,
@@ -1297,14 +1385,22 @@ export default function Bku({
         }
 
         // Regular BKU
+        const details = item.uraian_details || item.uraianDetails || [];
         return safeString(item.id_transaksi).includes(lowerQuery) ||
+            safeString(item.id_transaksi_arkas).includes(lowerQuery) ||
+            safeString(item.nomor_nota).includes(lowerQuery) ||
+            safeString(item.nomor_nota_arkas).includes(lowerQuery) ||
             safeString(item.tanggal_transaksi).includes(lowerQuery) ||
             safeString(item.kode_kegiatan?.sub_program).includes(lowerQuery) ||
+            safeString(item.uraian).includes(lowerQuery) ||
             safeString(item.uraian_opsional).includes(lowerQuery) ||
+            safeString(item.uraian_arkas).includes(lowerQuery) ||
             safeString(item.rekening_belanja?.rincian_objek).includes(lowerQuery) ||
             safeString(item.jenis_transaksi).includes(lowerQuery) ||
             safeString(item.total_transaksi_kotor).includes(lowerQuery) ||
-            safeString(item.nama_toko).includes(lowerQuery);
+            safeString(item.nama_toko).includes(lowerQuery) ||
+            safeString(item.nama_penerima_pembayaran).includes(lowerQuery) ||
+            details.some((d: any) => safeString(d.uraian).includes(lowerQuery) || safeString(d.uraian_arkas).includes(lowerQuery));
     });
 
     const handleEditClick = (item: any) => {
@@ -1318,8 +1414,9 @@ export default function Bku({
         setDetailUraian(item.uraian_opsional || '');
 
         const mappedItems = details.map((d: any) => ({
-            rkas_id: Number(d.rkas_id || d.rkas_perubahan_id || d.kinerja_rkas_id || d.kinerja_rkas_perubahan_id || d.silpa_rkas_id || d.kinerja_silpa_rkas_id),
+            rkas_id: Number(d.rkas_id || d.rkas_perubahan_id || d.kinerja_rkas_id || d.kinerja_rkas_perubahan_id || d.silpa_rkas_id || d.kinerja_silpa_rkas_id || 0) || 0,
             uraian: d.uraian,
+            uraian_arkas: d.uraian_arkas || '',
             volume: Number(d.volume || 0),
             sisa_volume_limit: Number(d.volume || 0),
             satuan: d.satuan || '',
@@ -1941,7 +2038,14 @@ export default function Bku({
                         {selectedAccountId && (
                             <div className="border-t border-slate-100 pt-5 dark:border-white/5">
                                 <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                                    <h4 className="text-[12.5px] font-extrabold text-slate-900 dark:text-white">Uraian</h4>
+                                    <div className="flex items-center gap-2">
+                                        <h4 className="text-[12.5px] font-extrabold text-slate-900 dark:text-white">Uraian</h4>
+                                        {showArkasUraian && (
+                                            <span className="inline-flex items-center rounded-full bg-lime-400/20 px-2.5 py-0.5 text-[10px] font-extrabold text-lime-800 dark:bg-lime-400/15 dark:text-lime-300">
+                                                Mode Uraian Arkas
+                                            </span>
+                                        )}
+                                    </div>
                                     <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200/80 bg-slate-50 px-3 py-1.5 dark:border-white/10 dark:bg-white/5">
                                         <input
                                             type="checkbox"
@@ -1958,7 +2062,9 @@ export default function Bku({
                                 </p>
 
                                 <div className="space-y-3">
-                                    {availableRkasItems.map((item: any) => (
+                                    {availableRkasItems.map((item: any) => {
+                                        const displayUraian = getDisplayRkasItemUraian(item);
+                                        return (
                                         <div
                                             key={item.id}
                                             className={`rounded-2xl border p-4 transition-colors ${
@@ -1974,7 +2080,14 @@ export default function Bku({
                                                     onChange={(e) => handleItemSelection(item, e.target.checked)}
                                                     className="mt-0.5 h-4 w-4 rounded border-slate-300 text-brand-600 shadow-sm focus:ring-lime-200/60 dark:border-white/20 dark:bg-white/5"
                                                 />
-                                                <span className="text-[12px] font-bold text-slate-800 dark:text-white">{item.uraian}</span>
+                                                <div className="min-w-0 flex-1">
+                                                    <span className="block text-[12px] font-bold text-slate-800 dark:text-white">{displayUraian.primary}</span>
+                                                    {displayUraian.secondary && (
+                                                        <span className="mt-0.5 block text-[10.5px] font-medium text-slate-500 dark:text-slate-400">
+                                                            SIKAS: {displayUraian.secondary}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </div>
 
                                             {isSelected(item.id) && (
@@ -2022,7 +2135,8 @@ export default function Bku({
                                                 </div>
                                             )}
                                         </div>
-                                    ))}
+                                        );
+                                    })}
 
                                     {availableRkasItems.length === 0 && (
                                         <p className="py-4 text-center text-[11.5px] font-medium italic text-slate-400 dark:text-slate-500">Tidak ada uraian tersedia untuk rekening ini.</p>
@@ -2093,10 +2207,19 @@ export default function Bku({
                                     Uraian yang dipilih
                                 </div>
                                 <div className="space-y-2.5">
-                                    {group.items.map((item: any, i: number) => (
+                                    {group.items.map((item: any, i: number) => {
+                                        const displayUraian = getDisplayRkasItemUraian(item);
+                                        return (
                                         <div key={i} className="rounded-xl border border-slate-100 bg-slate-50/70 px-3.5 py-2.5 dark:border-white/5 dark:bg-white/[0.03]">
                                             <div className="flex items-start justify-between gap-3">
-                                                <div className="text-[12px] font-bold text-slate-800 dark:text-white">{item.uraian}</div>
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="text-[12px] font-bold text-slate-800 dark:text-white">{displayUraian.primary}</div>
+                                                    {displayUraian.secondary && (
+                                                        <div className="mt-0.5 text-[10px] font-medium text-slate-500 dark:text-slate-400">
+                                                            SIKAS: {displayUraian.secondary}
+                                                        </div>
+                                                    )}
+                                                </div>
                                                 <span className="text-sikas-num shrink-0 text-[12px] font-extrabold text-slate-900 dark:text-white">
                                                     {formatCurrency(item.total)}
                                                 </span>
@@ -2105,7 +2228,8 @@ export default function Bku({
                                                 Jumlah: <span className="text-sikas-num font-semibold text-slate-600 dark:text-slate-300">{item.volume}</span> • Harga: <span className="text-sikas-num font-semibold text-slate-600 dark:text-slate-300">{formatCurrency(item.harga_satuan)}</span>
                                             </div>
                                         </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                                 <div className="mt-3.5 flex items-center justify-end gap-2 border-t border-slate-100 pt-3 dark:border-white/5">
                                     <span className="text-[11.5px] font-bold text-slate-500 dark:text-slate-400">Total Transaksi Kotor:</span>
@@ -2388,6 +2512,20 @@ export default function Bku({
                                     Hapus BKU
                                 </button>
                             )}
+                            <button
+                                type="button"
+                                onClick={() => setShowArkasUraian((prev) => !prev)}
+                                className={`inline-flex items-center gap-2 rounded-2xl border px-4 py-2.5 text-[11.5px] font-bold shadow-sm transition-all duration-200 hover:-translate-y-0.5 ${
+                                    showArkasUraian
+                                        ? 'border-lime-400 bg-lime-400 text-slate-950 shadow-lime'
+                                        : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10'
+                                }`}
+                            >
+                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                                </svg>
+                                {showArkasUraian ? 'Lihat Uraian SIKAS' : 'Lihat Uraian Arkas'}
+                            </button>
                             {!is_closed && (
                                 <button
                                     onClick={handleOpenArkasMonthlyModal}
@@ -2522,27 +2660,28 @@ export default function Bku({
                         </div>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                        <div className="animate-rise relative overflow-hidden rounded-[26px] border border-sky/10 bg-pastel-sky/40 p-5 dark:border-sky/20 dark:bg-sky/[0.06]">
-                            <h3 className="mb-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">TOTAL DANA TERSEDIA</h3>
-                            <div className="mb-5 text-sikas-num text-[24px] font-extrabold tracking-tight text-slate-900 dark:text-white">{formatCurrency(totalDanaTersedia - totalDibelanjakanBulanIni)}</div>
-
-                            <div className="absolute right-5 top-5 flex items-center gap-1.5 text-[10.5px] font-bold text-sky-700 dark:text-sky-300">
-                                <button
-                                    onClick={() => setIsTarikTunaiOpen(true)}
-                                    className="rounded-xl bg-white/70 px-2.5 py-1 shadow-sm transition hover:bg-white dark:bg-white/10 dark:hover:bg-white/15"
-                                >
-                                    Tarik Tunai
-                                </button>
-                                <button
-                                    onClick={() => setIsSetorTunaiOpen(true)}
-                                    className="rounded-xl bg-white/70 px-2.5 py-1 shadow-sm transition hover:bg-white dark:bg-white/10 dark:hover:bg-white/15"
-                                >
-                                    Setor Tunai
-                                </button>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-5">
+                        <div className="animate-rise relative overflow-hidden rounded-[22px] sm:rounded-[26px] border border-sky/10 bg-pastel-sky/40 p-4 sm:p-5 dark:border-sky/20 dark:bg-sky/[0.06]">
+                            <div className="flex flex-wrap items-start justify-between gap-2 mb-1.5">
+                                <h3 className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">TOTAL DANA TERSEDIA</h3>
+                                <div className="flex flex-wrap items-center gap-1.5 text-[10.5px] font-bold text-sky-700 dark:text-sky-300">
+                                    <button
+                                        onClick={() => setIsTarikTunaiOpen(true)}
+                                        className="rounded-xl bg-white/70 px-2.5 py-1 shadow-sm transition hover:bg-white dark:bg-white/10 dark:hover:bg-white/15"
+                                    >
+                                        Tarik Tunai
+                                    </button>
+                                    <button
+                                        onClick={() => setIsSetorTunaiOpen(true)}
+                                        className="rounded-xl bg-white/70 px-2.5 py-1 shadow-sm transition hover:bg-white dark:bg-white/10 dark:hover:bg-white/15"
+                                    >
+                                        Setor Tunai
+                                    </button>
+                                </div>
                             </div>
+                            <div className="mb-4 text-sikas-num text-xl sm:text-[22px] font-extrabold tracking-tight text-slate-900 dark:text-white">{formatCurrency(totalDanaTersedia - totalDibelanjakanBulanIni)}</div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div className="flex items-center justify-between rounded-xl border border-sky/15 bg-white px-3 py-2 dark:border-sky/20 dark:bg-white/5">
                                     <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">Nontunai</span>
                                     <span className="text-sikas-num text-[11.5px] font-extrabold text-sky-700 dark:text-sky-300">{formatCurrency(saldoNonTunai)}</span>
@@ -2554,9 +2693,9 @@ export default function Bku({
                             </div>
                         </div>
 
-                        <div className="sikas-card p-5">
-                            <h3 className="mb-5 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">Anggaran Dibelanjakan Sampai Bulan Ini</h3>
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div className="sikas-card p-4 sm:p-5">
+                            <h3 className="mb-3.5 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">Anggaran Dibelanjakan Sampai Bulan Ini</h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                 <div>
                                     <div className="flex items-center gap-1 mb-2">
                                         <span className="text-[10.5px] font-semibold text-slate-500 dark:text-slate-400">Bisa Dibelanjakan</span>
@@ -2602,21 +2741,21 @@ export default function Bku({
                             </IconTile>
                         }
                         actions={<StatusBadge tone="info" dot={false} className="text-sikas-num">{filteredTransactions?.length || 0}</StatusBadge>}
-                        contentClassName="mx-4 mb-4"
+                        contentClassName="mx-3 mb-3 sm:mx-4 sm:mb-4"
                     >
-                        <div className="overflow-x-auto overflow-y-auto max-h-[60vh] pb-32">
-                            <table className="w-full text-[10pt] text-left">
-                            <thead className="bg-slate-50 dark:bg-white/5 border-b border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 font-semibold uppercase text-[10pt] sticky top-0 z-10">
+                        <div className="overflow-x-auto overflow-y-auto max-h-[60vh] pb-12">
+                            <table className="w-full text-xs text-left">
+                            <thead className="bg-slate-50 dark:bg-white/5 border-b border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 font-semibold uppercase text-[11px] sticky top-0 z-10">
                                 <tr>
-                                    <th className="px-6 py-4">ID</th>
-                                    <th className="px-6 py-4">Tanggal</th>
-                                    <th className="px-6 py-4">Kegiatan</th>
-                                    <th className="px-6 py-4">Rekening Belanja</th>
-                                    <th className="px-6 py-4">Jenis Transaksi</th>
-                                    <th className="px-6 py-4">Anggaran</th>
-                                    <th className="px-6 py-4">Dibelanjakan</th>
-                                    <th className="px-6 py-4">Pajak Wajib Lapor</th>
-                                    <th className="px-6 py-4">Aksi</th>
+                                    <th className="px-3 py-3">ID</th>
+                                    <th className="px-3 py-3">Tanggal</th>
+                                    <th className="px-3 py-3">Kegiatan</th>
+                                    <th className="px-3 py-3">Rekening Belanja</th>
+                                    <th className="px-3 py-3">Jenis Transaksi</th>
+                                    <th className="px-3 py-3">Anggaran</th>
+                                    <th className="px-3 py-3">Dibelanjakan</th>
+                                    <th className="px-3 py-3">Pajak Wajib Lapor</th>
+                                    <th className="px-3 py-3">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-200 dark:divide-white/5">
@@ -2736,10 +2875,10 @@ export default function Bku({
                                         } else {
                                             return (
                                                 <tr key={`bku-${item.id}`} className="bg-white dark:bg-[#15131F] hover:bg-slate-50 dark:hover:bg-white/10">
-                                                    <td className="px-6 py-4">{item.id_transaksi || '-'}</td>
+                                                    <td className="px-6 py-4">{getDisplayBkuIdTransaksi(item)}</td>
                                                     <td className="px-6 py-4">{format(new Date(item.tanggal_transaksi), 'dd/MM/yyyy')}</td>
                                                     <td className="px-6 py-4">{item.kode_kegiatan?.sub_program || '-'}</td>
-                                                    <td className="px-6 py-4">{item.uraian_opsional || item.uraian || '-'}</td>
+                                                    <td className="px-6 py-4">{getDisplayBkuUraian(item)}</td>
                                                     <td className="px-6 py-4 capitalize">{item.jenis_transaksi}</td>
                                                     <td className="px-6 py-4 text-right text-sikas-num font-semibold text-mint dark:text-mint">
                                                         {formatCurrency(item.total_transaksi_kotor)}
@@ -3276,6 +3415,7 @@ export default function Bku({
                 onClose={() => setIsDetailModalOpen(false)}
                 item={selectedDetailItem}
                 formatCurrency={formatCurrency}
+                showArkasUraian={showArkasUraian}
             />
 
             {/* Modal Informasi Tarif Pajak PPh 21 — Custom overlay (bukan HeadlessUI Dialog) agar tidak ikut menutup modal induk */}
@@ -3438,29 +3578,18 @@ export default function Bku({
                                     </div>
                                 )}
 
-                                {/* Warning & Konfirmasi Overwrite jika sudah ada data BKU bulan ini */}
+                                {/* Info Mode Sinkronisasi Aman jika sudah ada data BKU bulan ini */}
                                 {arkasMonthlyData.has_existing_data && (
-                                    <div className="p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl space-y-3">
+                                    <div className="p-4 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-xl space-y-2">
                                         <div className="flex items-start gap-3">
-                                            <svg className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                            <svg className="w-5 h-5 text-emerald-600 dark:text-emerald-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                             </svg>
-                                            <div className="text-sm text-amber-800 dark:text-amber-300">
-                                                <span className="font-bold block mb-0.5">Konfirmasi Timpa Ulang (Overwrite)</span>
-                                                Di newSIKAS saat ini sudah tercatat <strong>{arkasMonthlyData.existing_counts.total} transaksi BKU</strong> pada bulan {bulan} {tahun}. Melanjutkan penarikan akan <strong>menghapus data transaksi bulan {bulan} ini</strong> dan menggantikannya dengan data resmi dari ARKAS.
+                                            <div className="text-sm text-emerald-800 dark:text-emerald-200">
+                                                <span className="font-bold block mb-0.5">Mode Penyandingan Aman (Data SIKAS Terlindungi)</span>
+                                                Di newSIKAS saat ini sudah tercatat <strong>{arkasMonthlyData.existing_counts.total} transaksi BKU</strong> pada bulan {bulan} {tahun}. Penarikan ini <strong>TIDAK akan menghapus atau menimpa</strong> ID Transaksi, Nomor Nota, maupun Uraian BKU SIKAS Anda, melainkan hanya menyandingkan ID/Nota/Uraian ARKAS agar dapat dilihat melalui tombol <strong>Lihat Uraian Arkas</strong>.
                                             </div>
                                         </div>
-                                        <label className="flex items-center gap-2.5 pt-2 border-t border-amber-200/80 dark:border-amber-800/80 cursor-pointer">
-                                            <input
-                                                type="checkbox"
-                                                checked={isMonthlyOverwriteChecked}
-                                                onChange={(e) => setIsMonthlyOverwriteChecked(e.target.checked)}
-                                                className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500"
-                                            />
-                                            <span className="text-xs font-semibold text-amber-900 dark:text-amber-200">
-                                                Saya memahami dan menyetujui untuk menimpa ulang data BKU bulan {bulan} {tahun}.
-                                            </span>
-                                        </label>
                                     </div>
                                 )}
                             </div>
@@ -3486,9 +3615,9 @@ export default function Bku({
                             {arkasMonthlyData?.exists && arkasMonthlyData?.has_rkas && (
                                 <button
                                     onClick={handleExecutePullArkasMonthly}
-                                    disabled={pullingMonthlyBku || (arkasMonthlyData.has_existing_data && !isMonthlyOverwriteChecked)}
+                                    disabled={pullingMonthlyBku}
                                     className={`inline-flex items-center px-5 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider text-white shadow-sm transition-all duration-150 ${
-                                        pullingMonthlyBku || (arkasMonthlyData.has_existing_data && !isMonthlyOverwriteChecked)
+                                        pullingMonthlyBku
                                             ? 'bg-slate-400 dark:bg-white/10 cursor-not-allowed opacity-60'
                                             : 'bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2'
                                     }`}
@@ -3503,7 +3632,7 @@ export default function Bku({
                                             <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                                             </svg>
-                                            {arkasMonthlyData.has_existing_data ? 'Tarik & Timpa Ulang BKU' : 'Tarik BKU Sekarang'}
+                                            {arkasMonthlyData.has_existing_data ? 'Sandingkan BKU ARKAS' : 'Tarik BKU Sekarang'}
                                         </>
                                     )}
                                 </button>

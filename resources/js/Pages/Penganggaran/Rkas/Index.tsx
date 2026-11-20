@@ -4,7 +4,7 @@ import DangerButton from '@/Components/DangerButton';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import { PageProps } from '@/types';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Modal from '@/Components/Modal';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
@@ -20,7 +20,11 @@ import Surface from '@/Components/ui/Surface';
 import RkasApprovalBanner from '@/Components/Rkas/RkasApprovalBanner';
 import RkasItemReviewModal, { RkasItemReviewData } from '@/Components/Rkas/RkasItemReviewModal';
 import RkasAiReviewModal from '@/Components/Rkas/RkasAiReviewModal';
-import { AlertTriangle, ArrowLeft, Brain, CheckCircle2, Clock, MessageSquare } from 'lucide-react';
+import ArkasUraianSelect, { ArkasCatalogItem } from '@/Components/Rkas/ArkasUraianSelect';
+import ArkasAwalPreviewModal from '@/Components/Rkas/ArkasAwalPreviewModal';
+import ArkasSyncReportModal, { ArkasSyncReport } from '@/Components/Rkas/ArkasSyncReportModal';
+import { useArkasSyncState } from '@/Hooks/useArkasSyncState';
+import { AlertTriangle, ArrowLeft, ArrowLeftRight, Brain, CheckCircle2, Clock, MessageSquare } from 'lucide-react';
 
 interface Option {
     id: number;
@@ -41,6 +45,8 @@ interface RkasItem {
     kegiatan: string;
     rekening: string;
     uraian: string;
+    uraian_arkas?: string | null;
+    id_barang_arkas?: string | null;
     dianggaran: number;
     dibelanjakan: number;
     satuan: string;
@@ -62,6 +68,7 @@ interface Props extends Record<string, unknown> {
         id: number;
         has_perubahan: boolean;
         juni_bku_closed: boolean;
+        is_arkas_year_synced?: boolean;
         tahun: string;
         pagu_total: string;
         sumber_dana: string;
@@ -79,9 +86,15 @@ interface Props extends Record<string, unknown> {
     rekeningOptions: Option[];
     variant?: string;
     routePrefix?: string;
+    flash?: {
+        success?: string | null;
+        warning?: string | null;
+        error?: string | null;
+        arkas_sync_report?: ArkasSyncReport | null;
+    };
 }
 
-export default function Index({ auth, anggaran, items, months, kegiatanOptions, rekeningOptions, variant, routePrefix }: PageProps<Props>) {
+export default function Index({ auth, anggaran, items, months, kegiatanOptions, rekeningOptions, variant, routePrefix, flash }: PageProps<Props>) {
     const isKepalaSekolah = Boolean(auth?.user?.is_kepala_sekolah || auth?.user?.role === 'kepala_sekolah');
     const [localItems, setLocalItems] = useState<RkasItem[]>(items);
     const [reviewItem, setReviewItem] = useState<RkasItem | null>(null);
@@ -128,10 +141,31 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
     const [isCopying, setIsCopying] = useState(false);
 
     // Pull ARKAS Logic
-    const [isArkasModalOpen, setIsArkasModalOpen] = useState(false);
-    const [arkasPreviewData, setArkasPreviewData] = useState<any>(null);
-    const [isCheckingArkas, setIsCheckingArkas] = useState(false);
-    const [isPullingArkas, setIsPullingArkas] = useState(false);
+    const [showArkasUraian, setShowArkasUraian] = useState<boolean>(false);
+    const {
+        isArkasModalOpen,
+        setIsArkasModalOpen,
+        arkasPreviewData,
+        setArkasPreviewData,
+        isCheckingArkas,
+        setIsCheckingArkas,
+        isPullingArkas,
+        setIsPullingArkas,
+        syncReport,
+        isSyncReportOpen,
+        setIsSyncReportOpen,
+        onlyUnpairedArkas,
+        unpairedArkasCount,
+        handleToggleUnpairedFilter,
+        activateUnpairedFilter,
+    } = useArkasSyncState({
+        items: localItems,
+        flashReport: (flash?.arkas_sync_report as ArkasSyncReport | null | undefined) ?? null,
+        selectedMonth,
+        setSelectedMonth,
+        setShowArkasUraian,
+        setSearchQuery,
+    });
 
     const handleCheckArkas = async () => {
         setIsCheckingArkas(true);
@@ -139,20 +173,10 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
             const response = await axios.get(route(`${routePrefix || ''}rkas.check-arkas`, anggaran.id));
             if (response.data.status === 'success') {
                 if (response.data.exists) {
-                    if (response.data.has_bku) {
-                        setAlertMessage('Tidak dapat menarik data ARKAS karena sudah terdapat transaksi belanja pada Buku Kas Umum (BKU).');
-                        setIsAlertModalOpen(true);
-                        return;
-                    }
-                    if (response.data.current_rkas_count > 0) {
-                        setAlertMessage('Tidak dapat menarik data ARKAS karena data RKAS di newSIKAS sudah terisi.');
-                        setIsAlertModalOpen(true);
-                        return;
-                    }
                     setArkasPreviewData(response.data);
                     setIsArkasModalOpen(true);
                 } else {
-                    setAlertMessage(response.data.message || `Tidak ditemukan data RKAS Murni di ARKAS untuk tahun ${anggaran.tahun}.`);
+                    setAlertMessage(response.data.message || `Tidak ditemukan data RKAS Awal di ARKAS untuk tahun ${anggaran.tahun}.`);
                     setIsAlertModalOpen(true);
                 }
             } else {
@@ -167,20 +191,25 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
         }
     };
 
-    const confirmPullArkas = () => {
+    const [pullArkasMode, setPullArkasMode] = useState<'reconcile' | 'match_only' | null>(null);
+
+    const confirmPullArkas = (mode: 'reconcile' | 'match_only' = 'match_only') => {
+        setPullArkasMode(mode);
         setIsPullingArkas(true);
-        router.post(route(`${routePrefix || ''}rkas.pull-arkas`, anggaran.id), {}, {
+        router.post(route(`${routePrefix || ''}rkas.pull-arkas`, anggaran.id), { mode }, {
             onSuccess: () => {
                 setIsArkasModalOpen(false);
             },
             onError: (errors) => {
-                if (errors.message) {
-                    setAlertMessage(errors.message);
+                const errMsg = errors.message || Object.values(errors)[0];
+                if (errMsg) {
+                    setAlertMessage(String(errMsg));
                     setIsAlertModalOpen(true);
                 }
             },
             onFinish: () => {
                 setIsPullingArkas(false);
+                setPullArkasMode(null);
             }
         });
     };
@@ -294,13 +323,54 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
         kegiatan_id: '',
         rekening_id: '',
         uraian: '',
+        uraian_arkas: '',
+        id_barang_arkas: '',
         harga_satuan: '',
         alokasi: [] as RkasMonthAllocation[],
     });
 
+    const [batasAtasArkas, setBatasAtasArkas] = useState<number | null>(null);
+    const [selectedArkasUnit, setSelectedArkasUnit] = useState<string>('');
+
+    const selectedRekeningOption = rekeningOptions.find((opt) => String(opt.id) === String(data.rekening_id));
+    const selectedKodeRekening = String(selectedRekeningOption?.kode_rekening || selectedRekeningOption?.code || '');
+    const isExceedingBatasAtas =
+        batasAtasArkas !== null &&
+        batasAtasArkas > 0 &&
+        Number(data.harga_satuan || 0) > batasAtasArkas;
+
+    const handleSelectArkasCatalogItem = (item: ArkasCatalogItem) => {
+        setBatasAtasArkas(item.batas_atas > 0 ? item.batas_atas : null);
+        if (item.satuan) {
+            setSelectedArkasUnit(item.satuan);
+        }
+        setData((prev) => {
+            const newAlokasi = prev.alokasi.map((alloc) => {
+                const spentValue = Number(alloc.spent || 0);
+                const qtyValue = Number(alloc.quantity || 0);
+                const isLunas = spentValue > 0 && spentValue >= qtyValue;
+                if (isLunas || !item.satuan) {
+                    return alloc;
+                }
+                return {
+                    ...alloc,
+                    unit: item.satuan,
+                };
+            });
+
+            return {
+                ...prev,
+                uraian_arkas: item.nama_barang,
+                id_barang_arkas: item.id_barang,
+                uraian: prev.uraian.trim() === '' ? item.nama_barang : prev.uraian,
+                alokasi: newAlokasi,
+            };
+        });
+    };
+
     const handleAddMonth = () => {
-        // If there is already a first item, take its unit
-        const firstUnit = data.alokasi.length > 0 ? data.alokasi[0].unit : '';
+        // If there is already a first item, take its unit, or fallback to selected Arkas catalog unit
+        const firstUnit = data.alokasi.length > 0 ? data.alokasi[0].unit : selectedArkasUnit;
 
         setData('alokasi', [
             ...data.alokasi,
@@ -357,10 +427,19 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
             const response = await axios.get(route(`${routePrefix || ''}rkas.getEditData`, id));
             const editData = response.data;
 
+            setBatasAtasArkas(
+                editData.batas_atas_arkas !== null && editData.batas_atas_arkas !== undefined
+                    ? Number(editData.batas_atas_arkas)
+                    : null,
+            );
+            setSelectedArkasUnit(editData.alokasi?.[0]?.unit || '');
+
             setData({
                 kegiatan_id: editData.kegiatan_id,
                 rekening_id: editData.rekening_id,
                 uraian: editData.uraian,
+                uraian_arkas: editData.uraian_arkas || '',
+                id_barang_arkas: editData.id_barang_arkas || '',
                 harga_satuan: String(Math.floor(Number(editData.harga_satuan))),
                 alokasi: editData.alokasi.map((item: any) => ({
                     ...item,
@@ -381,10 +460,15 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
             const response = await axios.get(route(`${routePrefix || ''}rkas.getEditData`, id));
             const editData = response.data;
 
+            setBatasAtasArkas(null);
+            setSelectedArkasUnit('');
+
             setData({
                 kegiatan_id: editData.kegiatan_id,
                 rekening_id: editData.rekening_id,
                 uraian: '',
+                uraian_arkas: '',
+                id_barang_arkas: '',
                 harga_satuan: '',
                 alokasi: []
             });
@@ -431,6 +515,10 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (isExceedingBatasAtas) {
+            return;
+        }
 
         // Validasi Input Kosong pada Card Bulan
         const hasEmptyAllocation = data.alokasi.some(a => !a.quantity || !a.unit);
@@ -508,8 +596,9 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
         setIsModalOpen(false);
         setTimeout(() => {
             reset();
+            setBatasAtasArkas(null);
+            setSelectedArkasUnit('');
             setIsEditMode(false);
-            setEditId(null);
             setEditId(null);
             setIsSisipMode(false);
             setShowValidationErrors(false);
@@ -522,16 +611,23 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
         return acc + (qty * price);
     }, 0);
 
-    const filteredItems = localItems.filter(item => {
-        const matchesMonth = selectedMonth ? item.bulan === selectedMonth : true;
+    const filteredItems = useMemo(() => {
         const query = searchQuery.toLowerCase();
-        const matchesSearch = !searchQuery ||
-            (item.program && item.program.toLowerCase().includes(query)) ||
-            (item.kegiatan && item.kegiatan.toLowerCase().includes(query)) ||
-            (item.rekening && item.rekening.toLowerCase().includes(query)) ||
-            (item.uraian && item.uraian.toLowerCase().includes(query));
-        return matchesMonth && matchesSearch;
-    });
+        return localItems.filter((item) => {
+            const matchesMonth = selectedMonth ? item.bulan === selectedMonth : true;
+            const matchesUnpaired = onlyUnpairedArkas
+                ? !item.uraian_arkas || !item.uraian_arkas.trim()
+                : true;
+            const matchesSearch =
+                !searchQuery ||
+                (item.program && item.program.toLowerCase().includes(query)) ||
+                (item.kegiatan && item.kegiatan.toLowerCase().includes(query)) ||
+                (item.rekening && item.rekening.toLowerCase().includes(query)) ||
+                (item.uraian && item.uraian.toLowerCase().includes(query)) ||
+                (item.uraian_arkas && item.uraian_arkas.toLowerCase().includes(query));
+            return matchesMonth && matchesUnpaired && matchesSearch;
+        });
+    }, [localItems, selectedMonth, onlyUnpairedArkas, searchQuery]);
 
     const totalFiltered = filteredItems.reduce((acc, curr) => {
         const val = Number(curr.total.replace(/[^0-9,-]+/g, "").replace(",", "."));
@@ -585,6 +681,8 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                                     <PrimaryButton
                                         onClick={() => {
                                             reset();
+                                            setBatasAtasArkas(null);
+                                            setSelectedArkasUnit('');
                                             setIsEditMode(false);
                                             setIsSisipMode(false);
                                             setEditId(null);
@@ -597,35 +695,33 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                                         Tambah
                                     </PrimaryButton>
                                     {items.length === 0 && (variant === 'reguler' || variant === 'kinerja' || variant === undefined) && (
-                                        <>
-                                            <button
-                                                onClick={handleCopyPreviousYear}
-                                                className="inline-flex items-center gap-1.5 rounded-2xl border border-brand-500/15 bg-pastel-lavender px-3.5 py-2.5 text-[11px] font-extrabold text-brand-600 transition hover:-translate-y-0.5 hover:bg-brand-500/15 dark:border-brand-400/20 dark:bg-brand-500/10 dark:text-brand-300"
-                                            >
-                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                                                </svg>
-                                                Salin
-                                            </button>
-                                            <button
-                                                onClick={handleCheckArkas}
-                                                disabled={isCheckingArkas}
-                                                className="inline-flex items-center gap-1.5 rounded-2xl border border-emerald-200 bg-pastel-mint px-3.5 py-2.5 text-[11px] font-extrabold text-emerald-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-400/20 dark:bg-mint/10 dark:text-emerald-300 dark:hover:bg-mint/15"
-                                            >
-                                                {isCheckingArkas ? (
-                                                    <svg className="animate-spin h-4 w-4 text-emerald-600 dark:text-emerald-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                                    </svg>
-                                                ) : (
-                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                                    </svg>
-                                                )}
-                                                Tarik dari ARKAS
-                                            </button>
-                                        </>
+                                        <button
+                                            onClick={handleCopyPreviousYear}
+                                            className="inline-flex items-center gap-1.5 rounded-2xl border border-brand-500/15 bg-pastel-lavender px-3.5 py-2.5 text-[11px] font-extrabold text-brand-600 transition hover:-translate-y-0.5 hover:bg-brand-500/15 dark:border-brand-400/20 dark:bg-brand-500/10 dark:text-brand-300"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                            </svg>
+                                            Salin
+                                        </button>
                                     )}
+                                    <button
+                                        onClick={handleCheckArkas}
+                                        disabled={isCheckingArkas}
+                                        className="inline-flex items-center gap-1.5 rounded-2xl border border-emerald-200 bg-pastel-mint px-3.5 py-2.5 text-[11px] font-extrabold text-emerald-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-400/20 dark:bg-mint/10 dark:text-emerald-300 dark:hover:bg-mint/15"
+                                    >
+                                        {isCheckingArkas ? (
+                                            <svg className="animate-spin h-4 w-4 text-emerald-600 dark:text-emerald-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                        ) : (
+                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                            </svg>
+                                        )}
+                                        Tarik dari ARKAS
+                                    </button>
                                 </>
                             )}
                             {(variant === 'reguler' || variant === 'kinerja' || variant === undefined) && (!isKepalaSekolah || anggaran.has_perubahan) && (
@@ -669,7 +765,7 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                 />
 
                 {/* Kartu ringkas */}
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
                     {/* Pagu Card */}
                     <div className="group sikas-card sikas-card-hover animate-rise relative overflow-hidden p-4" style={{ animationDelay: '60ms' }}>
                         <div className="flex items-center gap-2.5">
@@ -719,7 +815,7 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                     </div>
 
                     {/* Tahap 2 Card */}
-                    <div className="group sikas-card sikas-card-hover animate-rise relative overflow-hidden p-4 md:col-span-2 xl:col-span-1" style={{ animationDelay: '160ms' }}>
+                    <div className="group sikas-card sikas-card-hover animate-rise relative overflow-hidden p-4 md:col-span-2 lg:col-span-1" style={{ animationDelay: '160ms' }}>
                         <div className="flex items-start justify-between gap-2">
                             <div className="flex items-center gap-2.5">
                                 <IconTile tone="mint" size="md" className="transition-transform duration-300 group-hover:scale-110">
@@ -806,10 +902,14 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
 
                 {/* Tabel RKAS */}
                 <div className="animate-rise" style={{ animationDelay: '220ms' }}>
-                    {selectedMonth ? (
+                    {selectedMonth || onlyUnpairedArkas ? (
                         <DataTable
                             title="Daftar RKAS"
-                            subtitle={`Periode ${selectedMonth} ${anggaran.tahun}`}
+                            subtitle={
+                                onlyUnpairedArkas
+                                    ? `Filter Belum Disandingkan Uraian Arkas${selectedMonth ? ` · ${selectedMonth}` : ' · Semua Bulan'} ${anggaran.tahun}`
+                                    : `Periode ${selectedMonth} ${anggaran.tahun}`
+                            }
                             icon={
                                 <IconTile tone="sky" size="sm">
                                     <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -818,9 +918,40 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                                 </IconTile>
                             }
                             actions={
-                                <span className="inline-flex items-center gap-1.5 rounded-full bg-pastel-sky px-2.5 py-1 text-[9.5px] font-extrabold text-sky dark:bg-sky/10 dark:text-sky">
-                                    {filteredItems.length} baris
-                                </span>
+                                <div className="flex flex-wrap items-center gap-2">
+                                    {unpairedArkasCount > 0 && (
+                                        <button
+                                            type="button"
+                                            aria-pressed={onlyUnpairedArkas}
+                                            onClick={handleToggleUnpairedFilter}
+                                            className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-[10.5px] font-extrabold shadow-sm transition ${
+                                                onlyUnpairedArkas
+                                                    ? 'border-amber-500 bg-amber-500 text-white hover:bg-amber-600'
+                                                    : 'border-amber-300 bg-pastel-amber text-amber-800 hover:bg-amber-100 dark:border-amber-400/30 dark:bg-amber-400/15 dark:text-amber-300 dark:hover:bg-amber-400/25'
+                                            }`}
+                                            title="Klik untuk memfilter baris yang belum memiliki Uraian Arkas"
+                                        >
+                                            <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
+                                            {unpairedArkasCount} baris belum disandingkan
+                                        </button>
+                                    )}
+                                    <button
+                                        type="button"
+                                        aria-pressed={showArkasUraian}
+                                        onClick={() => setShowArkasUraian((prev) => !prev)}
+                                        className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-[10.5px] font-extrabold shadow-sm transition ${
+                                            showArkasUraian
+                                                ? 'border-lime-400 bg-lime-400 text-slate-950 shadow-lime hover:bg-lime-300'
+                                                : 'border-slate-200/90 bg-white text-slate-700 hover:border-lime-400 hover:bg-lime-50/50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:border-lime-400/50 dark:hover:bg-white/10'
+                                        }`}
+                                    >
+                                        <ArrowLeftRight className="h-3.5 w-3.5" />
+                                        {showArkasUraian ? 'Tampilkan Uraian SIKAS' : 'Lihat Uraian Arkas'}
+                                    </button>
+                                    <span className="inline-flex items-center gap-1.5 rounded-full bg-pastel-sky px-2.5 py-1 text-[9.5px] font-extrabold text-sky dark:bg-sky/10 dark:text-sky">
+                                        {filteredItems.length} baris
+                                    </span>
+                                </div>
                             }
                             contentClassName="bento-table-wrapper mx-3 mb-3"
                         >
@@ -832,7 +963,7 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                                             <th className="text-left">Program Kegiatan</th>
                                             <th className="text-left">Kegiatan</th>
                                             <th className="text-left">Rekening Belanja</th>
-                                            <th className="text-left">Uraian</th>
+                                            <th className="text-left">{showArkasUraian ? 'Uraian Arkas' : 'Uraian'}</th>
                                             <th className="text-center">Dianggarkan</th>
                                             <th className="text-center">Dibelanjakan</th>
                                             <th className="text-left">Satuan</th>
@@ -876,7 +1007,26 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                                                         <td className={`max-w-[150px] ${textClass}`}>{item.kegiatan}</td>
                                                         <td className={`max-w-[150px] ${textClass}`}>{item.rekening}</td>
                                                         <td className={`max-w-[180px] ${textClass}`}>
-                                                            <div>{item.uraian}</div>
+                                                            <div>
+                                                                {!selectedMonth && (
+                                                                    <span className="mb-1 inline-block rounded-md bg-slate-100 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-slate-600 dark:bg-white/10 dark:text-slate-300">
+                                                                        {item.bulan}
+                                                                    </span>
+                                                                )}
+                                                                {showArkasUraian ? (
+                                                                    item.uraian_arkas ? (
+                                                                        <span className="font-semibold text-emerald-700 dark:text-emerald-300">
+                                                                            {item.uraian_arkas}
+                                                                        </span>
+                                                                    ) : (
+                                                                        <span className="italic text-slate-400 dark:text-slate-500">
+                                                                            Belum disandingkan ({item.uraian})
+                                                                        </span>
+                                                                    )
+                                                                ) : (
+                                                                    item.uraian
+                                                                )}
+                                                            </div>
                                                             {showReviewBadge && item.review && (
                                                                 <button
                                                                     type="button"
@@ -1122,7 +1272,19 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                                 <InputLabel value="Rekening Belanja" required />
                                 <SearchableSelect
                                     value={data.rekening_id}
-                                    onChange={(val) => setData('rekening_id', String(val))}
+                                    onChange={(val) => {
+                                        const newVal = String(val);
+                                        if (newVal !== String(data.rekening_id)) {
+                                            setBatasAtasArkas(null);
+                                            setSelectedArkasUnit('');
+                                            setData((prev) => ({
+                                                ...prev,
+                                                rekening_id: newVal,
+                                                uraian_arkas: '',
+                                                id_barang_arkas: '',
+                                            }));
+                                        }
+                                    }}
                                     options={rekeningOptions}
                                     searchFields={['kode_rekening', 'rincian_objek', 'code', 'name']}
                                     displayColumns={[
@@ -1138,6 +1300,40 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                                     }}
                                     error={errors.rekening_id}
                                     className={`w-full ${isSisipMode ? 'opacity-50 pointer-events-none' : ''}`}
+                                />
+                            </div>
+
+                            {/* Uraian Arkas */}
+                            <div>
+                                <InputLabel value="Uraian Arkas" />
+                                <ArkasUraianSelect
+                                    year={anggaran.tahun}
+                                    isYearSynced={Boolean(anggaran.is_arkas_year_synced)}
+                                    kodeRekening={selectedKodeRekening}
+                                    uraianArkas={data.uraian_arkas}
+                                    idBarangArkas={data.id_barang_arkas}
+                                    batasAtas={batasAtasArkas}
+                                    routePrefix={routePrefix || ''}
+                                    error={(errors as any).uraian_arkas}
+                                    onSelectCatalogItem={handleSelectArkasCatalogItem}
+                                    onManualChange={(val) => {
+                                        setBatasAtasArkas(null);
+                                        setData((prev) => ({
+                                            ...prev,
+                                            uraian_arkas: val,
+                                            id_barang_arkas: '',
+                                        }));
+                                    }}
+                                    onClear={() => {
+                                        setBatasAtasArkas(null);
+                                        setSelectedArkasUnit('');
+                                        setData((prev) => ({
+                                            ...prev,
+                                            uraian_arkas: '',
+                                            id_barang_arkas: '',
+                                        }));
+                                    }}
+                                    onBatasAtasResolved={(resolved) => setBatasAtasArkas(resolved)}
                                 />
                             </div>
 
@@ -1159,15 +1355,27 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                                     <InputLabel value="Harga Satuan" required />
                                     <div className="relative">
                                         <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                                            <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500">Rp</span>
+                                            <span className={`text-[11px] font-bold ${isExceedingBatasAtas ? 'text-rose-500 dark:text-rose-400' : 'text-slate-400 dark:text-slate-500'}`}>Rp</span>
                                         </div>
                                         <TextInput
-                                            className="pl-9 w-full text-sikas-num"
+                                            className={`pl-9 w-full text-sikas-num ${
+                                                isExceedingBatasAtas
+                                                    ? '!border-rose-500 !bg-rose-50/80 !text-rose-700 focus:!border-rose-500 focus:!ring-rose-200/70 dark:!border-rose-500/80 dark:!bg-rose-500/15 dark:!text-rose-300'
+                                                    : ''
+                                            }`}
                                             value={formatCurrency(data.harga_satuan)}
                                             onChange={handleHargaSatuanChange}
                                             placeholder="0"
                                         />
                                     </div>
+                                    {isExceedingBatasAtas && batasAtasArkas !== null && (
+                                        <div className="mt-1 flex items-center gap-1 text-[10px] font-extrabold text-rose-600 dark:text-rose-400">
+                                            <AlertTriangle className="h-3 w-3 shrink-0" />
+                                            <span>
+                                                Melebihi batas atas harga satuan Arkas (Maks: Rp {new Intl.NumberFormat('id-ID').format(batasAtasArkas)})
+                                            </span>
+                                        </div>
+                                    )}
                                     {errors.harga_satuan && <div className="mt-1 text-[10px] font-semibold text-rose-500 dark:text-rose-400">{errors.harga_satuan}</div>}
                                 </div>
                             </div>
@@ -1203,16 +1411,16 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
 
                                                 <div className="mb-3 grid grid-cols-2 gap-3">
                                                     <select
-                                                        className={`h-9 w-full rounded-xl border bg-white px-3 py-1 text-[11.5px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:bg-white/5 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10 ${hasSpent ? 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 dark:border-white/10 dark:bg-white/5 dark:text-slate-500' : 'border-slate-200/90 dark:border-white/10'}`}
+                                                        className={`h-9 w-full rounded-xl border bg-white px-3 py-1 text-[11.5px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:bg-[#1b1829] dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10 ${hasSpent ? 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 dark:border-white/10 dark:bg-slate-900 dark:text-slate-500' : 'border-slate-200/90 dark:border-white/10'}`}
                                                         value={alloc.month}
                                                         onChange={(e) => updateAllocation(index, 'month', e.target.value)}
                                                         disabled={hasSpent}
                                                     >
-                                                        <option value="">Pilih Bulan</option>
+                                                        <option value="" className="bg-white text-slate-800 dark:bg-[#15131f] dark:text-slate-100">Pilih Bulan</option>
                                                         {monthOptions.map(m => {
                                                             const isSelectedElsewhere = data.alokasi.some((a, i) => i !== index && a.month === m);
                                                             if (isSelectedElsewhere) return null;
-                                                            return <option key={m} value={m}>{m}</option>;
+                                                            return <option key={m} value={m} className="bg-white text-slate-800 dark:bg-[#15131f] dark:text-slate-100">{m}</option>;
                                                         })}
                                                     </select>
                                                     <div className="flex items-center justify-end rounded-xl border border-slate-100 bg-slate-50 px-3 text-[11.5px] font-extrabold text-slate-700 text-sikas-num dark:border-white/5 dark:bg-white/5 dark:text-slate-200">
@@ -1575,9 +1783,15 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                                         </h3>
                                         <div className="space-y-3 rounded-2xl border border-slate-100 bg-slate-50/70 p-4 dark:border-white/5 dark:bg-white/[0.03]">
                                             <div>
-                                                <label className="mb-1 block text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">Uraian</label>
+                                                <label className="mb-1 block text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">Uraian SIKAS</label>
                                                 <div className="rounded-xl border border-slate-100 bg-white p-2.5 text-[11.5px] font-semibold text-slate-800 dark:border-white/5 dark:bg-white/5 dark:text-slate-100">
                                                     {itemDetailData.uraian}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="mb-1 block text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">Uraian Arkas</label>
+                                                <div className="rounded-xl border border-slate-100 bg-white p-2.5 text-[11.5px] font-semibold text-slate-800 dark:border-white/5 dark:bg-white/5 dark:text-slate-100">
+                                                    {itemDetailData.uraian_arkas || '-'}
                                                 </div>
                                             </div>
                                             <div>
@@ -1756,82 +1970,15 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                 </div>
             </Modal>
 
-            {/* Modal Preview Tarik RKAS dari ARKAS */}
-            <Modal show={isArkasModalOpen} onClose={() => { if (!isPullingArkas) setIsArkasModalOpen(false); }} maxWidth="md">
-                <div className="p-6">
-                    <div className="mb-5 flex justify-center">
-                        <IconTile tone="mint" size="lg" className="h-14 w-14">
-                            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                            </svg>
-                        </IconTile>
-                    </div>
-                    <h2 className="mb-2 text-center text-[15px] font-extrabold tracking-tight text-slate-900 dark:text-white">
-                        Tarik RKAS dari ARKAS
-                    </h2>
-                    <p className="mb-6 text-center text-[10.5px] font-medium text-slate-500 dark:text-slate-400">
-                        Data RKAS Murni ditemukan di database ARKAS. Periksa rincian di bawah sebelum menyinkronkan.
-                    </p>
-
-                    {arkasPreviewData && (
-                        <div className="mb-6 space-y-3 rounded-2xl border border-slate-100 bg-slate-50/70 p-4 text-[11.5px] dark:border-white/5 dark:bg-white/[0.03]">
-                            <div className="flex items-center justify-between border-b border-slate-100 pb-2 dark:border-white/5">
-                                <span className="font-semibold text-slate-400 dark:text-slate-500">Tahun Anggaran</span>
-                                <span className="font-extrabold text-slate-800 text-sikas-num dark:text-white">{arkasPreviewData.tahun}</span>
-                            </div>
-                            <div className="flex items-center justify-between border-b border-slate-100 pb-2 dark:border-white/5">
-                                <span className="font-semibold text-slate-400 dark:text-slate-500">Sumber Dana</span>
-                                <span className="font-extrabold text-slate-800 dark:text-white">{arkasPreviewData.sumber_dana}</span>
-                            </div>
-                            <div className="flex items-center justify-between border-b border-slate-100 pb-2 dark:border-white/5">
-                                <span className="font-semibold text-slate-400 dark:text-slate-500">Pagu Total ARKAS</span>
-                                <span className="font-extrabold text-emerald-600 text-sikas-num dark:text-emerald-300">
-                                    Rp {new Intl.NumberFormat('id-ID').format(arkasPreviewData.pagu)}
-                                </span>
-                            </div>
-                            <div className="flex items-center justify-between border-b border-slate-100 pb-2 dark:border-white/5">
-                                <span className="font-semibold text-slate-400 dark:text-slate-500">Jumlah Kegiatan</span>
-                                <span className="font-extrabold text-slate-800 dark:text-white">{arkasPreviewData.total_kegiatan} Kegiatan</span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <span className="font-semibold text-slate-400 dark:text-slate-500">Total Alokasi Bulanan</span>
-                                <span className="font-extrabold text-slate-800 dark:text-white">{arkasPreviewData.total_alokasi} Baris Data</span>
-                            </div>
-                        </div>
-                    )}
-
-                    <div className="mb-6 rounded-2xl border border-amber-300/50 bg-pastel-amber/60 p-3 dark:border-amber-400/20 dark:bg-amber-400/10">
-                        <p className="text-[10.5px] font-medium leading-relaxed text-amber-800 dark:text-amber-200">
-                            <strong>Perhatian:</strong> Seluruh data alokasi bulanan akan disalin ke RKAS Awal newSIKAS dan nilai Pagu Anggaran akan otomatis disinkronkan.
-                        </p>
-                    </div>
-
-                    <div className="flex justify-center gap-3">
-                        <SecondaryButton onClick={() => setIsArkasModalOpen(false)} disabled={isPullingArkas}>
-                            Batal
-                        </SecondaryButton>
-
-                        <button
-                            type="button"
-                            onClick={confirmPullArkas}
-                            disabled={isPullingArkas}
-                            className="inline-flex items-center gap-2 rounded-2xl bg-lime-400 px-4 py-2.5 text-[11.5px] font-extrabold text-slate-950 shadow-lime transition hover:-translate-y-0.5 hover:bg-lime-300 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                            {isPullingArkas ? (
-                                <>
-                                    <svg className="animate-spin -ml-1 h-4 w-4 text-slate-900" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                    Menarik Data...
-                                </>
-                            ) : (
-                                'Ya, Tarik Sekarang'
-                            )}
-                        </button>
-                    </div>
-                </div>
-            </Modal>
+            {/* Modal Pratinjau & Deteksi Perbedaan Tarik RKAS Awal dari ARKAS */}
+            <ArkasAwalPreviewModal
+                show={isArkasModalOpen}
+                previewData={arkasPreviewData}
+                isPulling={isPullingArkas}
+                pullMode={pullArkasMode}
+                onClose={() => setIsArkasModalOpen(false)}
+                onConfirmPull={confirmPullArkas}
+            />
 
             {/* Modal Telaah & Catatan Belanja */}
             <RkasItemReviewModal
@@ -1850,6 +1997,14 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                 anggaranId={anggaran.id}
                 isPerubahan={false}
                 routePrefix={routePrefix || ''}
+            />
+
+            {/* Modal Laporan Penyandingan & Peringatan Tarik ARKAS */}
+            <ArkasSyncReportModal
+                show={isSyncReportOpen}
+                report={syncReport}
+                onClose={() => setIsSyncReportOpen(false)}
+                onFilterUnpaired={activateUnpairedFilter}
             />
         </AuthenticatedLayout>
     );

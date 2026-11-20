@@ -13,14 +13,16 @@ import StatusBadge from '@/Components/ui/StatusBadge';
 import EmptyState from '@/Components/ui/EmptyState';
 import { SkeletonRows } from '@/Components/ui/Skeleton';
 import DocKopSuratHeader from '@/Components/DocKopSuratHeader';
+import { getDisplayUraian } from '@/Utils/rkasUraian';
 
 interface TabRincianPerubahanProps {
     rincianData: any;
+    showArkasUraian?: boolean;
     onPrint: (target: string) => void;
     onExportExcel: () => void;
 }
 
-export default function TabRincianPerubahan({ rincianData, onPrint, onExportExcel }: TabRincianPerubahanProps) {
+export default function TabRincianPerubahan({ rincianData, showArkasUraian = false, onPrint, onExportExcel }: TabRincianPerubahanProps) {
     const [selectedItems, setSelectedItems] = useState<any[]>([]);
     const [showGabungModal, setShowGabungModal] = useState(false);
     const [newUraian, setNewUraian] = useState('');
@@ -298,11 +300,13 @@ export default function TabRincianPerubahan({ rincianData, onPrint, onExportExce
         return rincianData.map((group: any) => {
             const filteredItems = group.items.filter((item: any) => {
                 const uraian = (item.uraian || '').toLowerCase();
+                const uraianArkas = (item.uraian_arkas || '').toLowerCase();
                 const uraianGabungan = (item.uraian_gabungan || '').toLowerCase();
                 const namaPenerima = (item.nama_penerima || '').toLowerCase();
                 const nomorRekening = (item.nomor_rekening || '').toLowerCase();
                 
                 return uraian.includes(q) || 
+                       uraianArkas.includes(q) ||
                        uraianGabungan.includes(q) || 
                        namaPenerima.includes(q) || 
                        nomorRekening.includes(q);
@@ -488,7 +492,7 @@ export default function TabRincianPerubahan({ rincianData, onPrint, onExportExce
                                                 <div className="flex items-start gap-2">
                                                     <div className="w-1.5 h-1.5 rounded-full bg-slate-400 dark:bg-white/30 mt-2"></div>
                                                     <div>
-                                                        <div>{item.uraian}</div>
+                                                        <div>{getDisplayUraian(item, showArkasUraian)}</div>
                                                     </div>
                                                 </div>
                                             </td>
@@ -845,7 +849,7 @@ export default function TabRincianPerubahan({ rincianData, onPrint, onExportExce
                                             <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-white/5">
                                                 <td className="px-3 py-2 text-center border border-slate-200 dark:border-white/10 text-slate-500">{idx + 1}</td>
                                                 <td className="px-3 py-2 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white">
-                                                    <div>{orig.uraian}</div>
+                                                    <div>{getDisplayUraian(orig, showArkasUraian)}</div>
                                                     {(orig.kode_kegiatan || orig.kode_rekening) && (
                                                         <div className="text-[10px] text-slate-500 font-mono mt-0.5">
                                                             {orig.kode_kegiatan} {orig.kode_kegiatan && orig.kode_rekening ? ' / ' : ''} {orig.kode_rekening}

@@ -20,6 +20,7 @@ import StatusBadge from '@/Components/ui/StatusBadge';
 
 export interface BkuDetailUraianItem {
     uraian?: string | null;
+    uraian_arkas?: string | null;
     volume?: number | string | null;
     satuan?: string | null;
     harga_satuan?: number | string | null;
@@ -29,7 +30,9 @@ export interface BkuDetailItem {
     id?: number;
     tanggal_transaksi?: string | null;
     id_transaksi?: string | null;
+    id_transaksi_arkas?: string | null;
     nomor_nota?: string | null;
+    nomor_nota_arkas?: string | null;
     jenis_transaksi?: string | null;
     nama_toko?: string | null;
     nama_penyedia?: string | null;
@@ -41,6 +44,7 @@ export interface BkuDetailItem {
     alamat?: string | null;
     uraian?: string | null;
     uraian_opsional?: string | null;
+    uraian_arkas?: string | null;
     total_transaksi_kotor?: number | string | null;
     total_pajak?: number | string | null;
     pajak?: string | null;
@@ -64,6 +68,7 @@ export interface DetailPembelanjaanModalProps {
     onClose: () => void;
     item: BkuDetailItem | null;
     formatCurrency: (val: number | string | undefined | null) => string;
+    showArkasUraian?: boolean;
 }
 
 function formatDetailDate(dateValue?: string | null): string {
@@ -113,6 +118,7 @@ export default function DetailPembelanjaanModal({
     onClose,
     item,
     formatCurrency,
+    showArkasUraian = false,
 }: DetailPembelanjaanModalProps) {
     if (!item) {
         return (
@@ -134,6 +140,22 @@ export default function DetailPembelanjaanModal({
     const uraianList = Array.isArray(item.uraian_details) ? item.uraian_details : [];
     const hasDetails = uraianList.length > 0;
     const itemCount = hasDetails ? uraianList.length : 1;
+
+    const displayIdTransaksi = showArkasUraian
+        ? (item.id_transaksi_arkas?.trim() ? item.id_transaksi_arkas : item.id_transaksi)
+        : item.id_transaksi;
+    const displayNomorNota = showArkasUraian
+        ? (item.nomor_nota_arkas?.trim() ? item.nomor_nota_arkas : item.nomor_nota)
+        : item.nomor_nota;
+    const displayHeaderUraian = showArkasUraian
+        ? (item.rekening_belanja?.rincian_objek?.trim()
+            ? item.rekening_belanja.rincian_objek
+            : (item.uraian_arkas?.trim() ? item.uraian_arkas : (item.uraian || item.uraian_opsional)))
+        : (item.uraian || item.uraian_opsional);
+    const getDisplayDetailUraian = (detail: BkuDetailUraianItem) =>
+        showArkasUraian
+            ? (detail.uraian_arkas?.trim() ? detail.uraian_arkas : (detail.uraian || '-'))
+            : (detail.uraian || '-');
 
     const taxTypeNotes = [
         totalPajak > 0 && item.pajak ? item.pajak : null,
@@ -177,9 +199,9 @@ export default function DetailPembelanjaanModal({
                                 <h2 className="text-[16px] font-extrabold tracking-tight text-slate-900 dark:text-white">
                                     Detail Pembelanjaan
                                 </h2>
-                                {item.id_transaksi && (
+                                {displayIdTransaksi && (
                                     <StatusBadge tone="violet" className="font-mono">
-                                        {item.id_transaksi}
+                                        {displayIdTransaksi}
                                     </StatusBadge>
                                 )}
                                 {item.jenis_transaksi && (
@@ -190,8 +212,8 @@ export default function DetailPembelanjaanModal({
                             </div>
                             <p className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">
                                 Tanggal transaksi {tanggalLabel}
-                                {item.nomor_nota && item.nomor_nota !== item.id_transaksi
-                                    ? ` · Nota ${item.nomor_nota}`
+                                {displayNomorNota && displayNomorNota !== displayIdTransaksi
+                                    ? ` · Nota ${displayNomorNota}`
                                     : ''}
                             </p>
                         </div>
@@ -287,7 +309,7 @@ export default function DetailPembelanjaanModal({
                                         ID Transaksi
                                     </dt>
                                     <dd className="text-right font-mono text-xs font-semibold text-slate-900 dark:text-white">
-                                        {item.id_transaksi || '-'}
+                                        {displayIdTransaksi || '-'}
                                     </dd>
                                 </div>
                                 <div className="flex items-start justify-between gap-3">
@@ -295,7 +317,7 @@ export default function DetailPembelanjaanModal({
                                         Nomor Nota
                                     </dt>
                                     <dd className="text-right font-mono text-xs font-semibold text-slate-900 dark:text-white">
-                                        {item.nomor_nota || '-'}
+                                        {displayNomorNota || '-'}
                                     </dd>
                                 </div>
                                 <div className="flex items-start justify-between gap-3">
@@ -425,7 +447,7 @@ export default function DetailPembelanjaanModal({
                                                             {index + 1}
                                                         </td>
                                                         <td className="px-4 py-3.5 text-xs font-medium text-slate-900 dark:text-white sm:text-sm">
-                                                            {detail.uraian || '-'}
+                                                            {getDisplayDetailUraian(detail)}
                                                         </td>
                                                         <td className="px-4 py-3.5 text-center text-xs text-slate-600 dark:text-slate-300">
                                                             <span className="inline-flex items-center rounded-lg bg-slate-100 px-2.5 py-0.5 font-medium text-slate-700 dark:bg-white/10 dark:text-slate-200">
@@ -447,7 +469,7 @@ export default function DetailPembelanjaanModal({
                                                     1
                                                 </td>
                                                 <td className="px-4 py-3.5 text-xs font-medium text-slate-900 dark:text-white sm:text-sm">
-                                                    {item.uraian || item.uraian_opsional || '-'}
+                                                    {displayHeaderUraian || '-'}
                                                 </td>
                                                 <td className="px-4 py-3.5 text-center text-xs text-slate-500 dark:text-slate-400">
                                                     -

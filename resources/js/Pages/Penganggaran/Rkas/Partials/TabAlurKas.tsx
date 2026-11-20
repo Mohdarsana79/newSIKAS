@@ -38,7 +38,7 @@ export default function TabAlurKas({ anggaran, tahapanData, months, onPrint }: T
                 </div>
             </div>
 
-            <div className="bg-white dark:bg-[#15131F] p-8 border border-slate-200 dark:border-white/10 shadow-sm rounded-lg print:border-none print:shadow-none overflow-x-auto">
+            <div className="bg-white dark:bg-[#15131F] p-4 sm:p-6 lg:p-8 border border-slate-200 dark:border-white/10 shadow-sm rounded-lg print:border-none print:shadow-none">
                 <DocKopSuratHeader docKey="rkas_alur_kas" sekolah={anggaran?.sekolah} />
 
                 {/* Report Header */}
@@ -49,7 +49,7 @@ export default function TabAlurKas({ anggaran, tahapanData, months, onPrint }: T
                 </div>
 
                 {/* School Info */}
-                <div className="mb-6 grid grid-cols-[150px_10px_1fr] gap-1 text-sm">
+                <div className="mb-6 grid grid-cols-[105px_10px_1fr] sm:grid-cols-[150px_10px_1fr] gap-1 text-xs sm:text-sm">
                     <div className="text-slate-600 dark:text-slate-400">NPSN</div>
                     <div>:</div>
                     <div className="font-medium text-slate-900 dark:text-slate-100">{anggaran.sekolah?.npsn || '-'}</div>
@@ -71,7 +71,8 @@ export default function TabAlurKas({ anggaran, tahapanData, months, onPrint }: T
                     <div className="font-medium text-slate-900 dark:text-slate-100">{anggaran.sekolah?.provinsi || '-'}</div>
                 </div>
 
-                <div className="space-y-6 min-w-[1200px]">
+                <div className="overflow-x-auto">
+                <div className="space-y-6 min-w-[960px] xl:min-w-[1100px]">
                     {/* A. PENERIMAAN */}
                     <div>
                         <h4 className="text-sm font-bold text-slate-900 dark:text-white mb-1">A. Penerimaan</h4>
@@ -201,6 +202,7 @@ export default function TabAlurKas({ anggaran, tahapanData, months, onPrint }: T
                             </table>
                         </div>
                     </div>
+                </div>
                 </div>
             </div>
         </div>

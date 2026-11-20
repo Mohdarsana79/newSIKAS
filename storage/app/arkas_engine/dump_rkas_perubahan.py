@@ -197,6 +197,7 @@ def main():
             conn.close()
             print(json.dumps({
                 "status": "success",
+                "exists": True,
                 "id_anggaran": id_anggaran,
                 "is_revisi": is_revisi,
                 "tahun": tahun,

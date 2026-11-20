@@ -67,7 +67,7 @@ class DatabaseController extends Controller
                 'storagePercentage' => $storagePercentage,
                 'lastBackupDate' => count($backupFiles) > 0 ? $backupFiles[0]['created_at'] : '-',
             ],
-            'currentNpsn' => env('APP_NPSN_CODE', ''),
+            'currentNpsn' => (string) config('license.npsn_code', ''),
         ]);
     }
 
@@ -375,7 +375,7 @@ class DatabaseController extends Controller
                 'version' => '1.0',
                 'format' => 'all-in-one',
                 'app' => config('app.name', 'SIKAS'),
-                'app_npsn' => env('APP_NPSN_CODE', ''),
+                'app_npsn' => (string) config('license.npsn_code', ''),
                 'created_at' => Carbon::now()->toIso8601String(),
                 'has_database' => true,
                 'has_storage' => true,
@@ -778,7 +778,7 @@ class DatabaseController extends Controller
     protected function getPostgresBinaryPath(string $binary = 'psql'): string
     {
         $dbConfig = Config::get('database.connections.pgsql');
-        $configuredPath = $dbConfig['dump']['dump_binary_path'] ?? env('PG_DUMP_PATH', '');
+        $configuredPath = $dbConfig['dump']['dump_binary_path'] ?? '';
 
         $ext = PHP_OS_FAMILY === 'Windows' ? '.exe' : '';
         $binaryWithExt = $binary.$ext;
@@ -931,6 +931,11 @@ class DatabaseController extends Controller
             }
 
             file_put_contents($path, $envContent);
+        }
+
+        Config::set('license.npsn_code', $request->npsn_code);
+        if (app()->configurationIsCached()) {
+            Artisan::call('config:clear');
         }
 
         return back()->with('success', 'NPSN berhasil diperbarui');

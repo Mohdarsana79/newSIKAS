@@ -1,0 +1,20 @@
+{
+    "status": "ok",
+    "error_message": null,
+    "current_version": "2026.32",
+    "latest_version": "2099.10",
+    "tag_name": "v2099.10",
+    "release_name": "newSIKAS 2099.10",
+    "changelog": "Rilis baru.",
+    "published_at": "16 November 2026, 10:00",
+    "has_update": true,
+    "asset": {
+        "name": "newSIKAS_Installer_2099_10.exe",
+        "size": 20480,
+        "size_formatted": "20 KB",
+        "api_url": "https://api.github.com/repos/Mohdarsana79/newSIKAS-releases/releases/assets/999",
+        "download_url": "https://github.com/Mohdarsana79/newSIKAS-releases/releases/download/v2099.10/newSIKAS_Installer_2099_10.exe"
+    },
+    "checked_at": "19/11/2026 15:25:53",
+    "timestamp": 1795101953
+}

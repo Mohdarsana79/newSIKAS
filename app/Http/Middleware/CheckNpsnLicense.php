@@ -26,7 +26,12 @@ class CheckNpsnLicense
             return $next($request);
         }
 
-        $envNpsn = trim((string) env('APP_NPSN_CODE'));
+        // Jika verifikasi lisensi NPSN dinonaktifkan via LICENSE_ENABLED=false (misal mode VPS bebas)
+        if (! config('license.enabled', true)) {
+            return $next($request);
+        }
+
+        $envNpsn = trim((string) config('license.npsn_code', ''));
         $allowedNpsns = (array) config('license.allowed_npsn', []);
 
         // 1. Wajib ada APP_NPSN_CODE

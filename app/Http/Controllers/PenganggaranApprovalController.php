@@ -26,8 +26,8 @@ class PenganggaranApprovalController extends Controller
     {
         $user = Auth::user();
 
-        if (! $user || ! $user->isKepalaSekolah()) {
-            abort(403, 'Hanya Kepala Sekolah yang memiliki wewenang untuk menyetujui anggaran.');
+        if (! $user || ! $user->hasFeatureAbility('rkas_approve')) {
+            abort(403, 'Akun Anda tidak memiliki wewenang untuk menyetujui anggaran.');
         }
 
         $modelClass = VariantConfig::getModelClass('penganggaran', $this->variant);
@@ -62,8 +62,8 @@ class PenganggaranApprovalController extends Controller
     {
         $user = Auth::user();
 
-        if (! $user || ! $user->isKepalaSekolah()) {
-            abort(403, 'Hanya Kepala Sekolah yang memiliki wewenang untuk membatalkan persetujuan anggaran.');
+        if (! $user || ! $user->hasFeatureAbility('rkas_approve')) {
+            abort(403, 'Akun Anda tidak memiliki wewenang untuk membatalkan persetujuan anggaran.');
         }
 
         $modelClass = VariantConfig::getModelClass('penganggaran', $this->variant);

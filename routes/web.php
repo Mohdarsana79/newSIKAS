@@ -3,7 +3,9 @@
 use App\Config\VariantConfig;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DatabaseController;
+use App\Http\Controllers\NetworkSettingController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\RoleManagementController;
 use App\Http\Controllers\SkSuratController;
 use App\Http\Controllers\SystemUpdateController;
 use App\Http\Controllers\UserManagementController;
@@ -15,6 +17,7 @@ use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Inertia\Inertia;
 
@@ -30,10 +33,19 @@ use Inertia\Inertia;
 */
 
 Route::get('/', function () {
+    $hasUsers = false;
+    try {
+        if (Schema::hasTable('users')) {
+            $hasUsers = User::count() > 0;
+        }
+    } catch (Throwable) {
+        $hasUsers = false;
+    }
+
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),
         'canRegister' => Route::has('register'),
-        'hasUsers' => User::count() > 0,
+        'hasUsers' => $hasUsers,
         'laravelVersion' => Application::VERSION,
         'phpVersion' => PHP_VERSION,
     ]);
@@ -78,17 +90,29 @@ Route::middleware('auth')->group(function () {
     Route::post('/profile/deepseek-test', [ProfileController::class, 'testDeepSeekConnection'])->name('profile.deepseek-test');
 
     Route::middleware(['role:bendahara'])->group(function () {
+        Route::get('/management-role', [UserManagementController::class, 'page'])->name('management-role.index');
+        Route::post('/management-role/roles', [RoleManagementController::class, 'store'])->name('management-role.roles.store');
+        Route::put('/management-role/roles/{role}', [RoleManagementController::class, 'update'])->name('management-role.roles.update');
+        Route::delete('/management-role/roles/{role}', [RoleManagementController::class, 'destroy'])->name('management-role.roles.destroy');
+
         Route::get('/user-management', [UserManagementController::class, 'index'])->name('user-management.index');
         Route::post('/user-management', [UserManagementController::class, 'store'])->name('user-management.store');
         Route::put('/user-management/{id}', [UserManagementController::class, 'update'])->name('user-management.update');
+        Route::put('/user-management/{id}/permissions', [UserManagementController::class, 'updatePermissions'])->name('user-management.permissions');
         Route::delete('/user-management/{id}', [UserManagementController::class, 'destroy'])->name('user-management.destroy');
     });
 
-    Route::prefix('pembaharuan')->name('system-update.')->group(function () {
+    Route::middleware(['role:bendahara'])->prefix('pembaharuan')->name('system-update.')->group(function () {
         Route::get('/', [SystemUpdateController::class, 'index'])->name('index');
         Route::post('/check', [SystemUpdateController::class, 'check'])->name('check');
         Route::post('/start-online', [SystemUpdateController::class, 'startOnline'])->name('start-online');
         Route::post('/upload-manual', [SystemUpdateController::class, 'uploadManual'])->name('upload-manual');
+    });
+
+    Route::middleware(['role:bendahara'])->prefix('pengaturan-jaringan')->name('network-settings.')->group(function () {
+        Route::get('/', [NetworkSettingController::class, 'index'])->name('index');
+        Route::post('/', [NetworkSettingController::class, 'update'])->name('update');
+        Route::post('/firewall-open', [NetworkSettingController::class, 'openFirewall'])->name('firewall-open');
     });
 
     Route::prefix('sk-surat')->name('sk-surat.')->group(function () {

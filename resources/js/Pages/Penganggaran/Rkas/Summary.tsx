@@ -9,6 +9,8 @@ import { id } from 'date-fns/locale';
 import TabRincianPencairan from './Partials/TabRincianPencairan';
 import TabAlurKas from './Partials/TabAlurKas';
 import DocKopSuratHeader from '@/Components/DocKopSuratHeader';
+import { getDisplayUraian } from '@/Utils/rkasUraian';
+import { ArrowLeftRight } from 'lucide-react';
 
 interface SummaryProps extends Record<string, unknown> {
     anggaran: {
@@ -54,6 +56,7 @@ interface SummaryProps extends Record<string, unknown> {
             items: Array<{
                 kode_rekening: string;
                 uraian: string;
+                uraian_arkas?: string | null;
                 volume: number;
                 satuan: string;
                 tarif: number;
@@ -78,6 +81,7 @@ interface SummaryProps extends Record<string, unknown> {
             items: Array<{
                 kode_rekening: string;
                 uraian: string;
+                uraian_arkas?: string | null;
                 volume: number;
                 satuan: string;
                 tarif: number;
@@ -105,6 +109,7 @@ interface SummaryProps extends Record<string, unknown> {
         type: 'header' | 'item';
         kode_rekening: string;
         uraian: string;
+        uraian_arkas?: string | null;
         volume?: number;
         satuan?: string;
         harga_satuan?: number;
@@ -115,6 +120,7 @@ interface SummaryProps extends Record<string, unknown> {
         sub_program: string;
         items: Array<{
             uraian: string;
+            uraian_arkas?: string | null;
             jumlah: number;
         }>;
         total: number;
@@ -187,15 +193,20 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
         fontSize: '12pt'
     });
 
+    const [showArkasUraian, setShowArkasUraian] = useState<boolean>(false);
+
     const handlePrint = (monthOverride?: string) => {
         let routeName = 'rkas.export-pdf';
-        const params: any = {
+        const params: Record<string, string | number> = {
             id: anggaran.id,
             paper_size: printSettings.paperSize,
             orientation: printSettings.orientation,
             font_size: printSettings.fontSize,
             tahap: printTahap
         };
+        if (showArkasUraian && printTarget !== 'rekap' && printTarget !== 'alur_kas') {
+            params.uraian_mode = 'arkas';
+        }
 
         if (printTarget === 'rekap') routeName = 'rkas.export-rekap-pdf';
         if (printTarget === 'lembar') routeName = 'rkas.export-lembar-kerja-pdf';
@@ -223,13 +234,16 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
     const handleExportExcel = (target?: string, tahapOverride?: number, bulanOverride?: string) => {
         const targetToUse = target || printTarget;
         let routeName = 'rkas.export-tahapan-excel';
-        const params: any = {
+        const params: Record<string, string | number> = {
             id: anggaran.id,
             tahap: printTahap,
             paper_size: printSettings.paperSize,
             orientation: printSettings.orientation,
             font_size: printSettings.fontSize,
         };
+        if (showArkasUraian && targetToUse !== 'alur_kas') {
+            params.uraian_mode = 'arkas';
+        }
 
         if (targetToUse === 'tahapan_v1') routeName = 'rkas.export-tahapan-v1-excel';
         if (targetToUse === 'rincian') {
@@ -308,7 +322,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                                 <select
                                     value={printSettings.paperSize}
                                     onChange={(e) => setPrintSettings({ ...printSettings, paperSize: e.target.value })}
-                                    className="w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-[12px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white"
+                                    className="w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-[12px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-slate-900 dark:text-white"
                                 >
                                     <option value="A4">A4</option>
                                     <option value="Letter">Letter</option>
@@ -322,7 +336,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                                 <select
                                     value={printSettings.orientation}
                                     onChange={(e) => setPrintSettings({ ...printSettings, orientation: e.target.value })}
-                                    className="w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-[12px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white"
+                                    className="w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-[12px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-slate-900 dark:text-white"
                                 >
                                     <option value="portrait">Portrait</option>
                                     <option value="landscape">Landscape</option>
@@ -334,7 +348,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                                 <select
                                     value={printSettings.fontSize}
                                     onChange={(e) => setPrintSettings({ ...printSettings, fontSize: e.target.value })}
-                                    className="w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-[12px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white"
+                                    className="w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-[12px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-slate-900 dark:text-white"
                                 >
                                     <option value="8pt">Sangat Kecil (8pt)</option>
                                     <option value="9pt">Kecil (9pt)</option>
@@ -350,7 +364,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                                     <select
                                         value={printTahap}
                                         onChange={(e) => setPrintTahap(e.target.value as any)}
-                                        className="w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-[12px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white"
+                                        className="w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-[12px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-slate-900 dark:text-white"
                                     >
                                         <option value="tahunan">Tahunan</option>
                                         <option value="1">Tahap 1</option>
@@ -413,7 +427,20 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                         <h1 className="text-[26px] font-extrabold leading-tight tracking-tight text-slate-900 dark:text-white">Rekapan RKAS</h1>
                         <p className="text-[11.5px] font-medium text-slate-500 dark:text-slate-400">Rekap Rencana Kegiatan dan Anggaran Sekolah</p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <button
+                            type="button"
+                            aria-pressed={showArkasUraian}
+                            onClick={() => setShowArkasUraian((prev) => !prev)}
+                            className={`flex items-center gap-2 rounded-2xl border px-4 py-2 text-[11.5px] font-extrabold transition hover:-translate-y-0.5 ${
+                                showArkasUraian
+                                    ? 'border-lime-400 bg-lime-400 text-slate-950 shadow-lime hover:bg-lime-300'
+                                    : 'border-slate-200/90 bg-white text-slate-700 shadow-sm hover:border-lime-400 hover:bg-lime-50/50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:border-lime-400/50 dark:hover:bg-white/10'
+                            }`}
+                        >
+                            <ArrowLeftRight className="w-4 h-4" aria-hidden="true" />
+                            {showArkasUraian ? 'Lihat Uraian SIKAS' : 'Lihat Uraian Arkas'}
+                        </button>
                         <button
                             onClick={() => setShowDateModal(true)}
                             className="flex items-center gap-2 rounded-2xl bg-lime-400 px-4 py-2 text-[11.5px] font-extrabold text-slate-950 shadow-lime transition hover:-translate-y-0.5 hover:bg-lime-300"
@@ -633,7 +660,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                                                                                         <td className="px-2 py-2 text-center text-sm text-gray-800 dark:text-gray-200">
                                                                                             {urCode.toString().includes('.') ? urCode : `${subCode}.${urCode}`}
                                                                                         </td>
-                                                                                        <td className="px-4 py-2 text-sm text-gray-800 dark:text-gray-200">{item.uraian}</td>
+                                                                                        <td className="px-4 py-2 text-sm text-gray-800 dark:text-gray-200">{getDisplayUraian(item, showArkasUraian)}</td>
 
                                                                                         <td className="px-2 py-2 text-center text-sm text-gray-600 dark:text-gray-400">{item.volume}</td>
                                                                                         <td className="px-2 py-2 text-center text-sm text-gray-600 dark:text-gray-400">{item.satuan}</td>
@@ -886,7 +913,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                                                                                             <td className="px-2 py-2 text-center text-gray-600 dark:text-gray-400"></td>
                                                                                             <td className="px-2 py-2 text-sm text-gray-800 dark:text-gray-200">{item.kode_rekening}</td>
                                                                                             <td className="px-2 py-2 text-center text-sm text-gray-800 dark:text-gray-200">{urCode}</td>
-                                                                                            <td className="px-4 py-2 text-sm text-gray-800 dark:text-gray-200">{item.uraian}</td>
+                                                                                            <td className="px-4 py-2 text-sm text-gray-800 dark:text-gray-200">{getDisplayUraian(item, showArkasUraian)}</td>
 
                                                                                             <td className="px-2 py-2 text-center text-sm text-gray-600 dark:text-gray-400 font-bold">{volTotal}</td>
                                                                                             <td className="px-2 py-2 text-center text-sm text-gray-600 dark:text-gray-400">{volT1}</td>
@@ -1182,7 +1209,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                                                     {lembarData && lembarData.map((row, idx) => (
                                                         <tr key={idx} className={`divide - x divide - gray - 900 dark: divide - gray - 600 ${row.type === 'header' ? 'bg-gray-50 dark:bg-gray-700/50 font-bold' : 'bg-white dark:bg-gray-800'} `}>
                                                             <td className="px-3 py-1.5 align-top">{row.kode_rekening}</td>
-                                                            <td className="px-3 py-1.5 align-top">{row.uraian}</td>
+                                                            <td className="px-3 py-1.5 align-top">{row.type === 'item' ? getDisplayUraian(row, showArkasUraian) : row.uraian}</td>
 
                                                             <td className="px-2 py-1.5 text-center align-top">{row.volume}</td>
                                                             <td className="px-2 py-1.5 text-center align-top">{row.satuan}</td>
@@ -1407,7 +1434,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                                                                                                         <td className="px-2 py-2 text-center text-gray-600 dark:text-gray-400"></td>
                                                                                                         <td className="px-2 py-2 text-sm text-gray-800 dark:text-gray-200">{item.kode_rekening}</td>
                                                                                                         <td className="px-2 py-2 text-sm text-gray-800 dark:text-gray-200">{item.program_code}</td>
-                                                                                                        <td className="px-4 py-2 text-sm text-gray-800 dark:text-gray-200">{item.uraian}</td>
+                                                                                                        <td className="px-4 py-2 text-sm text-gray-800 dark:text-gray-200">{getDisplayUraian(item, showArkasUraian)}</td>
                                                                                                         <td className="px-2 py-2 text-center text-sm text-gray-800 dark:text-gray-200">
                                                                                                             {monthlyVolume > 0 ? monthlyVolume : '-'}
                                                                                                         </td>
@@ -1535,7 +1562,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                                                             <td className="px-6 py-3 text-sm text-gray-700 dark:text-gray-300">
                                                                 <div className="flex items-center gap-2">
                                                                     <div className="w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-gray-500"></div>
-                                                                    {item.uraian}
+                                                                    {getDisplayUraian(item, showArkasUraian)}
                                                                 </div>
                                                             </td>
                                                             <td className="px-6 py-3 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100 text-right">{formatCurrency(item.jumlah)}</td>
@@ -1700,7 +1727,7 @@ export default function Summary({ auth, anggaran, groupedData, tahapanData, rkaB
                             </div>
                         )}
                         {activeTab === 'Rincian Pencairan' && (
-                            <TabRincianPencairan anggaran={anggaran} tahapanData={tahapanData} variant='rkas' kwitansiMap={kwitansiMap} onPrint={(target, params) => { if (params?.tahap) setRpTahap(params.tahap); if (params?.bulan) setRpBulan(params.bulan); setPrintTarget(target as any); setShowPrintModal(true); }} onExportExcel={(target, params) => handleExportExcel(target, params?.tahap, params?.bulan)} />
+                            <TabRincianPencairan anggaran={anggaran} tahapanData={tahapanData} variant='rkas' kwitansiMap={kwitansiMap} showArkasUraian={showArkasUraian} onPrint={(target, params) => { if (params?.tahap) setRpTahap(params.tahap); if (params?.bulan) setRpBulan(params.bulan); setPrintTarget(target as any); setShowPrintModal(true); }} onExportExcel={(target, params) => handleExportExcel(target, params?.tahap, params?.bulan)} />
                         )}
                         {activeTab === 'Alur Kas' && (
                             <TabAlurKas anggaran={anggaran} tahapanData={tahapanData} months={months} onPrint={(target) => { setPrintTarget(target as any); setShowPrintModal(true); }} />

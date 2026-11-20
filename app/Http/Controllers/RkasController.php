@@ -5,13 +5,17 @@ namespace App\Http\Controllers;
 use App\Config\VariantConfig;
 use App\Models\KodeKegiatan;
 use App\Models\Penganggaran;
+use App\Models\RefBarang;
 use App\Models\RekeningBelanja;
 use App\Models\Rkas;
 use App\Models\RkasPerubahan;
+use App\Services\ArkasEngineService;
+use App\Services\ArkasRkasSyncService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Symfony\Component\Process\Process;
 
@@ -101,8 +105,15 @@ class RkasController extends Controller
                 return $monthMap[$item->bulan] ?? 99;
             });
 
-            // Total spent for this group in BKU
+            // Total spent for this group in BKU (sum Uraian SIKAS and Uraian Arkas if different)
             $totalSpent = isset($bkuSpents[$key]) ? $bkuSpents[$key]->total_volume : 0;
+            $firstInGroup = $sortedGroup->first();
+            if ($firstInGroup && ! empty($firstInGroup->uraian_arkas)) {
+                $arkasKey = $firstInGroup->kode_id.'|'.$firstInGroup->kode_rekening_id.'|'.strtolower(trim($firstInGroup->uraian_arkas)).'|'.(float) $firstInGroup->harga_satuan;
+                if ($arkasKey !== $key && isset($bkuSpents[$arkasKey])) {
+                    $totalSpent += $bkuSpents[$arkasKey]->total_volume;
+                }
+            }
 
             foreach ($sortedGroup as $item) {
                 if ($totalSpent > 0) {
@@ -125,6 +136,8 @@ class RkasController extends Controller
                 'kegiatan' => $item->kodeKegiatan->sub_program ?? '-',
                 'rekening' => $item->rekeningBelanja ? ($item->rekeningBelanja->kode_rekening.' - '.$item->rekeningBelanja->rincian_objek) : '-',
                 'uraian' => $item->uraian,
+                'uraian_arkas' => $item->uraian_arkas,
+                'id_barang_arkas' => $item->id_barang_arkas,
                 'dianggaran' => $item->jumlah,
                 'dibelanjakan' => $item->dibelanjakan_calc ?? 0,
                 'satuan' => $item->satuan,
@@ -160,12 +173,14 @@ class RkasController extends Controller
             ->where('is_bunga_record', true)
             ->whereNotNull('tanggal_tutup')
             ->exists();
+        $isArkasYearSynced = RefBarang::where('tahun', (int) $penganggaran->tahun_anggaran)->exists();
 
         return $this->renderVariant('Penganggaran/Rkas/Index', [
             'anggaran' => [
                 'id' => $penganggaran->id,
                 'has_perubahan' => $hasPerubahan,
                 'juni_bku_closed' => $juniBkuClosed,
+                'is_arkas_year_synced' => $isArkasYearSynced,
                 'tahun' => (string) $penganggaran->tahun_anggaran,
                 'pagu_total' => number_format($paguAnggaran, 0, ',', '.'),
                 'sumber_dana' => VariantConfig::title($this->variant),
@@ -298,6 +313,7 @@ class RkasController extends Controller
                 'type' => 'item',
                 'kode_rekening' => $item->rekeningBelanja->kode_rekening ?? '',
                 'uraian' => $item->uraian,
+                'uraian_arkas' => filled($item->uraian_arkas) ? trim((string) $item->uraian_arkas) : null,
                 'volume' => $item->jumlah,
                 'satuan' => $item->satuan,
                 'harga_satuan' => $item->harga_satuan,
@@ -524,11 +540,25 @@ class RkasController extends Controller
         ]);
     }
 
-    private function kelolaDataRincian($rkasData)
+    private function isArkasUraianMode(Request $request): bool
+    {
+        return $request->query('uraian_mode') === 'arkas';
+    }
+
+    private function resolveDisplayUraian($item, bool $useArkas): string
+    {
+        if ($useArkas && filled($item->uraian_arkas ?? null)) {
+            return trim((string) $item->uraian_arkas);
+        }
+
+        return (string) ($item->uraian ?? '');
+    }
+
+    private function kelolaDataRincian($rkasData, bool $useArkas = false)
     {
         return $rkasData->groupBy(function ($item) {
             return optional($item->kodeKegiatan)->sub_program ?? 'Lainnya';
-        })->map(function ($group) {
+        })->map(function ($group) use ($useArkas) {
             $subProgram = optional($group->first()->kodeKegiatan)->sub_program ?? 'Lainnya';
             $total = $group->sum(function ($item) {
                 return $item->jumlah * $item->harga_satuan;
@@ -539,13 +569,20 @@ class RkasController extends Controller
                 $tahap = in_array($item->bulan, ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni']) ? 1 : 2;
 
                 return $item->kode_rekening_id.'-'.$tampil.'-Tahap'.$tahap;
-            })->map(function ($uraianGroup) {
+            })->map(function ($uraianGroup) use ($useArkas) {
                 $firstWithPenerima = $uraianGroup->firstWhere('nama_penerima', '!=', null) ?? $uraianGroup->first();
                 $first = $uraianGroup->first();
+                $firstWithArkas = $uraianGroup->first(fn ($i) => filled($i->uraian_arkas));
                 $tahap = in_array($first->bulan, ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni']) ? 1 : 2;
+                $mergedRow = $uraianGroup->first(fn ($i) => filled($i->uraian_gabungan));
+                $isMerged = $mergedRow !== null;
+                $displayUraian = $isMerged
+                    ? $mergedRow->uraian_gabungan
+                    : $this->resolveDisplayUraian($firstWithArkas ?? $first, $useArkas);
 
                 return [
-                    'uraian' => $first->uraian_gabungan ?? $first->uraian,
+                    'uraian' => $displayUraian,
+                    'uraian_arkas' => $isMerged ? null : ($firstWithArkas ? trim((string) $firstWithArkas->uraian_arkas) : null),
                     'kode_rekening_id' => $first->kode_rekening_id,
                     'kode_id' => $first->kode_id,
                     'kode_rekening' => optional($first->rekeningBelanja)->kode_rekening ?? '',
@@ -554,16 +591,20 @@ class RkasController extends Controller
                     'jumlah' => $uraianGroup->sum(function ($item) {
                         return $item->jumlah * $item->harga_satuan;
                     }),
-                    'original_items' => $uraianGroup->map(function ($i) {
+                    'original_items' => $uraianGroup->groupBy(function ($i) {
+                        return $i->uraian.'-'.$i->kode_rekening_id.'-'.$i->kode_id;
+                    })->map(function ($origGroup) use ($useArkas) {
+                        $origFirst = $origGroup->first();
+                        $origWithArkas = $origGroup->first(fn ($i) => filled($i->uraian_arkas));
+
                         return [
-                            'uraian' => $i->uraian,
-                            'kode_rekening_id' => $i->kode_rekening_id,
-                            'kode_id' => $i->kode_id,
-                            'kode_rekening' => optional($i->rekeningBelanja)->kode_rekening ?? '',
-                            'kode_kegiatan' => optional($i->kodeKegiatan)->kode ?? '',
+                            'uraian' => $this->resolveDisplayUraian($origWithArkas ?? $origFirst, $useArkas),
+                            'uraian_arkas' => $origWithArkas ? trim((string) $origWithArkas->uraian_arkas) : null,
+                            'kode_rekening_id' => $origFirst->kode_rekening_id,
+                            'kode_id' => $origFirst->kode_id,
+                            'kode_rekening' => optional($origFirst->rekeningBelanja)->kode_rekening ?? '',
+                            'kode_kegiatan' => optional($origFirst->kodeKegiatan)->kode ?? '',
                         ];
-                    })->unique(function ($item) {
-                        return $item['uraian'].'-'.$item['kode_rekening_id'].'-'.$item['kode_id'];
                     })->values()->all(),
                     'rkas_ids' => $uraianGroup->pluck('id')->values()->all(),
                     'bulan_list' => $uraianGroup->pluck('bulan')->filter()->unique()->values()->all(),
@@ -592,12 +633,25 @@ class RkasController extends Controller
             'kegiatan_id' => 'required|exists:kode_kegiatans,id',
             'rekening_id' => 'required|exists:rekening_belanjas,id',
             'uraian' => 'required|string',
+            'uraian_arkas' => 'nullable|string',
+            'id_barang_arkas' => 'nullable|string|max:100',
             'harga_satuan' => 'required|numeric|min:0',
             'alokasi' => 'required|array|min:1',
             'alokasi.*.month' => 'required|string',
             'alokasi.*.quantity' => 'required|numeric|min:1',
             'alokasi.*.unit' => 'required|string',
         ]);
+
+        $this->validateArkasBatasAtas(
+            (int) $penganggaran->tahun_anggaran,
+            (int) $request->rekening_id,
+            $request->input('id_barang_arkas'),
+            $request->input('uraian_arkas'),
+            (float) $request->harga_satuan
+        );
+
+        $uraianArkas = $request->filled('uraian_arkas') ? trim((string) $request->uraian_arkas) : null;
+        $idBarangArkas = $request->filled('id_barang_arkas') ? trim((string) $request->id_barang_arkas) : null;
 
         DB::beginTransaction();
         try {
@@ -619,6 +673,8 @@ class RkasController extends Controller
                     'kode_id' => $request->kegiatan_id,
                     'kode_rekening_id' => $request->rekening_id,
                     'uraian' => $request->uraian,
+                    'uraian_arkas' => $uraianArkas,
+                    'id_barang_arkas' => $idBarangArkas,
                     'harga_satuan' => $request->harga_satuan,
                     'bulan' => $alloc['month'],
                     'jumlah' => $alloc['quantity'],
@@ -637,7 +693,7 @@ class RkasController extends Controller
 
     public function getEditData($id)
     {
-        $rkas = ($this->Rkas)::with(['kodeKegiatan', 'rekeningBelanja'])->findOrFail($id);
+        $rkas = ($this->Rkas)::with(['kodeKegiatan', 'rekeningBelanja', 'penganggaran'])->findOrFail($id);
 
         // Find all items in the same group (siblings)
         $siblings = ($this->Rkas)::where(VariantConfig::penganggaranFk($this->variant), $rkas->{VariantConfig::penganggaranFk($this->variant)})
@@ -667,10 +723,21 @@ class RkasController extends Controller
             }
         }
 
+        $tahun = (int) ($rkas->penganggaran->tahun_anggaran ?? date('Y'));
+        $batasAtasArkas = $this->resolveArkasBatasAtas(
+            $tahun,
+            (int) $rkas->kode_rekening_id,
+            $rkas->id_barang_arkas,
+            $rkas->uraian_arkas
+        );
+
         return response()->json([
             'kegiatan_id' => (string) $rkas->kode_id, // Cast to string for Select component
             'rekening_id' => (string) $rkas->kode_rekening_id,
             'uraian' => $rkas->uraian,
+            'uraian_arkas' => $rkas->uraian_arkas ?? '',
+            'id_barang_arkas' => $rkas->id_barang_arkas ?? '',
+            'batas_atas_arkas' => $batasAtasArkas,
             'harga_satuan' => $rkas->harga_satuan,
             'program_nama' => $rkas->kodeKegiatan ? $rkas->kodeKegiatan->program : '-',
             'kegiatan_nama' => $rkas->kodeKegiatan ? $rkas->kodeKegiatan->uraian : '-',
@@ -695,6 +762,8 @@ class RkasController extends Controller
             'kegiatan_id' => 'required|exists:kode_kegiatans,id',
             'rekening_id' => 'required|exists:rekening_belanjas,id',
             'uraian' => 'required|string',
+            'uraian_arkas' => 'nullable|string',
+            'id_barang_arkas' => 'nullable|string|max:100',
             'harga_satuan' => 'required|numeric|min:0',
             'alokasi' => 'required|array|min:1',
             'alokasi.*.month' => 'required|string',
@@ -702,9 +771,22 @@ class RkasController extends Controller
             'alokasi.*.unit' => 'required|string',
         ]);
 
+        $originalForValidation = ($this->Rkas)::with('penganggaran')->findOrFail($request->original_id);
+        $tahunAnggaran = (int) ($originalForValidation->penganggaran->tahun_anggaran ?? date('Y'));
+        $this->validateArkasBatasAtas(
+            $tahunAnggaran,
+            (int) $request->rekening_id,
+            $request->input('id_barang_arkas'),
+            $request->input('uraian_arkas'),
+            (float) $request->harga_satuan
+        );
+
+        $uraianArkas = $request->filled('uraian_arkas') ? trim((string) $request->uraian_arkas) : null;
+        $idBarangArkas = $request->filled('id_barang_arkas') ? trim((string) $request->id_barang_arkas) : null;
+
         DB::beginTransaction();
         try {
-            $original = ($this->Rkas)::findOrFail($request->original_id);
+            $original = $originalForValidation;
             // Validasi BKU
             $bkuSpentVolume = $this->getBkuSpentVolume($original);
 
@@ -784,6 +866,8 @@ class RkasController extends Controller
                     'kode_id' => $request->kegiatan_id,
                     'kode_rekening_id' => $request->rekening_id,
                     'uraian' => $request->uraian,
+                    'uraian_arkas' => $uraianArkas,
+                    'id_barang_arkas' => $idBarangArkas,
                     'harga_satuan' => $request->harga_satuan,
                     'bulan' => $alloc['month'],
                     'jumlah' => $alloc['quantity'],
@@ -796,14 +880,12 @@ class RkasController extends Controller
             }
 
             // 3. Re-bind existing reviews to the newly created items
-            $boundTargetIds = [];
             foreach ($reviewsByMonth as $month => $existingReview) {
                 $targetRow = $createdByMonth[$month] ?? $firstCreatedRow;
-                if ($targetRow && ! in_array($targetRow->id, $boundTargetIds, true)) {
+                if ($targetRow) {
                     $existingReview->update([
                         'reviewable_id' => $targetRow->id,
                     ]);
-                    $boundTargetIds[] = $targetRow->id;
                 }
             }
 
@@ -832,7 +914,8 @@ class RkasController extends Controller
             ->filter(fn ($group, $key) => ! is_null($key));
 
         // Use the proper centralized logic
-        $tahapanData = $this->kelolaDataRkas($rkasData);
+        $useArkas = $this->isArkasUraianMode($request);
+        $tahapanData = $this->kelolaDataRkas($rkasData, $useArkas);
         $totalTahap1 = $this->calculateTotalTahap1($id);
         $totalTahap2 = $this->calculateTotalTahap2($id);
 
@@ -864,7 +947,8 @@ class RkasController extends Controller
             ->filter(fn ($group, $key) => ! is_null($key));
 
         // Use the same logic as standard Tahapan, data includes 'bulanan' for T1/T2 split
-        $tahapanData = $this->kelolaDataRkas($rkasData);
+        $useArkas = $this->isArkasUraianMode($request);
+        $tahapanData = $this->kelolaDataRkas($rkasData, $useArkas);
         $totalTahap1 = $this->calculateTotalTahap1($id);
         $totalTahap2 = $this->calculateTotalTahap2($id);
 
@@ -930,6 +1014,7 @@ class RkasController extends Controller
         $penganggaran = ($this->Penganggaran)::with('sekolah')->findOrFail($id);
         $penganggaran->setAttribute('sumber_dana', VariantConfig::title($this->variant));
         $month = $request->input('month', 'Januari');
+        $useArkas = $this->isArkasUraianMode($request);
 
         if ($month === 'all') {
             $months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
@@ -949,7 +1034,7 @@ class RkasController extends Controller
                     })
                     ->filter(fn ($group, $key) => ! is_null($key));
 
-                $allData[$m] = $this->kelolaDataRkas($monthRkas);
+                $allData[$m] = $this->kelolaDataRkas($monthRkas, $useArkas);
             }
 
             $pdf = Pdf::loadView('rka_bulanan_all_pdf', [
@@ -973,7 +1058,7 @@ class RkasController extends Controller
                 })
                 ->filter(fn ($group, $key) => ! is_null($key));
 
-            $rkaBulananData = $this->kelolaDataRkas($rkasData);
+            $rkaBulananData = $this->kelolaDataRkas($rkasData, $useArkas);
 
             $pdf = Pdf::loadView('rka_bulanan_pdf', [
                 'anggaran' => $penganggaran->toArray(),
@@ -993,7 +1078,7 @@ class RkasController extends Controller
         $penganggaran = ($this->Penganggaran)::with('sekolah')->findOrFail($id);
         $penganggaran->setAttribute('sumber_dana', VariantConfig::title($this->variant));
 
-        [$groupedItems, $totals] = $this->prepare221Data($id);
+        [$groupedItems, $totals] = $this->prepare221Data($id, $this->isArkasUraianMode($request));
 
         $mainStructure = [
             '5' => 'BELANJA',
@@ -1072,13 +1157,71 @@ class RkasController extends Controller
         $penganggaranFk = VariantConfig::penganggaranFk($this->variant);
         $bkuFk = VariantConfig::bkuFk($this->variant);
 
+        $uraianCandidates = array_values(array_unique(array_filter([
+            strtolower(trim((string) $rkasItem->uraian)),
+            strtolower(trim((string) ($rkasItem->uraian_arkas ?? ''))),
+        ])));
+
         return ($this->BukuKasUmumUraianDetail)::join($bkuTable, "{$bkuTable}.id", '=', "{$bkuDetailTable}.{$bkuFk}")
             ->where("{$bkuTable}.{$penganggaranFk}", $rkasItem->{$penganggaranFk})
             ->where("{$bkuDetailTable}.kode_kegiatan_id", $rkasItem->kode_id)
             ->where("{$bkuDetailTable}.rekening_belanja_id", $rkasItem->kode_rekening_id)
-            ->whereRaw("LOWER(TRIM({$bkuDetailTable}.uraian)) = LOWER(TRIM(?))", [$rkasItem->uraian])
+            ->where(function ($q) use ($bkuDetailTable, $uraianCandidates) {
+                foreach ($uraianCandidates as $candidate) {
+                    $q->orWhereRaw("LOWER(TRIM({$bkuDetailTable}.uraian)) = ?", [$candidate]);
+                }
+            })
             ->where("{$bkuDetailTable}.harga_satuan", $rkasItem->harga_satuan)
             ->sum("{$bkuDetailTable}.volume");
+    }
+
+    private function resolveArkasBatasAtas(int $tahun, int $rekeningId, ?string $idBarangArkas, ?string $uraianArkas): ?float
+    {
+        $idBarang = trim((string) $idBarangArkas);
+        $uraian = trim((string) $uraianArkas);
+
+        if ($idBarang === '' && $uraian === '') {
+            return null;
+        }
+
+        $rekening = RekeningBelanja::find($rekeningId);
+        if (! $rekening || empty($rekening->kode_rekening)) {
+            return null;
+        }
+
+        $baseQuery = RefBarang::where('tahun', $tahun)
+            ->where('kode_rekening', $rekening->kode_rekening);
+
+        if (! (clone $baseQuery)->exists()) {
+            return null;
+        }
+
+        $refBarang = null;
+        if ($idBarang !== '') {
+            $refBarang = (clone $baseQuery)->where('id_barang', $idBarang)->first();
+        }
+        if (! $refBarang && $uraian !== '') {
+            $refBarang = (clone $baseQuery)
+                ->whereRaw('LOWER(TRIM(nama_barang)) = LOWER(TRIM(?))', [$uraian])
+                ->first();
+        }
+
+        if (! $refBarang) {
+            return null;
+        }
+
+        return (float) $refBarang->batas_atas;
+    }
+
+    private function validateArkasBatasAtas(int $tahun, int $rekeningId, ?string $idBarangArkas, ?string $uraianArkas, float $hargaSatuan): void
+    {
+        $batasAtas = $this->resolveArkasBatasAtas($tahun, $rekeningId, $idBarangArkas, $uraianArkas);
+
+        if ($batasAtas !== null && $batasAtas > 0 && $hargaSatuan > $batasAtas) {
+            throw ValidationException::withMessages([
+                'harga_satuan' => 'Harga satuan melebihi batas atas Arkas (Maks: Rp '.number_format($batasAtas, 0, ',', '.').').',
+            ]);
+        }
     }
 
     // --- LOGIC HELPERS ---
@@ -1097,7 +1240,7 @@ class RkasController extends Controller
             ->sum(DB::raw('jumlah * harga_satuan'));
     }
 
-    private function kelolaDataRkas($rkasData)
+    private function kelolaDataRkas($rkasData, bool $useArkas = false)
     {
         $terorganisir = [];
 
@@ -1165,7 +1308,9 @@ class RkasController extends Controller
                         'kode_rekening' => $item->rekeningBelanja->kode_rekening,
                         'kode_id' => $item->kode_id,
                         'kode_kegiatan' => optional($item->kodeKegiatan)->kode ?? '',
-                        'uraian' => $item->uraian,
+                        'uraian' => $this->resolveDisplayUraian($item, $useArkas),
+                        'uraian_sikas' => $item->uraian,
+                        'uraian_arkas' => filled($item->uraian_arkas) ? trim((string) $item->uraian_arkas) : null,
                         'uraian_gabungan' => $item->uraian_gabungan,
                         'uraian_gabungan_t1' => null,
                         'uraian_gabungan_t2' => null,
@@ -1210,6 +1355,13 @@ class RkasController extends Controller
                         'is_pph4' => $item->rekeningBelanja->is_pph4,
                     ];
                 } else {
+                    if (empty($groupedItems[$key]['uraian_arkas']) && filled($item->uraian_arkas)) {
+                        $trimmedArkas = trim((string) $item->uraian_arkas);
+                        $groupedItems[$key]['uraian_arkas'] = $trimmedArkas;
+                        if ($useArkas) {
+                            $groupedItems[$key]['uraian'] = $trimmedArkas;
+                        }
+                    }
                     // Update tax/recipient fields opportunistically if the grouped one is missing them but current item has them
                     if (empty($groupedItems[$key]['nama_penerima']) && ! empty($item->nama_penerima)) {
                         $groupedItems[$key]['nama_penerima'] = $item->nama_penerima;
@@ -1553,7 +1705,7 @@ class RkasController extends Controller
         }
     }
 
-    private function prepare221Data($penganggaranId)
+    private function prepare221Data($penganggaranId, bool $useArkas = false)
     {
         $mainStructure = [
             '5' => 'BELANJA',
@@ -1586,13 +1738,21 @@ class RkasController extends Controller
             if (! isset($groupedItems[$mainCode][$key])) {
                 $groupedItems[$mainCode][$key] = [
                     'kode_rekening' => $kode,
-                    'uraian' => $item->uraian,
+                    'uraian' => $this->resolveDisplayUraian($item, $useArkas),
+                    'uraian_arkas' => filled($item->uraian_arkas) ? trim((string) $item->uraian_arkas) : null,
                     'volume' => $item->jumlah,
                     'satuan' => $item->satuan,
                     'harga_satuan' => $item->harga_satuan,
                     'jumlah' => $item->jumlah * $item->harga_satuan,
                 ];
             } else {
+                if (empty($groupedItems[$mainCode][$key]['uraian_arkas']) && filled($item->uraian_arkas)) {
+                    $trimmedArkas = trim((string) $item->uraian_arkas);
+                    $groupedItems[$mainCode][$key]['uraian_arkas'] = $trimmedArkas;
+                    if ($useArkas) {
+                        $groupedItems[$mainCode][$key]['uraian'] = $trimmedArkas;
+                    }
+                }
                 $groupedItems[$mainCode][$key]['volume'] += $item->jumlah;
                 $groupedItems[$mainCode][$key]['jumlah'] = $groupedItems[$mainCode][$key]['volume'] * $item->harga_satuan;
             }
@@ -2053,6 +2213,8 @@ class RkasController extends Controller
                         'kode_id' => $previousData->kode_id,
                         'kode_rekening_id' => $previousData->kode_rekening_id,
                         'uraian' => $previousData->uraian,
+                        'uraian_arkas' => $previousData->uraian_arkas,
+                        'id_barang_arkas' => $previousData->id_barang_arkas,
                         'harga_satuan' => $previousData->harga_satuan,
                         'jumlah' => $previousData->jumlah,
                         'satuan' => $previousData->satuan,
@@ -2100,7 +2262,7 @@ class RkasController extends Controller
             })
             ->filter(fn ($group, $key) => ! is_null($key));
 
-        $tahapanData = $this->kelolaDataRkas($rkasData);
+        $tahapanData = $this->kelolaDataRkas($rkasData, $this->isArkasUraianMode($request));
         $totalTahap1 = $this->calculateTotalTahap1($id);
         $totalTahap2 = $this->calculateTotalTahap2($id);
 
@@ -2134,7 +2296,7 @@ class RkasController extends Controller
             })
             ->filter(fn ($group, $key) => ! is_null($key));
 
-        $tahapanData = $this->kelolaDataRkas($rkasData);
+        $tahapanData = $this->kelolaDataRkas($rkasData, $this->isArkasUraianMode($request));
         $totalTahap1 = $this->calculateTotalTahap1($id);
         $totalTahap2 = $this->calculateTotalTahap2($id);
 
@@ -2171,7 +2333,7 @@ class RkasController extends Controller
 
         $rkasData = $query->get();
 
-        $rincianData = $this->kelolaDataRincian($rkasData);
+        $rincianData = $this->kelolaDataRincian($rkasData, $this->isArkasUraianMode($request));
 
         $pdf = Pdf::loadView('laporan.rka_rincian_pdf', [
             'anggaran' => $penganggaran->toArray(),
@@ -2202,7 +2364,7 @@ class RkasController extends Controller
 
         $rkasData = $query->get();
 
-        $rincianData = $this->kelolaDataRincian($rkasData);
+        $rincianData = $this->kelolaDataRincian($rkasData, $this->isArkasUraianMode($request));
 
         $html = view('laporan.rka_rincian_exel', [
             'anggaran' => $penganggaran->toArray(),
@@ -2292,7 +2454,7 @@ class RkasController extends Controller
             })
             ->filter(fn ($group, $key) => ! is_null($key));
 
-        $tahapanData = $this->kelolaDataRkas($rkasData);
+        $tahapanData = $this->kelolaDataRkas($rkasData, $this->isArkasUraianMode($request));
 
         $tahap = $request->tahap ?? 1;
         $bulan = $request->bulan ?? 'Semua';
@@ -2329,7 +2491,7 @@ class RkasController extends Controller
             })
             ->filter(fn ($group, $key) => ! is_null($key));
 
-        $tahapanData = $this->kelolaDataRkas($rkasData);
+        $tahapanData = $this->kelolaDataRkas($rkasData, $this->isArkasUraianMode($request));
 
         $tahap = $request->tahap ?? 1;
         $bulan = $request->bulan ?? 'Semua';
@@ -2626,98 +2788,117 @@ class RkasController extends Controller
      */
     private function runArkasEngine(array $args): array
     {
-        $pythonPath = storage_path('app/arkas_engine/python.exe');
-        $scriptPath = storage_path('app/arkas_engine/dump_rkas.py');
-
-        if (! file_exists($pythonPath) || ! file_exists($scriptPath)) {
-            throw new \Exception('Arkas Engine tidak ditemukan.');
-        }
-
-        $env = $_SERVER;
-        unset($env['OPENSSL_CONF']);
-
-        $appdata = $env['APPDATA'] ?? null;
-        $userprofile = $env['USERPROFILE'] ?? null;
-
-        if (empty($appdata)) {
-            $appdata = trim(shell_exec("powershell -Command \"[Environment]::GetFolderPath('ApplicationData')\""));
-        }
-        if (empty($userprofile)) {
-            $userprofile = trim(shell_exec("powershell -Command \"[Environment]::GetFolderPath('UserProfile')\""));
-        }
-        if (empty($userprofile) && ! empty($appdata)) {
-            $userprofile = dirname(dirname($appdata));
-        }
-        if (empty($appdata) && ! empty($userprofile)) {
-            $appdata = $userprofile.'\\AppData\\Roaming';
-        }
-
-        $env['SystemRoot'] = $env['SystemRoot'] ?? 'C:\\Windows';
-        $env['SystemDrive'] = $env['SystemDrive'] ?? 'C:';
-        $env['USERPROFILE'] = $userprofile ?: ($env['USERPROFILE'] ?? 'C:\\Users\\Digitalisasi');
-        $env['APPDATA'] = $appdata ?: ($env['APPDATA'] ?? 'C:\\Users\\Digitalisasi\\AppData\\Roaming');
-        $env['LOCALAPPDATA'] = $env['LOCALAPPDATA'] ?? ($userprofile ? $userprofile.'\\AppData\\Local' : '');
-        $env['TEMP'] = $env['TEMP'] ?? ($userprofile ? $userprofile.'\\AppData\\Local\\Temp' : '');
-        $env['TMP'] = $env['TMP'] ?? $env['TEMP'];
-
-        $command = array_merge([$pythonPath, $scriptPath], $args);
-
-        $dbPathManual = env('ARKAS_DB_PATH', '');
-        $dbPathManual = trim($dbPathManual, '"\' ');
-        $dbPathManual = str_replace('\\', '/', $dbPathManual);
-        if (! empty($dbPathManual)) {
-            $command[] = $dbPathManual;
-        }
-
-        $process = new Process($command, null, $env);
-        $process->setTimeout(60);
-        $process->run();
-
-        if (! $process->isSuccessful()) {
-            throw new \Exception('Gagal mengeksekusi engine ARKAS: '.$process->getErrorOutput());
-        }
-
-        $output = $process->getOutput();
-        $result = json_decode($output, true);
-
-        if (! $result) {
-            throw new \Exception('Format respons engine ARKAS tidak valid: '.$output);
-        }
-
-        if (isset($result['status']) && $result['status'] === 'error') {
-            throw new \Exception($result['message'] ?? 'Terjadi kesalahan pada engine ARKAS.');
-        }
-
-        return $result;
+        return app(ArkasEngineService::class)->runScriptOrThrow(
+            'dump_rkas.py',
+            $args,
+            60
+        );
     }
 
     /**
-     * Memeriksa ketersediaan RKAS Murni di ARKAS untuk preview sebelum ditarik.
+     * Memeriksa ketersediaan RKAS Awal di ARKAS serta mendeteksi perbedaan/pergeseran (dry-run tanpa mengubah DB).
      */
-    public function checkArkasRkas(Request $request, $id)
+    public function checkArkasRkas(Request $request, $id, ArkasRkasSyncService $syncService)
     {
+        $penganggaran = ($this->Penganggaran)::findOrFail($id);
+
         try {
-            $penganggaran = ($this->Penganggaran)::findOrFail($id);
+            $penganggaranFk = VariantConfig::penganggaranFk($this->variant);
             $tahun = (int) $penganggaran->tahun_anggaran;
             $sumberDanaId = $this->getArkasSumberDanaId();
 
-            $rkasCount = ($this->Rkas)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)->count();
-            $hasBku = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)->exists();
+            $rkasCount = ($this->Rkas)::where($penganggaranFk, $penganggaran->id)->count();
+            $hasBku = ($this->BukuKasUmum && class_exists($this->BukuKasUmum))
+                ? ($this->BukuKasUmum)::where($penganggaranFk, $penganggaran->id)->exists()
+                : false;
 
-            $result = $this->runArkasEngine(['check', (string) $tahun, (string) $sumberDanaId]);
+            if ($rkasCount === 0) {
+                $result = $this->runArkasEngine(['check', (string) $tahun, (string) $sumberDanaId]);
+
+                return response()->json([
+                    'status' => 'success',
+                    'exists' => $result['exists'] ?? false,
+                    'is_revisi' => (int) ($result['is_revisi'] ?? 0),
+                    'tahun' => $tahun,
+                    'sumber_dana' => $result['sumber_dana'] ?? VariantConfig::title($this->variant),
+                    'pagu' => (float) ($result['pagu'] ?? 0),
+                    'total_kegiatan' => (int) ($result['total_kegiatan'] ?? 0),
+                    'total_alokasi' => (int) ($result['total_alokasi'] ?? 0),
+                    'total_alokasi_rp' => (float) ($result['total_alokasi_rp'] ?? 0),
+                    'current_rkas_count' => 0,
+                    'has_bku' => $hasBku,
+                    'can_pull' => ! empty($result['exists']),
+                    'diff_preview' => null,
+                    'message' => $result['message'] ?? null,
+                ]);
+            }
+
+            // Saat RKAS SIKAS sudah terisi: dump 1 kali lalu jalankan dry-run deteksi perbedaan (tanpa mutasi DB)
+            $result = $this->runArkasEngine(['dump', (string) $tahun, (string) $sumberDanaId]);
+            $items = $result['data'] ?? [];
+            $exists = array_key_exists('exists', $result) ? (bool) $result['exists'] : ! empty($items);
+
+            if (! $exists || empty($items)) {
+                return response()->json([
+                    'status' => 'success',
+                    'exists' => false,
+                    'is_revisi' => (int) ($result['is_revisi'] ?? 0),
+                    'tahun' => $tahun,
+                    'sumber_dana' => $result['sumber_dana'] ?? VariantConfig::title($this->variant),
+                    'pagu' => (float) ($result['pagu'] ?? 0),
+                    'total_kegiatan' => 0,
+                    'total_alokasi' => 0,
+                    'total_alokasi_rp' => 0.0,
+                    'current_rkas_count' => $rkasCount,
+                    'has_bku' => $hasBku,
+                    'can_pull' => false,
+                    'diff_preview' => null,
+                    'message' => $result['message'] ?? "Tidak ditemukan data RKAS Awal di ARKAS untuk Tahun {$tahun}.",
+                ]);
+            }
+
+            ['kegiatanMap' => $kegiatanMap, 'rekenings' => $rekenings] = $syncService->loadMasterMaps();
+            $spentVolumeByRowId = $syncService->loadSpentVolumeByRkasId(
+                $this->variant,
+                $this->Rkas,
+                $this->BukuKasUmum,
+                $this->BukuKasUmumUraianDetail,
+                $penganggaranFk,
+                (int) $penganggaran->id,
+                isPerubahan: false
+            );
+
+            $dryStats = $syncService->syncFromArkas(
+                $this->Rkas,
+                $penganggaranFk,
+                (int) $penganggaran->id,
+                $tahun,
+                $items,
+                $kegiatanMap,
+                $rekenings,
+                reconcilePerubahan: false,
+                protectedRowIds: [],
+                reconcileAwal: true,
+                spentVolumeByRowId: $spentVolumeByRowId,
+                dryRun: true
+            );
+
+            $previewPayload = $syncService->buildDiffPreview($dryStats, $items);
 
             return response()->json([
                 'status' => 'success',
-                'exists' => $result['exists'] ?? false,
+                'exists' => true,
+                'is_revisi' => (int) ($result['is_revisi'] ?? 0),
                 'tahun' => $tahun,
                 'sumber_dana' => $result['sumber_dana'] ?? VariantConfig::title($this->variant),
                 'pagu' => (float) ($result['pagu'] ?? 0),
-                'total_kegiatan' => (int) ($result['total_kegiatan'] ?? 0),
-                'total_alokasi' => (int) ($result['total_alokasi'] ?? 0),
-                'total_alokasi_rp' => (float) ($result['total_alokasi_rp'] ?? 0),
+                'total_kegiatan' => $previewPayload['total_kegiatan'],
+                'total_alokasi' => $previewPayload['total_alokasi'],
+                'total_alokasi_rp' => $previewPayload['total_alokasi_rp'],
                 'current_rkas_count' => $rkasCount,
                 'has_bku' => $hasBku,
-                'can_pull' => ($rkasCount === 0 && ! $hasBku && ! empty($result['exists'])),
+                'can_pull' => true,
+                'diff_preview' => $previewPayload['diff_preview'],
                 'message' => $result['message'] ?? null,
             ]);
         } catch (\Exception $e) {
@@ -2725,40 +2906,39 @@ class RkasController extends Controller
 
             return response()->json([
                 'status' => 'error',
-                'message' => $e->getMessage(),
+                'message' => 'Gagal memeriksa data ARKAS. Pastikan aplikasi/database ARKAS tersedia lalu coba kembali.',
             ], 500);
         }
     }
 
     /**
-     * Menarik data alokasi bulanan RKAS Murni dari ARKAS dan menyimpannya ke tabel rkas.
+     * Menarik data alokasi bulanan RKAS Awal dari ARKAS.
+     * - mode = 'reconcile': menyesuaikan pergeseran/perubahan RKAS Awal mengikuti ARKAS (tetap menjaga uraian SIKAS
+     *   dan menerapkan proteksi cerdas berbasis volume BKU).
+     * - mode = 'match_only' (default): penyandingan aman tanpa mengubah/menambah/menghapus baris SIKAS.
      */
-    public function pullArkasRkas(Request $request, $id)
+    public function pullArkasRkas(Request $request, $id, ArkasRkasSyncService $syncService)
     {
+        $validated = $request->validate([
+            'mode' => 'nullable|in:reconcile,match_only',
+        ]);
+
+        $penganggaran = ($this->Penganggaran)::findOrFail($id);
+        $penganggaranFk = VariantConfig::penganggaranFk($this->variant);
+        $tahun = (int) $penganggaran->tahun_anggaran;
+        $sumberDanaId = $this->getArkasSumberDanaId();
+        $reconcileAwal = ($validated['mode'] ?? 'match_only') === 'reconcile';
+
+        if ($reconcileAwal
+            && $this->RkasPerubahan
+            && class_exists($this->RkasPerubahan)
+            && ($this->RkasPerubahan)::where($penganggaranFk, $penganggaran->id)->exists()) {
+            return redirect()->back()->withErrors([
+                'message' => 'RKAS Perubahan sudah aktif untuk tahun anggaran ini. Penyesuaian otomatis RKAS Awal dinonaktifkan agar data Murni tetap terkunci.',
+            ]);
+        }
+
         try {
-            $penganggaran = ($this->Penganggaran)::findOrFail($id);
-            $penganggaranFk = VariantConfig::penganggaranFk($this->variant);
-
-            // 1. Validasi Keamanan: RKAS saat ini harus kosong
-            $rkasCount = ($this->Rkas)::where($penganggaranFk, $penganggaran->id)->count();
-            if ($rkasCount > 0) {
-                return redirect()->back()->withErrors([
-                    'message' => 'Penarikan data ditolak: Data RKAS di newSIKAS sudah terisi ('.$rkasCount.' data). Tombol tarik hanya dapat digunakan saat RKAS masih kosong.',
-                ]);
-            }
-
-            // 2. Validasi Keamanan: BKU tidak boleh sudah memiliki transaksi belanja
-            $hasBku = ($this->BukuKasUmum)::where($penganggaranFk, $penganggaran->id)->exists();
-            if ($hasBku) {
-                return redirect()->back()->withErrors([
-                    'message' => 'Penarikan data ditolak: Sudah terdapat catatan transaksi belanja pada Buku Kas Umum (BKU). Hapus transaksi BKU terlebih dahulu jika ingin mengatur ulang RKAS.',
-                ]);
-            }
-
-            $tahun = (int) $penganggaran->tahun_anggaran;
-            $sumberDanaId = $this->getArkasSumberDanaId();
-
-            // Eksekusi engine dump
             $result = $this->runArkasEngine(['dump', (string) $tahun, (string) $sumberDanaId]);
             $items = $result['data'] ?? [];
 
@@ -2768,84 +2948,71 @@ class RkasController extends Controller
                 ]);
             }
 
-            // Pre-load master data untuk lookup cepat O(1)
-            $kegiatans = KodeKegiatan::all();
-            $kegiatanMap = [];
-            foreach ($kegiatans as $k) {
-                $codeNormalized = rtrim($k->kode, '.').'.';
-                $kegiatanMap[$codeNormalized] = $k->id;
-                $kegiatanMap[rtrim($k->kode, '.')] = $k->id;
-            }
+            ['kegiatanMap' => $kegiatanMap, 'rekenings' => $rekenings] = $syncService->loadMasterMaps();
+            $hasExistingRows = ($this->Rkas)::where($penganggaranFk, $penganggaran->id)->exists();
 
-            $rekenings = RekeningBelanja::all()->keyBy('kode_rekening');
-
-            // Validasi kecocokan master data sebelum insert
-            $missingKegiatan = [];
-            $missingRekening = [];
-
-            foreach ($items as $item) {
-                $kodeKeg = rtrim($item['kode_kegiatan'] ?? '', '.').'.';
-                if (! isset($kegiatanMap[$kodeKeg])) {
-                    $missingKegiatan[$item['kode_kegiatan']] = true;
-                }
-
-                $kodeRek = $item['kode_rekening'] ?? '';
-                if (! isset($rekenings[$kodeRek])) {
-                    $missingRekening[$kodeRek] = true;
+            // Validasi referensi master wajib saat Mode A (RKAS SIKAS masih kosong / initial import)
+            if (! $hasExistingRows) {
+                $missingError = $syncService->validateMasterReferences($items, $kegiatanMap, $rekenings);
+                if ($missingError !== null) {
+                    return redirect()->back()->withErrors(['message' => $missingError]);
                 }
             }
 
-            if (! empty($missingKegiatan) || ! empty($missingRekening)) {
-                $errMsg = 'Terdapat referensi ARKAS yang belum terdaftar di newSIKAS: ';
-                if (! empty($missingKegiatan)) {
-                    $errMsg .= 'Kode Kegiatan: '.implode(', ', array_keys($missingKegiatan)).'. ';
-                }
-                if (! empty($missingRekening)) {
-                    $errMsg .= 'Kode Rekening: '.implode(', ', array_keys($missingRekening)).'. ';
-                }
-                $errMsg .= 'Silakan sinkronkan Referensi Kode terlebih dahulu di menu Referensi.';
-
-                return redirect()->back()->withErrors(['message' => $errMsg]);
-            }
-
-            DB::beginTransaction();
-
-            // 1. Update pagu_anggaran di penganggaran
             $paguArkas = (float) ($result['pagu'] ?? 0);
-            if ($paguArkas > 0) {
-                $penganggaran->pagu_anggaran = $paguArkas;
-                $penganggaran->save();
-            }
+            $isRevisi = (int) ($result['is_revisi'] ?? 0);
+            $sourceLabel = $isRevisi > 0 ? "RKAS Awal (Pergeseran {$isRevisi})" : 'RKAS Awal';
 
-            // 2. Insert items ke RKAS
-            $insertedCount = 0;
-            foreach ($items as $item) {
-                $kodeKeg = rtrim($item['kode_kegiatan'], '.').'.';
-                $kegiatanId = $kegiatanMap[$kodeKeg];
-                $rekeningId = $rekenings[$item['kode_rekening']]->id;
+            $stats = DB::transaction(function () use ($syncService, $penganggaran, $penganggaranFk, $tahun, $items, $kegiatanMap, $rekenings, $paguArkas, $reconcileAwal) {
+                ($this->Penganggaran)::whereKey($penganggaran->id)->lockForUpdate()->first();
 
-                ($this->Rkas)::create([
-                    $penganggaranFk => $penganggaran->id,
-                    'kode_id' => $kegiatanId,
-                    'kode_rekening_id' => $rekeningId,
-                    'uraian' => $item['uraian'] ?? '',
-                    'harga_satuan' => (float) ($item['harga_satuan'] ?? 0),
-                    'bulan' => $item['bulan'] ?? 'Januari',
-                    'jumlah' => (float) ($item['volume'] ?? 0),
-                    'satuan' => $item['satuan'] ?? '',
-                ]);
+                $spentVolumeByRowId = $reconcileAwal
+                    ? $syncService->loadSpentVolumeByRkasId(
+                        $this->variant,
+                        $this->Rkas,
+                        $this->BukuKasUmum,
+                        $this->BukuKasUmumUraianDetail,
+                        $penganggaranFk,
+                        (int) $penganggaran->id,
+                        isPerubahan: false
+                    )
+                    : [];
 
-                $insertedCount++;
-            }
+                $syncStats = $syncService->syncFromArkas(
+                    $this->Rkas,
+                    $penganggaranFk,
+                    (int) $penganggaran->id,
+                    $tahun,
+                    $items,
+                    $kegiatanMap,
+                    $rekenings,
+                    reconcilePerubahan: false,
+                    protectedRowIds: [],
+                    reconcileAwal: $reconcileAwal,
+                    spentVolumeByRowId: $spentVolumeByRowId,
+                    dryRun: false
+                );
 
-            DB::commit();
+                // Update pagu_anggaran saat initial import atau saat rekonsiliasi RKAS Awal seimbang 100%
+                if (($syncStats['mode'] === 'initial_import' || ($syncStats['mode'] === 'awal_reconcile' && ! $syncStats['is_budget_mismatch'])) && $paguArkas > 0) {
+                    $penganggaran->pagu_anggaran = $paguArkas;
+                    $penganggaran->save();
+                }
 
-            return redirect()->back()->with('success', "Berhasil menarik {$insertedCount} data alokasi bulanan dari ARKAS. Pagu anggaran diperbarui menjadi Rp ".number_format($paguArkas, 0, ',', '.').'.');
+                return $syncStats;
+            });
+
+            $flash = $syncService->buildFlashResponse($stats, $sourceLabel, $tahun, $paguArkas);
+
+            return redirect()->back()
+                ->with($flash['flash_type'], $flash['message'])
+                ->with('arkas_sync_report', $flash['report']);
         } catch (\Exception $e) {
-            DB::rollBack();
             Log::error('❌ [PULL ARKAS RKAS] Error: '.$e->getMessage().' | '.$e->getTraceAsString());
 
-            return redirect()->back()->withErrors(['message' => 'Gagal menarik data dari ARKAS: '.$e->getMessage()]);
+            return redirect()->back()->withErrors([
+                'message' => 'Gagal menarik data dari ARKAS. Pastikan aplikasi/database ARKAS tersedia lalu coba kembali.',
+            ]);
         }
     }
 

@@ -55,6 +55,12 @@ export default function ChangelogModal() {
                             <li>
                                 <span className="font-medium">Penambahan Role Akun Kepala Sekolah:</span> Penambahan Role Akun kepala sekolah untuk memudahkan kepala sekolah meninjau perencanaan RKAS Awal dan RKAS Perubahan.
                             </li>
+                            <li>
+                                <span className="font-medium">Penambahan Modal Konfirmasi Tarik Arkas :</span> Penambahan modal tarik arkas yang memberikan informasi ketidak cocokan data apa bila ada pergeseran atau perubahan pada arkas dan di data sikas belum mengalami perubahan atau pergeseran, sehingga sistem akan mengingatkan dan menyesuaikan data yang di tarik dari arkas ke sikas.
+                            </li>
+                            <li>
+                                <span className="font-medium">Penambahan Fitur Akses Jaringan :</span> Penambahan fitur akses jaringan atau mode online. sekarang newSIKAS bisa di onlinekan menggunakan ip public, hosting, ngrok dan kawan-kawan, vps, ataupun server lokal milik sekolah. hal ini di perlukan untuk membantu sekolah dalam akses jaringan newSIKAS agar bisa di akses dari luar jaringan sekolah.
+                            </li>
                         </ul>
                     </div>
 
@@ -70,6 +76,7 @@ export default function ChangelogModal() {
                             <li><span className="font-medium">Upload kop gambar non aktif:</span> Upload Kop Sekolah menggunakan gambar di non-aktifkan dan di gantikan oleh kop sekolah builder. </li>
                             <li><span className="font-medium">Perbaikan Penganggaran dan Penatausahaan:</span> Perbaikan pada fitur penganggaran dan penatausahaan. jika pengguna ingin menggunakan kop sekolah pada penganggaran dan penatausahaan maka sistem akan mengizinkan hal tersebut dengan mengikuti pilihan yang telah di simpan pada kop sekolah builder. </li>
                             <li><span className="font-medium">Perbaikan pada mode dark:</span> Perbaikan pada Mode Dark agar lebih nyaman dan halus. </li>
+                            <li><span className="font-medium">Perbaikan Tarik Data Arkas:</span> Perbaikan penarikan data arkas untuk menyandingkan uraian arkas dengan uraian sikas. penyandingan ini berfungsi agar data arkas yang di tarik newSIKAS tidak akan menimpa data yang sudah ada di newSIKAS. hal ini juga berfungsi sebagai dasar pengguna untuk input data pada arkas lokal sehingga minim kesalahan. </li>
                         </ul>
                     </div>
                 </div>

@@ -12,10 +12,12 @@ import StatusBadge from '@/Components/ui/StatusBadge';
 import EmptyState from '@/Components/ui/EmptyState';
 import { SkeletonRows } from '@/Components/ui/Skeleton';
 import DocKopSuratHeader from '@/Components/DocKopSuratHeader';
+import { getDisplayUraian } from '@/Utils/rkasUraian';
 interface TabRincianPencairanProps {
     anggaran: any;
     tahapanData: any;
     variant: string;
+    showArkasUraian?: boolean;
     onPrint?: (target: string, params?: Record<string, any>) => void;
     onExportExcel?: (target: string, params?: Record<string, any>) => void;
     kwitansiMap?: Record<string, Array<{ id_transaksi: string; bulan: string }>>;
@@ -86,7 +88,7 @@ function getPph21Rate(statusPenerima: string, golongan: string, adaNpwp: boolean
     return tarifTable[tarifTable.length - 1].rate;
 }
 
-export default function TabRincianPencairan({ anggaran, tahapanData, variant, onPrint, onExportExcel, kwitansiMap }: TabRincianPencairanProps) {
+export default function TabRincianPencairan({ anggaran, tahapanData, variant, showArkasUraian = false, onPrint, onExportExcel, kwitansiMap }: TabRincianPencairanProps) {
     const { routePrefix } = usePage().props as any;
     const isSilpa = anggaran?.sumber_dana?.toLowerCase().includes('silpa');
     const isRkasAwal = variant === 'rkas' && !isSilpa;
@@ -180,6 +182,7 @@ export default function TabRincianPencairan({ anggaran, tahapanData, variant, on
             if (searchQuery.trim() !== '') {
                 const q = searchQuery.toLowerCase();
                 const uraian = (item.uraian || '').toLowerCase();
+                const uraianArkas = (item.uraian_arkas || '').toLowerCase();
                 const uraianGabungan = ((selectedTahap === 1 ? item.uraian_gabungan_t1 : item.uraian_gabungan_t2) || '').toLowerCase();
                 const kodeRekening = (item.kode_rekening || '').toLowerCase();
                 const kodeKegiatan = (item.kode_kegiatan || '').toLowerCase();
@@ -208,6 +211,7 @@ export default function TabRincianPencairan({ anggaran, tahapanData, variant, on
                 }
 
                 if (!uraian.includes(q) && 
+                    !uraianArkas.includes(q) &&
                     !uraianGabungan.includes(q) && 
                     !kodeRekening.includes(q) && 
                     !kodeKegiatan.includes(q) &&
@@ -244,6 +248,9 @@ export default function TabRincianPencairan({ anggaran, tahapanData, variant, on
 
             if (map.has(key)) {
                 const existing = map.get(key);
+                if (!currentUraianGabungan && !existing.uraian_arkas && item.uraian_arkas) {
+                    existing.uraian_arkas = item.uraian_arkas;
+                }
                 existing.tahap1 += (item.tahap1 || 0);
                 existing.tahap2 += (item.tahap2 || 0);
                 existing.jumlah += (item.jumlah || 0);
@@ -306,6 +313,7 @@ export default function TabRincianPencairan({ anggaran, tahapanData, variant, on
                     id: item.id,
                     rkas_ids: item.rkas_ids,
                     uraian: item.uraian,
+                    uraian_arkas: item.uraian_arkas || null,
                     kode_rekening: item.kode_rekening,
                     kode_kegiatan: item.kode_kegiatan,
                     kode_rekening_id: item.kode_rekening_id,
@@ -326,11 +334,13 @@ export default function TabRincianPencairan({ anggaran, tahapanData, variant, on
                 const clonedItem = { 
                     ...item, 
                     uraian: displayUraian, 
+                    uraian_arkas: currentUraianGabungan ? null : (item.uraian_arkas || null),
                     uraian_gabungan: currentUraianGabungan,
                     original_items: [{
                         id: item.id,
                         rkas_ids: item.rkas_ids,
                         uraian: item.uraian,
+                        uraian_arkas: item.uraian_arkas || null,
                         kode_rekening: item.kode_rekening,
                         kode_kegiatan: item.kode_kegiatan,
                         kode_rekening_id: item.kode_rekening_id,
@@ -879,7 +889,7 @@ export default function TabRincianPencairan({ anggaran, tahapanData, variant, on
                                 setSelectedBulan('Semua');
                                 setSelectedItems([]);
                             }}
-                            className="rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-[12px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
+                            className="rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-[12px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-slate-900 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
                         >
                             <option value={1} disabled={variant === 'rkas_perubahan'}>
                                 Tahap 1 {variant === 'rkas_perubahan' ? '(Hanya pada RKAS Awal)' : ''}
@@ -896,7 +906,7 @@ export default function TabRincianPencairan({ anggaran, tahapanData, variant, on
                                 setSelectedBulan(e.target.value);
                                 setSelectedItems([]);
                             }}
-                            className="rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-[12px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
+                            className="rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-[12px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-slate-900 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
                         >
                             <option value="Semua">Semua</option>
                             {selectedTahap === 1 ? (
@@ -1131,7 +1141,7 @@ export default function TabRincianPencairan({ anggaran, tahapanData, variant, on
                                         <td className="px-3 py-2 text-center border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 text-xs">{item.kode_rekening || '-'}</td>
                                         <td className="px-3 py-2 text-center border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 text-xs">{item.kode_kegiatan || '-'}</td>
                                         <td className="px-3 py-2 border border-slate-200 dark:border-white/10">
-                                            <div className="text-slate-900 dark:text-white">{item.uraian}</div>
+                                            <div className="text-slate-900 dark:text-white">{getDisplayUraian(item, showArkasUraian)}</div>
                                         </td>
                                         <td className="px-3 py-2 border border-slate-200 dark:border-white/10">
                                             <div className="text-slate-900 dark:text-white text-xs text-center">{item.bulan_list?.join(', ') || '-'}</div>
@@ -1414,7 +1424,7 @@ export default function TabRincianPencairan({ anggaran, tahapanData, variant, on
                                     </div>
                                 )}
                                 <div className="rounded-2xl border border-brand-500/10 bg-pastel-lavender p-4 mb-4 dark:border-brand-400/20 dark:bg-brand-500/[0.08]">
-                                    <p className="text-sm font-medium text-brand-700 dark:text-brand-200">{editingItem.kode_rekening} - {editingItem.uraian}</p>
+                                    <p className="text-sm font-medium text-brand-700 dark:text-brand-200">{editingItem.kode_rekening} - {getDisplayUraian(editingItem, showArkasUraian)}</p>
                                     <p className="text-xs text-brand-600 dark:text-brand-300 mt-1">Jumlah: Rp {formatCurrency(editingItem.jumlah_filtered || editingItem.jumlah || 0)}</p>
                                 </div>
 
@@ -1885,7 +1895,7 @@ export default function TabRincianPencairan({ anggaran, tahapanData, variant, on
                                             <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-white/5">
                                                 <td className="px-3 py-2 text-center border border-slate-200 dark:border-white/10 text-slate-500">{idx + 1}</td>
                                                 <td className="px-3 py-2 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white">
-                                                    <div>{orig.uraian}</div>
+                                                    <div>{getDisplayUraian(orig, showArkasUraian)}</div>
                                                     {(orig.kode_kegiatan || orig.kode_rekening) && (
                                                         <div className="text-[10px] text-slate-500 font-mono mt-0.5">
                                                             {orig.kode_kegiatan} {orig.kode_kegiatan && orig.kode_rekening ? ' / ' : ''} {orig.kode_rekening}

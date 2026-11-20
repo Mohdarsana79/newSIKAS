@@ -3,9 +3,9 @@ import { cn } from '@/lib/utils';
 
 const PADDING = {
     none: '',
-    sm: 'p-4',
-    md: 'p-5',
-    lg: 'p-6',
+    sm: 'p-3 sm:p-4',
+    md: 'p-3.5 sm:p-4 lg:p-5',
+    lg: 'p-4 sm:p-5 lg:p-6',
 } as const;
 
 /**
@@ -54,7 +54,7 @@ export function Surface({
             {hasHeader && (
                 <div
                     className={cn(
-                        'mb-4 flex items-start justify-between gap-3',
+                        'mb-3.5 sm:mb-4 flex flex-wrap items-start justify-between gap-2 sm:gap-3',
                         headerClassName,
                     )}
                 >

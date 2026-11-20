@@ -1,9 +1,13 @@
 import { Link, usePage } from '@inertiajs/react';
-import { ReactNode, useState } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import Modal from '@/Components/Modal';
 import TextInput from '@/Components/TextInput';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
+import {
+    canAccessFeatureModule,
+    OPEN_ARKAS_PATH_MODAL_EVENT,
+} from '@/Utils/featureSearchCatalog';
 import axios from 'axios';
 
 interface NavLinkProps {
@@ -69,43 +73,171 @@ export default function Sidebar({
 }) {
     const { props } = usePage();
     const user = (props as any)?.auth?.user;
+    const authPermissions = (props as any)?.auth?.permissions as
+        | { modules?: Record<string, 'none' | 'read' | 'write'>; abilities?: Record<string, boolean> }
+        | undefined;
     const isKepalaSekolah = user?.is_kepala_sekolah ?? false;
+    const roleName = user?.role_name || (isKepalaSekolah ? 'Kepala Sekolah' : 'Bendahara / Admin');
+    const canModule = (modKey: string, minLevel: 'read' | 'write' = 'read'): boolean =>
+        canAccessFeatureModule(user, authPermissions, modKey, minLevel);
+    const showDataMaster = canModule('sekolah_profile') || canModule('kode_kegiatan') || canModule('rekening_belanja');
+    const showFiturPelengkap =
+        canModule('kwitansi') ||
+        canModule('tanda_terima') ||
+        canModule('bast') ||
+        canModule('surat_pesanan') ||
+        canModule('dokumen') ||
+        canModule('sk_surat') ||
+        canModule('laporan');
+    const showIntegrasi = canModule('path_arkas', 'write');
+    const showSistem =
+        canModule('backup') ||
+        canModule('network_settings') ||
+        canModule('user_management') ||
+        canModule('system_update');
+    const showMainMenu =
+        canModule('dashboard') ||
+        canModule('penganggaran') ||
+        canModule('penatausahaan') ||
+        canModule('sts') ||
+        canModule('arkas_tools') ||
+        canModule('referensi_kode');
     const hasSystemUpdate = Boolean((props as any)?.systemUpdate?.hasUpdate);
     const [isDataMasterOpen, setIsDataMasterOpen] = useState(true);
     const [isFiturPelengkapOpen, setIsFiturPelengkapOpen] = useState(true);
     const [isIntegrasiOpen, setIsIntegrasiOpen] = useState(true);
 
-    // Pengaturan path database ARKAS (logika tidak berubah).
+    // Pengaturan path & upload database ARKAS (mode offline lokal & mode online VPS).
+    type ArkasSource = 'manual' | 'uploaded' | 'auto' | 'manual_missing' | 'none';
     const [showPathModal, setShowPathModal] = useState(false);
     const [arkasPath, setArkasPath] = useState('');
+    const [arkasMeta, setArkasMeta] = useState<{
+        source: ArkasSource;
+        exists: boolean;
+        uploaded_exists: boolean;
+        uploaded_at: string | null;
+        uploaded_size: string | null;
+        max_upload_mb: number;
+    }>({
+        source: 'none',
+        exists: false,
+        uploaded_exists: false,
+        uploaded_at: null,
+        uploaded_size: null,
+        max_upload_mb: 100,
+    });
+    const [selectedDbFile, setSelectedDbFile] = useState<File | null>(null);
+    const [isUploadingDb, setIsUploadingDb] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [loadError, setLoadError] = useState('');
+    const [modalFeedback, setModalFeedback] = useState('');
+
+    const extractAxiosErrorMessage = (err: unknown, fallback: string): string => {
+        if (axios.isAxiosError(err)) {
+            const msg = (err.response?.data as { message?: string } | undefined)?.message;
+            if (typeof msg === 'string' && msg.trim() !== '') {
+                return msg;
+            }
+        }
+        return fallback;
+    };
+
+    const fetchArkasPathInfo = async () => {
+        const res = await axios.get(route('arkas-tools.get-path'));
+        setArkasPath(res.data.path || '');
+        setArkasMeta({
+            source: (res.data.source || 'none') as ArkasSource,
+            exists: Boolean(res.data.exists),
+            uploaded_exists: Boolean(res.data.uploaded_exists),
+            uploaded_at: res.data.uploaded_at || null,
+            uploaded_size: res.data.uploaded_size || null,
+            max_upload_mb: Number(res.data.max_upload_mb || 100),
+        });
+    };
 
     const openPathModal = async () => {
         setShowPathModal(true);
         setLoadError('');
+        setModalFeedback('');
+        setSelectedDbFile(null);
         try {
-            const res = await axios.get(route('arkas-tools.get-path'));
-            setArkasPath(res.data.path || '');
-        } catch (err) {
-            setLoadError('Gagal mengambil data path.');
+            await fetchArkasPathInfo();
+        } catch {
+            setLoadError('Gagal mengambil data path dan status ARKAS.');
         }
     };
 
+    useEffect(() => {
+        if (!showIntegrasi) return;
+
+        const handleOpenFromSearch = () => {
+            void openPathModal();
+        };
+
+        window.addEventListener(OPEN_ARKAS_PATH_MODAL_EVENT, handleOpenFromSearch);
+        return () => window.removeEventListener(OPEN_ARKAS_PATH_MODAL_EVENT, handleOpenFromSearch);
+    }, [showIntegrasi]);
+
     const handleSavePath = async () => {
         setIsSaving(true);
+        setLoadError('');
+        setModalFeedback('');
         try {
             const res = await axios.post(route('arkas-tools.save-path'), { path: arkasPath });
             if (res.data.status === 'success') {
-                alert('Path Arkas berhasil disimpan!');
-                setShowPathModal(false);
+                await fetchArkasPathInfo();
+                setModalFeedback('Path Arkas berhasil disimpan!');
             } else {
-                alert('Gagal: ' + res.data.message);
+                setLoadError(res.data.message || 'Gagal menyimpan path.');
             }
-        } catch (err) {
-            alert('Terjadi kesalahan saat menyimpan.');
+        } catch (err: unknown) {
+            setLoadError(extractAxiosErrorMessage(err, 'Terjadi kesalahan saat menyimpan.'));
         } finally {
             setIsSaving(false);
+        }
+    };
+
+    const handleUploadArkasDb = async () => {
+        if (!selectedDbFile) return;
+        setIsUploadingDb(true);
+        setLoadError('');
+        setModalFeedback('');
+
+        const formData = new FormData();
+        formData.append('arkas_db', selectedDbFile);
+
+        try {
+            const res = await axios.post(route('arkas-tools.upload-db'), formData, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+            });
+            if (res.data.status === 'success') {
+                setSelectedDbFile(null);
+                await fetchArkasPathInfo();
+                setModalFeedback(res.data.message || 'File arkas.db berhasil diunggah.');
+            } else {
+                setLoadError(res.data.message || 'Gagal mengunggah file arkas.db.');
+            }
+        } catch (err: unknown) {
+            setLoadError(extractAxiosErrorMessage(err, 'Gagal mengunggah file arkas.db.'));
+        } finally {
+            setIsUploadingDb(false);
+        }
+    };
+
+    const handleRemoveUploadedDb = async () => {
+        setIsUploadingDb(true);
+        setLoadError('');
+        setModalFeedback('');
+        try {
+            const res = await axios.delete(route('arkas-tools.remove-uploaded-db'));
+            if (res.data.status === 'success') {
+                await fetchArkasPathInfo();
+                setModalFeedback(res.data.message || 'File arkas.db unggahan dihapus.');
+            }
+        } catch (err: unknown) {
+            setLoadError(extractAxiosErrorMessage(err, 'Gagal menghapus file unggahan.'));
+        } finally {
+            setIsUploadingDb(false);
         }
     };
 
@@ -120,10 +252,10 @@ export default function Sidebar({
             />
 
             <aside
-                className={`fixed inset-y-3 left-3 z-50 flex flex-col overflow-hidden rounded-[30px] bg-gradient-to-b from-[#252438] via-[#1E1D2E] to-[#15141E] text-white shadow-float ring-1 ring-white/10 transition-all duration-300 ease-out ${
+                className={`fixed inset-y-3 left-3 z-50 flex flex-col overflow-hidden rounded-[26px] lg:rounded-[30px] bg-gradient-to-b from-[#252438] via-[#1E1D2E] to-[#15141E] text-white shadow-float ring-1 ring-white/10 transition-all duration-300 ease-out ${
                     isOpen
-                        ? 'w-[268px] translate-x-0'
-                        : 'w-[268px] -translate-x-[110%] lg:w-[84px] lg:translate-x-0'
+                        ? 'w-[260px] translate-x-0'
+                        : 'w-[260px] -translate-x-[110%] lg:w-[82px] lg:translate-x-0'
                 } ${className}`}
             >
                 {/* Dekorasi aurora */}
@@ -133,11 +265,15 @@ export default function Sidebar({
                 {/* Brand */}
                 <div className={`relative z-10 flex items-center pt-5 ${isOpen ? 'justify-between px-4 pb-2' : 'flex-col gap-3 px-3 pb-2'}`}>
                     <div className={`flex items-center ${isOpen ? 'gap-3' : 'justify-center'}`}>
-                        <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-lime-300 via-lime-400 to-lime-500 shadow-lime">
-                            <svg className="h-5 w-5 text-slate-950" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-                                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-                            </svg>
+                        <div
+                            aria-hidden="true"
+                            className="relative flex h-11 w-11 shrink-0 items-center justify-center"
+                        >
+                            <img
+                                src="/images/landing/large.ico"
+                                alt=""
+                                className="h-full w-full object-contain drop-shadow-[0_4px_12px_rgba(197,232,78,0.28)] transition-transform duration-300 hover:scale-105"
+                            />
                         </div>
                         {isOpen && (
                             <div className="flex flex-col">
@@ -172,13 +308,15 @@ export default function Sidebar({
                     </button>
                 </div>
 
-                {/* Badge role kepala sekolah */}
-                {isOpen && isKepalaSekolah && (
+                {/* Badge role aktif (non-bendahara atau kustom) */}
+                {isOpen && (isKepalaSekolah || (user?.role && user.role !== 'bendahara')) && (
                     <div className="relative z-10 mx-3 mt-2 flex items-center gap-2 rounded-xl border border-mint/25 bg-mint/10 px-3 py-2">
                         <span className="h-2 w-2 shrink-0 rounded-full bg-mint animate-pulse-soft" />
                         <div className="flex flex-col">
-                            <span className="text-[10.5px] font-bold leading-tight text-mint">Kepala Sekolah</span>
-                            <span className="text-[8.5px] text-mint/70">Hak akses: telaah &amp; baca</span>
+                            <span className="text-[10.5px] font-bold leading-tight text-mint">{roleName}</span>
+                            <span className="text-[8.5px] text-mint/70">
+                                {isKepalaSekolah ? 'Hak akses: telaah & baca' : 'Akses sesuai pengaturan role'}
+                            </span>
                         </div>
                     </div>
                 )}
@@ -186,88 +324,124 @@ export default function Sidebar({
                 {/* Navigasi */}
                 <div className="sikas-scroll relative z-10 flex-1 overflow-y-auto overflow-x-hidden px-3 pb-2 pt-1">
                     <nav className="space-y-1">
-                        <SectionTitle isVisible={isOpen}>Menu Utama</SectionTitle>
+                        {showMainMenu && <SectionTitle isVisible={isOpen}>Menu Utama</SectionTitle>}
 
-                        <NavLink href={route('dashboard')} active={route().current('dashboard')} isSidebarOpen={isOpen} icon={<IconDashboard />}>
-                            Dashboard
-                        </NavLink>
+                        {canModule('dashboard') && (
+                            <NavLink href={route('dashboard')} active={route().current('dashboard')} isSidebarOpen={isOpen} icon={<IconDashboard />}>
+                                Dashboard
+                            </NavLink>
+                        )}
 
-                        <NavLink href={route('penganggaran.index')} active={route().current('penganggaran.*')} isSidebarOpen={isOpen} icon={<IconPenganggaran />}>
-                            Penganggaran
-                        </NavLink>
+                        {canModule('penganggaran') && (
+                            <NavLink href={route('penganggaran.index')} active={route().current('penganggaran.*')} isSidebarOpen={isOpen} icon={<IconPenganggaran />}>
+                                Penganggaran
+                            </NavLink>
+                        )}
 
-                        <NavLink href={route('penatausahaan.index')} active={route().current('penatausahaan.*') && !route().current('sts.*')} isSidebarOpen={isOpen} icon={<IconPenatausahaan />}>
-                            Penatausahaan
-                        </NavLink>
+                        {canModule('penatausahaan') && (
+                            <NavLink href={route('penatausahaan.index')} active={route().current('penatausahaan.*') && !route().current('sts.*')} isSidebarOpen={isOpen} icon={<IconPenatausahaan />}>
+                                Penatausahaan
+                            </NavLink>
+                        )}
 
-                        <NavLink href={route('sts.index')} active={route().current('sts.*')} isSidebarOpen={isOpen} icon={<IconSTS />}>
-                            Status STS
-                        </NavLink>
+                        {canModule('sts') && (
+                            <NavLink href={route('sts.index')} active={route().current('sts.*')} isSidebarOpen={isOpen} icon={<IconSTS />}>
+                                Status STS
+                            </NavLink>
+                        )}
 
-                        <NavLink href={route('arkas-tools.index')} active={route().current('arkas-tools.*')} isSidebarOpen={isOpen} icon={<IconArkas />}>
-                            Arkas Tools
-                        </NavLink>
+                        {canModule('arkas_tools') && (
+                            <NavLink href={route('arkas-tools.index')} active={route().current('arkas-tools.*')} isSidebarOpen={isOpen} icon={<IconArkas />}>
+                                Arkas Tools
+                            </NavLink>
+                        )}
 
-                        <NavLink href={route('referensi-kode.index')} active={route().current('referensi-kode.*')} isSidebarOpen={isOpen} icon={<IconRefKode />}>
-                            Referensi Kode
-                        </NavLink>
+                        {canModule('referensi_kode') && (
+                            <NavLink href={route('referensi-kode.index')} active={route().current('referensi-kode.*')} isSidebarOpen={isOpen} icon={<IconRefKode />}>
+                                Referensi Kode
+                            </NavLink>
+                        )}
 
                         {/* Data Master */}
-                        <div className="pt-4">
-                            <GroupHeader
-                                label="Data Master"
-                                isOpen={isDataMasterOpen}
-                                isSidebarOpen={isOpen}
-                                onClick={() => setIsDataMasterOpen(!isDataMasterOpen)}
-                            />
-                            <div className={`space-y-1 overflow-hidden transition-all duration-300 ${isDataMasterOpen || !isOpen ? 'mt-1 max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
-                                <NavLink href={route('sekolah-profile.index')} active={route().current('sekolah-profile.*')} isSidebarOpen={isOpen} icon={<IconSchool />}>
-                                    Profil Sekolah
-                                </NavLink>
-                                <NavLink href={route('kode-kegiatan.index')} active={route().current('kode-kegiatan.*')} isSidebarOpen={isOpen} icon={<IconKegiatan />}>
-                                    Kode Kegiatan
-                                </NavLink>
-                                <NavLink href={route('rekening-belanja.index')} active={route().current('rekening-belanja.*')} isSidebarOpen={isOpen} icon={<IconRekening />}>
-                                    Rekening Belanja
-                                </NavLink>
+                        {showDataMaster && (
+                            <div className="pt-4">
+                                <GroupHeader
+                                    label="Data Master"
+                                    isOpen={isDataMasterOpen}
+                                    isSidebarOpen={isOpen}
+                                    onClick={() => setIsDataMasterOpen(!isDataMasterOpen)}
+                                />
+                                <div className={`space-y-1 overflow-hidden transition-all duration-300 ${isDataMasterOpen || !isOpen ? 'mt-1 max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                                    {canModule('sekolah_profile') && (
+                                        <NavLink href={route('sekolah-profile.index')} active={route().current('sekolah-profile.*')} isSidebarOpen={isOpen} icon={<IconSchool />}>
+                                            Profil Sekolah
+                                        </NavLink>
+                                    )}
+                                    {canModule('kode_kegiatan') && (
+                                        <NavLink href={route('kode-kegiatan.index')} active={route().current('kode-kegiatan.*')} isSidebarOpen={isOpen} icon={<IconKegiatan />}>
+                                            Kode Kegiatan
+                                        </NavLink>
+                                    )}
+                                    {canModule('rekening_belanja') && (
+                                        <NavLink href={route('rekening-belanja.index')} active={route().current('rekening-belanja.*')} isSidebarOpen={isOpen} icon={<IconRekening />}>
+                                            Rekening Belanja
+                                        </NavLink>
+                                    )}
+                                </div>
                             </div>
-                        </div>
+                        )}
 
                         {/* Fitur Pelengkap */}
-                        <div className="pt-2">
-                            <GroupHeader
-                                label="Fitur Pelengkap"
-                                isOpen={isFiturPelengkapOpen}
-                                isSidebarOpen={isOpen}
-                                onClick={() => setIsFiturPelengkapOpen(!isFiturPelengkapOpen)}
-                            />
-                            <div className={`space-y-1 overflow-hidden transition-all duration-300 ${isFiturPelengkapOpen || !isOpen ? 'mt-1 max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
-                                <NavLink href={route('kwitansi.index')} active={route().current('kwitansi.*')} isSidebarOpen={isOpen} icon={<IconKwitansi />}>
-                                    Kwitansi
-                                </NavLink>
-                                <NavLink href={route('tanda-terima.index')} active={route().current('tanda-terima.*')} isSidebarOpen={isOpen} icon={<IconTandaTerima />}>
-                                    Tanda Terima
-                                </NavLink>
-                                <NavLink href={route('bast.index')} active={route().current('bast.*') || route().current('*-bast.*')} isSidebarOpen={isOpen} icon={<IconBast />}>
-                                    BAST
-                                </NavLink>
-                                <NavLink href={route('surat-pesanan.index')} active={route().current('surat-pesanan.*') || route().current('*-surat-pesanan.*')} isSidebarOpen={isOpen} icon={<IconSuratPesanan />}>
-                                    Surat Pesanan
-                                </NavLink>
-                                <NavLink href={route('dokumen.index')} active={route().current('dokumen.*')} isSidebarOpen={isOpen} icon={<IconDokumen />}>
-                                    Dokumen
-                                </NavLink>
-                                <NavLink href={route('sk-surat.index')} active={route().current('sk-surat.*')} isSidebarOpen={isOpen} icon={<IconSkSurat />}>
-                                    SK &amp; Surat
-                                </NavLink>
-                                <NavLink href={route('laporan.index')} active={route().current('laporan.*')} isSidebarOpen={isOpen} icon={<IconLaporan />}>
-                                    Laporan
-                                </NavLink>
+                        {showFiturPelengkap && (
+                            <div className="pt-2">
+                                <GroupHeader
+                                    label="Fitur Pelengkap"
+                                    isOpen={isFiturPelengkapOpen}
+                                    isSidebarOpen={isOpen}
+                                    onClick={() => setIsFiturPelengkapOpen(!isFiturPelengkapOpen)}
+                                />
+                                <div className={`space-y-1 overflow-hidden transition-all duration-300 ${isFiturPelengkapOpen || !isOpen ? 'mt-1 max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                                    {canModule('kwitansi') && (
+                                        <NavLink href={route('kwitansi.index')} active={route().current('kwitansi.*')} isSidebarOpen={isOpen} icon={<IconKwitansi />}>
+                                            Kwitansi
+                                        </NavLink>
+                                    )}
+                                    {canModule('tanda_terima') && (
+                                        <NavLink href={route('tanda-terima.index')} active={route().current('tanda-terima.*')} isSidebarOpen={isOpen} icon={<IconTandaTerima />}>
+                                            Tanda Terima
+                                        </NavLink>
+                                    )}
+                                    {canModule('bast') && (
+                                        <NavLink href={route('bast.index')} active={route().current('bast.*') || route().current('*-bast.*')} isSidebarOpen={isOpen} icon={<IconBast />}>
+                                            BAST
+                                        </NavLink>
+                                    )}
+                                    {canModule('surat_pesanan') && (
+                                        <NavLink href={route('surat-pesanan.index')} active={route().current('surat-pesanan.*') || route().current('*-surat-pesanan.*')} isSidebarOpen={isOpen} icon={<IconSuratPesanan />}>
+                                            Surat Pesanan
+                                        </NavLink>
+                                    )}
+                                    {canModule('dokumen') && (
+                                        <NavLink href={route('dokumen.index')} active={route().current('dokumen.*')} isSidebarOpen={isOpen} icon={<IconDokumen />}>
+                                            Dokumen
+                                        </NavLink>
+                                    )}
+                                    {canModule('sk_surat') && (
+                                        <NavLink href={route('sk-surat.index')} active={route().current('sk-surat.*')} isSidebarOpen={isOpen} icon={<IconSkSurat />}>
+                                            SK &amp; Surat
+                                        </NavLink>
+                                    )}
+                                    {canModule('laporan') && (
+                                        <NavLink href={route('laporan.index')} active={route().current('laporan.*')} isSidebarOpen={isOpen} icon={<IconLaporan />}>
+                                            Laporan
+                                        </NavLink>
+                                    )}
+                                </div>
                             </div>
-                        </div>
+                        )}
 
                         {/* Integrasi */}
-                        {!isKepalaSekolah && (
+                        {showIntegrasi && (
                             <div className="pt-2">
                                 <GroupHeader
                                     label="Integrasi"
@@ -294,22 +468,36 @@ export default function Sidebar({
                         )}
 
                         {/* Systems */}
-                        {!isKepalaSekolah && (
+                        {showSistem && (
                             <div className="pt-4">
                                 <SectionTitle isVisible={isOpen}>Sistem</SectionTitle>
                                 <div className="space-y-1">
-                                    <NavLink href={route('backup.index')} active={route().current('backup.*')} isSidebarOpen={isOpen} icon={<IconBackup />}>
-                                        Backup Database
-                                    </NavLink>
-                                    <NavLink
-                                        href={route('system-update.index')}
-                                        active={route().current('system-update.*')}
-                                        isSidebarOpen={isOpen}
-                                        icon={<IconUpdate />}
-                                        badge={hasSystemUpdate ? 'BARU' : undefined}
-                                    >
-                                        Pembaharuan
-                                    </NavLink>
+                                    {canModule('backup') && (
+                                        <NavLink href={route('backup.index')} active={route().current('backup.*')} isSidebarOpen={isOpen} icon={<IconBackup />}>
+                                            Backup Database
+                                        </NavLink>
+                                    )}
+                                    {canModule('network_settings') && (
+                                        <NavLink href={route('network-settings.index')} active={route().current('network-settings.*')} isSidebarOpen={isOpen} icon={<IconNetwork />}>
+                                            Pengaturan Jaringan
+                                        </NavLink>
+                                    )}
+                                    {canModule('user_management') && (
+                                        <NavLink href={route('management-role.index')} active={route().current('management-role.*')} isSidebarOpen={isOpen} icon={<IconUsersRole />}>
+                                            Management &amp; Role
+                                        </NavLink>
+                                    )}
+                                    {canModule('system_update') && (
+                                        <NavLink
+                                            href={route('system-update.index')}
+                                            active={route().current('system-update.*')}
+                                            isSidebarOpen={isOpen}
+                                            icon={<IconUpdate />}
+                                            badge={hasSystemUpdate ? 'BARU' : undefined}
+                                        >
+                                            Pembaharuan
+                                        </NavLink>
+                                    )}
                                 </div>
                             </div>
                         )}
@@ -386,8 +574,8 @@ export default function Sidebar({
                 </div>
             </aside>
 
-            {/* Modal pengaturan path ARKAS */}
-            <Modal show={showPathModal} onClose={() => !isSaving && setShowPathModal(false)} maxWidth="lg">
+            {/* Modal pengaturan path & upload ARKAS */}
+            <Modal show={showPathModal} onClose={() => !isSaving && !isUploadingDb && setShowPathModal(false)} maxWidth="lg">
                 <div className="relative overflow-hidden">
                     <div className="pointer-events-none absolute -right-10 -top-16 h-40 w-40 rounded-full bg-brand-500/10 blur-3xl" />
                     <div className="relative flex items-start justify-between gap-3 border-b border-slate-100 px-6 py-4 dark:border-white/5">
@@ -398,13 +586,13 @@ export default function Sidebar({
                             <div>
                                 <h2 className="text-[14px] font-extrabold text-slate-900 dark:text-white">Konfigurasi Database ARKAS</h2>
                                 <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500">
-                                    Tentukan lokasi file <code className="rounded bg-slate-100 px-1 py-0.5 text-[9px] font-bold text-brand-600 dark:bg-white/10 dark:text-brand-300">arkas.db</code> secara manual.
+                                    Atur lokasi file <code className="rounded bg-slate-100 px-1 py-0.5 text-[9px] font-bold text-brand-600 dark:bg-white/10 dark:text-brand-300">arkas.db</code> lokal atau unggah langsung untuk server VPS.
                                 </p>
                             </div>
                         </div>
                         <button
                             type="button"
-                            onClick={() => !isSaving && setShowPathModal(false)}
+                            onClick={() => !isSaving && !isUploadingDb && setShowPathModal(false)}
                             className="flex h-7 w-7 items-center justify-center rounded-xl bg-slate-50 text-slate-400 transition hover:bg-slate-100 hover:text-slate-800 dark:bg-white/5 dark:hover:bg-white/10 dark:hover:text-white"
                             aria-label="Tutup"
                         >
@@ -415,38 +603,116 @@ export default function Sidebar({
                     </div>
 
                     <div className="space-y-4 px-6 py-5">
-                        <div>
-                            <label className="mb-1.5 block text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                                Jalur file database (full path)
-                            </label>
-                            <TextInput
-                                className="w-full"
-                                placeholder="C:\Users\ASUS\AppData\Roaming\Arkas\arkas.db"
-                                value={arkasPath}
-                                onChange={(e) => setArkasPath(e.target.value)}
-                                disabled={isSaving}
-                            />
-                            <p className="mt-2 text-[9.5px] font-medium leading-relaxed text-slate-400 dark:text-slate-500">
-                                Contoh lokasi umum:{' '}
-                                <span className="select-all font-semibold text-slate-500 dark:text-slate-400">
-                                    C:\Users\NAMA_USER\AppData\Roaming\Arkas\arkas.db
-                                </span>
-                            </p>
+                        <div className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50/70 px-3.5 py-2.5 text-[11px] dark:border-white/10 dark:bg-white/[0.03]">
+                            <span className="font-semibold text-slate-600 dark:text-slate-300">Status Sumber Aktif</span>
+                            <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
+                                arkasMeta.exists
+                                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300'
+                                    : 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300'
+                            }`}>
+                                {arkasMeta.source === 'manual' && 'Path Manual Server'}
+                                {arkasMeta.source === 'uploaded' && 'File Unggahan Server (VPS)'}
+                                {arkasMeta.source === 'auto' && 'Auto-Detect Windows Lokal'}
+                                {arkasMeta.source === 'manual_missing' && 'Path Manual Tidak Ditemukan'}
+                                {arkasMeta.source === 'none' && 'Belum Terhubung'}
+                            </span>
                         </div>
 
+                        {!isKepalaSekolah ? (
+                            <>
+                                <div>
+                                    <label className="mb-1.5 block text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                                        1. Jalur File Lokal Server (opsional untuk PC/RDP lokal)
+                                    </label>
+                                    <TextInput
+                                        className="w-full"
+                                        placeholder="C:\Users\ASUS\AppData\Roaming\Arkas\arkas.db"
+                                        value={arkasPath}
+                                        onChange={(e) => setArkasPath(e.target.value)}
+                                        disabled={isSaving || isUploadingDb}
+                                    />
+                                    <p className="mt-1.5 text-[9.5px] font-medium leading-relaxed text-slate-400 dark:text-slate-500">
+                                        Contoh lokasi umum:{' '}
+                                        <span className="select-all font-semibold text-slate-500 dark:text-slate-400">
+                                            C:\Users\NAMA_USER\AppData\Roaming\Arkas\arkas.db
+                                        </span>
+                                    </p>
+                                </div>
+
+                                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-3.5 dark:border-white/10 dark:bg-white/[0.02]">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <div>
+                                            <p className="text-[11px] font-extrabold text-slate-800 dark:text-slate-100">
+                                                2. Unggah File arkas.db (Untuk Mode VPS / Online)
+                                            </p>
+                                            <p className="mt-0.5 text-[9.5px] font-medium text-slate-400 dark:text-slate-500">
+                                                Unggah salinan <code className="font-bold">arkas.db</code> dari komputer bendahara (maks {arkasMeta.max_upload_mb} MB).
+                                            </p>
+                                        </div>
+                                        {arkasMeta.uploaded_exists && (
+                                            <button
+                                                type="button"
+                                                onClick={handleRemoveUploadedDb}
+                                                disabled={isUploadingDb || isSaving}
+                                                className="shrink-0 rounded-lg bg-rose-50 px-2.5 py-1 text-[10px] font-bold text-rose-600 transition hover:bg-rose-100 dark:bg-rose-500/15 dark:text-rose-300"
+                                            >
+                                                Hapus File
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    {arkasMeta.uploaded_exists && (
+                                        <p className="mt-2 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                                            File tersimpan di server ({arkasMeta.uploaded_size} • {arkasMeta.uploaded_at})
+                                        </p>
+                                    )}
+
+                                    <div className="mt-2.5 flex flex-col gap-2 sm:flex-row sm:items-center">
+                                        <input
+                                            type="file"
+                                            accept=".db,.sqlite,.sqlite3"
+                                            onChange={(e) => setSelectedDbFile(e.target.files?.[0] || null)}
+                                            disabled={isUploadingDb || isSaving}
+                                            className="block w-full text-[11px] text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:px-3 file:py-1.5 file:text-[10.5px] file:font-bold file:text-brand-700 hover:file:bg-brand-100 dark:text-slate-400 dark:file:bg-brand-500/20 dark:file:text-brand-300"
+                                        />
+                                        <SecondaryButton
+                                            type="button"
+                                            onClick={handleUploadArkasDb}
+                                            disabled={!selectedDbFile || isUploadingDb || isSaving}
+                                            className="shrink-0 justify-center"
+                                        >
+                                            {isUploadingDb ? 'Memverifikasi...' : 'Unggah .db'}
+                                        </SecondaryButton>
+                                    </div>
+                                </div>
+                            </>
+                        ) : (
+                            <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                                Pengaturan sumber database ARKAS hanya dapat diubah oleh akun Bendahara/Operator.
+                            </p>
+                        )}
+
+                        {modalFeedback && (
+                            <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 px-3 py-2 text-[10.5px] font-semibold text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">
+                                {modalFeedback}
+                            </div>
+                        )}
+
                         {loadError && (
-                            <div className="rounded-xl border border-rose-200 bg-pastel-rose/60 px-3 py-2 text-[10px] font-semibold text-rose-500 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300">
+                            <div className="rounded-xl border border-rose-200 bg-pastel-rose/60 px-3 py-2 text-[10.5px] font-semibold text-rose-500 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300">
                                 {loadError}
                             </div>
                         )}
 
                         <div className="flex justify-end gap-2 border-t border-slate-100 pt-4 dark:border-white/5">
-                            <SecondaryButton onClick={() => setShowPathModal(false)} disabled={isSaving}>
-                                Batal
+                            <SecondaryButton onClick={() => setShowPathModal(false)} disabled={isSaving || isUploadingDb}>
+                                Tutup
                             </SecondaryButton>
-                            <PrimaryButton onClick={handleSavePath} disabled={isSaving}>
-                                {isSaving ? 'Menyimpan...' : 'Simpan Perubahan'}
-                            </PrimaryButton>
+                            {!isKepalaSekolah && (
+                                <PrimaryButton onClick={handleSavePath} disabled={isSaving || isUploadingDb}>
+                                    {isSaving ? 'Menyimpan...' : 'Simpan Path'}
+                                </PrimaryButton>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -630,5 +896,24 @@ const IconUpdate = () => (
         <path d="M3 3v5h5" />
         <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
         <path d="M16 16h5v5" />
+    </svg>
+);
+
+const IconNetwork = () => (
+    <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="9" />
+        <path d="M3.6 9h16.8" />
+        <path d="M3.6 15h16.8" />
+        <path d="M11.5 3a17 17 0 0 0 0 18" />
+        <path d="M12.5 3a17 17 0 0 1 0 18" />
+    </svg>
+);
+
+const IconUsersRole = () => (
+    <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
     </svg>
 );

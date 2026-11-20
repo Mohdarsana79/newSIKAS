@@ -14,6 +14,9 @@ use App\Models\RkasPerubahan;
 use App\Models\SekolahProfile;
 use App\Models\Sts;
 use App\Services\Ai\DeepSeekService;
+use App\Services\ArkasBkuSyncService;
+use App\Services\ArkasEngineService;
+use App\Services\BkuArkasDisplayService;
 use App\Services\BukuKasService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
@@ -259,6 +262,8 @@ class BukuKasUmumController extends Controller
             ->orderBy('id_transaksi', 'asc') // TAMBAHKAN INI
             ->get();
 
+        $this->enrichBkuDataArkasUraian($bkuData, $penganggaran->id);
+
         // Cek status BKU - apakah ada record yang status closed
         // Cek status BKU - berdasarkan adanya record bunga (closing)
         $isClosed = ($this->BukuKasUmum)::query()->where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
@@ -480,6 +485,7 @@ class BukuKasUmumController extends Controller
                 'uraian_items' => 'required|array',
                 'uraian_items.*.id' => 'required|numeric',
                 'uraian_items.*.uraian_text' => 'required|string',
+                'uraian_items.*.uraian_arkas' => 'nullable|string',
                 'uraian_items.*.satuan' => 'required|string',
                 'uraian_items.*.jumlah_belanja' => 'required|numeric|min:0',
                 'uraian_items.*.volume' => 'required|numeric|min:0',
@@ -556,18 +562,18 @@ class BukuKasUmumController extends Controller
                 $uraianText = 'Lunas Bayar '.$rekeningBelanja->rincian_objek;
 
                 // Dapatkan total anggaran untuk rekening belanja di bulan tersebut
-                $bulanNormalized = ucfirst(strtolower($bulanTarget));
-                $isTahap1 = in_array($bulanNormalized, ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni']);
-                $model = ($isTahap1 || ! $this->RkasPerubahan) ? $this->Rkas : $this->RkasPerubahan;
+                $penganggaranId = (int) $validated[VariantConfig::penganggaranFk($this->variant)];
+                $pool = $this->resolveRkasPool($penganggaranId, $bulanTarget);
+                $model = $pool['model'];
 
-                $totalAnggaran = $model::query()->where(VariantConfig::penganggaranFk($this->variant), '=', $validated[VariantConfig::penganggaranFk($this->variant)], 'and')
+                $totalAnggaran = $model::query()->where(VariantConfig::penganggaranFk($this->variant), '=', $penganggaranId, 'and')
                     ->where('kode_rekening_id', '=', $rekeningId, 'and')
                     ->where('bulan', '=', $bulanTarget, 'and')
                     ->sum(DB::raw('harga_satuan * jumlah'));
 
                 // Simpan data Buku Kas Umum
                 $bku = ($this->BukuKasUmum)::create([
-                    VariantConfig::penganggaranFk($this->variant) => $validated[VariantConfig::penganggaranFk($this->variant)],
+                    VariantConfig::penganggaranFk($this->variant) => $penganggaranId,
                     'kode_kegiatan_id' => $kegiatanId,
                     'rekening_belanja_id' => $rekeningId,
                     'tanggal_transaksi' => $validated['tanggal_nota'],
@@ -579,6 +585,7 @@ class BukuKasUmumController extends Controller
                     'npwp' => $validated['npwp'],
                     'uraian' => $uraianText,
                     'uraian_opsional' => $validated['uraian_opsional'],
+                    'uraian_arkas' => $rekeningBelanja?->rincian_objek,
                     'anggaran' => $totalAnggaran,
                     'dibelanjakan' => $totalKegiatanSetelahPajak,
                     'total_transaksi_kotor' => $totalKegiatan,
@@ -590,21 +597,15 @@ class BukuKasUmumController extends Controller
                     'total_pajak_daerah' => $validated['total_pajak_daerah'] ?? 0,
                 ]);
 
-                // SIMPAN DETAIL URAIAN
-                foreach ($uraianItemsForThisKegiatan as $item) {
-                    ($this->BukuKasUmumUraianDetail)::create([
-                        VariantConfig::bkuFk($this->variant) => $bku->id,
-                        VariantConfig::penganggaranFk($this->variant) => $validated[VariantConfig::penganggaranFk($this->variant)],
-                        'kode_kegiatan_id' => $kegiatanId,
-                        'rekening_belanja_id' => $rekeningId, // CHANGED FROM kode_rekening_id
-                        VariantConfig::uraianDetailRkasFk($this->variant, ! $isTahap1) => $item['id'],
-                        'uraian' => $item['uraian_text'],
-                        'satuan' => $item['satuan'],
-                        'harga_satuan' => $item['harga_satuan'],
-                        'volume' => $item['volume'],
-                        'jumlah' => $item['jumlah_belanja'],
-                    ]);
-                }
+                // SIMPAN DETAIL URAIAN (alokasi FIFO lintas bulan agar tautan RKAS/RKAS Perubahan tetap akurat)
+                $this->createBkuUraianDetailsFifo(
+                    (int) $bku->id,
+                    $penganggaranId,
+                    (int) $kegiatanId,
+                    (int) $rekeningId,
+                    $uraianItemsForThisKegiatan,
+                    $pool
+                );
 
                 $savedBkuIds[] = $bku->id;
                 $totalDibelanjakan += $totalKegiatanSetelahPajak;
@@ -655,6 +656,7 @@ class BukuKasUmumController extends Controller
                 'uraian_items' => 'required|array',
                 'uraian_items.*.id' => 'required|numeric',
                 'uraian_items.*.uraian_text' => 'required|string',
+                'uraian_items.*.uraian_arkas' => 'nullable|string',
                 'uraian_items.*.satuan' => 'required|string',
                 'uraian_items.*.jumlah_belanja' => 'required|numeric|min:0',
                 'uraian_items.*.volume' => 'required|numeric|min:0',
@@ -697,20 +699,40 @@ class BukuKasUmumController extends Controller
             $rekeningBelanja = RekeningBelanja::query()->find($rekeningId, ['*']);
             $uraianText = 'Lunas Bayar '.$rekeningBelanja->rincian_objek;
 
-            $bulanNormalized = ucfirst(strtolower($bulanTarget));
-            $isTahap1 = in_array($bulanNormalized, ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni']);
-            $model = ($isTahap1 || ! $this->RkasPerubahan) ? $this->Rkas : $this->RkasPerubahan;
+            $penganggaranId = (int) $validated[VariantConfig::penganggaranFk($this->variant)];
+            $pool = $this->resolveRkasPool($penganggaranId, $bulanTarget);
+            $model = $pool['model'];
+            $detailRkasFk = $pool['detail_rkas_fk'];
 
-            $totalAnggaran = $model::query()->where(VariantConfig::penganggaranFk($this->variant), '=', $validated[VariantConfig::penganggaranFk($this->variant)], 'and')
+            $totalAnggaran = $model::query()->where(VariantConfig::penganggaranFk($this->variant), '=', $penganggaranId, 'and')
                 ->where('kode_rekening_id', '=', $rekeningId, 'and')
                 ->where('bulan', '=', $bulanTarget, 'and')
                 ->sum(DB::raw('harga_satuan * jumlah'));
 
             $nomorNota = $validated['nomor_nota'] ?: $bku->id_transaksi;
 
+            // Simpan peta uraian_arkas rincian lama sebelum dihapus sebagai fallback
+            $existingDetails = ($this->BukuKasUmumUraianDetail)::where(VariantConfig::bkuFk($this->variant), $bku->id)->get();
+            $oldUraianArkasByRkasId = [];
+            $oldUraianArkasByUraian = [];
+            foreach ($existingDetails as $oldDetail) {
+                $oldUa = trim((string) ($oldDetail->uraian_arkas ?? ''));
+                if ($oldUa === '') {
+                    continue;
+                }
+                $oldRkasId = (int) ($oldDetail->{$detailRkasFk} ?? 0);
+                if ($oldRkasId > 0) {
+                    $oldUraianArkasByRkasId[$oldRkasId] = $oldUa;
+                }
+                $oldKey = mb_strtolower(trim((string) $oldDetail->uraian), 'UTF-8');
+                if ($oldKey !== '') {
+                    $oldUraianArkasByUraian[$oldKey] = $oldUa;
+                }
+            }
+
             // Update header BKU
             $bku->update([
-                VariantConfig::penganggaranFk($this->variant) => $validated[VariantConfig::penganggaranFk($this->variant)],
+                VariantConfig::penganggaranFk($this->variant) => $penganggaranId,
                 'kode_kegiatan_id' => $kegiatanId,
                 'rekening_belanja_id' => $rekeningId,
                 'tanggal_transaksi' => $validated['tanggal_nota'],
@@ -722,6 +744,7 @@ class BukuKasUmumController extends Controller
                 'npwp' => $validated['npwp'],
                 'uraian' => $uraianText,
                 'uraian_opsional' => $validated['uraian_opsional'],
+                'uraian_arkas' => $this->resolveFirstNonEmptyString([$rekeningBelanja?->rincian_objek, $bku->uraian_arkas]),
                 'anggaran' => $totalAnggaran,
                 'dibelanjakan' => $totalKegiatan,
                 'total_transaksi_kotor' => $totalKegiatan,
@@ -736,21 +759,17 @@ class BukuKasUmumController extends Controller
             // Hapus rincian lama
             ($this->BukuKasUmumUraianDetail)::where(VariantConfig::bkuFk($this->variant), $bku->id)->delete();
 
-            // Simpan detail rincian baru
-            foreach ($uraianItemsForThisKegiatan as $item) {
-                ($this->BukuKasUmumUraianDetail)::create([
-                    VariantConfig::bkuFk($this->variant) => $bku->id,
-                    VariantConfig::penganggaranFk($this->variant) => $validated[VariantConfig::penganggaranFk($this->variant)],
-                    'kode_kegiatan_id' => $kegiatanId,
-                    'rekening_belanja_id' => $rekeningId,
-                    VariantConfig::uraianDetailRkasFk($this->variant, ! $isTahap1) => $item['id'],
-                    'uraian' => $item['uraian_text'],
-                    'satuan' => $item['satuan'],
-                    'harga_satuan' => $item['harga_satuan'],
-                    'volume' => $item['volume'],
-                    'jumlah' => $item['jumlah_belanja'],
-                ]);
-            }
+            // Simpan detail rincian baru secara FIFO lintas bulan sambil mempertahankan uraian_arkas
+            $this->createBkuUraianDetailsFifo(
+                (int) $bku->id,
+                $penganggaranId,
+                (int) $kegiatanId,
+                (int) $rekeningId,
+                $uraianItemsForThisKegiatan,
+                $pool,
+                $oldUraianArkasByRkasId,
+                $oldUraianArkasByUraian
+            );
 
             $this->updateSaldoSetelahTransaksi(
                 $validated[VariantConfig::penganggaranFk($this->variant)],
@@ -1448,7 +1467,8 @@ class BukuKasUmumController extends Controller
             } elseif ($tabType === 'Umum') {
                 try {
                     // Reuse the logic from getBkpUmumData to ensure consistency
-                    $response = $this->getBkpUmumData($tahun, $bulan);
+                    $isArkasMode = app(BkuArkasDisplayService::class)->isArkasMode($request);
+                    $response = $this->getBkpUmumData($tahun, $bulan, $isArkasMode);
                     $jsonData = $response->getData(true); // Get data as array
 
                     if (! $jsonData['success']) {
@@ -1566,13 +1586,14 @@ class BukuKasUmumController extends Controller
                 ->whereMonth('tanggal_transaksi', $bulanAngka)
                 ->whereYear('tanggal_transaksi', $tahun)
                 ->where('is_bunga_record', false)
-                ->with(['kodeKegiatan', 'rekeningBelanja', 'uraianDetails'])
+                ->with(['kodeKegiatan', 'rekeningBelanja', 'uraianDetails.kodeKegiatan', 'uraianDetails.rekeningBelanja'])
                 ->orderBy('tanggal_transaksi', 'asc')
                 ->orderBy('id_transaksi', 'asc')
                 ->orderBy('id', 'asc')
                 ->get();
 
             $bkuPajakDisetor = ($this->BukuKasUmum)::query()->where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
+                ->with(['rekeningBelanja'])
                 ->whereMonth('tanggal_lapor', $bulanAngka)
                 ->whereYear('tanggal_lapor', $tahun)
                 ->whereNotNull('ntpn')
@@ -1638,7 +1659,8 @@ class BukuKasUmumController extends Controller
                 $bungaRecord,
                 $stsRecords,
                 $trkSaldoAwal,
-                $bkuPajakDisetor
+                $bkuPajakDisetor,
+                app(BkuArkasDisplayService::class)->isArkasMode()
             );
 
             // Sort rows to ensure order matches Frontend (Tanggal first, then Group, then Sort Order)
@@ -1716,8 +1738,10 @@ class BukuKasUmumController extends Controller
         }
     }
 
-    private function siapkanDataRowsBkpUmum(int $penganggaran_id, int|string $tahun, string $bulan, int $bulanAngka, float $saldoAwal, float $saldoAwalTunai, mixed $penerimaanDanas, mixed $penarikanTunais, mixed $terimaTunais, mixed $setorTunais, mixed $bkuData, mixed $bungaRecord, mixed $stsRecords = [], mixed $trkSaldoAwal = null, mixed $bkuPajakDisetor = []): array
+    private function siapkanDataRowsBkpUmum(int $penganggaran_id, int|string $tahun, string $bulan, int $bulanAngka, float $saldoAwal, float $saldoAwalTunai, mixed $penerimaanDanas, mixed $penarikanTunais, mixed $terimaTunais, mixed $setorTunais, mixed $bkuData, mixed $bungaRecord, mixed $stsRecords = [], mixed $trkSaldoAwal = null, mixed $bkuPajakDisetor = [], bool $isArkasMode = false): array
     {
+        $displayService = app(BkuArkasDisplayService::class);
+        $rkasMaps = $isArkasMode ? $displayService->loadRkasArkasMaps($this->variant, $penganggaran_id) : null;
         $rowsData = [];
 
         // BARIS 1: Saldo Awal (GABUNGAN BANK + TUNAI)
@@ -1861,21 +1885,35 @@ class BukuKasUmumController extends Controller
             $blockCounter++;
             $groupMap[$transaksi->id] = $blockCounter;
 
-            $uraianText = $transaksi->uraian_opsional ?: $transaksi->uraian;
-            if (empty($uraianText)) {
-                $uraianText = 'Transaksi Tanpa Uraian'; // Fallback
-            }
+            $noBukti = $displayService->resolveNoBukti($transaksi, $isArkasMode);
+            $headerUraian = $displayService->resolveHeaderUraian($transaksi, $isArkasMode);
 
-            $rowsData[] = [
-                'tanggal' => $transaksi->tanggal_transaksi,
-                'kode_rekening' => $transaksi->rekeningBelanja->kode_rekening ?? '-',
-                'no_bukti' => $transaksi->id_transaksi ?? $transaksi->nomor_nota ?? '-',
-                'uraian' => $uraianText,
-                'penerimaan' => 0,
-                'pengeluaran' => $transaksi->total_transaksi_kotor,
-                'sort_order' => 10,
-                'group_id' => $blockCounter,
-            ];
+            if ($isArkasMode) {
+                $expandedItems = $displayService->expandArkasItems($transaksi, $rkasMaps);
+                foreach ($expandedItems as $expItem) {
+                    $rowsData[] = [
+                        'tanggal' => $transaksi->tanggal_transaksi,
+                        'kode_rekening' => $expItem['kode_rekening'],
+                        'no_bukti' => $noBukti,
+                        'uraian' => $expItem['uraian'],
+                        'penerimaan' => 0,
+                        'pengeluaran' => $expItem['jumlah'],
+                        'sort_order' => 10,
+                        'group_id' => $blockCounter,
+                    ];
+                }
+            } else {
+                $rowsData[] = [
+                    'tanggal' => $transaksi->tanggal_transaksi,
+                    'kode_rekening' => $transaksi->rekeningBelanja->kode_rekening ?? '-',
+                    'no_bukti' => $noBukti,
+                    'uraian' => $headerUraian,
+                    'penerimaan' => 0,
+                    'pengeluaran' => $transaksi->total_transaksi_kotor,
+                    'sort_order' => 10,
+                    'group_id' => $blockCounter,
+                ];
+            }
 
             // Baris Pajak Pusat (Terima Pajak Saja)
             if ($transaksi->total_pajak > 0) {
@@ -1885,8 +1923,8 @@ class BukuKasUmumController extends Controller
                 $rowsData[] = [
                     'tanggal' => $transaksi->tanggal_transaksi,
                     'kode_rekening' => '-',
-                    'no_bukti' => $transaksi->kode_masa_pajak ?? '-',
-                    'uraian' => $uraianPajak.' '.($transaksi->uraian_opsional ?: $transaksi->uraian),
+                    'no_bukti' => $transaksi->kode_masa_pajak ?? ($isArkasMode ? $noBukti : '-'),
+                    'uraian' => $uraianPajak.' '.$headerUraian,
                     'penerimaan' => $transaksi->total_pajak,
                     'pengeluaran' => 0,
                     'sort_order' => 11,
@@ -1903,7 +1941,7 @@ class BukuKasUmumController extends Controller
                     'tanggal' => $transaksi->tanggal_transaksi,
                     'kode_rekening' => '-',
                     'no_bukti' => '-',
-                    'uraian' => $uraianPajak.' '.($transaksi->uraian_opsional ?: $transaksi->uraian),
+                    'uraian' => $uraianPajak.' '.$headerUraian,
                     'penerimaan' => $transaksi->total_pajak_daerah,
                     'pengeluaran' => 0,
                     'sort_order' => 11,
@@ -1920,6 +1958,7 @@ class BukuKasUmumController extends Controller
                 $currentGroupId = $blockCounter;
                 $groupMap[$transaksi->id] = $currentGroupId;
             }
+            $headerUraian = $displayService->resolveHeaderUraian($transaksi, $isArkasMode);
 
             // Baris Pajak Pusat (Setor Pajak Saja)
             if ($transaksi->total_pajak > 0) {
@@ -1930,7 +1969,7 @@ class BukuKasUmumController extends Controller
                     'tanggal' => $transaksi->tanggal_lapor,
                     'kode_rekening' => '-',
                     'no_bukti' => $transaksi->ntpn ?? '-',
-                    'uraian' => $uraianPajak.' '.($transaksi->uraian_opsional ?: $transaksi->uraian),
+                    'uraian' => $uraianPajak.' '.$headerUraian,
                     'penerimaan' => 0,
                     'pengeluaran' => $transaksi->total_pajak,
                     'sort_order' => 12,
@@ -1947,7 +1986,7 @@ class BukuKasUmumController extends Controller
                     'tanggal' => $transaksi->tanggal_lapor,
                     'kode_rekening' => '-',
                     'no_bukti' => '-',
-                    'uraian' => $uraianPajak.' '.($transaksi->uraian_opsional ?: $transaksi->uraian),
+                    'uraian' => $uraianPajak.' '.$headerUraian,
                     'penerimaan' => 0,
                     'pengeluaran' => $transaksi->total_pajak_daerah,
                     'sort_order' => 12,
@@ -1987,10 +2026,11 @@ class BukuKasUmumController extends Controller
         return $rowsData;
     }
 
-    public function getBkpUmumData(int|string $tahun, string $bulan)
+    public function getBkpUmumData(int|string $tahun, string $bulan, ?bool $isArkasMode = null)
     {
         try {
-            Log::info('START getBkpUmumData', ['tahun' => $tahun, 'bulan' => $bulan]);
+            $isArkasMode = $isArkasMode ?? app(BkuArkasDisplayService::class)->isArkasMode();
+            Log::info('START getBkpUmumData', ['tahun' => $tahun, 'bulan' => $bulan, 'arkas_mode' => $isArkasMode]);
             $penganggaran = ($this->Penganggaran)::query()->where('tahun_anggaran', $tahun)->first();
 
             if (! $penganggaran) {
@@ -2053,13 +2093,14 @@ class BukuKasUmumController extends Controller
                 ->where(function ($query) {
                     $query->where('is_bunga_record', false)->orWhereNull('is_bunga_record');
                 })
-                ->with(['kodeKegiatan', 'rekeningBelanja', 'uraianDetails'])
+                ->with(['kodeKegiatan', 'rekeningBelanja', 'uraianDetails.kodeKegiatan', 'uraianDetails.rekeningBelanja'])
                 ->orderBy('tanggal_transaksi', 'asc')
                 ->orderBy('id_transaksi', 'asc')
                 ->orderBy('id', 'asc')
                 ->get();
 
             $bkuPajakDisetor = ($this->BukuKasUmum)::query()->where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
+                ->with(['rekeningBelanja'])
                 ->whereMonth('tanggal_lapor', $bulanAngka)
                 ->whereYear('tanggal_lapor', $tahun)
                 ->whereNotNull('ntpn')
@@ -2103,7 +2144,7 @@ class BukuKasUmumController extends Controller
                 $penganggaran->id, $tahun, $bulan, $bulanAngka,
                 $saldoAwal, $saldoAwalTunai, $penerimaanDanas, $penarikanTunais,
                 $terimaTunais, $setorTunais, $bkuData, $bungaRecord,
-                $stsRecords, $trkSaldoAwal, $bkuPajakDisetor
+                $stsRecords, $trkSaldoAwal, $bkuPajakDisetor, $isArkasMode
             );
 
             Log::info('Items generated from siapkanDataRowsBkpUmum:', ['count' => count($items)]);
@@ -2247,9 +2288,10 @@ class BukuKasUmumController extends Controller
             }
 
             $reportData = [];
+            $isArkasMode = app(BkuArkasDisplayService::class)->isArkasMode($request);
 
             foreach ($monthsToProcess as $m) {
-                $data = $this->dataBkpUmumInternal($tahun, $m);
+                $data = $this->dataBkpUmumInternal($tahun, $m, $isArkasMode);
 
                 if ($data) {
                     $bulanAngka = $this->convertBulanToNumber($m);
@@ -2322,9 +2364,10 @@ class BukuKasUmumController extends Controller
             }
 
             $reportData = [];
+            $isArkasMode = app(BkuArkasDisplayService::class)->isArkasMode($request);
 
             foreach ($monthsToProcess as $m) {
-                $data = $this->dataBkpUmumInternal($tahun, $m);
+                $data = $this->dataBkpUmumInternal($tahun, $m, $isArkasMode);
 
                 if ($data) {
                     $bulanAngka = $this->convertBulanToNumber($m);
@@ -2363,7 +2406,7 @@ class BukuKasUmumController extends Controller
         }
     }
 
-    private function dataBkpUmumInternal(int|string $tahun, string $bulan)
+    private function dataBkpUmumInternal(int|string $tahun, string $bulan, bool $isArkasMode = false)
     {
         $penganggaran = ($this->Penganggaran)::query()->where('tahun_anggaran', $tahun)->first();
         if (! $penganggaran) {
@@ -2408,12 +2451,13 @@ class BukuKasUmumController extends Controller
             ->where(function ($query) {
                 $query->where('is_bunga_record', false)->orWhereNull('is_bunga_record');
             })
-            ->with(['kodeKegiatan', 'rekeningBelanja', 'uraianDetails'])
+            ->with(['kodeKegiatan', 'rekeningBelanja', 'uraianDetails.kodeKegiatan', 'uraianDetails.rekeningBelanja'])
             ->orderBy('tanggal_transaksi', 'asc')
             ->orderBy('id_transaksi', 'asc')
             ->get();
 
         $bkuPajakDisetor = ($this->BukuKasUmum)::query()->where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
+            ->with(['rekeningBelanja'])
             ->whereMonth('tanggal_lapor', $bulanAngka)->whereYear('tanggal_lapor', $tahun)
             ->whereNotNull('ntpn')
             ->where(function ($query) {
@@ -2445,7 +2489,7 @@ class BukuKasUmumController extends Controller
             $penganggaran->id, $tahun, $bulan, $bulanAngka,
             $saldoAwal, $saldoAwalTunai, $penerimaanDanas, $penarikanTunais,
             $terimaTunais, $setorTunais, $bkuData, $bungaRecord,
-            $stsRecords, $trkSaldoAwal, $bkuPajakDisetor
+            $stsRecords, $trkSaldoAwal, $bkuPajakDisetor, $isArkasMode
         );
 
         // Sort
@@ -2709,33 +2753,14 @@ class BukuKasUmumController extends Controller
             //     $bulan = 'Januari';
             // }
 
+            $excludeBkuIdRaw = $request->query('exclude_bku_id');
+            $excludeBkuId = is_numeric($excludeBkuIdRaw) && (int) $excludeBkuIdRaw > 0 ? (int) $excludeBkuIdRaw : null;
+
             if ($bulan) {
-                $bulan = ucfirst(strtolower($bulan));
-                $bulanNumber = $this->convertBulanToNumber($bulan);
-                $isTahap2 = $bulanNumber >= 7;
-
-                $monthsTahap1 = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni'];
-                $monthsTahap2 = ['Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-
-                $allowedMonths = [];
-                if ($isTahap2) {
-                    foreach ($monthsTahap2 as $m) {
-                        $allowedMonths[] = $m;
-                        if ($m === $bulan) {
-                            break;
-                        }
-                    }
-                } else {
-                    foreach ($monthsTahap1 as $m) {
-                        $allowedMonths[] = $m;
-                        if ($m === $bulan) {
-                            break;
-                        }
-                    }
-                }
-
-                $modelClass = ($isTahap2 && $this->RkasPerubahan) ? $this->RkasPerubahan : $this->Rkas;
-                $usageForeignKey = VariantConfig::uraianDetailRkasFk($this->variant, $isTahap2);
+                $pool = $this->resolveRkasPool((int) $penganggaran->id, (string) $bulan);
+                $allowedMonths = $pool['allowed_months'];
+                $modelClass = $pool['model'];
+                $usageForeignKey = $pool['detail_rkas_fk'];
 
                 // 1. Fetch Plans
                 $allPlans = $modelClass::where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
@@ -2746,8 +2771,8 @@ class BukuKasUmumController extends Controller
                     // 2. Fetch Usages
                     $planIds = $allPlans->pluck('id')->toArray();
                     $usagesQuery = ($this->BukuKasUmumUraianDetail)::query()->whereIn($usageForeignKey, $planIds, 'and', false);
-                    if ($request->filled('exclude_bku_id')) {
-                        $usagesQuery->where(VariantConfig::bkuFk($this->variant), '!=', $request->query('exclude_bku_id'));
+                    if ($excludeBkuId) {
+                        $usagesQuery->where(VariantConfig::bkuFk($this->variant), '!=', $excludeBkuId);
                     }
                     $allUsages = $usagesQuery->select($usageForeignKey, 'volume')->get();
 
@@ -2807,15 +2832,15 @@ class BukuKasUmumController extends Controller
                 }
             }
 
-            if ($request->filled('exclude_bku_id')) {
-                $editingDetails = ($this->BukuKasUmumUraianDetail)::where(VariantConfig::bkuFk($this->variant), $request->query('exclude_bku_id'))->get();
+            if ($excludeBkuId) {
+                $editingDetails = ($this->BukuKasUmumUraianDetail)::where(VariantConfig::bkuFk($this->variant), $excludeBkuId)->get();
                 foreach ($editingDetails as $detail) {
                     if ($detail->kode_kegiatan_id && $detail->rekening_belanja_id) {
                         $validKegiatanIds[$detail->kode_kegiatan_id] = true;
                         $validRekeningPairs[$detail->kode_kegiatan_id.'-'.$detail->rekening_belanja_id] = true;
                     }
                 }
-                $editingBku = ($this->BukuKasUmum)::find($request->query('exclude_bku_id'));
+                $editingBku = ($this->BukuKasUmum)::find($excludeBkuId);
                 if ($editingBku && $editingBku->kode_kegiatan_id && $editingBku->rekening_belanja_id) {
                     $validKegiatanIds[$editingBku->kode_kegiatan_id] = true;
                     $validRekeningPairs[$editingBku->kode_kegiatan_id.'-'.$editingBku->rekening_belanja_id] = true;
@@ -2939,10 +2964,12 @@ class BukuKasUmumController extends Controller
         try {
             $tahun = $request->query('tahun');
             $bulan = $request->query('bulan');
-            $rekeningId = $request->query('rekeningId') ?? $request->query('rekening_id'); // Handle both cases
-            $kegiatanId = $request->query('kegiatan_id');
+            $rekeningIdRaw = $request->query('rekeningId') ?? $request->query('rekening_id'); // Handle both cases
+            $kegiatanIdRaw = $request->query('kegiatan_id');
+            $rekeningId = is_numeric($rekeningIdRaw) ? (int) $rekeningIdRaw : 0;
+            $kegiatanId = is_numeric($kegiatanIdRaw) ? (int) $kegiatanIdRaw : 0;
 
-            if (! $tahun || ! $bulan || ! $rekeningId || ! $kegiatanId) {
+            if (! $tahun || ! $bulan || $rekeningId <= 0 || $kegiatanId <= 0) {
                 return response()->json(['success' => false, 'data' => []]);
             }
 
@@ -2951,43 +2978,19 @@ class BukuKasUmumController extends Controller
                 return response()->json(['success' => false, 'data' => []]);
             }
 
-            // Fix case sensitivity for month
-            $bulan = ucfirst(strtolower($bulan));
-            $bulanNumber = $this->convertBulanToNumber($bulan);
-
-            // Logika Tahap
-            $isTahap2 = $bulanNumber >= 7;
-
-            // Define allowed months up to current month within the Tahap
-            $monthsTahap1 = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni'];
-            $monthsTahap2 = ['Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-
-            $allowedMonths = [];
-            if ($isTahap2) {
-                foreach ($monthsTahap2 as $m) {
-                    $allowedMonths[] = $m;
-                    if ($m === $bulan) {
-                        break;
-                    }
-                }
-            } else {
-                foreach ($monthsTahap1 as $m) {
-                    $allowedMonths[] = $m;
-                    if ($m === $bulan) {
-                        break;
-                    }
-                }
-            }
-
-            // Define model and foreign key column for usage query
-            $modelClass = ($isTahap2 && $this->RkasPerubahan) ? $this->RkasPerubahan : $this->Rkas;
-            $usageForeignKey = VariantConfig::uraianDetailRkasFk($this->variant, $isTahap2);
+            $penganggaranFk = VariantConfig::penganggaranFk($this->variant);
+            $pool = $this->resolveRkasPool((int) $penganggaran->id, (string) $bulan);
+            $allowedMonths = $pool['allowed_months'];
+            $usePerubahanPool = $pool['use_perubahan'];
+            $modelClass = $pool['model'];
+            $usageForeignKey = $pool['detail_rkas_fk'];
 
             // 1. Fetch Plan Items (Cumulative up to current Month)
-            $planItems = $modelClass::query()->where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
+            $planItems = $modelClass::query()->where($penganggaranFk, $penganggaran->id)
                 ->where('kode_id', $kegiatanId)
                 ->where('kode_rekening_id', $rekeningId)
                 ->whereIn('bulan', $allowedMonths)
+                ->orderBy('id')
                 ->get();
 
             if ($planItems->isEmpty()) {
@@ -2996,12 +2999,23 @@ class BukuKasUmumController extends Controller
 
             // 2. Calculate Usage for these specific Plan Items
             $planIds = $planItems->pluck('id')->toArray();
-            $excludeBkuId = $request->query('exclude_bku_id');
+            $excludeBkuIdRaw = $request->query('exclude_bku_id');
+            $excludeBkuId = is_numeric($excludeBkuIdRaw) && (int) $excludeBkuIdRaw > 0 ? (int) $excludeBkuIdRaw : null;
             $usageDetails = ($this->BukuKasUmumUraianDetail)::query()->whereIn($usageForeignKey, $planIds, 'and', false)
                 ->when($excludeBkuId, function ($query, $id) {
                     $query->where(VariantConfig::bkuFk($this->variant), '!=', $id);
                 })
                 ->get();
+
+            $editingBkuPlanIds = [];
+            if ($excludeBkuId) {
+                $editingBkuPlanIds = ($this->BukuKasUmumUraianDetail)::query()
+                    ->where(VariantConfig::bkuFk($this->variant), $excludeBkuId)
+                    ->whereNotNull($usageForeignKey)
+                    ->pluck($usageForeignKey)
+                    ->map(fn ($id) => (int) $id)
+                    ->all();
+            }
 
             // 3. Group by Unique Item Attributes to consolidate Plan and Usage
             // Key: Uraian + Satuan + Harga (Assuming items are unique by these within an account)
@@ -3013,6 +3027,7 @@ class BukuKasUmumController extends Controller
                 if (! isset($groupedItems[$key])) {
                     $groupedItems[$key] = [
                         'item_ref' => $item, // Keep reference to one item (preferably the latest one)
+                        'uraian_arkas' => trim((string) ($item->uraian_arkas ?? '')),
                         'total_plan' => 0,
                         'total_used' => 0,
                         'rkas_ids' => [],
@@ -3020,7 +3035,10 @@ class BukuKasUmumController extends Controller
                 }
 
                 $groupedItems[$key]['total_plan'] += $item->jumlah;
-                $groupedItems[$key]['rkas_ids'][] = $item->id;
+                $groupedItems[$key]['rkas_ids'][] = (int) $item->id;
+                if ($groupedItems[$key]['uraian_arkas'] === '' && trim((string) ($item->uraian_arkas ?? '')) !== '') {
+                    $groupedItems[$key]['uraian_arkas'] = trim((string) $item->uraian_arkas);
+                }
 
                 // Update reference to the latest month's item if this item is from a later month (or same month)
                 // Assuming allowedMonths order is chronological, later items overwrite earlier ones, which is good.
@@ -3033,7 +3051,7 @@ class BukuKasUmumController extends Controller
                 // We need to match usage to the group.
                 // Usage links to rkas_id. We can find which group this ID belongs to.
                 foreach ($groupedItems as $key => $group) {
-                    if (in_array($usage->$usageForeignKey, $group['rkas_ids'])) {
+                    if (in_array((int) $usage->$usageForeignKey, $group['rkas_ids'], true)) {
                         $groupedItems[$key]['total_used'] += $usage->volume;
                         break;
                     }
@@ -3044,17 +3062,20 @@ class BukuKasUmumController extends Controller
             $formattedItems = [];
             foreach ($groupedItems as $group) {
                 $sisaVolume = $group['total_plan'] - $group['total_used'];
+                $isInEditingBku = ! empty($editingBkuPlanIds) && count(array_intersect($editingBkuPlanIds, $group['rkas_ids'])) > 0;
 
-                if ($sisaVolume > 0) { // Optional: Hide items with 0 remaining? User usually wants to see what's available.
+                if ($sisaVolume > 0 || $isInEditingBku) {
                     $item = $group['item_ref'];
                     $formattedItems[] = [
-                        'id' => $item->id, // This ID will be used for the transaction
+                        'id' => (int) $item->id, // This ID will be used for the transaction
+                        'rkas_ids' => $group['rkas_ids'],
                         'uraian' => $item->uraian,
-                        'sisa_volume' => $sisaVolume,
+                        'uraian_arkas' => $group['uraian_arkas'] !== '' ? $group['uraian_arkas'] : null,
+                        'sisa_volume' => max(0, $sisaVolume),
                         'satuan' => $item->satuan,
                         'harga_satuan' => $item->harga_satuan,
                         'bulan' => $item->bulan,
-                        'is_perubahan' => $isTahap2,
+                        'is_perubahan' => $usePerubahanPool,
                     ];
                 }
             }
@@ -3068,6 +3089,247 @@ class BukuKasUmumController extends Controller
             Log::error('Error fetching uraian items: '.$e->getMessage());
 
             return response()->json(['success' => false, 'data' => []]);
+        }
+    }
+
+    /**
+     * Tentukan sumber tabel RKAS (RKAS Awal vs RKAS Perubahan), FK detail, dan rentang bulan kumulatif Tahap.
+     *
+     * @return array{
+     *     bulan: string,
+     *     bulan_number: int,
+     *     is_tahap2: bool,
+     *     allowed_months: array<int, string>,
+     *     use_perubahan: bool,
+     *     model: class-string,
+     *     detail_rkas_fk: string
+     * }
+     */
+    private function resolveRkasPool(int $penganggaranId, string $bulan): array
+    {
+        $bulanNormalized = ucfirst(strtolower(trim($bulan)));
+        $bulanNumber = $this->convertBulanToNumber($bulanNormalized);
+        $isTahap2 = $bulanNumber >= 7;
+
+        $monthsInTahap = $isTahap2
+            ? ['Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
+            : ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni'];
+
+        $allowedMonths = [];
+        foreach ($monthsInTahap as $monthName) {
+            $allowedMonths[] = $monthName;
+            if ($monthName === $bulanNormalized) {
+                break;
+            }
+        }
+
+        $penganggaranFk = VariantConfig::penganggaranFk($this->variant);
+        $usePerubahanPool = $isTahap2
+            && $this->RkasPerubahan
+            && class_exists($this->RkasPerubahan)
+            && ($this->RkasPerubahan)::where($penganggaranFk, $penganggaranId)->exists();
+
+        return [
+            'bulan' => $bulanNormalized,
+            'bulan_number' => $bulanNumber,
+            'is_tahap2' => $isTahap2,
+            'allowed_months' => $allowedMonths,
+            'use_perubahan' => $usePerubahanPool,
+            'model' => $usePerubahanPool ? $this->RkasPerubahan : $this->Rkas,
+            'detail_rkas_fk' => VariantConfig::uraianDetailRkasFk($this->variant, $usePerubahanPool),
+        ];
+    }
+
+    /**
+     * Ambil string non-kosong pertama setelah trim dari daftar kandidat.
+     *
+     * @param  array<int, mixed>  $candidates
+     */
+    private function resolveFirstNonEmptyString(array $candidates): ?string
+    {
+        foreach ($candidates as $candidate) {
+            if ($candidate === null) {
+                continue;
+            }
+            $trimmed = trim((string) $candidate);
+            if ($trimmed !== '') {
+                return $trimmed;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Simpan baris rincian BKU dengan alokasi FIFO lintas bulan RKAS/RKAS Perubahan
+     * agar sisa volume bulan awal dan proteksi BKU pada rekonsiliasi ARKAS tetap akurat.
+     *
+     * @param  array<int, array<string, mixed>>  $uraianItems
+     * @param  array{allowed_months: array<int, string>, model: class-string, detail_rkas_fk: string}  $pool
+     * @param  array<int, string>  $oldUraianArkasByRkasId
+     * @param  array<string, string>  $oldUraianArkasByUraian
+     */
+    private function createBkuUraianDetailsFifo(
+        int $bkuId,
+        int $penganggaranId,
+        int $kegiatanId,
+        int $rekeningId,
+        array $uraianItems,
+        array $pool,
+        array $oldUraianArkasByRkasId = [],
+        array $oldUraianArkasByUraian = [],
+    ): void {
+        $penganggaranFk = VariantConfig::penganggaranFk($this->variant);
+        $bkuFk = VariantConfig::bkuFk($this->variant);
+        $model = $pool['model'];
+        $detailRkasFk = $pool['detail_rkas_fk'];
+        $allowedMonths = $pool['allowed_months'];
+
+        $monthRank = array_flip([
+            'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+            'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+        ]);
+
+        $submittedIds = array_values(array_unique(array_filter(
+            array_map(fn ($it) => (int) ($it['id'] ?? 0), $uraianItems),
+            fn ($id) => $id > 0
+        )));
+
+        $candidatePlans = $model::query()
+            ->where($penganggaranFk, $penganggaranId)
+            ->where(function ($q) use ($kegiatanId, $rekeningId, $allowedMonths, $submittedIds) {
+                $q->where(function ($sub) use ($kegiatanId, $rekeningId, $allowedMonths) {
+                    $sub->where('kode_id', $kegiatanId)
+                        ->where('kode_rekening_id', $rekeningId)
+                        ->whereIn('bulan', $allowedMonths);
+                });
+                if (! empty($submittedIds)) {
+                    $q->orWhereIn('id', $submittedIds);
+                }
+            })
+            ->get();
+
+        $plansById = $candidatePlans->keyBy('id');
+
+        $siblingsByGroupKey = [];
+        foreach ($candidatePlans as $plan) {
+            $groupKey = md5(strtolower(trim((string) $plan->uraian)).$plan->satuan.$plan->harga_satuan);
+            $siblingsByGroupKey[$groupKey][] = $plan;
+        }
+        foreach ($siblingsByGroupKey as $groupKey => $list) {
+            usort($list, function ($a, $b) use ($monthRank) {
+                $rankA = $monthRank[$a->bulan] ?? 99;
+                $rankB = $monthRank[$b->bulan] ?? 99;
+                if ($rankA !== $rankB) {
+                    return $rankA <=> $rankB;
+                }
+
+                return (int) $a->id <=> (int) $b->id;
+            });
+            $siblingsByGroupKey[$groupKey] = $list;
+        }
+
+        $candidatePlanIds = $candidatePlans->pluck('id')->all();
+        $usedByPlanId = [];
+        if (! empty($candidatePlanIds)) {
+            $usedRows = ($this->BukuKasUmumUraianDetail)::query()
+                ->whereIn($detailRkasFk, $candidatePlanIds)
+                ->where($bkuFk, '!=', $bkuId)
+                ->select($detailRkasFk, DB::raw('SUM(volume) as total_used'))
+                ->groupBy($detailRkasFk)
+                ->get();
+
+            foreach ($usedRows as $row) {
+                $usedByPlanId[(int) $row->{$detailRkasFk}] = (float) $row->total_used;
+            }
+        }
+
+        foreach ($uraianItems as $item) {
+            $itemRkasId = (int) ($item['id'] ?? 0);
+            $targetVol = (float) ($item['volume'] ?? 0);
+            $hargaSatuan = (float) ($item['harga_satuan'] ?? 0);
+            $targetJumlah = (float) ($item['jumlah_belanja'] ?? ($targetVol * $hargaSatuan));
+            $itemUraianKey = mb_strtolower(trim((string) ($item['uraian_text'] ?? '')), 'UTF-8');
+
+            $primaryPlan = $itemRkasId > 0 ? $plansById->get($itemRkasId) : null;
+            $siblings = [];
+            if ($primaryPlan) {
+                $groupKey = md5(strtolower(trim((string) $primaryPlan->uraian)).$primaryPlan->satuan.$primaryPlan->harga_satuan);
+                $siblings = array_values(array_filter(
+                    $siblingsByGroupKey[$groupKey] ?? [$primaryPlan],
+                    fn ($p) => in_array($p->bulan, $allowedMonths, true) || (int) $p->id === $itemRkasId
+                ));
+            }
+
+            $allocations = [];
+            $remainingVol = $targetVol;
+            foreach ($siblings as $sibling) {
+                if ($remainingVol <= 0) {
+                    break;
+                }
+                $sibId = (int) $sibling->id;
+                $sibUsed = $usedByPlanId[$sibId] ?? 0.0;
+                $sibAvail = max(0.0, (float) $sibling->jumlah - $sibUsed);
+                if ($sibAvail <= 0) {
+                    continue;
+                }
+                $take = min($remainingVol, $sibAvail);
+                $allocations[] = [
+                    'rkas_id' => $sibId,
+                    'plan' => $sibling,
+                    'volume' => $take,
+                ];
+                $usedByPlanId[$sibId] = $sibUsed + $take;
+                $remainingVol -= $take;
+            }
+
+            if ($remainingVol > 0 || empty($allocations)) {
+                if (! empty($allocations)) {
+                    $lastIdx = count($allocations) - 1;
+                    $allocations[$lastIdx]['volume'] += $remainingVol;
+                    $usedByPlanId[$allocations[$lastIdx]['rkas_id']] = ($usedByPlanId[$allocations[$lastIdx]['rkas_id']] ?? 0.0) + $remainingVol;
+                } else {
+                    $allocations[] = [
+                        'rkas_id' => $itemRkasId > 0 ? $itemRkasId : null,
+                        'plan' => $primaryPlan,
+                        'volume' => $targetVol,
+                    ];
+                }
+            }
+
+            $allocCount = count($allocations);
+            $allocatedJumlah = 0.0;
+            foreach ($allocations as $idx => $alloc) {
+                $isLast = ($idx === $allocCount - 1);
+                $chunkJumlah = $isLast
+                    ? ($targetJumlah - $allocatedJumlah)
+                    : round($alloc['volume'] * $hargaSatuan, 2);
+                $allocatedJumlah += $chunkJumlah;
+
+                $allocRkasId = $alloc['rkas_id'];
+                $allocPlan = $alloc['plan'];
+                $resolvedUraianArkas = $this->resolveFirstNonEmptyString([
+                    $allocPlan?->uraian_arkas,
+                    $primaryPlan?->uraian_arkas,
+                    $item['uraian_arkas'] ?? null,
+                    $allocRkasId ? ($oldUraianArkasByRkasId[$allocRkasId] ?? null) : null,
+                    $itemRkasId > 0 ? ($oldUraianArkasByRkasId[$itemRkasId] ?? null) : null,
+                    $oldUraianArkasByUraian[$itemUraianKey] ?? null,
+                ]);
+
+                ($this->BukuKasUmumUraianDetail)::create([
+                    $bkuFk => $bkuId,
+                    'kode_kegiatan_id' => $kegiatanId,
+                    'rekening_belanja_id' => $rekeningId,
+                    $detailRkasFk => $allocRkasId,
+                    'uraian' => $item['uraian_text'],
+                    'uraian_arkas' => $resolvedUraianArkas,
+                    'satuan' => $item['satuan'],
+                    'harga_satuan' => $hargaSatuan,
+                    'volume' => $alloc['volume'],
+                    'jumlah' => $chunkJumlah,
+                ]);
+            }
         }
     }
 
@@ -3089,69 +3351,11 @@ class BukuKasUmumController extends Controller
      */
     private function runArkasBkuEngine(array $args): array
     {
-        $pythonPath = storage_path('app/arkas_engine/python.exe');
-        $scriptPath = storage_path('app/arkas_engine/dump_bku.py');
-
-        if (! file_exists($pythonPath) || ! file_exists($scriptPath)) {
-            throw new \Exception('Arkas Engine tidak ditemukan.');
-        }
-
-        $env = $_SERVER;
-        unset($env['OPENSSL_CONF']);
-
-        $appdata = $env['APPDATA'] ?? null;
-        $userprofile = $env['USERPROFILE'] ?? null;
-
-        if (empty($appdata)) {
-            $appdata = trim(shell_exec("powershell -Command \"[Environment]::GetFolderPath('ApplicationData')\""));
-        }
-        if (empty($userprofile)) {
-            $userprofile = trim(shell_exec("powershell -Command \"[Environment]::GetFolderPath('UserProfile')\""));
-        }
-        if (empty($userprofile) && ! empty($appdata)) {
-            $userprofile = dirname(dirname($appdata));
-        }
-        if (empty($appdata) && ! empty($userprofile)) {
-            $appdata = $userprofile.'\\AppData\\Roaming';
-        }
-
-        $env['SystemRoot'] = $env['SystemRoot'] ?? 'C:\\Windows';
-        $env['SystemDrive'] = $env['SystemDrive'] ?? 'C:';
-        $env['USERPROFILE'] = $userprofile ?: ($env['USERPROFILE'] ?? 'C:\\Users\\Digitalisasi');
-        $env['APPDATA'] = $appdata ?: ($env['APPDATA'] ?? 'C:\\Users\\Digitalisasi\\AppData\\Roaming');
-        $env['LOCALAPPDATA'] = $env['LOCALAPPDATA'] ?? ($userprofile ? $userprofile.'\\AppData\\Local' : '');
-        $env['TEMP'] = $env['TEMP'] ?? ($userprofile ? $userprofile.'\\AppData\\Local\\Temp' : '');
-        $env['TMP'] = $env['TMP'] ?? $env['TEMP'];
-
-        $command = array_merge([$pythonPath, $scriptPath], $args);
-
-        $dbPathManual = env('ARKAS_DB_PATH', '');
-        $dbPathManual = trim($dbPathManual, '"\' ');
-        $dbPathManual = str_replace('\\', '/', $dbPathManual);
-        if (! empty($dbPathManual)) {
-            $command[] = $dbPathManual;
-        }
-
-        $process = new Process($command, null, $env);
-        $process->setTimeout(120);
-        $process->run();
-
-        if (! $process->isSuccessful()) {
-            throw new \Exception('Gagal mengeksekusi engine ARKAS: '.$process->getErrorOutput());
-        }
-
-        $output = $process->getOutput();
-        $result = json_decode($output, true);
-
-        if (! $result) {
-            throw new \Exception('Format respons engine ARKAS tidak valid: '.$output);
-        }
-
-        if (isset($result['status']) && $result['status'] === 'error') {
-            throw new \Exception($result['message'] ?? 'Terjadi kesalahan pada engine ARKAS.');
-        }
-
-        return $result;
+        return app(ArkasEngineService::class)->runScriptOrThrow(
+            'dump_bku.py',
+            $args,
+            120
+        );
     }
 
     /**
@@ -3333,283 +3537,66 @@ class BukuKasUmumController extends Controller
     }
 
     /**
+     * Lengkapi fallback uraian_arkas pada detail & header BKU dari baris RKAS / RKAS Perubahan yang tertaut.
+     */
+    private function enrichBkuDataArkasUraian($bkuData, int $penganggaranId): void
+    {
+        if ($bkuData->isEmpty()) {
+            return;
+        }
+
+        $penganggaranFk = VariantConfig::penganggaranFk($this->variant);
+        $rkasFk1 = VariantConfig::uraianDetailRkasFk($this->variant, false);
+        $rkasFk2 = VariantConfig::uraianDetailRkasFk($this->variant, true);
+
+        $rkasArkasMap = ($this->Rkas)::query()
+            ->where($penganggaranFk, $penganggaranId)
+            ->whereNotNull('uraian_arkas')
+            ->pluck('uraian_arkas', 'id');
+
+        $rpArkasMap = ($this->RkasPerubahan && class_exists($this->RkasPerubahan))
+            ? ($this->RkasPerubahan)::query()
+                ->where($penganggaranFk, $penganggaranId)
+                ->whereNotNull('uraian_arkas')
+                ->pluck('uraian_arkas', 'id')
+            : collect([]);
+
+        foreach ($bkuData as $bku) {
+            foreach ($bku->uraianDetails as $detail) {
+                if (empty($detail->uraian_arkas)) {
+                    $resolved = null;
+                    if ($rkasFk2 !== $rkasFk1 && ! empty($detail->{$rkasFk2})) {
+                        $resolved = $rpArkasMap->get($detail->{$rkasFk2});
+                    }
+                    if (! $resolved && ! empty($detail->{$rkasFk1})) {
+                        $resolved = $rkasArkasMap->get($detail->{$rkasFk1});
+                    }
+                    if ($resolved) {
+                        $detail->uraian_arkas = trim((string) $resolved);
+                    }
+                }
+            }
+
+            // Pada tampilan BKU ARKAS, kolom header (Rekening Belanja) menampilkan nama rekening belanja murni
+            if ($bku->rekeningBelanja && filled($bku->rekeningBelanja->rincian_objek)) {
+                $bku->uraian_arkas = trim((string) $bku->rekeningBelanja->rincian_objek);
+            }
+        }
+    }
+
+    /**
      * Core handler penyimpanan data BKU dari payload ARKAS ke database newSIKAS.
      */
     private function executePullArkasBku($penganggaran, array $dumpResult, ?string $bulanFilter = null, bool $overwrite = false): array
     {
-        $penganggaranFk = VariantConfig::penganggaranFk($this->variant);
-        $bkuFk = VariantConfig::bkuFk($this->variant);
-        $tahun = (int) $penganggaran->tahun_anggaran;
         $bulanAngkaFilter = $bulanFilter ? $this->convertBulanToNumber($bulanFilter) : null;
 
-        // 1. Cek keberadaan RKAS
-        $rkasCount = ($this->Rkas)::where($penganggaranFk, $penganggaran->id)->count();
-        if ($rkasCount === 0) {
-            throw new \Exception('Data RKAS belum ada di newSIKAS. Harap tarik atau isi data RKAS terlebih dahulu sebelum menarik BKU.');
-        }
-
-        // Preload master data
-        $kegiatanMap = KodeKegiatan::pluck('id', 'kode')->toArray();
-        $rekeningMap = RekeningBelanja::pluck('id', 'kode_rekening')->toArray();
-        $rkasList = ($this->Rkas)::where($penganggaranFk, $penganggaran->id)->get();
-        $rkasPerubahanList = ($this->RkasPerubahan && class_exists($this->RkasPerubahan))
-            ? ($this->RkasPerubahan)::where($penganggaranFk, $penganggaran->id)->get()
-            : collect([]);
-
-        // Cek jika data sudah ada tetapi opsi overwrite tidak dicentang
-        if (! $overwrite) {
-            $hasExisting = false;
-            if ($bulanAngkaFilter) {
-                $hasExisting = ($this->BukuKasUmum)::where($penganggaranFk, $penganggaran->id)
-                    ->where(function ($q) use ($tahun, $bulanAngkaFilter) {
-                        $q->where(function ($sub) use ($tahun, $bulanAngkaFilter) {
-                            $sub->whereYear('tanggal_transaksi', $tahun)
-                                ->whereMonth('tanggal_transaksi', $bulanAngkaFilter);
-                        })->orWhere(function ($sub) use ($tahun, $bulanAngkaFilter) {
-                            $sub->whereYear('tanggal_tutup', $tahun)
-                                ->whereMonth('tanggal_tutup', $bulanAngkaFilter);
-                        });
-                    })->exists()
-                    || ($this->PenerimaanDana)::where($penganggaranFk, $penganggaran->id)
-                        ->whereYear('tanggal_terima', $tahun)
-                        ->whereMonth('tanggal_terima', $bulanAngkaFilter)->exists()
-                    || ($this->PenarikanTunai)::where($penganggaranFk, $penganggaran->id)
-                        ->whereYear('tanggal_penarikan', $tahun)
-                        ->whereMonth('tanggal_penarikan', $bulanAngkaFilter)->exists()
-                    || ($this->SetorTunai)::where($penganggaranFk, $penganggaran->id)
-                        ->whereYear('tanggal_setor', $tahun)
-                        ->whereMonth('tanggal_setor', $bulanAngkaFilter)->exists();
-            } else {
-                $hasExisting = ($this->BukuKasUmum)::where($penganggaranFk, $penganggaran->id)->exists()
-                    || ($this->PenerimaanDana)::where($penganggaranFk, $penganggaran->id)->exists()
-                    || ($this->PenarikanTunai)::where($penganggaranFk, $penganggaran->id)->exists()
-                    || ($this->SetorTunai)::where($penganggaranFk, $penganggaran->id)->exists();
-            }
-
-            if ($hasExisting) {
-                $periodeLabel = $bulanFilter ? "Bulan {$bulanFilter} {$tahun}" : "Tahun {$tahun}";
-                throw new \Exception("Data BKU untuk {$periodeLabel} sudah ada di newSIKAS. Harap centang konfirmasi penimpaan (overwrite) untuk mengganti data lama.");
-            }
-        }
-
-        // Hapus data lama jika overwrite disetujui
-        if ($overwrite) {
-            if ($bulanAngkaFilter) {
-                // Scoped bulan ini saja
-                $bkuIds = ($this->BukuKasUmum)::where($penganggaranFk, $penganggaran->id)
-                    ->where(function ($q) use ($tahun, $bulanAngkaFilter) {
-                        $q->where(function ($sub) use ($tahun, $bulanAngkaFilter) {
-                            $sub->whereYear('tanggal_transaksi', $tahun)
-                                ->whereMonth('tanggal_transaksi', $bulanAngkaFilter);
-                        })->orWhere(function ($sub) use ($tahun, $bulanAngkaFilter) {
-                            $sub->whereYear('tanggal_tutup', $tahun)
-                                ->whereMonth('tanggal_tutup', $bulanAngkaFilter);
-                        });
-                    })
-                    ->pluck('id')->toArray();
-
-                if (! empty($bkuIds)) {
-                    ($this->BukuKasUmumUraianDetail)::whereIn($bkuFk, $bkuIds)->delete();
-                    ($this->BukuKasUmum)::whereIn('id', $bkuIds)->delete();
-                }
-
-                ($this->PenerimaanDana)::where($penganggaranFk, $penganggaran->id)
-                    ->whereYear('tanggal_terima', $tahun)
-                    ->whereMonth('tanggal_terima', $bulanAngkaFilter)->delete();
-
-                ($this->PenarikanTunai)::where($penganggaranFk, $penganggaran->id)
-                    ->whereYear('tanggal_penarikan', $tahun)
-                    ->whereMonth('tanggal_penarikan', $bulanAngkaFilter)->delete();
-
-                ($this->SetorTunai)::where($penganggaranFk, $penganggaran->id)
-                    ->whereYear('tanggal_setor', $tahun)
-                    ->whereMonth('tanggal_setor', $bulanAngkaFilter)->delete();
-            } else {
-                // Semua bulan di tahun ini
-                $bkuIds = ($this->BukuKasUmum)::where($penganggaranFk, $penganggaran->id)->pluck('id')->toArray();
-                if (! empty($bkuIds)) {
-                    ($this->BukuKasUmumUraianDetail)::whereIn($bkuFk, $bkuIds)->delete();
-                    ($this->BukuKasUmum)::whereIn('id', $bkuIds)->delete();
-                }
-                ($this->PenerimaanDana)::where($penganggaranFk, $penganggaran->id)->delete();
-                ($this->PenarikanTunai)::where($penganggaranFk, $penganggaran->id)->delete();
-                ($this->SetorTunai)::where($penganggaranFk, $penganggaran->id)->delete();
-            }
-        }
-
-        $importedPenerimaan = 0;
-        $importedPenarikan = 0;
-        $importedSetor = 0;
-        $importedBelanja = 0;
-
-        // 2. Simpan Penerimaan Dana
-        if (! empty($dumpResult['penerimaan_dana'])) {
-            foreach ($dumpResult['penerimaan_dana'] as $p) {
-                $tgl = $p['tanggal_terima'];
-                $mNum = (int) date('n', strtotime($tgl));
-
-                $sumberDanaTitle = VariantConfig::sumberDanaTahap1($this->variant);
-                if ($this->variant === VariantConfig::REGULER) {
-                    $sumberDanaTitle = ($mNum <= 6) ? 'Bosp Reguler Tahap 1' : 'Bosp Reguler Tahap 2';
-                } elseif ($this->variant === VariantConfig::KINERJA) {
-                    $sumberDanaTitle = ($mNum <= 6) ? 'Bosp Kinerja Tahap 1' : 'Bosp Kinerja Tahap 2';
-                } else {
-                    $options = VariantConfig::sumberDanaOptions($this->variant);
-                    $sumberDanaTitle = $options[0] ?? 'SiLPA BOSP Reguler';
-                }
-
-                ($this->PenerimaanDana)::create([
-                    $penganggaranFk => $penganggaran->id,
-                    'sumber_dana' => $sumberDanaTitle,
-                    'jumlah_dana' => $p['jumlah_dana'],
-                    'tanggal_terima' => $tgl,
-                ]);
-                $importedPenerimaan++;
-            }
-        }
-
-        // 3. Simpan Penarikan Tunai
-        if (! empty($dumpResult['penarikan_tunai'])) {
-            foreach ($dumpResult['penarikan_tunai'] as $pt) {
-                ($this->PenarikanTunai)::create([
-                    $penganggaranFk => $penganggaran->id,
-                    'tanggal_penarikan' => $pt['tanggal_penarikan'],
-                    'jumlah_penarikan' => $pt['jumlah_penarikan'],
-                ]);
-                $importedPenarikan++;
-            }
-        }
-
-        // 4. Simpan Setor Tunai
-        if (! empty($dumpResult['setor_tunai'])) {
-            foreach ($dumpResult['setor_tunai'] as $st) {
-                ($this->SetorTunai)::create([
-                    $penganggaranFk => $penganggaran->id,
-                    'tanggal_setor' => $st['tanggal_setor'],
-                    'jumlah_setor' => $st['jumlah_setor'],
-                ]);
-                $importedSetor++;
-            }
-        }
-
-        // 5. Simpan Transaksi Belanja & Detail Barang
-        if (! empty($dumpResult['transaksi_belanja'])) {
-            foreach ($dumpResult['transaksi_belanja'] as $tx) {
-                $kegId = $kegiatanMap[trim($tx['kode_kegiatan'])] ?? null;
-                $rekId = $rekeningMap[trim($tx['kode_rekening'])] ?? null;
-
-                $idTransaksi = ! empty($tx['no_bukti']) ? $tx['no_bukti'] : (! empty($tx['nomor_nota']) ? $tx['nomor_nota'] : null);
-                if (empty($idTransaksi)) {
-                    $dateClean = str_replace('-', '', $tx['tanggal_transaksi']);
-                    $idTransaksi = 'TRX-'.$dateClean.'-'.strtoupper(substr(md5(uniqid(mt_rand(), true)), 0, 4));
-                }
-                $nomorNota = ! empty($tx['no_nota']) ? $tx['no_nota'] : $idTransaksi;
-
-                $bku = ($this->BukuKasUmum)::create([
-                    $penganggaranFk => $penganggaran->id,
-                    'id_transaksi' => $idTransaksi,
-                    'tanggal_transaksi' => $tx['tanggal_transaksi'],
-                    'kode_kegiatan_id' => $kegId,
-                    'rekening_belanja_id' => $rekId,
-                    'uraian' => $tx['uraian'],
-                    'jenis_transaksi' => $tx['jenis_transaksi'],
-                    'total_transaksi_kotor' => $tx['total_transaksi_kotor'],
-                    'dibelanjakan' => $tx['dibelanjakan'],
-                    'pajak' => ($tx['pajak'] !== 'Tanpa Pajak') ? $tx['pajak'] : null,
-                    'persen_pajak' => $tx['persen_pajak'] ?: null,
-                    'total_pajak' => $tx['total_pajak'] ?: 0,
-                    'ntpn' => ! empty($tx['ntpn']) ? $tx['ntpn'] : null,
-                    'tanggal_lapor' => ! empty($tx['tanggal_lapor']) ? $tx['tanggal_lapor'] : null,
-                    'nama_toko' => $tx['nama_toko'] ?: null,
-                    'alamat_toko' => $tx['alamat_toko'] ?: null,
-                    'npwp' => $tx['npwp'] ?: null,
-                    'nomor_nota' => $nomorNota,
-                    'is_bunga_record' => false,
-                ]);
-
-                $tglTx = $tx['tanggal_transaksi'];
-                $mNum = (int) date('n', strtotime($tglTx));
-                $isTahap2 = $mNum >= 7;
-                $rkasFkKey = VariantConfig::uraianDetailRkasFk($this->variant, $isTahap2);
-
-                foreach ($tx['items'] as $item) {
-                    $itemKegId = $kegiatanMap[trim($item['kode_kegiatan'])] ?? $kegId;
-                    $itemRekId = $rekeningMap[trim($item['kode_rekening'])] ?? $rekId;
-
-                    $targetPool = ($isTahap2 && $rkasPerubahanList->isNotEmpty()) ? $rkasPerubahanList : $rkasList;
-
-                    // Match Exact
-                    $matchedRkas = $targetPool->first(function ($r) use ($itemKegId, $itemRekId, $item) {
-                        return $r->kode_id == $itemKegId
-                            && $r->kode_rekening_id == $itemRekId
-                            && (trim(strtolower($r->uraian)) === trim(strtolower($item['rapbs_uraian'])) || trim(strtolower($r->uraian)) === trim(strtolower($item['uraian'])));
-                    });
-
-                    // Fallback Keg + Rek
-                    if (! $matchedRkas) {
-                        $matchedRkas = $targetPool->first(function ($r) use ($itemKegId, $itemRekId) {
-                            return $r->kode_id == $itemKegId && $r->kode_rekening_id == $itemRekId;
-                        });
-                    }
-
-                    // Fallback First
-                    if (! $matchedRkas) {
-                        $matchedRkas = $targetPool->first();
-                    }
-
-                    $matchedId = $matchedRkas ? $matchedRkas->id : null;
-
-                    ($this->BukuKasUmumUraianDetail)::create([
-                        $bkuFk => $bku->id,
-                        'uraian' => $item['uraian'],
-                        'volume' => $item['volume'],
-                        'satuan' => $item['satuan'],
-                        'harga_satuan' => $item['harga_satuan'],
-                        'jumlah' => $item['item_total'],
-                        'kode_kegiatan_id' => $itemKegId,
-                        'rekening_belanja_id' => $itemRekId,
-                        $rkasFkKey => $matchedId,
-                        'kondisi' => 'Baik',
-                    ]);
-                }
-                $importedBelanja++;
-            }
-        }
-
-        // 6. Simpan Status Penutupan Bulan & Bunga Bank
-        if (! empty($dumpResult['penutupan_bulan'])) {
-            foreach ($dumpResult['penutupan_bulan'] as $pb) {
-                if (! empty($pb['is_closed']) && ! empty($pb['tanggal_tutup'])) {
-                    $tutupExists = ($this->BukuKasUmum)::where($penganggaranFk, $penganggaran->id)
-                        ->where('is_bunga_record', true)
-                        ->whereMonth('tanggal_tutup', $pb['bulan_angka'])
-                        ->whereYear('tanggal_tutup', $tahun)
-                        ->first();
-
-                    if (! $tutupExists) {
-                        ($this->BukuKasUmum)::create([
-                            $penganggaranFk => $penganggaran->id,
-                            'tanggal_transaksi' => $pb['tanggal_tutup'],
-                            'tanggal_tutup' => $pb['tanggal_tutup'],
-                            'jenis_transaksi' => 'non-tunai',
-                            'is_bunga_record' => true,
-                            'bunga_bank' => $pb['bunga_bank'] ?: 0,
-                            'pajak_bunga_bank' => $pb['pajak_bunga_bank'] ?: 0,
-                            'total_transaksi_kotor' => 0,
-                            'dibelanjakan' => 0,
-                            'total_pajak' => 0,
-                        ]);
-                    }
-                }
-            }
-        }
-
-        return [
-            'imported_penerimaan' => $importedPenerimaan,
-            'imported_penarikan' => $importedPenarikan,
-            'imported_setor' => $importedSetor,
-            'imported_belanja' => $importedBelanja,
-        ];
+        return app(ArkasBkuSyncService::class)->sync(
+            $this->variant,
+            $penganggaran,
+            $dumpResult,
+            $bulanAngkaFilter
+        );
     }
 
     /**

@@ -60,12 +60,16 @@ class SystemUpdateController extends Controller
 
         $request->validate([
             'update_id' => ['required', 'string', 'max:100'],
+            'reuse_backup_file' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $this->prepareLongRunningExecution();
+        $this->prepareLongRunningExecution($request);
 
         $updateId = (string) $request->input('update_id');
+        $reuseBackupFile = $request->input('reuse_backup_file');
         $currentVersion = $this->updaterService->getCurrentVersion();
+        $backupFileName = null;
+        $currentStep = 2;
 
         try {
             $updateInfo = $this->updaterService->getUpdateDetails(false);
@@ -89,20 +93,27 @@ class SystemUpdateController extends Controller
             }
 
             $targetVersion = (string) ($updateInfo['latest_version'] ?? $currentVersion);
+            $assetSize = (int) ($updateInfo['asset']['size'] ?? 0);
             $assetName = preg_replace('/[^a-zA-Z0-9._-]/', '_', (string) ($updateInfo['asset']['name'] ?? "newSIKAS_Installer_{$targetVersion}.exe"));
 
-            // Tahap 1: Wajib Auto-Backup Database sebelum update
-            $backupResult = $this->performPreUpdateBackup($updateId, $currentVersion, $targetVersion);
-            if (! $backupResult['success']) {
-                return response()->json([
-                    'success' => false,
-                    'message' => $backupResult['message'],
-                ], 500);
+            // Tahap 1: Wajib Auto-Backup Database sebelum update (gunakan ulang backup jika Coba Lagi dari Tahap 2)
+            $currentStep = 1;
+            if (is_string($reuseBackupFile) && $this->canReuseBackupFile($reuseBackupFile)) {
+                $backupFileName = $reuseBackupFile;
+            } else {
+                $backupResult = $this->performPreUpdateBackup($updateId, $currentVersion, $targetVersion);
+                if (! $backupResult['success']) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => $backupResult['message'],
+                    ], 500);
+                }
+
+                $backupFileName = $backupResult['file_name'] ?? null;
             }
 
-            $backupFileName = $backupResult['file_name'] ?? null;
-
-            // Tahap 2: Mengunduh installer .exe dari GitHub Releases
+            // Tahap 2: Mengunduh installer .exe dari GitHub Releases (resumable + auto-retry)
+            $currentStep = 2;
             $this->updaterService->setProgress(
                 $updateId,
                 25,
@@ -121,30 +132,43 @@ class SystemUpdateController extends Controller
             $this->updaterService->downloadReleaseAsset(
                 $downloadUrl,
                 $destinationPath,
-                function (float $ratio, int $downloadedBytes, int $totalBytes) use ($updateId, $currentVersion, $targetVersion, $backupFileName) {
-                    $scaledPercent = (int) round(25 + ($ratio * 58));
+                function (float $ratio, int $downloadedBytes, int $totalBytes) use ($updateId, $currentVersion, $targetVersion, $backupFileName): void {
                     $dlFormatted = $this->updaterService->formatBytes($downloadedBytes);
                     $totalFormatted = $this->updaterService->formatBytes($totalBytes);
-                    $this->updaterService->setProgress(
+                    $this->reportDownloadProgress(
                         $updateId,
-                        min(83, max(25, $scaledPercent)),
-                        'downloading',
+                        $ratio,
                         "Tahap 2/3: Mengunduh installer ({$dlFormatted} dari {$totalFormatted})...",
-                        [
-                            'initial_version' => $currentVersion,
-                            'target_version' => $targetVersion,
-                            'backup_file' => $backupFileName,
-                            'downloaded_bytes' => $downloadedBytes,
-                            'total_bytes' => $totalBytes,
-                        ]
+                        $downloadedBytes,
+                        $totalBytes,
+                        $currentVersion,
+                        $targetVersion,
+                        $backupFileName
+                    );
+                },
+                $assetSize,
+                function (int $nextAttempt, int $maxAttempts, int $savedBytes, int $totalBytes) use ($updateId, $currentVersion, $targetVersion, $backupFileName): void {
+                    $savedFormatted = $this->updaterService->formatBytes($savedBytes);
+                    $ratio = $totalBytes > 0 ? ($savedBytes / $totalBytes) : 0.0;
+                    $this->reportDownloadProgress(
+                        $updateId,
+                        $ratio,
+                        "Tahap 2/3: Koneksi sempat terputus pada {$savedFormatted}. Melanjutkan unduhan otomatis (percobaan {$nextAttempt}/{$maxAttempts})...",
+                        $savedBytes,
+                        $totalBytes,
+                        $currentVersion,
+                        $targetVersion,
+                        $backupFileName
                     );
                 }
             );
 
             // Tahap 3: Meluncurkan Silent Installer secara detached
+            $currentStep = 3;
+
             return $this->finalizeAndLaunchInstaller($updateId, $destinationPath, $currentVersion, $targetVersion, $backupFileName);
         } catch (Exception $e) {
-            return $this->handleUpdateException($updateId, $e, 'Pembaharuan gagal');
+            return $this->handleUpdateException($updateId, $e, 'Pembaharuan gagal', $backupFileName, $currentStep);
         }
     }
 
@@ -160,10 +184,10 @@ class SystemUpdateController extends Controller
 
         $request->validate([
             'update_id' => ['required', 'string', 'max:100'],
-            'installer_file' => ['required', 'file', 'max:2097152'], // Maksimal 2 GB
+            'installer_file' => ['required', 'file', 'max:5242880'], // Maksimal 5 GB
         ]);
 
-        $this->prepareLongRunningExecution();
+        $this->prepareLongRunningExecution($request);
 
         $updateId = (string) $request->input('update_id');
         $currentVersion = $this->updaterService->getCurrentVersion();
@@ -189,6 +213,9 @@ class SystemUpdateController extends Controller
             $targetVersion = $matches[1].'.'.$matches[2];
         }
 
+        $backupFileName = null;
+        $currentStep = 1;
+
         try {
             // Tahap 1: Wajib Auto-Backup Database sebelum update manual
             $backupResult = $this->performPreUpdateBackup($updateId, $currentVersion, $targetVersion);
@@ -202,6 +229,7 @@ class SystemUpdateController extends Controller
             $backupFileName = $backupResult['file_name'] ?? null;
 
             // Tahap 2: Simpan berkas .exe ke direktori sementara
+            $currentStep = 2;
             $this->updaterService->setProgress(
                 $updateId,
                 65,
@@ -220,9 +248,11 @@ class SystemUpdateController extends Controller
             $file->move($uploadDir, $safeFileName);
 
             // Tahap 3: Jalankan Silent Installer secara detached
+            $currentStep = 3;
+
             return $this->finalizeAndLaunchInstaller($updateId, $storedPath, $currentVersion, $targetVersion, $backupFileName);
         } catch (Exception $e) {
-            return $this->handleUpdateException($updateId, $e, 'Pembaharuan manual gagal');
+            return $this->handleUpdateException($updateId, $e, 'Pembaharuan manual gagal', $backupFileName, $currentStep);
         }
     }
 
@@ -235,18 +265,42 @@ class SystemUpdateController extends Controller
         return response()->json($this->updaterService->getProgress($updateId));
     }
 
-    protected function prepareLongRunningExecution(): void
+    protected function prepareLongRunningExecution(Request $request): void
     {
-        @ini_set('max_execution_time', '1800');
+        if ($request->hasSession()) {
+            $request->session()->save();
+        }
+
+        @set_time_limit(0);
+        @ini_set('max_execution_time', '0');
         @ini_set('memory_limit', '1024M');
         @ignore_user_abort(true);
+    }
+
+    protected function canReuseBackupFile(?string $fileName): bool
+    {
+        if (! is_string($fileName) || $fileName === '' || basename($fileName) !== $fileName) {
+            return false;
+        }
+
+        if (! preg_match('/\.(rsv|sql)$/i', $fileName)) {
+            return false;
+        }
+
+        $backupPath = storage_path('app/backups'.DIRECTORY_SEPARATOR.$fileName);
+
+        return file_exists($backupPath) && (int) @filesize($backupPath) > 0;
     }
 
     protected function ensureUpdateTempDirectory(): string
     {
         $dir = storage_path('app/temp/update');
-        if (! is_dir($dir)) {
-            @mkdir($dir, 0755, true);
+        if (! is_dir($dir) && ! @mkdir($dir, 0755, true) && ! is_dir($dir)) {
+            throw new Exception("Gagal membuat direktori sementara pembaharuan ({$dir}). Periksa izin tulis server.");
+        }
+
+        if (! is_writable($dir)) {
+            throw new Exception("Direktori sementara pembaharuan ({$dir}) tidak memiliki izin tulis (write permission).");
         }
 
         return $dir;
@@ -323,17 +377,52 @@ class SystemUpdateController extends Controller
         ]);
     }
 
-    protected function handleUpdateException(string $updateId, Exception $e, string $prefix): JsonResponse
-    {
+    protected function reportDownloadProgress(
+        string $updateId,
+        float $ratio,
+        string $message,
+        int $downloadedBytes,
+        int $totalBytes,
+        string $currentVersion,
+        string $targetVersion,
+        ?string $backupFileName
+    ): void {
+        $scaledPercent = min(83, max(25, (int) round(25 + ($ratio * 58))));
+        $this->updaterService->setProgress(
+            $updateId,
+            $scaledPercent,
+            'downloading',
+            $message,
+            [
+                'initial_version' => $currentVersion,
+                'target_version' => $targetVersion,
+                'backup_file' => $backupFileName,
+                'downloaded_bytes' => $downloadedBytes,
+                'total_bytes' => $totalBytes,
+            ]
+        );
+    }
+
+    protected function handleUpdateException(
+        string $updateId,
+        Exception $e,
+        string $prefix,
+        ?string $backupFileName = null,
+        int $failedStep = 2
+    ): JsonResponse {
         Log::error("{$prefix}: ".$e->getMessage());
         $this->updaterService->setProgress($updateId, 100, 'error', "{$prefix}: ".$e->getMessage(), [
-            'failed_step' => 2,
+            'failed_step' => $failedStep,
+            'backup_file' => $backupFileName,
         ]);
 
         return response()->json([
             'success' => false,
+            'phase' => 'error',
+            'failed_step' => $failedStep,
+            'backup_file' => $backupFileName,
             'message' => "{$prefix}: ".$e->getMessage(),
-        ], 500);
+        ], 200);
     }
 
     /**
@@ -342,8 +431,9 @@ class SystemUpdateController extends Controller
     protected function ensureAuthorized(Request $request): void
     {
         $user = $request->user();
-        if (! $user || $user->isKepalaSekolah()) {
-            abort(403, 'Akses ditolak. Fitur Pembaharuan Sistem hanya dapat diakses oleh Bendahara/Operator.');
+        $requiredLevel = $request->isMethod('GET') ? 'read' : 'write';
+        if (! $user || ! $user->canAccessModule('system_update', $requiredLevel)) {
+            abort(403, 'Akses ditolak. Akun Anda tidak memiliki izin untuk fitur Pembaharuan Sistem.');
         }
     }
 }

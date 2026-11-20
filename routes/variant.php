@@ -172,10 +172,15 @@ Route::resource('rekening-belanja', RekeningBelanjaController::class);
 // Arkas Tools
 Route::get('/arkas-tools', [ArkasToolController::class, 'index'])->name('arkas-tools.index');
 Route::get('/arkas-tools/search', [ArkasToolController::class, 'search'])->name('arkas-tools.search');
+Route::get('/arkas-tools/by-rekening', [ArkasToolController::class, 'byRekening'])->name('arkas-tools.by-rekening');
 Route::get('/arkas-tools/fetch-arkas', [ArkasToolController::class, 'fetchArkas'])->name('arkas-tools.fetch-arkas');
 Route::post('/arkas-tools/sync', [ArkasToolController::class, 'sync'])->name('arkas-tools.sync');
 Route::get('/arkas-tools/path', [ArkasSettingController::class, 'getPath'])->name('arkas-tools.get-path');
-Route::post('/arkas-tools/path', [ArkasSettingController::class, 'savePath'])->name('arkas-tools.save-path');
+Route::middleware(['role:bendahara'])->group(function () {
+    Route::post('/arkas-tools/path', [ArkasSettingController::class, 'savePath'])->name('arkas-tools.save-path');
+    Route::post('/arkas-tools/upload-db', [ArkasSettingController::class, 'uploadDb'])->name('arkas-tools.upload-db');
+    Route::delete('/arkas-tools/upload-db', [ArkasSettingController::class, 'removeUploadedDb'])->name('arkas-tools.remove-uploaded-db');
+});
 Route::post('/arkas-tools/ai-diagnose', [ArkasAiDiagnosticController::class, 'diagnoseSystem'])->name('arkas-tools.ai-diagnose');
 Route::post('/arkas-tools/ai-diagnose-context', [ArkasAiDiagnosticController::class, 'diagnoseContext'])->name('arkas-tools.ai-diagnose-context');
 
@@ -196,7 +201,7 @@ Route::get('/laporan', function () {
 })->name('laporan.index');
 
 // Backup
-Route::prefix('backup')->name('backup.')->group(function () {
+Route::middleware(['role:bendahara'])->prefix('backup')->name('backup.')->group(function () {
     Route::get('/', [DatabaseController::class, 'index'])->name('index');
     Route::post('/create', [DatabaseController::class, 'backup'])->name('create');
     Route::post('/restore', [DatabaseController::class, 'restore'])->name('restore');

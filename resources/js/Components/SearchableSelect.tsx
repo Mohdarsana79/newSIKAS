@@ -103,7 +103,7 @@ export default function SearchableSelect({
 
             {/* Dropdown Panel */}
             {isOpen && (
-                <div className="absolute -left-0 z-50 mt-1 flex max-h-[400px] w-full min-w-[600px] flex-col overflow-hidden rounded-2xl border border-white bg-white shadow-float dark:border-white/10 dark:bg-[#15131F] md:left-0">
+                <div className="absolute left-0 z-50 mt-1 flex max-h-[360px] w-full min-w-0 max-w-[calc(100vw-2rem)] sm:min-w-[440px] flex-col overflow-x-auto overflow-y-hidden rounded-2xl border border-white bg-white shadow-float dark:border-white/10 dark:bg-[#15131F]">
 
                     {/* Search Bar */}
                     <div className="sticky top-0 border-b border-slate-100 bg-slate-50/80 p-2 dark:border-white/5 dark:bg-white/[0.03]">

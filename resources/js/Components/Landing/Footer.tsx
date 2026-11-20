@@ -1,106 +1,197 @@
+import { SikasLogo } from '@/Components/Landing/Navbar';
 import { PanduanLink } from '@/Components/Landing/ui/AccountActions';
+import { animate, stagger, useAnimeInView } from '@/lib/anime';
 
 const FOOTER_LINKS = [
-    { label: 'Fitur', href: '#fitur' },
-    { label: 'Modul', href: '#modul' },
-    { label: 'Cara Kerja', href: '#cara-kerja' },
+    { label: 'Beranda', href: '#top' },
+    { label: 'Layanan', href: '#modul' },
+    { label: 'Tentang', href: '#fitur' },
+    { label: 'Statistik', href: '#statistik' },
 ] as const;
 
 const AUTHOR_URL = 'https://www.youtube.com/@giandarsana5772';
-const AUTHOR_NAME = 'Moh Gian Darsana Darsana, S.Pd.,Gr';
+const AUTHOR_NAME = 'Moh Gian Darsana, S.Pd.,Gr';
 
-/** Monogram mengikuti gaya navbar (brand gradient + glyph emas). */
-function Monogram() {
-    return (
-        <span
-            aria-hidden
-            className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-brand-500 via-brand-600 to-brand-800 shadow-glow-violet ring-1 ring-gold-400/40"
-        >
-            <span className="absolute inset-0 bg-gradient-to-br from-white/25 via-transparent to-transparent" />
-            <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={1.6}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="relative h-6 w-6 text-gold-200"
-            >
-                <path d="M5 5.25A2.25 2.25 0 0 1 7.25 3h9.5A2.25 2.25 0 0 1 19 5.25v13.5A2.25 2.25 0 0 1 16.75 21h-9.5A2.25 2.25 0 0 1 5 18.75V5.25Z" />
-                <path d="M8.25 7.5h7.5" />
-                <path d="M8.25 10.75h3.5" />
-                <path d="m8.4 16.9 2.5-2.9 2 1.8 2.8-3.4" />
-            </svg>
-        </span>
-    );
-}
-
+/**
+ * Section 5: Clean Minimalist Footer bergaya Novara Wealth Advisory:
+ * - Baris utama: Logo segitiga gunung SIKAS, tautan navigasi horizontal, ikon sosial,
+ *   serta motto vertikal "MASA DEPAN ANGGARAN LEBIH CERAH BERSAMA." di sebelah kanan.
+ * - Baris bawah: Hak cipta di kiri & tautan informasi di kanan.
+ */
 export function Footer() {
+    const { ref: footerRef } = useAnimeInView<HTMLElement>(
+        (container, reducedMotion) => {
+            if (reducedMotion) return;
+            const items = container.querySelectorAll('[data-footer-reveal]');
+            if (items.length === 0) return;
+
+            return animate(items, {
+                opacity: [0, 1],
+                translateY: [18, 0],
+                duration: 750,
+                delay: stagger(80),
+                ease: 'outExpo',
+            });
+        },
+        {
+            threshold: 0.15,
+            initialHideSelector: '[data-footer-reveal]',
+        },
+    );
+
     return (
-        <footer className="relative isolate overflow-hidden border-t border-ink-900/[0.08] bg-white/40 dark:border-white/10 dark:bg-ink-950/50">
-            <span
-                aria-hidden
-                className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold-500/25 to-transparent"
-            />
+        <footer
+            id="kontak"
+            ref={footerRef}
+            className="relative isolate overflow-hidden bg-[#F8FBFB] pt-4 text-[#08222B] dark:bg-[#051319] dark:text-white"
+        >
+            <div className="mx-auto max-w-7xl px-6 lg:px-8">
+                {/* Baris Utama Footer */}
+                <div className="flex flex-col items-start justify-between gap-8 py-10 lg:flex-row lg:items-center lg:gap-10">
+                    {/* Kiri: Logo Resmi SIKAS + Wordmark */}
+                    <a
+                        href="#top"
+                        data-footer-reveal
+                        className="landing-focus group flex items-center gap-3 rounded-xl"
+                    >
+                        <SikasLogo />
+                        <span className="flex flex-col">
+                            <span className="font-sans text-[21px] font-bold leading-none tracking-[-0.025em] text-[#08222B] dark:text-white">
+                                SIKAS
+                            </span>
+                            <span className="mt-1 text-[8.5px] font-semibold uppercase leading-none tracking-[0.22em] text-[#2A6F78] dark:text-[#8BE6DC]">
+                                Sistem Anggaran Sekolah
+                            </span>
+                        </span>
+                    </a>
 
-            <div className="relative z-10 mx-auto max-w-7xl px-6 lg:px-8">
-                <div className="flex flex-col gap-10 py-14 sm:py-16 md:flex-row md:items-start md:justify-between md:gap-16">
-                    <div className="max-w-sm">
-                        <div className="flex items-center gap-3">
-                            <Monogram />
-                            <div className="flex min-w-0 flex-col">
-                                <span className="font-display text-xl font-semibold leading-none tracking-[-0.01em] text-ink-900 dark:text-white">
-                                    SIKAS
-                                </span>
-                                <span className="mt-1.5 text-[9px] font-semibold uppercase leading-none tracking-[0.16em] text-ink-900/60 dark:text-white/55">
-                                    Kelola Anggaran, Raih Prestasi
-                                </span>
-                            </div>
-                        </div>
-
-                        <p className="mt-5 text-[13.5px] font-medium leading-[1.7] text-ink-900/70 dark:text-white/65">
-                            Sistem Informasi Kegiatan Anggaran Sekolah
-                        </p>
-                        <p className="mt-1.5 text-[12.5px] leading-[1.7] text-ink-900/60 dark:text-white/55">
-                            Satu alur tenang untuk merencanakan, mencatat, dan melaporkan anggaran BOSP.
-                        </p>
-                    </div>
-
-                    <nav aria-label="Navigasi footer">
-                        <p className="landing-eyebrow">Jelajahi</p>
-                        <ul className="mt-4 flex flex-wrap gap-x-8 gap-y-3 sm:flex-col sm:gap-y-3">
+                    {/* Tengah: Navigasi Horizontal */}
+                    <nav aria-label="Navigasi footer" data-footer-reveal>
+                        <ul className="flex flex-wrap items-center gap-x-7 gap-y-2.5">
                             {FOOTER_LINKS.map((link) => (
                                 <li key={link.href}>
                                     <a
                                         href={link.href}
-                                        className="landing-focus rounded-sm text-[13.5px] font-medium text-ink-900/60 transition-colors duration-300 ease-luxe hover:text-gold-600 dark:text-white/55 dark:hover:text-gold-300"
+                                        className="landing-focus text-[13px] font-medium text-[#3E5D67] transition-colors duration-200 hover:text-[#08222B] dark:text-white/65 dark:hover:text-[#8BE6DC]"
                                     >
                                         {link.label}
                                     </a>
                                 </li>
                             ))}
                             <li>
-                                <PanduanLink className="landing-focus rounded-sm text-[13.5px] font-medium text-ink-900/60 transition-colors duration-300 ease-luxe hover:text-gold-600 dark:text-white/55 dark:hover:text-gold-300" />
+                                <PanduanLink className="landing-focus text-[13px] font-medium text-[#3E5D67] transition-colors duration-200 hover:text-[#08222B] dark:text-white/65 dark:hover:text-[#8BE6DC]" />
                             </li>
                         </ul>
                     </nav>
+
+                    {/* Kanan: Ikon Sosial + Garis Vertikal + Tagline seperti referensi Novara */}
+                    <div data-footer-reveal className="flex flex-wrap items-center gap-6">
+                        <div className="flex items-center gap-2.5">
+                            <a
+                                href={AUTHOR_URL}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                aria-label="LinkedIn & Profil Pengembang"
+                                className="landing-focus flex h-8 w-8 items-center justify-center rounded-lg bg-[#09242E] text-white transition-transform duration-200 hover:-translate-y-0.5 hover:bg-[#144754] dark:bg-white/10 dark:hover:bg-[#8BE6DC] dark:hover:text-[#06222B]"
+                            >
+                                <LinkedInIcon />
+                            </a>
+                            <a
+                                href={AUTHOR_URL}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                aria-label="Instagram SIKAS"
+                                className="landing-focus flex h-8 w-8 items-center justify-center rounded-lg bg-[#09242E] text-white transition-transform duration-200 hover:-translate-y-0.5 hover:bg-[#144754] dark:bg-white/10 dark:hover:bg-[#8BE6DC] dark:hover:text-[#06222B]"
+                            >
+                                <InstagramIcon />
+                            </a>
+                            <a
+                                href={AUTHOR_URL}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                aria-label="Channel YouTube Panduan SIKAS"
+                                className="landing-focus flex h-8 w-8 items-center justify-center rounded-lg bg-[#09242E] text-white transition-transform duration-200 hover:-translate-y-0.5 hover:bg-[#144754] dark:bg-white/10 dark:hover:bg-[#8BE6DC] dark:hover:text-[#06222B]"
+                            >
+                                <YouTubeIcon />
+                            </a>
+                        </div>
+
+                        <div className="border-l border-[#09242E]/15 pl-5 dark:border-white/15">
+                            <p className="text-[10px] font-bold uppercase leading-[1.45] tracking-[0.16em] text-[#08222B] dark:text-white/85">
+                                <span className="block">Masa Depan Anggaran</span>
+                                <span className="block">Lebih Cerah Bersama.</span>
+                            </p>
+                        </div>
+                    </div>
                 </div>
 
-                <div className="border-t border-ink-900/[0.08] py-6 dark:border-white/10">
-                    <p className="text-center text-[12px] leading-[1.7] text-ink-900/60 dark:text-white/55">
-                        &copy; 2025 SIKAS Team. Created By{' '}
+                {/* Baris Bawah Copyright & Tautan */}
+                <div
+                    data-footer-reveal
+                    className="flex flex-col items-center justify-between gap-4 border-t border-[#09242E]/10 py-6 text-[11.5px] text-[#53717B] dark:border-white/10 dark:text-white/55 sm:flex-row"
+                >
+                    <p>
+                        &copy; {new Date().getFullYear()} SIKAS Advisory. Created by{' '}
                         <a
                             href={AUTHOR_URL}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="landing-focus rounded-sm font-semibold text-ink-900/65 underline decoration-ink-900/20 underline-offset-4 transition-colors duration-300 ease-luxe hover:text-gold-600 hover:decoration-gold-500/60 dark:text-white/60 dark:decoration-white/20 dark:hover:text-gold-300 dark:hover:decoration-gold-300/60"
+                            className="landing-focus font-semibold text-[#08222B] underline decoration-[#08222B]/25 underline-offset-4 transition-colors hover:text-[#1D6470] dark:text-white/80 dark:decoration-white/25 dark:hover:text-[#8BE6DC]"
                         >
                             {AUTHOR_NAME}
                         </a>
+                        . All rights reserved.
                     </p>
+
+                    <div className="flex items-center gap-6">
+                        <a
+                            href="#top"
+                            className="transition-colors hover:text-[#08222B] dark:hover:text-white"
+                        >
+                            Privasi
+                        </a>
+                        <a
+                            href="#modul"
+                            className="transition-colors hover:text-[#08222B] dark:hover:text-white"
+                        >
+                            Ketentuan
+                        </a>
+                        <a
+                            href="#statistik"
+                            className="transition-colors hover:text-[#08222B] dark:hover:text-white"
+                        >
+                            Peta Situs
+                        </a>
+                    </div>
                 </div>
             </div>
         </footer>
+    );
+}
+
+function LinkedInIcon() {
+    return (
+        <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
+            <path d="M6.94 8.5a1.56 1.56 0 1 1 0-3.12 1.56 1.56 0 0 1 0 3.12ZM5.5 9.75h2.88V19H5.5V9.75Zm4.68 0h2.76v1.26h.04c.38-.72 1.32-1.48 2.72-1.48 2.91 0 3.45 1.91 3.45 4.4V19h-2.88v-4.5c0-1.07-.02-2.45-1.5-2.45-1.5 0-1.73 1.17-1.73 2.37V19h-2.86V9.75Z" />
+        </svg>
+    );
+}
+
+function InstagramIcon() {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+            <rect x="3.5" y="3.5" width="17" height="17" rx="4.5" />
+            <circle cx="12" cy="12" r="3.8" />
+            <circle cx="17.2" cy="6.8" r="0.8" fill="currentColor" />
+        </svg>
+    );
+}
+
+function YouTubeIcon() {
+    return (
+        <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
+            <path d="M21.6 7.2a2.7 2.7 0 0 0-1.9-1.9C18 4.8 12 4.8 12 4.8s-6 0-7.7.5a2.7 2.7 0 0 0-1.9 1.9C2 8.9 2 12 2 12s0 3.1.4 4.8a2.7 2.7 0 0 0 1.9 1.9c1.7.5 7.7.5 7.7.5s6 0 7.7-.5a2.7 2.7 0 0 0 1.9-1.9c.4-1.7.4-4.8.4-4.8s0-3.1-.4-4.8ZM10 15.2V8.8l5.5 3.2-5.5 3.2Z" />
+        </svg>
     );
 }
 

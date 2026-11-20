@@ -86,30 +86,46 @@ def main():
             }))
             sys.exit(1)
 
-        # Cari anggaran murni (is_revisi = 0, soft_delete = 0)
-        query_anggaran = """
-            SELECT a.id_anggaran, a.jumlah, a.tahun_anggaran, a.id_ref_sumber_dana, a.is_approve
+        # Cari anggaran RKAS Awal terbaru sebelum Perubahan (is_revisi < 100, soft_delete = 0).
+        # Prioritaskan versi yang sudah disetujui (termasuk Pergeseran terbaru); fallback ke draf jika belum ada yang disetujui.
+        query_anggaran_approved = """
+            SELECT a.id_anggaran, a.jumlah, a.tahun_anggaran, a.id_ref_sumber_dana, a.is_approve, COALESCE(a.is_revisi, 0)
             FROM anggaran a
-            WHERE a.tahun_anggaran = ? 
-              AND a.id_ref_sumber_dana = ? 
-              AND a.is_revisi = 0 
+            WHERE a.tahun_anggaran = ?
+              AND a.id_ref_sumber_dana = ?
+              AND COALESCE(a.is_revisi, 0) < 100
               AND a.soft_delete = 0
-            ORDER BY a.create_date DESC
+              AND a.is_approve = 1
+            ORDER BY COALESCE(a.is_revisi, 0) DESC, a.create_date DESC
             LIMIT 1
         """
-        cursor.execute(query_anggaran, (tahun, sumber_dana_id))
+        cursor.execute(query_anggaran_approved, (tahun, sumber_dana_id))
         anggaran_row = cursor.fetchone()
+
+        if not anggaran_row:
+            query_anggaran_draft = """
+                SELECT a.id_anggaran, a.jumlah, a.tahun_anggaran, a.id_ref_sumber_dana, a.is_approve, COALESCE(a.is_revisi, 0)
+                FROM anggaran a
+                WHERE a.tahun_anggaran = ?
+                  AND a.id_ref_sumber_dana = ?
+                  AND COALESCE(a.is_revisi, 0) < 100
+                  AND a.soft_delete = 0
+                ORDER BY COALESCE(a.is_revisi, 0) DESC, a.create_date DESC
+                LIMIT 1
+            """
+            cursor.execute(query_anggaran_draft, (tahun, sumber_dana_id))
+            anggaran_row = cursor.fetchone()
 
         if not anggaran_row:
             print(json.dumps({
                 "status": "success",
                 "exists": False,
-                "message": f"Tidak ditemukan data RKAS Murni di ARKAS untuk Tahun {tahun}."
+                "message": f"Tidak ditemukan data RKAS Awal di ARKAS untuk Tahun {tahun}."
             }))
             conn.close()
             sys.exit(0)
 
-        id_anggaran, pagu_jumlah, tahun_anggaran, ref_sd_id, is_approve = anggaran_row
+        id_anggaran, pagu_jumlah, tahun_anggaran, ref_sd_id, is_approve, is_revisi = anggaran_row
 
         # Ambil nama sumber dana
         cursor.execute("SELECT nama_sumber_dana FROM ref_sumber_dana WHERE id_ref_sumber_dana = ?;", (sumber_dana_id,))
@@ -143,6 +159,7 @@ def main():
                 "sumber_dana": nama_sumber_dana,
                 "pagu": pagu_jumlah,
                 "is_approve": is_approve,
+                "is_revisi": is_revisi,
                 "total_kegiatan": total_kegiatan,
                 "total_alokasi": total_alokasi,
                 "total_alokasi_rp": total_alokasi_rp,
@@ -195,11 +212,14 @@ def main():
             conn.close()
             print(json.dumps({
                 "status": "success",
+                "exists": True,
                 "id_anggaran": id_anggaran,
                 "tahun": tahun,
                 "sumber_dana_id": sumber_dana_id,
                 "sumber_dana": nama_sumber_dana,
                 "pagu": pagu_jumlah,
+                "is_approve": is_approve,
+                "is_revisi": is_revisi,
                 "count": len(results),
                 "data": results,
                 "db_path": db_path

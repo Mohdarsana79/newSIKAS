@@ -47,29 +47,22 @@ export default function BackupIndex({ auth, backupFiles, stats, flash, currentNp
     const [processingReset, setProcessingReset] = useState(false);
     const [isDatabaseReset, setIsDatabaseReset] = useState(false);
 
-    // NPSN Edit State (Secret Ctrl+8)
+    // NPSN Edit State (Secret Alt+9)
     const [showNpsnModal, setShowNpsnModal] = useState(false);
     const { data: npsnData, setData: setNpsnData, post: postNpsn, processing: processingNpsn, errors: npsnErrors } = useForm({
         npsn_code: currentNpsn || ''
     });
 
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.ctrlKey && e.key === '8') {
-                e.preventDefault();
-                setShowNpsnModal(true);
-            }
-        };
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, []);
-
-    const closeNpsnModal = () => setShowNpsnModal(false);
+    const closeNpsnModal = () => {
+        if (processingNpsn) return;
+        setShowNpsnModal(false);
+    };
     const submitNpsn = (e: React.FormEvent) => {
         e.preventDefault();
+        if (!isDatabaseReset || processingNpsn) return;
         postNpsn(route('backup.update-npsn'), {
             onSuccess: () => {
-                closeNpsnModal();
+                setShowNpsnModal(false);
                 if (isDatabaseReset) {
                     window.location.reload();
                 }
@@ -299,13 +292,19 @@ export default function BackupIndex({ auth, backupFiles, stats, flash, currentNp
         setConfirmingReset(true);
     };
 
-    const closeResetModal = () => {
+    const dismissResetModal = () => {
         setConfirmingReset(false);
         setPassword('');
         setPasswordError('');
     };
 
+    const closeResetModal = () => {
+        if (processingReset) return;
+        dismissResetModal();
+    };
+
     const handleResetDatabase = async () => {
+        if (processingReset) return;
         setProcessingReset(true);
         setPasswordError('');
 
@@ -318,7 +317,7 @@ export default function BackupIndex({ auth, backupFiles, stats, flash, currentNp
                 const resetRes = await window.axios.post(route('backup.reset'));
                 if (resetRes.data.success) {
                     setIsDatabaseReset(true);
-                    closeResetModal();
+                    dismissResetModal();
                 }
             }
         } catch (error: any) {
@@ -327,6 +326,7 @@ export default function BackupIndex({ auth, backupFiles, stats, flash, currentNp
             } else {
                 setPasswordError('Terjadi kesalahan saat mereset database.');
             }
+        } finally {
             setProcessingReset(false);
         }
     };
@@ -335,6 +335,26 @@ export default function BackupIndex({ auth, backupFiles, stats, flash, currentNp
     const [confirmingDeletion, setConfirmingDeletion] = useState(false);
     const [fileToDelete, setFileToDelete] = useState<string | null>(null);
     const [processingDelete, setProcessingDelete] = useState(false);
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (
+                e.altKey &&
+                !e.ctrlKey &&
+                !e.metaKey &&
+                !e.shiftKey &&
+                (e.key === '9' || e.code === 'Digit9')
+            ) {
+                if (confirmingReset || showRestoreModal || confirmingDeletion) {
+                    return;
+                }
+                e.preventDefault();
+                setShowNpsnModal(true);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [confirmingReset, showRestoreModal, confirmingDeletion]);
 
     const handleDelete = (fileName: string) => {
         setFileToDelete(fileName);
@@ -389,6 +409,16 @@ export default function BackupIndex({ auth, backupFiles, stats, flash, currentNp
                         <span className="block text-[11.5px] font-semibold text-mint">{flash.success}</span>
                     </div>
                 )}
+                {isDatabaseReset && !flash.success && (
+                    <div className="flex items-start gap-3 rounded-[22px] border border-mint/20 bg-pastel-mint/60 px-4 py-3 dark:border-mint/20 dark:bg-mint/10" role="alert">
+                        <svg className="mt-0.5 h-5 w-5 shrink-0 text-mint" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span className="block text-[11.5px] font-semibold text-mint">
+                            Database berhasil direset. Semua data kecuali akun pengguna telah dibersihkan.
+                        </span>
+                    </div>
+                )}
                 {flash.error && (
                     <div className="flex items-start gap-3 rounded-[22px] border border-rose-200 bg-pastel-rose/70 px-4 py-3 dark:border-rose-400/20 dark:bg-rose-500/10" role="alert">
                         <svg className="mt-0.5 h-5 w-5 shrink-0 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -399,7 +429,7 @@ export default function BackupIndex({ auth, backupFiles, stats, flash, currentNp
                 )}
 
                 {/* Stats Cards */}
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
                     <div className="sikas-card sikas-card-hover animate-rise p-4" style={{ animationDelay: '60ms' }}>
                         <div className="flex items-center gap-2.5">
                             <IconTile tone="violet" size="md">
@@ -464,9 +494,9 @@ export default function BackupIndex({ auth, backupFiles, stats, flash, currentNp
                 </div>
 
                 {/* Actions Area */}
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
                     {/* Create Backup */}
-                    <div className="md:col-span-2">
+                    <div className="lg:col-span-2">
                         <Surface
                             className="animate-rise"
                             title="Buat Backup Baru"
@@ -480,7 +510,7 @@ export default function BackupIndex({ auth, backupFiles, stats, flash, currentNp
                             }
                             actions={<StatusBadge tone="violet" dot={false}>Paket All-in-One</StatusBadge>}
                         >
-                            <form onSubmit={handleCreateBackup} className="flex flex-col items-end gap-3 sm:flex-row">
+                            <form onSubmit={handleCreateBackup} className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-end">
                                 <div className="w-full flex-1">
                                     <InputLabel htmlFor="backup_name" value="Nama Backup (Opsional)" />
                                     <TextInput
@@ -507,7 +537,7 @@ export default function BackupIndex({ auth, backupFiles, stats, flash, currentNp
                     <Surface
                         className="animate-rise"
                         title="Tindakan Lain"
-                        subtitle="Pulihkan database dari berkas cadangan."
+                        subtitle="Reset atau pulihkan database dari berkas cadangan."
                         icon={
                             <IconTile tone="amber" size="md">
                                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -516,24 +546,44 @@ export default function BackupIndex({ auth, backupFiles, stats, flash, currentNp
                             </IconTile>
                         }
                     >
-                        <div>
-                            <input
-                                type="file"
-                                ref={fileInputRef}
-                                onChange={handleFileSelect}
-                                className="hidden"
-                                accept=".rsv,.btb,.sql"
-                            />
-                            <SecondaryButton
-                                onClick={() => fileInputRef.current?.click()}
-                                className="w-full justify-center"
-                            >
-                                <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                                </svg>
-                                Restore Database
-                            </SecondaryButton>
-                            <p className="mt-1 text-center text-[10px] font-medium text-slate-400 dark:text-slate-500">Upload file .rsv (Maks. 2 GB)</p>
+                        <div className="space-y-3">
+                            <div>
+                                <DangerButton
+                                    type="button"
+                                    onClick={confirmReset}
+                                    disabled={isDatabaseReset}
+                                    className="w-full justify-center"
+                                >
+                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                    </svg>
+                                    {isDatabaseReset ? 'Database Telah Direset' : 'Reset Database'}
+                                </DangerButton>
+                                <p className="mt-1 text-center text-[10px] font-medium text-rose-500/90 dark:text-rose-400">
+                                    Hapus semua data (kecuali akun pengguna)
+                                </p>
+                            </div>
+
+                            <div className="border-t border-slate-100 pt-3 dark:border-white/5">
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    onChange={handleFileSelect}
+                                    className="hidden"
+                                    accept=".rsv,.btb,.sql"
+                                />
+                                <SecondaryButton
+                                    type="button"
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="w-full justify-center"
+                                >
+                                    <svg className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                    </svg>
+                                    Restore Database
+                                </SecondaryButton>
+                                <p className="mt-1 text-center text-[10px] font-medium text-slate-400 dark:text-slate-500">Upload file .rsv (Maks. 2 GB)</p>
+                            </div>
                         </div>
                     </Surface>
                 </div>
@@ -628,8 +678,19 @@ export default function BackupIndex({ auth, backupFiles, stats, flash, currentNp
             </div>
 
             {/* Reset Confirmation Modal */}
-            <Modal show={confirmingReset} onClose={closeResetModal}>
-                <div className="relative overflow-hidden bg-white dark:bg-[#15131F]">
+            <Modal
+                show={confirmingReset}
+                onClose={closeResetModal}
+                closeable={!processingReset}
+                ariaLabelledBy="reset-modal-title"
+            >
+                <form
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        handleResetDatabase();
+                    }}
+                    className="relative overflow-hidden rounded-[26px] bg-white dark:bg-[#15131F]"
+                >
                     <div className="pointer-events-none absolute -right-10 -top-16 h-44 w-44 rounded-full bg-rose-500/15 blur-3xl" />
                     <div className="relative flex items-start justify-between gap-3 border-b border-slate-100 px-6 py-4 dark:border-white/5">
                         <div className="flex items-center gap-3">
@@ -639,7 +700,7 @@ export default function BackupIndex({ auth, backupFiles, stats, flash, currentNp
                                 </svg>
                             </IconTile>
                             <div className="min-w-0">
-                                <h2 className="text-[14px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                                <h2 id="reset-modal-title" className="text-[14px] font-extrabold tracking-tight text-slate-900 dark:text-white">
                                     Apakah Anda yakin ingin mereset database?
                                 </h2>
                                 <p className="mt-0.5 text-[10px] font-medium text-slate-400 dark:text-slate-500">Konfirmasi dengan password.</p>
@@ -648,7 +709,8 @@ export default function BackupIndex({ auth, backupFiles, stats, flash, currentNp
                         <button
                             type="button"
                             onClick={closeResetModal}
-                            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-500 dark:hover:bg-white/5 dark:hover:text-white"
+                            disabled={processingReset}
+                            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50 dark:text-slate-500 dark:hover:bg-white/5 dark:hover:text-white"
                             aria-label="Tutup"
                         >
                             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -664,10 +726,10 @@ export default function BackupIndex({ auth, backupFiles, stats, flash, currentNp
                         </p>
 
                         <div className="mt-5">
-                            <InputLabel htmlFor="password" value="Password" className="sr-only" />
+                            <InputLabel htmlFor="reset_password" value="Password" className="sr-only" />
 
                             <TextInput
-                                id="password"
+                                id="reset_password"
                                 type="password"
                                 name="password"
                                 isFocused={true}
@@ -681,15 +743,15 @@ export default function BackupIndex({ auth, backupFiles, stats, flash, currentNp
                         </div>
                     </div>
                     <div className="flex justify-end gap-2 border-t border-slate-100 px-6 py-4 dark:border-white/5">
-                        <SecondaryButton onClick={closeResetModal}>
+                        <SecondaryButton type="button" onClick={closeResetModal} disabled={processingReset}>
                             Batal
                         </SecondaryButton>
 
-                        <DangerButton disabled={processingReset} onClick={handleResetDatabase}>
+                        <DangerButton type="submit" disabled={processingReset}>
                             {processingReset ? 'Mereset...' : 'Reset Database'}
                         </DangerButton>
                     </div>
-                </div>
+                </form>
             </Modal>
 
             {/* Delete Confirmation Modal */}
@@ -885,9 +947,14 @@ export default function BackupIndex({ auth, backupFiles, stats, flash, currentNp
                 </div>
             </Modal>
 
-            {/* NPSN Modal */}
-            <Modal show={showNpsnModal} onClose={closeNpsnModal}>
-                <div className="relative overflow-hidden bg-white dark:bg-[#15131F]">
+            {/* NPSN Modal (Secret Alt+9) */}
+            <Modal
+                show={showNpsnModal}
+                onClose={closeNpsnModal}
+                closeable={!processingNpsn}
+                ariaLabelledBy="npsn-modal-title"
+            >
+                <div className="relative overflow-hidden rounded-[26px] bg-white dark:bg-[#15131F]">
                     <div className="pointer-events-none absolute -right-10 -top-16 h-40 w-40 rounded-full bg-brand-500/10 blur-3xl" />
                     <div className="relative flex items-start justify-between gap-3 border-b border-slate-100 px-6 py-4 dark:border-white/5">
                         <div className="flex items-center gap-3">
@@ -898,18 +965,21 @@ export default function BackupIndex({ auth, backupFiles, stats, flash, currentNp
                                 </svg>
                             </IconTile>
                             <div className="min-w-0">
-                                <h2 className="text-[14px] font-extrabold tracking-tight text-slate-900 dark:text-white">
-                                    Edit APP_NPSN_CODE & Reset Database
+                                <h2 id="npsn-modal-title" className="text-[14px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                                    Edit APP_NPSN_CODE
                                 </h2>
                                 <p className="mt-0.5 text-[10px] font-medium text-slate-400 dark:text-slate-500">
-                                    Anda harus melakukan Reset Database terlebih dahulu sebelum dapat mengubah NPSN.
+                                    {isDatabaseReset
+                                        ? 'Masukkan kode NPSN baru yang terdaftar dalam lisensi aplikasi.'
+                                        : 'Anda harus melakukan Reset Database terlebih dahulu sebelum dapat mengubah NPSN.'}
                                 </p>
                             </div>
                         </div>
                         <button
                             type="button"
                             onClick={closeNpsnModal}
-                            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-500 dark:hover:bg-white/5 dark:hover:text-white"
+                            disabled={processingNpsn}
+                            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50 dark:text-slate-500 dark:hover:bg-white/5 dark:hover:text-white"
                             aria-label="Tutup"
                         >
                             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -919,19 +989,18 @@ export default function BackupIndex({ auth, backupFiles, stats, flash, currentNp
                     </div>
 
                     <div className="px-6 py-5">
-                        <div className="border-b border-slate-100 pb-5 dark:border-white/5">
-                            <div className="flex items-center justify-between gap-3">
-                                <div>
-                                    <h3 className="text-[12px] font-extrabold text-slate-900 dark:text-white">Reset Database</h3>
-                                    <p className="mt-1 text-[10px] font-semibold text-rose-500">Hapus semua data (Kecuali User)</p>
-                                </div>
-                                <DangerButton onClick={confirmReset} disabled={isDatabaseReset}>
-                                    {isDatabaseReset ? 'Database Telah Direset' : 'Reset Database'}
-                                </DangerButton>
+                        {!isDatabaseReset && (
+                            <div className="mb-4 flex items-start gap-2.5 rounded-2xl border border-amber-200/70 bg-pastel-amber p-3.5 text-[11px] font-semibold text-amber-800 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-200">
+                                <svg className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                                <span>
+                                    Silakan jalankan <strong>Reset Database</strong> pada kartu <strong>Tindakan Lain</strong> terlebih dahulu untuk membuka form perubahan NPSN.
+                                </span>
                             </div>
-                        </div>
+                        )}
 
-                        <form onSubmit={submitNpsn} className="mt-5">
+                        <form onSubmit={submitNpsn}>
                             <InputLabel htmlFor="npsn_code" value="NPSN Code" />
                             <TextInput
                                 id="npsn_code"
@@ -940,13 +1009,15 @@ export default function BackupIndex({ auth, backupFiles, stats, flash, currentNp
                                 value={npsnData.npsn_code}
                                 onChange={(e) => setNpsnData('npsn_code', e.target.value)}
                                 className="mt-1 block w-full"
-                                disabled={!isDatabaseReset}
+                                disabled={!isDatabaseReset || processingNpsn}
                                 isFocused={isDatabaseReset}
                             />
                             <InputError message={npsnErrors.npsn_code} className="mt-2" />
 
                             <div className="mt-5 flex justify-end gap-2 border-t border-slate-100 pt-4 dark:border-white/5">
-                                <SecondaryButton onClick={closeNpsnModal} type="button">Batal</SecondaryButton>
+                                <SecondaryButton onClick={closeNpsnModal} type="button" disabled={processingNpsn}>
+                                    Batal
+                                </SecondaryButton>
                                 <PrimaryButton disabled={processingNpsn || !isDatabaseReset}>
                                     {processingNpsn ? 'Menyimpan...' : 'Simpan NPSN'}
                                 </PrimaryButton>

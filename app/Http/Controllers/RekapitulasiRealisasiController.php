@@ -1237,7 +1237,7 @@ class RekapitulasiRealisasiController extends Controller
 
             return response()->json([
                 'error' => 'Gagal generate PDF: '.$e->getMessage(),
-                'trace' => env('APP_DEBUG') ? $e->getTraceAsString() : null,
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null,
             ], 500);
         }
     }

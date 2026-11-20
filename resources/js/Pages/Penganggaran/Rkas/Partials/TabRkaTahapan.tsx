@@ -2,15 +2,17 @@ import { Fragment } from 'react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import DocKopSuratHeader from '@/Components/DocKopSuratHeader';
+import { getDisplayUraian } from '@/Utils/rkasUraian';
 
 interface TabRkaTahapanProps {
     anggaran: any;
     tahapanData: any;
+    showArkasUraian?: boolean;
     onPrint: (target: string) => void;
     onExportExcel: (target: string) => void;
 }
 
-export default function TabRkaTahapan({ anggaran, tahapanData, onPrint, onExportExcel }: TabRkaTahapanProps) {
+export default function TabRkaTahapan({ anggaran, tahapanData, showArkasUraian = false, onPrint, onExportExcel }: TabRkaTahapanProps) {
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('id-ID').format(amount);
     };
@@ -198,7 +200,7 @@ export default function TabRkaTahapan({ anggaran, tahapanData, onPrint, onExport
                                                                     <td className="px-2 py-2 text-center text-sm text-slate-800 dark:text-slate-200">
                                                                         {urCode.toString().includes('.') ? urCode : `${subCode}.${urCode}`}
                                                                     </td>
-                                                                    <td className="px-4 py-2 text-sm text-slate-800 dark:text-slate-200">{item.uraian}</td>
+                                                                    <td className="px-4 py-2 text-sm text-slate-800 dark:text-slate-200">{getDisplayUraian(item, showArkasUraian)}</td>
 
                                                                     <td className="px-2 py-2 text-center text-sm text-slate-600 dark:text-slate-400">{item.volume}</td>
                                                                     <td className="px-2 py-2 text-center text-sm text-slate-600 dark:text-slate-400">{item.satuan}</td>

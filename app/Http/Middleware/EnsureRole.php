@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Config\PermissionCatalog;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -20,6 +21,22 @@ class EnsureRole
 
         if (! $user) {
             return redirect()->route('login');
+        }
+
+        $routeName = $request->route()?->getName();
+        $requirement = PermissionCatalog::resolveRouteRequirement($routeName, $request->method());
+
+        if ($requirement !== null && isset($requirement['module'])) {
+            $level = $requirement['level'] ?? PermissionCatalog::LEVEL_READ;
+            if ($user->canAccessModule($requirement['module'], $level)) {
+                return $next($request);
+            }
+
+            if ($request->expectsJson() || $request->header('X-Inertia')) {
+                abort(403, 'Akses ditolak. Akun Anda tidak memiliki izin untuk fitur ini.');
+            }
+
+            abort(403, 'Akses ditolak. Anda tidak memiliki izin untuk mengakses halaman ini.');
         }
 
         $userRole = $user->role ?? 'bendahara';

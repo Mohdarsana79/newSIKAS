@@ -1,10 +1,10 @@
 import AuthButton from '@/Components/Auth/AuthButton';
-import AuthField from '@/Components/Auth/AuthField';
+import AuthField, { AuthPasswordToggle } from '@/Components/Auth/AuthField';
 import AuthHeading, { AuthAccent } from '@/Components/Auth/AuthHeading';
 import GuestLayout from '@/Layouts/GuestLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { FormEventHandler, useState } from 'react';
-import { ArrowLeft, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, LockKeyhole, Mail, ShieldCheck } from 'lucide-react';
 
 export default function ResetPassword({
     token,
@@ -59,7 +59,7 @@ export default function ResetPassword({
                         autoComplete="username"
                         readOnly
                         onChange={(e) => setData('email', e.target.value)}
-                        className="cursor-not-allowed bg-[#F5EEE2] text-[#6B6178] hover:border-[#E3D9C9] focus:border-[#E3D9C9] focus:ring-0"
+                        className="cursor-not-allowed bg-[#EAF4F4] text-[#45636D] hover:border-[#CBE2E2] focus:border-[#CBE2E2] focus:bg-[#EAF4F4] focus:ring-0"
                         error={errors.email}
                     />
                 </div>
@@ -78,19 +78,10 @@ export default function ResetPassword({
                         placeholder="Minimal 8 karakter"
                         error={errors.password}
                         trailing={
-                            <button
-                                type="button"
-                                onClick={() => setShowPassword(!showPassword)}
-                                aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
-                                aria-pressed={showPassword}
-                                className="mr-1 flex h-9 w-9 items-center justify-center rounded-[10px] text-[#857A93] transition-colors duration-200 hover:bg-[#F1E9FF] hover:text-[#5B3DF5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6D4DE0]/30"
-                            >
-                                {showPassword ? (
-                                    <EyeOff className="h-[17px] w-[17px]" strokeWidth={1.7} aria-hidden="true" />
-                                ) : (
-                                    <Eye className="h-[17px] w-[17px]" strokeWidth={1.7} aria-hidden="true" />
-                                )}
-                            </button>
+                            <AuthPasswordToggle
+                                shown={showPassword}
+                                onToggle={() => setShowPassword((prev) => !prev)}
+                            />
                         }
                     />
                 </div>
@@ -108,23 +99,12 @@ export default function ResetPassword({
                         placeholder="Ulangi password baru"
                         error={errors.password_confirmation}
                         trailing={
-                            <button
-                                type="button"
-                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                aria-label={
-                                    showConfirmPassword
-                                        ? 'Sembunyikan konfirmasi password'
-                                        : 'Tampilkan konfirmasi password'
-                                }
-                                aria-pressed={showConfirmPassword}
-                                className="mr-1 flex h-9 w-9 items-center justify-center rounded-[10px] text-[#857A93] transition-colors duration-200 hover:bg-[#F1E9FF] hover:text-[#5B3DF5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6D4DE0]/30"
-                            >
-                                {showConfirmPassword ? (
-                                    <EyeOff className="h-[17px] w-[17px]" strokeWidth={1.7} aria-hidden="true" />
-                                ) : (
-                                    <Eye className="h-[17px] w-[17px]" strokeWidth={1.7} aria-hidden="true" />
-                                )}
-                            </button>
+                            <AuthPasswordToggle
+                                shown={showConfirmPassword}
+                                onToggle={() => setShowConfirmPassword((prev) => !prev)}
+                                showLabel="Tampilkan konfirmasi password"
+                                hideLabel="Sembunyikan konfirmasi password"
+                            />
                         }
                     />
                 </div>
@@ -135,14 +115,14 @@ export default function ResetPassword({
             </form>
 
             <div className="auth-rise mt-6 flex flex-col items-center gap-3" style={{ animationDelay: '350ms' }}>
-                <div className="flex items-center justify-center gap-1.5 text-center text-[10.5px] tracking-[0.02em] text-[#7A7085]">
-                    <ShieldCheck aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-[#8FAE8B]" strokeWidth={1.8} />
+                <div className="flex items-center justify-center gap-1.5 text-center text-[10.5px] tracking-[0.02em] text-[#5A7882]">
+                    <ShieldCheck aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-[#146670]" strokeWidth={1.8} />
                     <span>Tautan reset ini hanya berlaku sekali pakai.</span>
                 </div>
 
                 <Link
                     href={route('login')}
-                    className="auth-link inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#5B3DF5] transition-colors hover:text-[#4A2FB0]"
+                    className="auth-link inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#146670] transition-colors hover:text-[#08222B]"
                 >
                     <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
                     Kembali ke halaman masuk

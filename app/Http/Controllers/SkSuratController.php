@@ -125,7 +125,7 @@ class SkSuratController extends Controller
      */
     public function storeFolder(Request $request)
     {
-        abort_if(auth()->user()->isKepalaSekolah(), 403, 'Akses ditolak untuk Kepala Sekolah.');
+        abort_unless(auth()->user()?->canAccessModule('sk_surat', 'write'), 403, 'Akses ditolak. Akun Anda tidak memiliki izin kelola SK & Surat.');
 
         $validated = $request->validate(self::folderValidationRules());
 
@@ -142,7 +142,7 @@ class SkSuratController extends Controller
      */
     public function updateFolder(Request $request, $id)
     {
-        abort_if(auth()->user()->isKepalaSekolah(), 403, 'Akses ditolak untuk Kepala Sekolah.');
+        abort_unless(auth()->user()?->canAccessModule('sk_surat', 'write'), 403, 'Akses ditolak. Akun Anda tidak memiliki izin kelola SK & Surat.');
 
         $folder = SkFolder::findOrFail($id);
 
@@ -159,7 +159,7 @@ class SkSuratController extends Controller
      */
     public function destroyFolder($id)
     {
-        abort_if(auth()->user()->isKepalaSekolah(), 403, 'Akses ditolak untuk Kepala Sekolah.');
+        abort_unless(auth()->user()?->canAccessModule('sk_surat', 'write'), 403, 'Akses ditolak. Akun Anda tidak memiliki izin kelola SK & Surat.');
 
         $folder = SkFolder::with(['templates', 'dokumens'])->findOrFail($id);
 
@@ -219,7 +219,7 @@ class SkSuratController extends Controller
      */
     public function storeTemplate(Request $request, $folderId)
     {
-        abort_if(auth()->user()->isKepalaSekolah(), 403, 'Akses ditolak untuk Kepala Sekolah.');
+        abort_unless(auth()->user()?->canAccessModule('sk_surat', 'write'), 403, 'Akses ditolak. Akun Anda tidak memiliki izin kelola SK & Surat.');
 
         $folder = SkFolder::findOrFail($folderId);
 
@@ -264,7 +264,7 @@ class SkSuratController extends Controller
      */
     public function rescanTemplate($id)
     {
-        abort_if(auth()->user()->isKepalaSekolah(), 403, 'Akses ditolak untuk Kepala Sekolah.');
+        abort_unless(auth()->user()?->canAccessModule('sk_surat', 'write'), 403, 'Akses ditolak. Akun Anda tidak memiliki izin kelola SK & Surat.');
 
         $template = SkTemplate::findOrFail($id);
         $localDisk = Storage::disk('local');
@@ -326,7 +326,7 @@ class SkSuratController extends Controller
      */
     public function destroyTemplate($id)
     {
-        abort_if(auth()->user()->isKepalaSekolah(), 403, 'Akses ditolak untuk Kepala Sekolah.');
+        abort_unless(auth()->user()?->canAccessModule('sk_surat', 'write'), 403, 'Akses ditolak. Akun Anda tidak memiliki izin kelola SK & Surat.');
 
         $template = SkTemplate::findOrFail($id);
         $localDisk = Storage::disk('local');
@@ -345,7 +345,7 @@ class SkSuratController extends Controller
      */
     public function storeDokumen(Request $request, $folderId)
     {
-        abort_if(auth()->user()->isKepalaSekolah(), 403, 'Akses ditolak untuk Kepala Sekolah.');
+        abort_unless(auth()->user()?->canAccessModule('sk_surat', 'write'), 403, 'Akses ditolak. Akun Anda tidak memiliki izin kelola SK & Surat.');
 
         $folder = SkFolder::findOrFail($folderId);
 
@@ -384,7 +384,7 @@ class SkSuratController extends Controller
      */
     public function updateDokumen(Request $request, $id)
     {
-        abort_if(auth()->user()->isKepalaSekolah(), 403, 'Akses ditolak untuk Kepala Sekolah.');
+        abort_unless(auth()->user()?->canAccessModule('sk_surat', 'write'), 403, 'Akses ditolak. Akun Anda tidak memiliki izin kelola SK & Surat.');
 
         $dokumen = SkDokumen::findOrFail($id);
 
@@ -417,7 +417,7 @@ class SkSuratController extends Controller
      */
     public function uploadArsip(Request $request, $folderId)
     {
-        abort_if(auth()->user()->isKepalaSekolah(), 403, 'Akses ditolak untuk Kepala Sekolah.');
+        abort_unless(auth()->user()?->canAccessModule('sk_surat', 'write'), 403, 'Akses ditolak. Akun Anda tidak memiliki izin kelola SK & Surat.');
 
         $folder = SkFolder::findOrFail($folderId);
 
@@ -453,7 +453,7 @@ class SkSuratController extends Controller
      */
     public function destroyDokumen($id)
     {
-        abort_if(auth()->user()->isKepalaSekolah(), 403, 'Akses ditolak untuk Kepala Sekolah.');
+        abort_unless(auth()->user()?->canAccessModule('sk_surat', 'write'), 403, 'Akses ditolak. Akun Anda tidak memiliki izin kelola SK & Surat.');
 
         $dokumen = SkDokumen::findOrFail($id);
         $localDisk = Storage::disk('local');

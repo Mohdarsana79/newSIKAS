@@ -16,10 +16,10 @@ class RkasReviewController extends Controller
     {
         $user = Auth::user();
 
-        if (! $user || ! $user->isKepalaSekolah()) {
+        if (! $user || ! $user->hasFeatureAbility('rkas_review')) {
             return response()->json([
                 'success' => false,
-                'message' => 'Hanya Kepala Sekolah yang dapat memberikan telaah belanja.',
+                'message' => 'Akun Anda tidak memiliki izin untuk memberikan telaah belanja.',
             ], 403);
         }
 
@@ -74,10 +74,10 @@ class RkasReviewController extends Controller
     {
         $user = Auth::user();
 
-        if (! $user || $user->isKepalaSekolah()) {
+        if (! $user || ! $user->canAccessModule('penganggaran', 'write')) {
             return response()->json([
                 'success' => false,
-                'message' => 'Hanya Bendahara yang dapat mengajukan kembali perbaikan belanja.',
+                'message' => 'Hanya pengelola Penganggaran yang dapat mengajukan kembali perbaikan belanja.',
             ], 403);
         }
 
@@ -116,10 +116,10 @@ class RkasReviewController extends Controller
     {
         $user = Auth::user();
 
-        if (! $user || ! $user->isKepalaSekolah()) {
+        if (! $user || ! $user->hasFeatureAbility('rkas_review')) {
             return response()->json([
                 'success' => false,
-                'message' => 'Hanya Kepala Sekolah yang dapat menghapus telaah belanja.',
+                'message' => 'Akun Anda tidak memiliki izin untuk menghapus telaah belanja.',
             ], 403);
         }
 

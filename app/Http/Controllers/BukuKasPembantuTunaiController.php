@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Config\VariantConfig;
 use App\Exports\BkpPembantuTunaiExport;
 use App\Models\Penganggaran;
+use App\Services\BkuArkasDisplayService;
 use App\Services\BukuKasService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
@@ -109,7 +110,8 @@ class BukuKasPembantuTunaiController extends Controller
      */
     public function getBkpPembantuData(Request $request)
     {
-        $data = $this->getBkpPembantuDataInternal($request->input('tahun'), $request->input('bulan'));
+        $isArkasMode = app(BkuArkasDisplayService::class)->isArkasMode($request);
+        $data = $this->getBkpPembantuDataInternal($request->input('tahun'), $request->input('bulan'), $isArkasMode);
 
         if (! $data) {
             return response()->json([
@@ -158,13 +160,14 @@ class BukuKasPembantuTunaiController extends Controller
             }
 
             $reportData = [];
+            $isArkasMode = app(BkuArkasDisplayService::class)->isArkasMode($request);
 
             foreach ($monthsToProcess as $m) {
                 // Reuse existing getBkpPembantuData logic but we need the internal data array, not JSON response.
                 // Since getBkpPembantuData returns JSON response, we should refactor or call an internal method.
                 // For simplicity, let's extract the logic to internal method like BKU Bank.
 
-                $data = $this->getBkpPembantuDataInternal($tahun, $m);
+                $data = $this->getBkpPembantuDataInternal($tahun, $m, $isArkasMode);
 
                 if ($data) {
                     $bulanAngka = $this->convertBulanToNumber($m);
@@ -234,9 +237,10 @@ class BukuKasPembantuTunaiController extends Controller
             }
 
             $reportData = [];
+            $isArkasMode = app(BkuArkasDisplayService::class)->isArkasMode($request);
 
             foreach ($monthsToProcess as $m) {
-                $data = $this->getBkpPembantuDataInternal($tahun, $m);
+                $data = $this->getBkpPembantuDataInternal($tahun, $m, $isArkasMode);
 
                 if ($data) {
                     $bulanAngka = $this->convertBulanToNumber($m);
@@ -273,8 +277,9 @@ class BukuKasPembantuTunaiController extends Controller
     /**
      * Internal helper specific for logic extraction
      */
-    public function getBkpPembantuDataInternal($tahun, $bulan)
+    public function getBkpPembantuDataInternal($tahun, $bulan, bool $isArkasMode = false)
     {
+        $displayService = app(BkuArkasDisplayService::class);
         $penganggaran = ($this->Penganggaran)::query()->where('tahun_anggaran', $tahun)->first();
         if (! $penganggaran) {
             return null;
@@ -301,13 +306,14 @@ class BukuKasPembantuTunaiController extends Controller
             ->whereYear('tanggal_transaksi', $tahun)
             ->where('is_bunga_record', false)
             ->where('jenis_transaksi', 'tunai')
-            ->with(['kodeKegiatan', 'rekeningBelanja'])
+            ->with(['kodeKegiatan', 'rekeningBelanja', 'uraianDetails.kodeKegiatan', 'uraianDetails.rekeningBelanja'])
             ->orderBy('tanggal_transaksi', 'asc')
             ->orderBy('id_transaksi', 'asc')
             ->orderBy('id', 'asc')
             ->get();
 
         $bkuPajakDisetorTunai = ($this->BukuKasUmum)::query()->where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
+            ->with(['rekeningBelanja'])
             ->whereMonth('tanggal_lapor', $bulanAngka)
             ->whereYear('tanggal_lapor', $tahun)
             ->whereNotNull('ntpn')
@@ -383,26 +389,46 @@ class BukuKasPembantuTunaiController extends Controller
         }
 
         $groupMap = [];
+        $rkasMaps = $isArkasMode ? $displayService->loadRkasArkasMaps($this->variant, $penganggaran->id) : null;
+
         foreach ($bkuDataTunai as $bku) {
             $blockCounter++;
             $groupMap[$bku->id] = $blockCounter;
-            $uraianBelanja = $bku->uraian_opsional ?: $bku->uraian;
-            $items[] = [
-                'tanggal' => $bku->tanggal_transaksi,
-                'uraian' => $uraianBelanja,
-                'no_bukti' => $bku->id_transaksi,
-                'kode_rekening' => $bku->rekeningBelanja ? $bku->rekeningBelanja->kode_rekening : '-',
-                'penerimaan' => 0,
-                'pengeluaran' => $bku->total_transaksi_kotor,
-                'sort_order' => 10,
-                'group_id' => $blockCounter,
-            ];
+            $noBukti = $displayService->resolveNoBukti($bku, $isArkasMode);
+            $uraianBelanja = $displayService->resolveHeaderUraian($bku, $isArkasMode);
+
+            if ($isArkasMode) {
+                $expandedItems = $displayService->expandArkasItems($bku, $rkasMaps);
+                foreach ($expandedItems as $expItem) {
+                    $items[] = [
+                        'tanggal' => $bku->tanggal_transaksi,
+                        'uraian' => $expItem['uraian'],
+                        'no_bukti' => $noBukti,
+                        'kode_rekening' => $expItem['kode_rekening'],
+                        'penerimaan' => 0,
+                        'pengeluaran' => $expItem['jumlah'],
+                        'sort_order' => 10,
+                        'group_id' => $blockCounter,
+                    ];
+                }
+            } else {
+                $items[] = [
+                    'tanggal' => $bku->tanggal_transaksi,
+                    'uraian' => $uraianBelanja,
+                    'no_bukti' => $noBukti,
+                    'kode_rekening' => $bku->rekeningBelanja ? $bku->rekeningBelanja->kode_rekening : '-',
+                    'penerimaan' => 0,
+                    'pengeluaran' => $bku->total_transaksi_kotor,
+                    'sort_order' => 10,
+                    'group_id' => $blockCounter,
+                ];
+            }
 
             if ($bku->total_pajak > 0) {
                 $items[] = [
                     'tanggal' => $bku->tanggal_transaksi,
                     'uraian' => trim('Terima Pajak '.$bku->pajak.' '.((float) $bku->persen_pajak).'% '.$uraianBelanja),
-                    'no_bukti' => $bku->kode_masa_pajak,
+                    'no_bukti' => $bku->kode_masa_pajak ?? ($isArkasMode ? $noBukti : null),
                     'kode_rekening' => '-',
                     'penerimaan' => $bku->total_pajak,
                     'pengeluaran' => 0,
@@ -431,7 +457,7 @@ class BukuKasPembantuTunaiController extends Controller
                 $currentGroupId = $blockCounter;
                 $groupMap[$bku->id] = $currentGroupId;
             }
-            $uraianBelanja = $bku->uraian_opsional ?: $bku->uraian;
+            $uraianBelanja = $displayService->resolveHeaderUraian($bku, $isArkasMode);
             if ($bku->total_pajak > 0) {
                 $items[] = [
                     'tanggal' => $bku->tanggal_lapor,

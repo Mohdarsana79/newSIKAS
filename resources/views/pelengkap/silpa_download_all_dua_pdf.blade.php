@@ -6,9 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Semua Kwitansi 2</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700&display=swap');
-
-        body {
+body {
             font-family: Arial, Helvetica, sans-serif;
             font-size: {{ $fontSize ?? '10pt' }};
             line-height: 1.3;

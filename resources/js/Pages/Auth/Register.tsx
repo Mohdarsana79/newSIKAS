@@ -1,5 +1,5 @@
 import AuthButton from '@/Components/Auth/AuthButton';
-import AuthField from '@/Components/Auth/AuthField';
+import AuthField, { AuthPasswordToggle } from '@/Components/Auth/AuthField';
 import AuthHeading, { AuthAccent } from '@/Components/Auth/AuthHeading';
 import { AuthBackLink, AuthLockBadge } from '@/Components/Auth/AuthLockedState';
 import GuestLayout from '@/Layouts/GuestLayout';
@@ -7,8 +7,6 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import { FormEventHandler, useState } from 'react';
 import {
     AtSign,
-    Eye,
-    EyeOff,
     LockKeyhole,
     ShieldCheck,
     UserRound,
@@ -33,7 +31,6 @@ export default function Register({ isLocked = false }: { isLocked?: boolean }) {
         });
     };
 
-    // Tampilan saja — kondisinya identik dengan versi sebelumnya.
     const strength =
         data.password.length < 8
             ? 'weak'
@@ -46,7 +43,7 @@ export default function Register({ isLocked = false }: { isLocked?: boolean }) {
             label: 'Lemah (Minimal 8 karakter)',
             filled: 1,
             color: '#D96A4E',
-            textClassName: 'text-[#B3462C]',
+            textClassName: 'text-[#B83E2B]',
         },
         medium: {
             label: 'Sedang (Gunakan huruf besar & simbol)',
@@ -57,8 +54,8 @@ export default function Register({ isLocked = false }: { isLocked?: boolean }) {
         strong: {
             label: 'Kuat',
             filled: 3,
-            color: '#7FA277',
-            textClassName: 'text-[#4F7A4C]',
+            color: '#14887F',
+            textClassName: 'text-[#146670]',
         },
     } as const;
 
@@ -72,17 +69,17 @@ export default function Register({ isLocked = false }: { isLocked?: boolean }) {
                 <div className="auth-rise flex flex-col items-center px-1 text-center">
                     <AuthLockBadge />
 
-                    <p className="mt-6 flex items-center gap-2.5 text-[10px] font-bold uppercase tracking-[0.26em] text-[#6B5E86]">
-                        <span aria-hidden="true" className="h-px w-5 bg-[#C9B9E8]" />
+                    <p className="mt-6 flex items-center gap-2.5 text-[10.5px] font-bold uppercase tracking-[0.24em] text-[#2A6F78]">
+                        <span aria-hidden="true" className="h-px w-5 bg-[#8BE6DC]" />
                         Akses terbatas
-                        <span aria-hidden="true" className="h-px w-5 bg-[#C9B9E8]" />
+                        <span aria-hidden="true" className="h-px w-5 bg-[#8BE6DC]" />
                     </p>
 
-                    <h1 className="mt-3 max-w-[19ch] font-display text-[clamp(1.85rem,2.4vw,2.25rem)] font-semibold leading-[1.05] tracking-[-0.025em] text-[#221C33]">
-                        Registrasi <span className="text-[#4A2FB0]">terkunci</span>.
+                    <h1 className="mt-3 max-w-[19ch] font-sans text-[clamp(1.75rem,2.4vw,2.2rem)] font-bold leading-[1.08] tracking-[-0.03em] text-[#08222B]">
+                        Registrasi <span className="text-[#146670]">terkunci</span>.
                     </h1>
 
-                    <p className="mt-3 max-w-[36ch] text-[13px] leading-relaxed text-[#6B6178]">
+                    <p className="mt-3 max-w-[36ch] text-[13.5px] leading-relaxed text-[#45636D]">
                         Sistem mendeteksi bahwa sudah ada pengguna terdaftar di instalasi ini.
                         Pendaftaran akun tambahan ditutup demi keamanan data sekolah.
                     </p>
@@ -159,19 +156,10 @@ export default function Register({ isLocked = false }: { isLocked?: boolean }) {
                         error={errors.password}
                         required
                         trailing={
-                            <button
-                                type="button"
-                                onClick={() => setShowPassword(!showPassword)}
-                                aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
-                                aria-pressed={showPassword}
-                                className="mr-1 flex h-9 w-9 items-center justify-center rounded-[10px] text-[#857A93] transition-colors duration-200 hover:bg-[#F1E9FF] hover:text-[#5B3DF5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6D4DE0]/30"
-                            >
-                                {showPassword ? (
-                                    <EyeOff className="h-[17px] w-[17px]" strokeWidth={1.7} aria-hidden="true" />
-                                ) : (
-                                    <Eye className="h-[17px] w-[17px]" strokeWidth={1.7} aria-hidden="true" />
-                                )}
-                            </button>
+                            <AuthPasswordToggle
+                                shown={showPassword}
+                                onToggle={() => setShowPassword((prev) => !prev)}
+                            />
                         }
                     />
 
@@ -181,7 +169,7 @@ export default function Register({ isLocked = false }: { isLocked?: boolean }) {
                                 {[1, 2, 3].map((segment) => (
                                     <span
                                         key={segment}
-                                        className="h-1.5 flex-1 rounded-full bg-[#EFE7D8] transition-colors duration-300 ease-out"
+                                        className="h-1.5 flex-1 rounded-full bg-[#E1EFEF] transition-colors duration-300 ease-out"
                                         style={
                                             segment <= passwordFeedback.filled
                                                 ? { backgroundColor: passwordFeedback.color }
@@ -214,23 +202,12 @@ export default function Register({ isLocked = false }: { isLocked?: boolean }) {
                         error={errors.password_confirmation}
                         required
                         trailing={
-                            <button
-                                type="button"
-                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                aria-label={
-                                    showConfirmPassword
-                                        ? 'Sembunyikan konfirmasi password'
-                                        : 'Tampilkan konfirmasi password'
-                                }
-                                aria-pressed={showConfirmPassword}
-                                className="mr-1 flex h-9 w-9 items-center justify-center rounded-[10px] text-[#857A93] transition-colors duration-200 hover:bg-[#F1E9FF] hover:text-[#5B3DF5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6D4DE0]/30"
-                            >
-                                {showConfirmPassword ? (
-                                    <EyeOff className="h-[17px] w-[17px]" strokeWidth={1.7} aria-hidden="true" />
-                                ) : (
-                                    <Eye className="h-[17px] w-[17px]" strokeWidth={1.7} aria-hidden="true" />
-                                )}
-                            </button>
+                            <AuthPasswordToggle
+                                shown={showConfirmPassword}
+                                onToggle={() => setShowConfirmPassword((prev) => !prev)}
+                                showLabel="Tampilkan konfirmasi password"
+                                hideLabel="Sembunyikan konfirmasi password"
+                            />
                         }
                     />
                 </div>
@@ -241,23 +218,23 @@ export default function Register({ isLocked = false }: { isLocked?: boolean }) {
             </form>
 
             <div
-                className="auth-rise mt-6 flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1 text-[12px] text-[#6B6178]"
+                className="auth-rise mt-6 flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1 text-[12px] text-[#45636D]"
                 style={{ animationDelay: '385ms' }}
             >
                 <span>Sudah punya akun?</span>
                 <Link
                     href={route('login')}
-                    className="auth-link text-[12px] font-semibold text-[#5B3DF5] transition-colors hover:text-[#4A2FB0]"
+                    className="auth-link text-[12px] font-semibold text-[#146670] transition-colors hover:text-[#08222B]"
                 >
                     Masuk
                 </Link>
             </div>
 
             <div
-                className="auth-rise mt-5 flex items-center justify-center gap-1.5 text-[10.5px] tracking-[0.02em] text-[#7A7085]"
+                className="auth-rise mt-5 flex items-center justify-center gap-1.5 text-[10.5px] tracking-[0.02em] text-[#5A7882]"
                 style={{ animationDelay: '440ms' }}
             >
-                <ShieldCheck aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-[#8FAE8B]" strokeWidth={1.8} />
+                <ShieldCheck aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-[#146670]" strokeWidth={1.8} />
                 <span>Registrasi hanya untuk satu akun sekolah.</span>
             </div>
         </GuestLayout>

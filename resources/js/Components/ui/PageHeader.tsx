@@ -31,7 +31,7 @@ export function PageHeader({
     return (
         <div
             className={cn(
-                'flex flex-wrap items-end justify-between gap-3 px-',
+                'mt-2.5 sm:mt-3.5 flex flex-wrap items-end justify-between gap-2.5 sm:gap-3',
                 className,
             )}
         >
@@ -60,7 +60,7 @@ export function PageHeader({
 
                 <div className="mt-1 flex flex-wrap items-center gap-2.5">
                     {icon}
-                    <h1 className="text-[26px] font-extrabold leading-tight tracking-tight text-slate-900 dark:text-white">
+                    <h1 className="text-[20px] sm:text-[22px] xl:text-[25px] font-extrabold leading-tight tracking-tight text-slate-900 dark:text-white">
                         {title}
                     </h1>
                     {badge}

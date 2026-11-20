@@ -218,7 +218,7 @@ export default function StsModals({
                                             container: () => 'relative',
                                             control: ({ isFocused }) =>
                                                 cn(
-                                                    'min-h-[42px] rounded-2xl border bg-white px-3.5 py-1.5 text-xs font-bold shadow-sm transition dark:bg-white/5',
+                                                    'min-h-[42px] rounded-2xl border bg-white px-3.5 py-1.5 text-xs font-bold shadow-sm transition dark:bg-slate-900',
                                                     (createForm.errors as any)[penganggaranFk]
                                                         ? 'border-rose-400 ring-4 ring-rose-100 dark:border-rose-500/50 dark:ring-rose-500/10'
                                                         : isFocused

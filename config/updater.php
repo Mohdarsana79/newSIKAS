@@ -8,10 +8,10 @@ return [
     |
     | Nilai ini digunakan sebagai versi aplikasi saat ini (dan disinkronkan
     | dengan file ../configapp/install.ini pada instalasi produksi Inno Setup).
-    | Pastikan nilai ini sama dengan #define MyAppVersion di install_beta.iss.
+    | Pastikan nilai ini sama dengan #define MyAppVersion di install_beta.iss / install_patch.iss.
     |
     */
-    'version' => '2026.30',
+    'version' => '2026.31',
 
     /*
     |--------------------------------------------------------------------------
@@ -28,7 +28,7 @@ return [
         'owner' => 'Mohdarsana79',
         'repo' => 'newSIKAS-releases',
         'token' => '',
-        'asset_pattern' => '/^newSIKAS_Installer_.*\.exe$/i',
+        'asset_pattern' => '/^newSIKAS_(Installer|Patch|Update)_.*\.exe$/i',
     ],
 
     /*

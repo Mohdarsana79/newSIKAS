@@ -2,16 +2,18 @@ import React, { Fragment } from 'react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import DocKopSuratHeader from '@/Components/DocKopSuratHeader';
+import { getDisplayUraian } from '@/Utils/rkasUraian';
 
 
 interface TabRkaTahapanProps {
     anggaran: any;
     tahapanData: any;
+    showArkasUraian?: boolean;
     onPrint: (target: string) => void;
     onExportExcel: () => void;
 }
 
-export default function TabRkaTahapan({ anggaran, tahapanData, onPrint, onExportExcel }: TabRkaTahapanProps) {
+export default function TabRkaTahapan({ anggaran, tahapanData, showArkasUraian = false, onPrint, onExportExcel }: TabRkaTahapanProps) {
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('id-ID').format(amount);
     };
@@ -49,7 +51,7 @@ export default function TabRkaTahapan({ anggaran, tahapanData, onPrint, onExport
                                 {/* Action Button */}
                                 <div className="flex flex-wrap items-center justify-end gap-2">
                                     <a
-                                        href={route('rkas-perubahan.export-tahapan-excel', anggaran.id)}
+                                        href={route('rkas-perubahan.export-tahapan-excel', showArkasUraian ? { id: anggaran.id, uraian_mode: 'arkas' } : anggaran.id)}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="inline-flex items-center gap-2 rounded-2xl border border-emerald-200/80 bg-emerald-50 px-4 py-2.5 text-[11.5px] font-bold text-emerald-700 shadow-pill transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-300 hover:bg-emerald-100 dark:border-emerald-400/20 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/15">
@@ -279,7 +281,7 @@ export default function TabRkaTahapan({ anggaran, tahapanData, onPrint, onExport
                                                                                         <td className="px-2 py-2 text-center text-slate-600 dark:text-slate-400 align-middle"></td>
                                                                                         <td className="px-2 py-2 text-sm text-slate-800 dark:text-slate-200 align-middle">{item.kode_rekening}</td>
                                                                                         <td className="px-2 py-2 text-center text-sm text-slate-800 dark:text-slate-200 align-middle">{item.program_code}</td>
-                                                                                        <td className="px-4 py-2 text-sm text-slate-800 dark:text-slate-200">{item.uraian}</td>
+                                                                                        <td className="px-4 py-2 text-sm text-slate-800 dark:text-slate-200">{getDisplayUraian(item, showArkasUraian)}</td>
 
                                                                                         {/* Sebelum */}
                                                                                         <td className="px-1 py-2 text-center text-sm text-slate-600 dark:text-slate-400">{(item.volume_murni || 0) > 0 ? item.volume_murni : '-'}</td>

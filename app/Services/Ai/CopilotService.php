@@ -9,11 +9,11 @@ use App\Models\RefBarang;
 use App\Models\RekeningBelanja;
 use App\Models\SekolahProfile;
 use App\Models\User;
+use App\Services\ArkasEngineService;
 use App\Services\BukuKasService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Symfony\Component\Process\Process;
 
 class CopilotService
 {
@@ -6864,52 +6864,11 @@ PROMPT;
      */
     protected function runPythonArkasQuery(string $keyword, string $year = 'ALL'): array
     {
-        $pythonPath = storage_path('app/arkas_engine/python.exe');
-        $scriptPath = storage_path('app/arkas_engine/query.py');
-
-        if (! file_exists($pythonPath) || ! file_exists($scriptPath)) {
-            return ['error' => 'Arkas Engine tidak ditemukan.'];
-        }
-
-        $env = $_SERVER;
-        unset($env['OPENSSL_CONF']);
-
-        $appdata = $env['APPDATA'] ?? null;
-        $userprofile = $env['USERPROFILE'] ?? null;
-
-        if (empty($appdata)) {
-            $appdata = trim(shell_exec("powershell -Command \"[Environment]::GetFolderPath('ApplicationData')\""));
-        }
-        if (empty($userprofile)) {
-            $userprofile = trim(shell_exec("powershell -Command \"[Environment]::GetFolderPath('UserProfile')\""));
-        }
-        if (empty($userprofile) && ! empty($appdata)) {
-            $userprofile = dirname(dirname($appdata));
-        }
-        if (empty($appdata) && ! empty($userprofile)) {
-            $appdata = $userprofile.'\\AppData\\Roaming';
-        }
-
-        $env['SystemRoot'] = $env['SystemRoot'] ?? 'C:\\Windows';
-        $env['SystemDrive'] = $env['SystemDrive'] ?? 'C:';
-        $env['USERPROFILE'] = ! empty($userprofile) ? $userprofile : ($env['USERPROFILE'] ?? 'C:\\Users\\Digitalisasi');
-        $env['APPDATA'] = ! empty($appdata) ? $appdata : ($env['APPDATA'] ?? 'C:\\Users\\Digitalisasi\\AppData\\Roaming');
-
-        $dbPathManual = env('ARKAS_DB_PATH', '');
-        $dbPathManual = trim($dbPathManual, '"\' ');
-        $dbPathManual = str_replace('\\', '/', $dbPathManual);
-
-        $process = new Process([$pythonPath, $scriptPath, $keyword, (string) $year, $dbPathManual], null, $env);
-        $process->setTimeout(30);
-        $process->run();
-
-        if (! $process->isSuccessful()) {
-            return ['error' => 'Gagal query ARKAS: '.$process->getErrorOutput()];
-        }
-
-        $result = json_decode($process->getOutput(), true);
-
-        return is_array($result) ? $result : ['error' => 'Format output ARKAS tidak valid.'];
+        return app(ArkasEngineService::class)->runScriptRaw(
+            'query.py',
+            [$keyword, (string) $year],
+            30
+        );
     }
 
     /**

@@ -385,8 +385,7 @@ export default function Index({ auth, sekolah, licensedNpsn }: PageProps<{ sekol
                                                     onClick={() => setActiveTab('kop')}
                                                     className="w-full justify-center text-[11px]"
                                                 >
-                                                    <Sparkles className="w-4 h-4" />
-                                                    Buka Editor Kop (Tiptap)
+                                                    Buka Editor Kop
                                                 </PrimaryButton>
                                                 <DangerButton onClick={handleDeleteKop} className="w-full justify-center text-[11px]">
                                                     <svg className="w-3.5 h-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">

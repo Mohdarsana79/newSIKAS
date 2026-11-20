@@ -2,9 +2,10 @@
 
 use App\Http\Middleware\CheckNpsnLicense;
 use App\Http\Middleware\DetectVariant;
+use App\Http\Middleware\EnforceModulePermissions;
 use App\Http\Middleware\EnsureRole;
 use App\Http\Middleware\HandleInertiaRequests;
-use App\Http\Middleware\PreventKepalaSekolahMutations;
+use App\Http\Middleware\ResolveViteHotAssetMode;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -18,11 +19,15 @@ $app = Application::configure(basePath: dirname(__DIR__))
 
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->web(prepend: [
+            ResolveViteHotAssetMode::class,
+        ]);
+
         $middleware->web(append: [
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
             CheckNpsnLicense::class,
-            PreventKepalaSekolahMutations::class,
+            EnforceModulePermissions::class,
         ]);
 
         $middleware->alias([

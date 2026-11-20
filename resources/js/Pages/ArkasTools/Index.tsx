@@ -388,7 +388,7 @@ export default function Index({ auth, initialData, defaultYear = '2026', activeY
                         {/* Form Pencarian & Tombol Aksi */}
                         <div className="relative z-20 animate-rise" style={{ animationDelay: '270ms' }}>
                             <Surface padding="sm" className="overflow-visible">
-                                <form onSubmit={handleSearch} className="flex flex-col items-end gap-3 lg:flex-row">
+                                <form onSubmit={handleSearch} className="flex flex-col items-stretch gap-3 lg:flex-row lg:items-end">
                                     {/* Input Keyword */}
                                     <div className="w-full flex-1">
                                         <InputLabel value="Cari Uraian / Nama Barang" />
@@ -417,7 +417,7 @@ export default function Index({ auth, initialData, defaultYear = '2026', activeY
                                     </div>
 
                                     {/* Tombol-tombol Aksi */}
-                                    <div className="flex h-10 flex-wrap items-center gap-2">
+                                    <div className="flex min-h-10 flex-wrap items-center gap-2">
                                         {/* Tombol Cari */}
                                         <PrimaryButton type="submit" disabled={loading}>
                                             {loading ? 'Memuat...' : 'Cari'}

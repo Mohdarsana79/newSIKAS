@@ -6,9 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kwitansi Pembayaran 4</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Times+New+Roman:wght@400;700&display=swap');
-
-        body {
+body {
             font-family: Arial, Helvetica, sans-serif;
             font-size: {{ $fontSize ?? '11pt' }};
             line-height: 1.3;

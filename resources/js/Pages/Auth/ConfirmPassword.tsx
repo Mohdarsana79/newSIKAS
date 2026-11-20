@@ -58,10 +58,10 @@ export default function ConfirmPassword() {
             </form>
 
             <div
-                className="auth-rise mt-6 flex items-center justify-center gap-1.5 text-center text-[10.5px] tracking-[0.02em] text-[#7A7085]"
+                className="auth-rise mt-6 flex items-center justify-center gap-1.5 text-center text-[10.5px] tracking-[0.02em] text-[#5A7882]"
                 style={{ animationDelay: '230ms' }}
             >
-                <ShieldCheck aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-[#8FAE8B]" strokeWidth={1.8} />
+                <ShieldCheck aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-[#146670]" strokeWidth={1.8} />
                 <span>Konfirmasi ini melindungi perubahan data penting sekolah.</span>
             </div>
         </GuestLayout>

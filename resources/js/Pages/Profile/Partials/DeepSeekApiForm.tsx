@@ -1,39 +1,202 @@
+import DangerButton from '@/Components/DangerButton';
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
-import TextInput from '@/Components/TextInput';
-import IconTile from '@/Components/ui/IconTile';
+import SecondaryButton from '@/Components/SecondaryButton';
 import StatusBadge from '@/Components/ui/StatusBadge';
-import { Transition } from '@headlessui/react';
-import { useForm, usePage, router } from '@inertiajs/react';
+import type { PageProps } from '@/types';
+import { router, useForm, usePage } from '@inertiajs/react';
 import axios from 'axios';
-import { 
-    Brain, 
-    Key, 
-    Sparkles, 
-    Eye, 
-    EyeOff, 
-    CheckCircle2, 
-    AlertCircle, 
-    Loader2, 
+import {
+    AlertCircle,
+    AlertTriangle,
+    Brain,
+    CheckCircle2,
+    Cpu,
     ExternalLink,
+    Loader2,
     ShieldCheck,
-    Trash2
+    Sparkles,
+    Trash2,
+    Zap,
 } from 'lucide-react';
-import { FormEventHandler, useState } from 'react';
+import { FormEventHandler, KeyboardEvent, ReactNode, useId, useRef, useState } from 'react';
+import {
+    ProfileCardShell,
+    ProfileModalShell,
+    ProfilePasswordInput,
+    ProfileSavedPill,
+} from './ProfileUiPrimitives';
+
+interface ModelOption {
+    value: string;
+    name: string;
+    tag: string;
+    description: string;
+    icon: ReactNode;
+}
+
+const REASONER_OPTIONS: ModelOption[] = [
+    {
+        value: 'deepseek-reasoner',
+        name: 'deepseek-reasoner',
+        tag: 'R1 · Mendalam',
+        description: 'Audit forensik & penalaran regulasi BKU mendalam.',
+        icon: <Cpu className="h-4 w-4" />,
+    },
+    {
+        value: 'deepseek-chat',
+        name: 'deepseek-chat',
+        tag: 'V3 · Cepat',
+        description: 'Mode respons cepat untuk pemeriksaan ringkas.',
+        icon: <Zap className="h-4 w-4" />,
+    },
+];
+
+const CHAT_OPTIONS: ModelOption[] = [
+    {
+        value: 'deepseek-chat',
+        name: 'deepseek-chat',
+        tag: 'V3 · Default',
+        description: 'Cepat & hemat untuk drafting transaksi dan analitik.',
+        icon: <Zap className="h-4 w-4" />,
+    },
+    {
+        value: 'deepseek-reasoner',
+        name: 'deepseek-reasoner',
+        tag: 'R1 · Penalaran',
+        description: 'Penalaran bertahap untuk analisis pertanyaan kompleks.',
+        icon: <Cpu className="h-4 w-4" />,
+    },
+];
+
+function ModelSelectorGroup({
+    label,
+    helperText,
+    options,
+    value,
+    onChange,
+}: {
+    label: string;
+    helperText: string;
+    options: ModelOption[];
+    value: string;
+    onChange: (next: string) => void;
+}) {
+    const labelId = useId();
+    const buttonRefs = useRef<(HTMLButtonElement | null)[]>([]);
+    const activeIndex = Math.max(
+        0,
+        options.findIndex((opt) => opt.value === value),
+    );
+
+    const handleKeyDown = (e: KeyboardEvent<HTMLButtonElement>, index: number) => {
+        if (!['ArrowDown', 'ArrowRight', 'ArrowUp', 'ArrowLeft'].includes(e.key)) {
+            return;
+        }
+        e.preventDefault();
+        const delta = e.key === 'ArrowDown' || e.key === 'ArrowRight' ? 1 : -1;
+        const nextIndex = (index + delta + options.length) % options.length;
+        onChange(options[nextIndex].value);
+        buttonRefs.current[nextIndex]?.focus();
+    };
+
+    return (
+        <div>
+            <span
+                id={labelId}
+                className="mb-1.5 block text-[10px] font-extrabold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400"
+            >
+                {label}
+            </span>
+            <div role="radiogroup" aria-labelledby={labelId} className="space-y-2">
+                {options.map((opt, index) => {
+                    const selected = value === opt.value;
+                    return (
+                        <button
+                            key={opt.value}
+                            ref={(el) => {
+                                buttonRefs.current[index] = el;
+                            }}
+                            type="button"
+                            role="radio"
+                            aria-checked={selected}
+                            tabIndex={index === activeIndex ? 0 : -1}
+                            onClick={() => onChange(opt.value)}
+                            onKeyDown={(e) => handleKeyDown(e, index)}
+                            className={`flex w-full items-start justify-between gap-3 rounded-2xl border p-3 text-left transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-lime-400 ${
+                                selected
+                                    ? 'border-lime-400 bg-lime-50/70 shadow-sm dark:border-lime-400/50 dark:bg-lime-400/10'
+                                    : 'border-slate-200/80 bg-slate-50/60 hover:border-slate-300 hover:bg-white dark:border-white/10 dark:bg-white/[0.02] dark:hover:border-white/20 dark:hover:bg-white/[0.05]'
+                            }`}
+                        >
+                            <div className="flex min-w-0 items-start gap-2.5">
+                                <span
+                                    className={`mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-xl transition ${
+                                        selected
+                                            ? 'bg-lime-400 text-slate-950'
+                                            : 'bg-white text-slate-500 ring-1 ring-slate-200/70 dark:bg-white/5 dark:text-slate-400 dark:ring-white/10'
+                                    }`}
+                                >
+                                    {opt.icon}
+                                </span>
+                                <div className="min-w-0">
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                        <span className="font-mono text-[11.5px] font-extrabold text-slate-900 dark:text-white">
+                                            {opt.name}
+                                        </span>
+                                        <span
+                                            className={`rounded-full px-2 py-0.5 text-[9px] font-extrabold ${
+                                                selected
+                                                    ? 'bg-lime-200/90 text-slate-900 dark:bg-lime-400/20 dark:text-lime-200'
+                                                    : 'bg-slate-200/70 text-slate-600 dark:bg-white/10 dark:text-slate-300'
+                                            }`}
+                                        >
+                                            {opt.tag}
+                                        </span>
+                                    </div>
+                                    <p className="mt-0.5 text-[10.5px] font-medium leading-snug text-slate-500 dark:text-slate-400">
+                                        {opt.description}
+                                    </p>
+                                </div>
+                            </div>
+                            <CheckCircle2
+                                className={`mt-0.5 h-4 w-4 shrink-0 transition ${
+                                    selected
+                                        ? 'text-lime-600 dark:text-lime-300'
+                                        : 'text-slate-300 dark:text-white/15'
+                                }`}
+                            />
+                        </button>
+                    );
+                })}
+            </div>
+            <p className="mt-1.5 text-[10px] font-medium text-slate-400 dark:text-slate-500">
+                {helperText}
+            </p>
+        </div>
+    );
+}
 
 export default function DeepSeekApiForm({
     className = '',
 }: {
     className?: string;
 }) {
-    const pageProps = usePage().props as any;
+    const pageProps = usePage<
+        PageProps<{
+            hasDeepSeekKey?: boolean;
+            deepseekModelReasoner?: string;
+            deepseekModelChat?: string;
+        }>
+    >().props;
     const hasExistingKey = pageProps.hasDeepSeekKey ?? false;
     const defaultReasoner = pageProps.deepseekModelReasoner || 'deepseek-reasoner';
     const defaultChat = pageProps.deepseekModelChat || 'deepseek-chat';
 
-    const [showKey, setShowKey] = useState(false);
     const [testLoading, setTestLoading] = useState(false);
+    const [confirmingClearKey, setConfirmingClearKey] = useState(false);
+    const [clearingKey, setClearingKey] = useState(false);
     const [testResult, setTestResult] = useState<{
         type: 'success' | 'error' | null;
         message: string;
@@ -56,23 +219,28 @@ export default function DeepSeekApiForm({
         });
     };
 
-    const handleClearKey = () => {
-        if (!confirm('Apakah Anda yakin ingin menghapus Kunci API DeepSeek dari profil Anda? Fitur AI tidak dapat digunakan sampai kunci baru dimasukkan.')) {
-            return;
-        }
-
-        router.post(route('profile.deepseek-settings'), {
-            deepseek_api_key: '',
-            deepseek_model_reasoner: data.deepseek_model_reasoner,
-            deepseek_model_chat: data.deepseek_model_chat,
-            clear_api_key: true,
-        }, {
-            preserveScroll: true,
-            onSuccess: () => {
-                reset('deepseek_api_key');
-                setTestResult({ type: null, message: '' });
+    const confirmClearKey = () => {
+        setClearingKey(true);
+        router.post(
+            route('profile.deepseek-settings'),
+            {
+                deepseek_api_key: '',
+                deepseek_model_reasoner: data.deepseek_model_reasoner,
+                deepseek_model_chat: data.deepseek_model_chat,
+                clear_api_key: true,
             },
-        });
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    reset('deepseek_api_key');
+                    setTestResult({ type: null, message: '' });
+                    setConfirmingClearKey(false);
+                },
+                onFinish: () => {
+                    setClearingKey(false);
+                },
+            },
+        );
     };
 
     const handleTestConnection = async () => {
@@ -95,10 +263,14 @@ export default function DeepSeekApiForm({
                     message: response.data.message || 'Koneksi gagal. Periksa kembali API Key Anda.',
                 });
             }
-        } catch (error: any) {
+        } catch (error: unknown) {
+            const axiosMessage =
+                axios.isAxiosError(error) && error.response?.data?.message
+                    ? String(error.response.data.message)
+                    : 'Gagal menghubungi endpoint tes koneksi.';
             setTestResult({
                 type: 'error',
-                message: error.response?.data?.message || 'Gagal menghubungi endpoint tes koneksi.',
+                message: axiosMessage,
             });
         } finally {
             setTestLoading(false);
@@ -106,172 +278,164 @@ export default function DeepSeekApiForm({
     };
 
     return (
-        <section className={className}>
-            <header className="mb-5 flex flex-col gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-start sm:justify-between dark:border-white/5">
-                <div className="flex min-w-0 items-start gap-3">
-                    <IconTile tone="violet" size="lg">
-                        <Brain />
-                    </IconTile>
-                    <div className="min-w-0">
-                        <h2 className="text-[14px] font-extrabold tracking-tight text-slate-900 dark:text-white">
-                            Konfigurasi AI DeepSeek (BYOK)
-                        </h2>
-                        <p className="mt-0.5 text-[10.5px] font-medium text-slate-400 dark:text-slate-500">
-                            Aplikasi newSIKAS menggunakan model <strong className="font-bold text-slate-600 dark:text-slate-300">DeepSeek-R1</strong> untuk pra-audit penatausahaan kas dan <strong className="font-bold text-slate-600 dark:text-slate-300">DeepSeek-V3</strong> untuk asisten transaksi. Masukkan API Key Anda sendiri agar penggunaan kuota mandiri & aman.
-                        </p>
-                    </div>
-                </div>
-                {hasExistingKey && (
-                    <StatusBadge tone="success" dot={false} className="shrink-0 self-start">
+        <ProfileCardShell
+            tone="violet"
+            icon={<Brain />}
+            title="Konfigurasi AI DeepSeek (BYOK)"
+            subtitle="Gunakan API Key pribadi untuk pra-audit BKU (DeepSeek-R1) dan asisten transaksi (DeepSeek-V3) secara mandiri & terenkripsi."
+            badge={
+                hasExistingKey ? (
+                    <StatusBadge tone="success" dot={false}>
                         <ShieldCheck className="h-3.5 w-3.5" />
-                        Kunci API Terpasang & Aktif
+                        Kunci API Terpasang &amp; Aktif
                     </StatusBadge>
-                )}
-            </header>
-
-            <form onSubmit={submit} className="space-y-5">
-                <div>
-                    <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
-                        <InputLabel htmlFor="deepseek_api_key" value="DeepSeek API Key" />
-                        <a
-                            href="https://platform.deepseek.com/api_keys"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-[10.5px] font-bold text-brand-600 transition hover:underline dark:text-brand-300"
-                        >
-                            Dapatkan API Key di DeepSeek Console
-                            <ExternalLink className="w-3 h-3" />
-                        </a>
-                    </div>
-
-                    <div className="relative">
-                        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                            <Key className="h-4 w-4 text-slate-400 dark:text-slate-500" />
+                ) : (
+                    <StatusBadge tone="warning" dot={true}>
+                        Belum Diatur
+                    </StatusBadge>
+                )
+            }
+            className={className}
+        >
+            <form onSubmit={submit} className="flex flex-1 flex-col justify-between gap-5">
+                <div className="space-y-5">
+                    <div>
+                        <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+                            <InputLabel htmlFor="deepseek_api_key" value="DeepSeek API Key" />
+                            <a
+                                href="https://platform.deepseek.com/api_keys"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 rounded-full bg-pastel-lavender px-2.5 py-1 text-[10px] font-extrabold text-brand-600 transition hover:bg-brand-500/15 dark:bg-brand-500/15 dark:text-brand-300 dark:hover:bg-brand-500/25"
+                            >
+                                Dapatkan API Key di DeepSeek Console
+                                <ExternalLink className="h-3 w-3" />
+                            </a>
                         </div>
-                        <TextInput
+
+                        <ProfilePasswordInput
                             id="deepseek_api_key"
-                            type={showKey ? 'text' : 'password'}
-                            className="pl-10 pr-10 font-mono text-sm"
+                            icon="key"
+                            className="font-mono text-[12px]"
                             value={data.deepseek_api_key}
-                            onChange={(e) => setData('deepseek_api_key', e.target.value)}
-                            placeholder={hasExistingKey ? '•••••••••••••••••••••••••••••••• (Kunci terenkripsi disimpan)' : 'sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'}
+                            onChange={(val) => setData('deepseek_api_key', val)}
+                            placeholder={
+                                hasExistingKey
+                                    ? '•••••••••••••••••••••••••••••••• (Kunci terenkripsi disimpan)'
+                                    : 'sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
+                            }
+                            showLabel="Tampilkan API Key"
+                            hideLabel="Sembunyikan API Key"
                         />
-                        <button
-                            type="button"
-                            onClick={() => setShowKey(!showKey)}
-                            className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 transition hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
-                        >
-                            {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
+                        <p className="mt-1.5 text-[10.5px] font-medium text-slate-400 dark:text-slate-500">
+                            {hasExistingKey
+                                ? 'Biarkan kosong jika tidak ingin mengubah kunci API yang sudah tersimpan.'
+                                : 'Kunci disimpan secara terenkripsi dan tidak dapat dibaca oleh pihak lain.'}
+                        </p>
+                        <InputError className="mt-1.5" message={errors.deepseek_api_key} />
                     </div>
-                    <p className="mt-1.5 text-[10.5px] font-medium text-slate-400 dark:text-slate-500">
-                        {hasExistingKey
-                            ? 'Biarkan kosong jika tidak ingin mengubah kunci API yang sudah tersimpan.'
-                            : 'Kunci disimpan secara terenkripsi dan tidak dapat dibaca oleh pihak lain.'}
-                    </p>
-                    <InputError className="mt-2" message={errors.deepseek_api_key} />
-                </div>
 
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <div>
-                        <InputLabel htmlFor="deepseek_model_reasoner" value="Model Penalaran (Pra-Audit / R1)" />
-                        <select
-                            id="deepseek_model_reasoner"
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <ModelSelectorGroup
+                            label="Model Penalaran (Pra-Audit / R1)"
+                            helperText="Dipakai untuk pemindaian audit forensik dan analisis regulasi BKU."
+                            options={REASONER_OPTIONS}
                             value={data.deepseek_model_reasoner}
-                            onChange={(e) => setData('deepseek_model_reasoner', e.target.value)}
-                            className="mt-1 block w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-[12px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
-                        >
-                            <option value="deepseek-reasoner">deepseek-reasoner (R1 - Penalaran Audit Mendalam)</option>
-                            <option value="deepseek-chat">deepseek-chat (V3 - Mode Cepat)</option>
-                        </select>
-                        <p className="mt-1.5 text-[10.5px] font-medium text-slate-400 dark:text-slate-500">
-                            Digunakan untuk pemindaian audit forensik dan analisis regulasi BKU.
-                        </p>
-                    </div>
+                            onChange={(val) => setData('deepseek_model_reasoner', val)}
+                        />
 
-                    <div>
-                        <InputLabel htmlFor="deepseek_model_chat" value="Model Interaktif (Copilot / V3)" />
-                        <select
-                            id="deepseek_model_chat"
+                        <ModelSelectorGroup
+                            label="Model Interaktif (Copilot / V3)"
+                            helperText="Dipakai untuk asisten drafting transaksi, kalkulasi pajak, dan analitik."
+                            options={CHAT_OPTIONS}
                             value={data.deepseek_model_chat}
-                            onChange={(e) => setData('deepseek_model_chat', e.target.value)}
-                            className="mt-1 block w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-[12px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
-                        >
-                            <option value="deepseek-chat">deepseek-chat (V3 - Default Cepat & Hemat)</option>
-                            <option value="deepseek-reasoner">deepseek-reasoner (R1)</option>
-                        </select>
-                        <p className="mt-1.5 text-[10.5px] font-medium text-slate-400 dark:text-slate-500">
-                            Digunakan untuk asisten drafting transaksi, kalkulasi pajak, dan query analitik.
-                        </p>
+                            onChange={(val) => setData('deepseek_model_chat', val)}
+                        />
                     </div>
-                </div>
 
-                {/* Status Uji Koneksi */}
-                {testResult.type && (
-                    <div
-                        className={`flex items-start gap-2 rounded-2xl border p-3.5 text-[11.5px] font-medium ${
-                            testResult.type === 'success'
-                                ? 'border-emerald-200/70 bg-pastel-mint text-emerald-700 dark:border-emerald-400/20 dark:bg-mint/10 dark:text-emerald-300'
-                                : 'border-rose-200/70 bg-pastel-rose text-rose-700 dark:border-rose-400/20 dark:bg-rose-500/10 dark:text-rose-300'
-                        }`}
-                    >
-                        {testResult.type === 'success' ? (
-                            <CheckCircle2 className="h-4 w-4 flex-shrink-0 text-emerald-600 dark:text-emerald-300" />
-                        ) : (
-                            <AlertCircle className="h-4 w-4 flex-shrink-0 text-rose-600 dark:text-rose-300" />
-                        )}
-                        <span>{testResult.message}</span>
-                    </div>
-                )}
+                    {testResult.type && (
+                        <div
+                            className={`flex items-start gap-2.5 rounded-2xl border p-3.5 text-[11.5px] font-semibold ${
+                                testResult.type === 'success'
+                                    ? 'border-emerald-200/70 bg-pastel-mint text-emerald-700 dark:border-emerald-400/20 dark:bg-mint/10 dark:text-emerald-300'
+                                    : 'border-rose-200/70 bg-pastel-rose text-rose-700 dark:border-rose-400/20 dark:bg-rose-500/10 dark:text-rose-300'
+                            }`}
+                        >
+                            {testResult.type === 'success' ? (
+                                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-300" />
+                            ) : (
+                                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600 dark:text-rose-300" />
+                            )}
+                            <span>{testResult.message}</span>
+                        </div>
+                    )}
+                </div>
 
                 <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4 dark:border-white/5">
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2.5">
                         <PrimaryButton disabled={processing}>
-                            <Sparkles className="w-4 h-4" />
+                            <Sparkles className="h-4 w-4" />
                             Simpan Pengaturan AI
                         </PrimaryButton>
 
-                        <button
+                        <SecondaryButton
                             type="button"
                             onClick={handleTestConnection}
                             disabled={testLoading || (!hasExistingKey && !data.deepseek_api_key)}
-                            className="inline-flex items-center gap-2 rounded-2xl border border-slate-200/90 bg-white px-4 py-2.5 text-[11.5px] font-bold text-slate-700 shadow-pill transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-lime-400 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10"
                         >
                             {testLoading ? (
                                 <>
-                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    <Loader2 className="h-4 w-4 animate-spin" />
                                     Menguji...
                                 </>
                             ) : (
                                 'Uji Koneksi API'
                             )}
-                        </button>
+                        </SecondaryButton>
 
-                        <Transition
-                            show={recentlySuccessful}
-                            enter="transition ease-in-out"
-                            enterFrom="opacity-0"
-                            leave="transition ease-in-out"
-                            leaveTo="opacity-0"
-                        >
-                            <p className="inline-flex items-center gap-1.5 rounded-full bg-pastel-mint px-3 py-1 text-[10.5px] font-extrabold text-emerald-700 dark:bg-mint/10 dark:text-emerald-300">
-                                Tersimpan!
-                            </p>
-                        </Transition>
+                        <ProfileSavedPill show={recentlySuccessful} label="Tersimpan!" />
                     </div>
 
                     {hasExistingKey && (
                         <button
                             type="button"
-                            onClick={handleClearKey}
-                            className="inline-flex items-center gap-1 text-[10.5px] font-bold text-rose-600 transition hover:underline dark:text-rose-300"
+                            onClick={() => setConfirmingClearKey(true)}
+                            className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200/80 bg-pastel-rose/60 px-3 py-2 text-[10.5px] font-extrabold text-rose-600 transition hover:-translate-y-0.5 hover:bg-pastel-rose dark:border-rose-400/20 dark:bg-rose-500/10 dark:text-rose-300 dark:hover:bg-rose-500/15"
                         >
-                            <Trash2 className="w-3.5 h-3.5" />
-                            Hapus Kunci Tersimpan
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Hapus Kunci
                         </button>
                     )}
                 </div>
             </form>
-        </section>
+
+            <ProfileModalShell
+                show={confirmingClearKey}
+                onClose={() => !clearingKey && setConfirmingClearKey(false)}
+                closeable={!clearingKey}
+                tone="rose"
+                icon={<AlertTriangle />}
+                titleId="deepseek-clear-modal-title"
+                title="Hapus Kunci API DeepSeek?"
+                subtitle="Kunci API terenkripsi pada profil Anda akan dihapus."
+                footer={
+                    <>
+                        <SecondaryButton
+                            onClick={() => setConfirmingClearKey(false)}
+                            disabled={clearingKey}
+                        >
+                            Batal
+                        </SecondaryButton>
+                        <DangerButton onClick={confirmClearKey} disabled={clearingKey}>
+                            {clearingKey ? 'Menghapus...' : 'Ya, Hapus Kunci'}
+                        </DangerButton>
+                    </>
+                }
+            >
+                <p className="text-[11.5px] font-medium leading-relaxed text-slate-600 dark:text-slate-300">
+                    Apakah Anda yakin ingin menghapus Kunci API DeepSeek dari profil Anda? Fitur AI (pra-audit dan asisten Copilot) tidak dapat digunakan sampai kunci API baru dimasukkan kembali.
+                </p>
+            </ProfileModalShell>
+        </ProfileCardShell>
     );
 }

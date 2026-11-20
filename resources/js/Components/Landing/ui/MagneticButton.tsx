@@ -2,20 +2,25 @@ import { Link } from '@inertiajs/react';
 import { ReactNode, useCallback, useRef } from 'react';
 
 import { useReducedMotion } from '@/Hooks/useReducedMotion';
+import { animate, createSpring } from '@/lib/anime';
 import { cn } from '@/lib/utils';
 
-type Variant = 'primary' | 'secondary' | 'ghost';
+type Variant = 'primary' | 'mint' | 'secondary' | 'outline' | 'ghost';
 
 const BASE =
-    'group relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-full font-semibold tracking-tight transition-all duration-300 ease-luxe landing-focus active:scale-[0.98]';
+    'group relative inline-flex items-center justify-center gap-2.5 overflow-hidden rounded-full font-semibold tracking-[-0.01em] transition-colors duration-300 landing-focus active:scale-[0.98]';
 
 const VARIANTS: Record<Variant, string> = {
     primary:
-        'bg-gradient-to-r from-brand-500 to-brand-600 px-7 py-3.5 text-[15px] text-white shadow-glow-violet hover:from-brand-400 hover:to-brand-500 hover:shadow-glow-gold',
+        'bg-gradient-to-r from-[#8BE6DC] via-[#9DF0E7] to-[#7CDAD0] px-6 py-3.5 text-[14.5px] text-[#06222B] shadow-[0_14px_34px_-10px_rgba(139,230,220,0.48)] ring-1 ring-inset ring-white/50 hover:from-[#A1F2E9] hover:to-[#8BE6DC] hover:shadow-[0_18px_40px_-8px_rgba(139,230,220,0.68)]',
+    mint:
+        'bg-gradient-to-r from-[#8BE6DC] via-[#9DF0E7] to-[#7CDAD0] px-5 py-2.5 text-[13.5px] text-[#06222B] shadow-[0_10px_26px_-8px_rgba(139,230,220,0.42)] ring-1 ring-inset ring-white/50 hover:from-[#A1F2E9] hover:to-[#8BE6DC]',
     secondary:
-        'border border-ink-900/[0.12] bg-white/80 px-6 py-3.5 text-[15px] text-ink-900 backdrop-blur hover:border-gold-600/40 hover:bg-white dark:border-white/15 dark:bg-white/[0.06] dark:text-white dark:hover:border-gold-400/50 dark:hover:bg-white/[0.1]',
+        'border border-white/25 bg-white/[0.08] px-6 py-3.5 text-[14.5px] text-white backdrop-blur-md hover:border-[#8BE6DC]/55 hover:bg-white/[0.14]',
+    outline:
+        'border border-[#0D3B47]/20 bg-[#EAF4F4]/70 px-5 py-2.5 text-[13.5px] text-[#09242E] hover:border-[#0D3B47]/40 hover:bg-[#DEF0F0] dark:border-white/15 dark:bg-white/[0.06] dark:text-white dark:hover:border-[#8BE6DC]/45 dark:hover:bg-white/[0.12]',
     ghost:
-        'px-4 py-2.5 text-[14px] text-ink-700 hover:text-brand-600 dark:text-white/70 dark:hover:text-gold-300',
+        'px-4 py-2 text-[13.5px] text-white/80 hover:text-[#8BE6DC]',
 };
 
 export type MagneticButtonProps = {
@@ -34,12 +39,8 @@ export type MagneticButtonProps = {
 };
 
 /**
- * Tombol/tautan dengan efek magnetis halus (maks 6px) plus shimmer sweep
- * saat hover. Efek dimatikan saat reduce-motion atau perangkat sentuh.
- *
- * Transform magnetis dipasang pada pembungkus `<span>`, bukan pada tombol,
- * supaya `active:scale-[0.98]` milik tombol tidak tertimpa style inline
- * (inline transform akan selalu menang atas class Tailwind).
+ * Tombol pill bergaya Novara dengan fisika magnetis pegas (Spring) dari Anime.js
+ * serta kilau shimmer halus saat kursor melintas.
  */
 export function MagneticButton({
     children,
@@ -66,18 +67,29 @@ export function MagneticButton({
             const rect = wrapper.getBoundingClientRect();
             const relX = event.clientX - (rect.left + rect.width / 2);
             const relY = event.clientY - (rect.top + rect.height / 2);
-            const x = Math.max(-6, Math.min(6, relX * 0.12));
-            const y = Math.max(-6, Math.min(6, relY * 0.18));
+            const x = Math.max(-7, Math.min(7, relX * 0.14));
+            const y = Math.max(-6, Math.min(6, relY * 0.2));
 
-            wrapper.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+            animate(wrapper, {
+                translateX: x,
+                translateY: y,
+                duration: 260,
+                ease: 'outQuad',
+            });
         },
         [reducedMotion],
     );
 
     const handlePointerLeave = useCallback(() => {
         const wrapper = wrapperRef.current;
-        if (wrapper) wrapper.style.transform = 'translate3d(0, 0, 0)';
-    }, []);
+        if (!wrapper || reducedMotion) return;
+
+        animate(wrapper, {
+            translateX: 0,
+            translateY: 0,
+            ease: createSpring({ stiffness: 160, damping: 14 }),
+        });
+    }, [reducedMotion]);
 
     const content = (
         <>
@@ -87,7 +99,7 @@ export function MagneticButton({
                 className="pointer-events-none absolute inset-0 z-0 opacity-0 group-hover:animate-shimmer group-hover:opacity-100"
                 style={{
                     background:
-                        'linear-gradient(100deg, transparent 20%, rgba(255,255,255,0.28) 50%, transparent 80%)',
+                        'linear-gradient(100deg, transparent 20%, rgba(255,255,255,0.42) 50%, transparent 80%)',
                 }}
             />
         </>
@@ -125,23 +137,13 @@ export function MagneticButton({
                 </a>
             )
         ) : (
-            <button
-                type={type}
-                className={classNames}
-                onClick={onClick}
-                aria-label={ariaLabel}
-            >
+            <button type={type} className={classNames} onClick={onClick} aria-label={ariaLabel}>
                 {content}
             </button>
         );
 
     return (
-        <span
-            ref={wrapperRef}
-            className="inline-flex will-change-transform"
-            style={{ transition: 'transform 300ms cubic-bezier(0.22, 1, 0.36, 1)' }}
-            {...interaction}
-        >
+        <span ref={wrapperRef} className="inline-flex will-change-transform" {...interaction}>
             {inner}
         </span>
     );

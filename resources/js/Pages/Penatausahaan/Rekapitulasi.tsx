@@ -1,4 +1,4 @@
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+﻿import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, usePage, router } from '@inertiajs/react';
 import useVariantRoute from '@/Hooks/useVariantRoute';
 import React, { useState, useEffect } from 'react';
@@ -24,6 +24,8 @@ interface RekapitulasiProps {
 export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) {
     const vroute = useVariantRoute();
     const [activeTab, setActiveTab] = useState('bkp_bank');
+    const [bkuMode, setBkuMode] = useState<'sikas' | 'arkas'>('sikas');
+    const isArkasMode = bkuMode === 'arkas';
     const [bkpBankData, setBkpBankData] = useState<any>(null);
     const [bkpPembantuData, setBkpPembantuData] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -123,7 +125,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
         } else if (activeTab === 'bhm' && tahun) {
             fetchBhmData();
         }
-    }, [activeTab, tahun, bulanBank, bulanPembantu, bulanUmum, bulanPajak, bulanRob, bulanReg, bulanBa, periodeRealisasi, jenisLaporanRealisasi, faseRekRealisasi, periodeBhp, jenisLaporanBhp, periodeBhm, jenisLaporanBhm]);
+    }, [activeTab, bkuMode, tahun, bulanBank, bulanPembantu, bulanUmum, bulanPajak, bulanRob, bulanReg, bulanBa, periodeRealisasi, jenisLaporanRealisasi, faseRekRealisasi, periodeBhp, jenisLaporanBhp, periodeBhm, jenisLaporanBhm]);
 
     // Fetch AI Audit status when active tab or period scope changes
     useEffect(() => {
@@ -171,7 +173,8 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
             const response = await axios.get(vroute('api.bhp.data', {
                 tahun,
                 periode: periodeBhp,
-                jenis_laporan: jenisLaporanBhp
+                jenis_laporan: jenisLaporanBhp,
+                bku_mode: bkuMode
             }));
             if (response.data.success) {
                 setBhpData(response.data);
@@ -189,7 +192,8 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
             const response = await axios.get(vroute('api.bhm.data', {
                 tahun,
                 periode: periodeBhm,
-                jenis_laporan: jenisLaporanBhm
+                jenis_laporan: jenisLaporanBhm,
+                bku_mode: bkuMode
             }));
             if (response.data.success) {
                 setBhmData(response.data);
@@ -444,8 +448,8 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
     const fetchBkpRobData = async () => {
         setIsLoading(true);
         try {
-            console.log("Fetching ROB Data for:", { tahun, bulan: bulanRob });
-            const response = await axios.get(vroute('api.bkp-rob.data', { tahun, bulan: bulanRob }));
+            console.log("Fetching ROB Data for:", { tahun, bulan: bulanRob, bku_mode: bkuMode });
+            const response = await axios.get(vroute('api.bkp-rob.data', { tahun, bulan: bulanRob, bku_mode: bkuMode }));
             console.log("ROB Data Response:", response.data);
             if (response.data.success) {
                 setBkpRobData(response.data);
@@ -460,7 +464,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
     const fetchBkpBankData = async () => {
         setIsLoading(true);
         try {
-            const response = await axios.get(vroute('api.bkp-bank.data', { tahun, bulan: bulanBank }));
+            const response = await axios.get(vroute('api.bkp-bank.data', { tahun, bulan: bulanBank, bku_mode: bkuMode }));
             if (response.data.success) {
                 setBkpBankData(response.data);
             }
@@ -474,7 +478,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
     const fetchBkpPembantuData = async () => {
         setIsLoading(true);
         try {
-            const response = await axios.get(vroute('api.bkp-pembantu.data', { tahun, bulan: bulanPembantu }));
+            const response = await axios.get(vroute('api.bkp-pembantu.data', { tahun, bulan: bulanPembantu, bku_mode: bkuMode }));
             if (response.data.success) {
                 setBkpPembantuData(response.data);
             }
@@ -488,7 +492,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
     const fetchBkpUmumData = async () => {
         setIsLoading(true);
         try {
-            const response = await axios.get(vroute('api.bkp-umum.data', { tahun, bulan: bulanUmum }));
+            const response = await axios.get(vroute('api.bkp-umum.data', { tahun, bulan: bulanUmum, bku_mode: bkuMode }));
             if (response.data.success) {
                 setBkpUmumData(response.data);
             }
@@ -504,7 +508,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
     const fetchBkpPajakData = async () => {
         setIsLoading(true);
         try {
-            const response = await axios.get(vroute('api.bkp-pajak.data', { tahun, bulan: bulanPajak }));
+            const response = await axios.get(vroute('api.bkp-pajak.data', { tahun, bulan: bulanPajak, bku_mode: bkuMode }));
             if (response.data.success) {
                 setBkpPajakData(response.data);
             }
@@ -541,7 +545,8 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
     const handleExportExcelBkpBank = () => {
         const url = vroute('bkp-bank.excel', {
             tahun,
-            bulan: bulanBank
+            bulan: bulanBank,
+            bku_mode: bkuMode
         });
         window.open(url, '_blank');
     };
@@ -552,7 +557,8 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
             bulan: settings.period || bulanBank, // Use period from settings or fallback
             paperSize: settings.paperSize,
             orientation: settings.orientation,
-            fontSize: settings.fontSize
+            fontSize: settings.fontSize,
+            bku_mode: bkuMode
         });
         window.open(url, '_blank');
     };
@@ -560,7 +566,8 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
     const handleExportExcelBkpTunai = () => {
         const url = vroute('bkp-pembantu.excel', {
             tahun: tahun,
-            bulan: bulanPembantu
+            bulan: bulanPembantu,
+            bku_mode: bkuMode
         });
         window.open(url, '_blank');
     };
@@ -571,7 +578,8 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
             bulan: settings.period || bulanPembantu,
             paperSize: settings.paperSize,
             orientation: settings.orientation,
-            fontSize: settings.fontSize
+            fontSize: settings.fontSize,
+            bku_mode: bkuMode
         });
         window.open(url, '_blank');
     };
@@ -579,7 +587,8 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
     const handleExportExcelBkpUmum = () => {
         const url = vroute('bkp-umum.excel', {
             tahun: tahun,
-            bulan: bulanUmum
+            bulan: bulanUmum,
+            bku_mode: bkuMode
         });
         window.open(url, '_blank');
     };
@@ -590,7 +599,8 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
             bulan: settings.period || bulanUmum,
             paperSize: settings.paperSize,
             orientation: settings.orientation,
-            fontSize: settings.fontSize
+            fontSize: settings.fontSize,
+            bku_mode: bkuMode
         });
         window.open(url, '_blank');
     };
@@ -606,7 +616,8 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
     const handleExportExcelBkpPajak = () => {
         const url = vroute('bkp-pajak.excel', {
             tahun: tahun,
-            bulan: bulanPajak
+            bulan: bulanPajak,
+            bku_mode: bkuMode
         });
         window.open(url, '_blank');
     };
@@ -617,7 +628,8 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
             bulan: settings.period || bulanPajak,
             paperSize: settings.paperSize,
             orientation: settings.orientation,
-            fontSize: settings.fontSize
+            fontSize: settings.fontSize,
+            bku_mode: bkuMode
         });
         window.open(url, '_blank');
     };
@@ -628,7 +640,8 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
             bulan: settings.period || bulanRob,
             paperSize: settings.paperSize,
             orientation: settings.orientation,
-            fontSize: settings.fontSize
+            fontSize: settings.fontSize,
+            bku_mode: bkuMode
         });
         window.open(url, '_blank');
     };
@@ -678,7 +691,8 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
             jenis_laporan: jenisLaporanBhp,
             paperSize: settings.paperSize,
             orientation: settings.orientation,
-            fontSize: settings.fontSize
+            fontSize: settings.fontSize,
+            bku_mode: bkuMode
         });
         window.open(url, '_blank');
     };
@@ -690,7 +704,8 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
             jenis_laporan: jenisLaporanBhm,
             paperSize: settings.paperSize,
             orientation: settings.orientation,
-            fontSize: settings.fontSize
+            fontSize: settings.fontSize,
+            bku_mode: bkuMode
         });
         window.open(url, '_blank');
     };
@@ -708,8 +723,28 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                         { label: 'Rekapan BKU' },
                     ]}
                     title="Rekapan Buku Kas"
-                    badge={<StatusBadge tone="info">BKU</StatusBadge>}
+                    badge={
+                        <StatusBadge tone={isArkasMode ? 'violet' : 'info'}>
+                            {isArkasMode ? 'BKU ARKAS' : 'BKU SIKAS'}
+                        </StatusBadge>
+                    }
                     subtitle="Rekap Buku Kas Pembantu"
+                    actions={
+                        <button
+                            type="button"
+                            onClick={() => setBkuMode((prev) => (prev === 'sikas' ? 'arkas' : 'sikas'))}
+                            className={`inline-flex items-center gap-2 rounded-2xl border px-4 py-2.5 text-[11.5px] font-bold shadow-sm transition-all duration-200 hover:-translate-y-0.5 ${
+                                isArkasMode
+                                    ? 'border-lime-400 bg-lime-400 text-slate-950 shadow-lime'
+                                    : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10'
+                            }`}
+                        >
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                            </svg>
+                            {isArkasMode ? 'Lihat BKU SIKAS' : 'Lihat BKU Arkas'}
+                        </button>
+                    }
                 />
 
                 <div className="animate-rise" style={{ animationDelay: '60ms' }}>
@@ -734,7 +769,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                 </div>
 
                 <div className="animate-rise" style={{ animationDelay: '120ms' }}>
-                    <div className="sikas-card p-5">
+                    <div className="sikas-card p-3 sm:p-5">
 
                         {/* Content Area */}
                         {activeTab === 'bkp_bank' && (
@@ -1122,7 +1157,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                             id="bulanUmum"
                                             value={bulanUmum.toLowerCase()}
                                             onChange={(e) => setBulanUmum(e.target.value)}
-                                            className="w-full md:w-48 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-[11.5px] font-semibold capitalize text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
+                                            className="w-full md:w-48 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-[11.5px] font-semibold capitalize text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-slate-900 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
                                         >
                                             {monthList.map((m) => (
                                                 <option key={m} value={m}>
@@ -1417,7 +1452,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                             id="bulanPajak"
                                             value={bulanPajak.toLowerCase()}
                                             onChange={(e) => setBulanPajak(e.target.value)}
-                                            className="w-full md:w-48 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-[11.5px] font-semibold capitalize text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
+                                            className="w-full md:w-48 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-[11.5px] font-semibold capitalize text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-slate-900 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
                                         >
                                             {monthList.map((m) => (
                                                 <option key={m} value={m}>
@@ -1649,7 +1684,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                         <select
                                             value={bulanRob.toLowerCase()}
                                             onChange={(e) => setBulanRob(e.target.value)}
-                                            className="w-full rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-[11.5px] font-semibold capitalize text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
+                                            className="w-full rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-[11.5px] font-semibold capitalize text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-slate-900 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
                                         >
                                             {monthList.map((m) => (
                                                 <option key={m} value={m}>
@@ -1815,7 +1850,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                             id="bulanReg"
                                             value={bulanReg}
                                             onChange={(e) => setBulanReg(e.target.value)}
-                                            className="block w-40 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-[11.5px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
+                                            className="block w-40 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-[11.5px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-slate-900 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
                                         >
                                             {monthList.map((m) => (
                                                 <option key={m} value={m} className="capitalize">{m.charAt(0).toUpperCase() + m.slice(1)}</option>
@@ -1855,28 +1890,28 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                         <div className="space-y-6">
                                             {/* Basic Info */}
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-700 dark:text-gray-300">
-                                                <div className="flex gap-2"><span className="w-48 font-semibold">Tanggal Penutupan Kas</span><span>: {bkpRegData?.data?.tanggalPenutupan}</span></div>
-                                                <div className="flex gap-2"><span className="w-48 font-semibold">Nama Penutup Kas</span><span>: {bkpRegData?.data?.namaBendahara}</span></div>
-                                                <div className="flex gap-2"><span className="w-48 font-semibold">Tanggal Penutupan Kas Yang Lalu</span><span>: {bkpRegData?.data?.tanggalPenutupanLalu}</span></div>
+                                                <div className="flex flex-wrap gap-x-2 gap-y-0.5"><span className="w-40 sm:w-48 font-semibold">Tanggal Penutupan Kas</span><span>: {bkpRegData?.data?.tanggalPenutupan}</span></div>
+                                                <div className="flex flex-wrap gap-x-2 gap-y-0.5"><span className="w-40 sm:w-48 font-semibold">Nama Penutup Kas</span><span>: {bkpRegData?.data?.namaBendahara}</span></div>
+                                                <div className="flex flex-wrap gap-x-2 gap-y-0.5"><span className="w-40 sm:w-48 font-semibold">Tanggal Penutupan Kas Yang Lalu</span><span>: {bkpRegData?.data?.tanggalPenutupanLalu}</span></div>
                                             </div>
 
                                             {/* Summary */}
                                             <div className="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-md space-y-2 text-sm text-gray-900 dark:text-gray-100">
-                                                <div className="flex justify-between md:justify-start gap-4">
-                                                    <span className="w-64 font-semibold">Jumlah Total Penerimaan (D)</span>
-                                                    <span className="font-mono font-bold">: {formatCurrency(bkpRegData?.data?.totalPenerimaan)}</span>
+                                                <div className="flex justify-between md:justify-start gap-2 sm:gap-4">
+                                                    <span className="flex-1 sm:flex-initial sm:w-64 font-semibold">Jumlah Total Penerimaan (D)</span>
+                                                    <span className="font-mono font-bold whitespace-nowrap">: {formatCurrency(bkpRegData?.data?.totalPenerimaan)}</span>
                                                 </div>
-                                                <div className="flex justify-between md:justify-start gap-4">
-                                                    <span className="w-64 font-semibold">Jumlah Total Pengeluaran (K)</span>
-                                                    <span className="font-mono font-bold">: {formatCurrency(bkpRegData?.data?.totalPengeluaran)}</span>
+                                                <div className="flex justify-between md:justify-start gap-2 sm:gap-4">
+                                                    <span className="flex-1 sm:flex-initial sm:w-64 font-semibold">Jumlah Total Pengeluaran (K)</span>
+                                                    <span className="font-mono font-bold whitespace-nowrap">: {formatCurrency(bkpRegData?.data?.totalPengeluaran)}</span>
                                                 </div>
-                                                <div className="flex justify-between md:justify-start gap-4 border-t pt-2 border-gray-300 dark:border-gray-600">
-                                                    <span className="w-64 font-bold pl-8">Saldo Buku (A = D - K)</span>
-                                                    <span className="font-mono font-bold text-blue-600 dark:text-blue-400">: {formatCurrency(bkpRegData?.data?.saldoBuku)}</span>
+                                                <div className="flex justify-between md:justify-start gap-2 sm:gap-4 border-t pt-2 border-gray-300 dark:border-gray-600">
+                                                    <span className="flex-1 sm:flex-initial sm:w-64 font-bold pl-0 sm:pl-8">Saldo Buku (A = D - K)</span>
+                                                    <span className="font-mono font-bold whitespace-nowrap text-blue-600 dark:text-blue-400">: {formatCurrency(bkpRegData?.data?.saldoBuku)}</span>
                                                 </div>
-                                                <div className="flex justify-between md:justify-start gap-4 border-t pt-2 border-gray-300 dark:border-gray-600">
-                                                    <span className="w-64 font-bold pl-8">Saldo Kas (B)</span>
-                                                    <span className="font-mono font-bold text-green-600 dark:text-green-400">: {formatCurrency(bkpRegData?.data?.saldoKas)}</span>
+                                                <div className="flex justify-between md:justify-start gap-2 sm:gap-4 border-t pt-2 border-gray-300 dark:border-gray-600">
+                                                    <span className="flex-1 sm:flex-initial sm:w-64 font-bold pl-0 sm:pl-8">Saldo Kas (B)</span>
+                                                    <span className="font-mono font-bold whitespace-nowrap text-green-600 dark:text-green-400">: {formatCurrency(bkpRegData?.data?.saldoKas)}</span>
                                                 </div>
                                             </div>
 
@@ -1961,7 +1996,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                                 </div>
 
                                                 {/* Signatures */}
-                                                <div className="mt-12 grid grid-cols-2 gap-8 text-center text-gray-900 dark:text-gray-100">
+                                                <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 gap-8 text-center text-gray-900 dark:text-gray-100">
                                                     <div>
                                                         <p>Yang diperiksa,</p>
                                                         <div className="h-24"></div>
@@ -1993,7 +2028,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                             id="bulanBa"
                                             value={bulanBa}
                                             onChange={(e) => setBulanBa(e.target.value)}
-                                            className="block w-40 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-[11.5px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
+                                            className="block w-40 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-[11.5px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-slate-900 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
                                         >
                                             {monthList.map((m) => (
                                                 <option key={m} value={m} className="capitalize">{m.charAt(0).toUpperCase() + m.slice(1)}</option>
@@ -2020,14 +2055,14 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                 />
 
                                 {/* Report Content */}
-                                <div className="sikas-card p-6">
+                                <div className="sikas-card p-4 sm:p-6">
                                     {isLoading ? (
                                         <div className="text-center py-10 text-gray-500">Memuat data...</div>
                                     ) : (
-                                        <div className="max-w-4xl mx-auto space-y-6 text-gray-900 dark:text-gray-100 font-serif leading-relaxed">
+                                        <div className="max-w-4xl mx-auto space-y-6 text-sm sm:text-base text-gray-900 dark:text-gray-100 font-serif leading-relaxed">
                                             <DocKopSuratHeader docKey="bku_ba" className="mb-4" />
-                                            <div className="text-center mb-8">
-                                                <h2 className="text-lg font-bold uppercase underline underline-offset-4">BERITA ACARA PEMERIKSAAN KAS</h2>
+                                            <div className="text-center mb-6 sm:mb-8">
+                                                <h2 className="text-base sm:text-lg font-bold uppercase underline underline-offset-4">BERITA ACARA PEMERIKSAAN KAS</h2>
                                             </div>
 
                                             <div className="text-justify">
@@ -2036,7 +2071,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                                 </p>
                                             </div>
 
-                                            <div className="pl-8 grid grid-cols-[100px_1fr] gap-x-2">
+                                            <div className="pl-2 sm:pl-8 grid grid-cols-[75px_1fr] sm:grid-cols-[100px_1fr] gap-x-2">
                                                 <span>Nama</span>
                                                 <span className="font-bold">: {bkpBaData?.data?.namaKepalaSekolah}</span>
                                                 <span>Jabatan</span>
@@ -2045,7 +2080,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
 
                                             <p>Melakukan pemeriksaan kas kepada :</p>
 
-                                            <div className="pl-8 grid grid-cols-[100px_1fr] gap-x-2">
+                                            <div className="pl-2 sm:pl-8 grid grid-cols-[75px_1fr] sm:grid-cols-[100px_1fr] gap-x-2">
                                                 <span>Nama</span>
                                                 <span className="font-bold">: {bkpBaData?.data?.namaBendahara}</span>
                                                 <span>Jabatan</span>
@@ -2092,18 +2127,18 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                             </div>
 
                                             {/* Signatures */}
-                                            <div className="mt-16 pt-8">
-                                                <div className="text-center mb-4 text-right">
+                                            <div className="mt-10 sm:mt-16 pt-6 sm:pt-8">
+                                                <div className="mb-4 text-center sm:text-right">
                                                     <p>Kec. {bkpBaData?.data?.namaKecamatan}, {bkpBaData?.data?.tanggalPemeriksaan}</p>
                                                 </div>
-                                                <div className="flex justify-between text-center px-4">
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 text-center px-2 sm:px-4">
                                                     <div>
-                                                        <p className="mb-24">Bendahara BOSP</p>
+                                                        <p className="mb-16 sm:mb-24">Bendahara BOSP</p>
                                                         <p className="font-bold underline decoration-1 underline-offset-4">{bkpBaData?.data?.namaBendahara}</p>
                                                         <p>NIP. {bkpBaData?.data?.nipBendahara}</p>
                                                     </div>
                                                     <div>
-                                                        <p className="mb-24">Kepala Sekolah</p>
+                                                        <p className="mb-16 sm:mb-24">Kepala Sekolah</p>
                                                         <p className="font-bold underline decoration-1 underline-offset-4">{bkpBaData?.data?.namaKepalaSekolah}</p>
                                                         <p>NIP. {bkpBaData?.data?.nipKepalaSekolah}</p>
                                                     </div>
@@ -2138,7 +2173,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                                         setPeriodeRealisasi(''); // Tahunan usually ignores periode, or set to a placeholder
                                                     }
                                                 }}
-                                                className="block w-40 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-[11.5px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
+                                                className="block w-40 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-[11.5px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-slate-900 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
                                             >
                                                 <option value="bulanan">Bulanan</option>
                                                 <option value="tahap">Tahap</option>
@@ -2153,7 +2188,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                                     id="periodeRealisasi"
                                                     value={periodeRealisasi}
                                                     onChange={(e) => setPeriodeRealisasi(e.target.value)}
-                                                    className="block w-40 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-[11.5px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
+                                                    className="block w-40 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-[11.5px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-slate-900 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
                                                 >
                                                     {monthList.map((m) => (
                                                         <option key={m} value={m} className="capitalize">{m.charAt(0).toUpperCase() + m.slice(1)}</option>
@@ -2169,7 +2204,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                                     id="periodeRealisasi"
                                                     value={periodeRealisasi}
                                                     onChange={(e) => setPeriodeRealisasi(e.target.value)}
-                                                    className="block w-40 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-[11.5px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
+                                                    className="block w-40 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-[11.5px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-slate-900 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
                                                 >
                                                     <option value="Tahap 1">Tahap 1</option>
                                                     <option value="Tahap 2">Tahap 2</option>
@@ -2350,7 +2385,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                                 id="faseRekRealisasi"
                                                 value={faseRekRealisasi}
                                                 onChange={(e) => setFaseRekRealisasi(e.target.value)}
-                                                className="block w-40 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-[11.5px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
+                                                className="block w-40 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-[11.5px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-slate-900 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
                                             >
                                                 <option value="Tahap 1">Tahap 1</option>
                                                 <option value="Tahap 2">Tahap 2</option>
@@ -2490,7 +2525,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                             id="bulanPembantu"
                                             value={bulanPembantu.toLowerCase()}
                                             onChange={(e) => setBulanPembantu(e.target.value)}
-                                            className="w-full md:w-48 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-[11.5px] font-semibold capitalize text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
+                                            className="w-full md:w-48 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-[11.5px] font-semibold capitalize text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-slate-900 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
                                         >
                                             {monthList.map((m) => (
                                                 <option key={m} value={m}>
@@ -2763,7 +2798,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                                         setPeriodeBhp('');
                                                     }
                                                 }}
-                                                className="block w-40 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-[11.5px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
+                                                className="block w-40 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-[11.5px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-slate-900 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
                                             >
                                                 <option value="bulanan">Bulanan</option>
                                                 <option value="tahap">Tahap</option>
@@ -2778,7 +2813,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                                     id="periodeBhp"
                                                     value={periodeBhp}
                                                     onChange={(e) => setPeriodeBhp(e.target.value)}
-                                                    className="block w-40 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-[11.5px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
+                                                    className="block w-40 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-[11.5px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-slate-900 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
                                                 >
                                                     {monthList.map((m) => (
                                                         <option key={m} value={m} className="capitalize">{m.charAt(0).toUpperCase() + m.slice(1)}</option>
@@ -2909,7 +2944,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                                         setPeriodeBhm('');
                                                     }
                                                 }}
-                                                className="block w-40 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-[11.5px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
+                                                className="block w-40 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-[11.5px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-slate-900 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
                                             >
                                                 <option value="bulanan">Bulanan</option>
                                                 <option value="tahap">Tahap</option>
@@ -2924,7 +2959,7 @@ export default function Rekapitulasi({ auth, tahun, bulan }: RekapitulasiProps) 
                                                     id="periodeBhm"
                                                     value={periodeBhm}
                                                     onChange={(e) => setPeriodeBhm(e.target.value)}
-                                                    className="block w-40 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-[11.5px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
+                                                    className="block w-40 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-[11.5px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-slate-900 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
                                                 >
                                                     {monthList.map((m) => (
                                                         <option key={m} value={m} className="capitalize">{m.charAt(0).toUpperCase() + m.slice(1)}</option>

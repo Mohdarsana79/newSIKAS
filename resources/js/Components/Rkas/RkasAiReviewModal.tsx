@@ -117,28 +117,37 @@ export default function RkasAiReviewModal({
             <head>
                 <meta charset="UTF-8">
                 <title>Laporan Telaah Eksekutif RKAS - AI DeepSeek</title>
-                <script src="https://cdn.tailwindcss.com"></script>
                 <style>
+                    * { box-sizing: border-box; }
+                    body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif; background: #fff; color: #111827; padding: 32px; margin: 0; line-height: 1.55; }
+                    .header-box { margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+                    .header-title { font-size: 20px; font-weight: 700; color: #111827; margin: 0; }
+                    .header-sub { font-size: 12px; color: #6b7280; margin: 4px 0 0 0; }
+                    .badge { font-size: 12px; font-weight: 600; padding: 4px 12px; background: #eef2ff; color: #4338ca; border: 1px solid #c7d2fe; border-radius: 9999px; white-space: nowrap; }
+                    .footer-box { margin-top: 32px; padding-top: 16px; border-top: 1px solid #e5e7eb; text-align: center; font-size: 12px; color: #9ca3af; }
+                    table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 12.5px; }
+                    th, td { border: 1px solid #e5e7eb; padding: 6px 10px; text-align: left; }
+                    th { background: #f9fafb; font-weight: 700; }
+                    h2, h3, h4 { color: #111827; margin-top: 16px; margin-bottom: 6px; }
+                    ul, ol { padding-left: 20px; margin: 8px 0; }
                     @media print {
                         body { padding: 1.5cm; }
                         .no-print { display: none !important; }
                     }
                 </style>
             </head>
-            <body class="bg-white text-gray-900 p-8 antialiased font-sans">
-                <div class="mb-6 pb-4 border-b border-gray-200">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <h1 class="text-xl font-bold text-gray-900">TELAAH EKSEKUTIF PENGANGGARAN RKAS</h1>
-                            <p class="text-xs text-gray-500 mt-1">Sistem Informasi Keuangan Sekolah (SIKAS) • Analisis DeepSeek AI Engine</p>
-                        </div>
-                        <span class="text-xs font-semibold px-3 py-1 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-full">
-                            ${isPerubahan ? 'RKAS Perubahan' : 'RKAS Murni'}
-                        </span>
+            <body>
+                <div class="header-box">
+                    <div>
+                        <h1 class="header-title">TELAAH EKSEKUTIF PENGANGGARAN RKAS</h1>
+                        <p class="header-sub">Sistem Informasi Keuangan Sekolah (SIKAS) • Analisis DeepSeek AI Engine</p>
                     </div>
+                    <span class="badge">
+                        ${isPerubahan ? 'RKAS Perubahan' : 'RKAS Murni'}
+                    </span>
                 </div>
                 ${cleanHtml(analysis)}
-                <div class="mt-8 pt-4 border-t border-gray-200 text-center text-xs text-gray-400">
+                <div class="footer-box">
                     Dicetak secara otomatis dari SIKAS - Dokumen Telaah Cerdas AI Eksekutif
                 </div>
                 <script>

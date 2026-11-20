@@ -827,31 +827,20 @@ export default function Index({ tahunList, penganggaranList, statusPerTahun, tah
                                     </div>
                                 )}
 
-                                {/* Warning & Konfirmasi Overwrite jika sudah ada data BKU */}
+                                {/* Info Mode Sinkronisasi Aman jika sudah ada data BKU */}
                                 {arkasBkuData.has_existing_data && (
-                                    <div className="space-y-3 rounded-2xl border border-amber-300/60 bg-pastel-amber/70 p-4 dark:border-amber-400/20 dark:bg-amber-400/10">
+                                    <div className="space-y-2 rounded-2xl border border-mint/30 bg-pastel-mint/70 p-4 dark:border-mint/20 dark:bg-mint/10">
                                         <div className="flex items-start gap-3">
-                                            <div className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-400">
+                                            <div className="mt-0.5 shrink-0 text-mint">
                                                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                                 </svg>
                                             </div>
-                                            <div className="text-[11px] font-medium text-amber-800 dark:text-amber-200">
-                                                <span className="mb-0.5 block font-extrabold">Konfirmasi Timpa Ulang (Overwrite)</span>
-                                                Di newSIKAS saat ini sudah tercatat <strong>{arkasBkuData.existing_counts.total} transaksi BKU</strong> pada tahun {arkasBkuYear} (termasuk {arkasBkuData.existing_counts.belanja} belanja, {arkasBkuData.existing_counts.penerimaan} penerimaan). Melanjutkan penarikan akan <strong>menghapus data BKU tahun {arkasBkuYear}</strong> dan menggantikannya dengan data resmi dari ARKAS.
+                                            <div className="text-[11px] font-medium text-slate-700 dark:text-slate-200">
+                                                <span className="mb-0.5 block font-extrabold text-emerald-800 dark:text-mint">Mode Sinkronisasi Aman (Data SIKAS Terlindungi)</span>
+                                                Di newSIKAS saat ini sudah tercatat <strong>{arkasBkuData.existing_counts.total} transaksi BKU</strong> pada tahun {arkasBkuYear} (termasuk {arkasBkuData.existing_counts.belanja} belanja, {arkasBkuData.existing_counts.penerimaan} penerimaan). Bulan yang sudah terisi <strong>TIDAK akan dihapus atau ditimpa</strong> ID Transaksi maupun Uraian SIKAS-nya (hanya disandingkan dengan ID/Nota/Uraian ARKAS), sedangkan bulan yang masih kosong akan diimpor secara otomatis.
                                             </div>
                                         </div>
-                                        <label className="flex cursor-pointer items-center gap-2.5 border-t border-amber-300/60 pt-2 dark:border-amber-400/20">
-                                            <input
-                                                type="checkbox"
-                                                checked={isOverwriteChecked}
-                                                onChange={(e) => setIsOverwriteChecked(e.target.checked)}
-                                                className="h-4 w-4 rounded border-slate-300 text-lime-500 focus:ring-lime-500 dark:border-white/20 dark:bg-white/5"
-                                            />
-                                            <span className="text-[10.5px] font-semibold text-amber-900 dark:text-amber-100">
-                                                Saya memahami dan menyetujui untuk menimpa ulang seluruh data BKU Tahun {arkasBkuYear}.
-                                            </span>
-                                        </label>
                                     </div>
                                 )}
                             </div>
@@ -877,9 +866,9 @@ export default function Index({ tahunList, penganggaranList, statusPerTahun, tah
                             {arkasBkuData?.exists && arkasBkuData?.has_rkas && (
                                 <button
                                     onClick={handleExecutePullArkasBku}
-                                    disabled={pullingBku || (arkasBkuData.has_existing_data && !isOverwriteChecked)}
+                                    disabled={pullingBku}
                                     className={`inline-flex items-center justify-center rounded-2xl px-5 py-2.5 text-[11px] font-extrabold uppercase tracking-wider shadow-sm transition-all duration-150 ${
-                                        pullingBku || (arkasBkuData.has_existing_data && !isOverwriteChecked)
+                                        pullingBku
                                             ? 'cursor-not-allowed bg-slate-100 text-slate-400 opacity-70 dark:bg-white/5 dark:text-slate-500'
                                             : 'bg-lime-400 text-slate-950 shadow-lime hover:-translate-y-0.5 hover:bg-lime-300 focus:outline-none focus:ring-2 focus:ring-lime-500 focus:ring-offset-2'
                                     }`}
@@ -894,7 +883,7 @@ export default function Index({ tahunList, penganggaranList, statusPerTahun, tah
                                             <svg className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                                             </svg>
-                                            {arkasBkuData.has_existing_data ? 'Tarik & Timpa Ulang BKU' : 'Tarik BKU Sekarang'}
+                                            {arkasBkuData.has_existing_data ? 'Tarik & Sandingkan BKU' : 'Tarik BKU Sekarang'}
                                         </>
                                     )}
                                 </button>

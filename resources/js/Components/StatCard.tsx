@@ -36,6 +36,18 @@ const TONE_BAR: Record<string, string> = {
     ink: 'from-slate-700 to-slate-900',
 };
 
+const TONE_GLOW: Record<string, string> = {
+    violet: 'bg-pastel-lavender/80 dark:bg-brand-500/15',
+    mint: 'bg-pastel-mint/80 dark:bg-mint/15',
+    peach: 'bg-pastel-peach/80 dark:bg-peach/15',
+    sky: 'bg-pastel-sky/80 dark:bg-sky/15',
+    amber: 'bg-pastel-amber/80 dark:bg-amber-400/15',
+    lime: 'bg-lime-200/70 dark:bg-lime-400/15',
+    rose: 'bg-pastel-rose/80 dark:bg-rose-500/15',
+    slate: 'bg-slate-200/70 dark:bg-white/10',
+    ink: 'bg-slate-300/60 dark:bg-white/10',
+};
+
 /**
  * Kartu statistik bento SIKAS: tile ikon pastel, nilai besar tabular,
  * badge tren, dan bar progres tipis. Tilt 3D hanya aktif saat pointer halus.
@@ -57,10 +69,13 @@ export default function StatCard({
 
     return (
         <TiltCard maxTilt={5} className={cn('h-full', className)}>
-            <article className="group relative flex h-full flex-col justify-between overflow-hidden rounded-[26px] border border-white bg-white p-4 shadow-card transition-all duration-500 hover:-translate-y-1 hover:shadow-card-hover dark:border-white/10 dark:bg-[#15131F] dark:shadow-card-dark">
+            <article className="group relative flex h-full flex-col justify-between overflow-hidden rounded-[22px] sm:rounded-[26px] border border-white bg-white p-3.5 sm:p-4 shadow-card transition-all duration-500 hover:-translate-y-1 hover:shadow-card-hover dark:border-white/10 dark:bg-[#15131F] dark:shadow-card-dark">
                 <div
                     aria-hidden
-                    className="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full bg-pastel-lavender/70 blur-2xl transition-transform duration-500 group-hover:scale-150 dark:bg-brand-500/10"
+                    className={cn(
+                        'pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full blur-2xl transition-transform duration-500 group-hover:scale-150',
+                        TONE_GLOW[tone] ?? TONE_GLOW.violet,
+                    )}
                 />
 
                 <div className="relative flex items-start justify-between gap-3">
@@ -93,30 +108,38 @@ export default function StatCard({
                         className="mt-1 flex items-baseline gap-1 text-sikas-num"
                         title={tooltip || (typeof value === 'string' ? value : undefined)}
                     >
-                        <span className="text-[24px] font-extrabold leading-none tracking-tight text-slate-900 dark:text-white">
+                        <span className="text-[20px] sm:text-[22px] xl:text-[24px] font-extrabold leading-none tracking-tight text-slate-900 dark:text-white">
                             {value}
                         </span>
                     </p>
                 </div>
 
                 {(typeof progress === 'number' || description) && (
-                    <div className="relative mt-3 flex items-center gap-2">
-                        {typeof progress === 'number' ? (
-                            <>
-                                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100 dark:bg-white/5">
-                                    <div
-                                        className={cn('h-full rounded-full bg-gradient-to-r', TONE_BAR[tone] ?? TONE_BAR.violet)}
-                                        style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
-                                    />
-                                </div>
-                                <span className="text-[9.5px] font-bold text-slate-400 dark:text-slate-500">
+                    <div className="relative mt-3 space-y-1.5">
+                        <div className="flex items-center justify-between gap-2">
+                            {description ? (
+                                <p className="truncate text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                                    {description}
+                                </p>
+                            ) : (
+                                <span />
+                            )}
+                            {typeof progress === 'number' && (
+                                <span className="sikas-num shrink-0 text-[9.5px] font-extrabold text-slate-500 dark:text-slate-400">
                                     {progressLabel ?? `${progress}%`}
                                 </span>
-                            </>
-                        ) : (
-                            <p className="truncate text-[10px] font-medium text-slate-500 dark:text-slate-400">
-                                {description}
-                            </p>
+                            )}
+                        </div>
+                        {typeof progress === 'number' && (
+                            <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-white/5">
+                                <div
+                                    className={cn(
+                                        'h-full rounded-full bg-gradient-to-r transition-all duration-500',
+                                        TONE_BAR[tone] ?? TONE_BAR.violet,
+                                    )}
+                                    style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
+                                />
+                            </div>
                         )}
                     </div>
                 )}

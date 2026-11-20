@@ -156,7 +156,7 @@ export default function NotificationDropdown() {
                 leaveFrom="opacity-100 scale-100 translate-y-0"
                 leaveTo="opacity-0 scale-95 -translate-y-1"
             >
-                <div className="absolute right-0 z-50 mt-2 w-[330px] sm:w-[390px] origin-top-right overflow-hidden rounded-2xl border border-white/80 bg-white/95 shadow-float backdrop-blur-xl dark:border-white/10 dark:bg-[#15131F]/95">
+                <div className="absolute right-0 z-50 mt-2 w-[min(370px,calc(100vw-1.5rem))] origin-top-right overflow-hidden rounded-2xl border border-white/80 bg-white/95 shadow-float backdrop-blur-xl dark:border-white/10 dark:bg-[#15131F]/95">
                     {/* Header Popover */}
                     <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-white/5">
                         <div className="flex items-center gap-2">
@@ -195,7 +195,7 @@ export default function NotificationDropdown() {
                             }`}
                         >
                             <span>Semua</span>
-                            <span className="rounded-full bg-slate-100 px-1.5 py-0.2 text-[9px] dark:bg-white/10">
+                            <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] dark:bg-white/10">
                                 {notifications.length}
                             </span>
                         </button>
@@ -211,7 +211,7 @@ export default function NotificationDropdown() {
                         >
                             <span>Perlu Disetor</span>
                             {terimaCount > 0 && (
-                                <span className="rounded-full bg-amber-100 px-1.5 py-0.2 text-[9px] font-extrabold text-amber-700 dark:bg-amber-400/20 dark:text-amber-300">
+                                <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-extrabold text-amber-700 dark:bg-amber-400/20 dark:text-amber-300">
                                     {terimaCount}
                                 </span>
                             )}
@@ -228,7 +228,7 @@ export default function NotificationDropdown() {
                         >
                             <span>Sudah Disetor</span>
                             {setorCount > 0 && (
-                                <span className="rounded-full bg-emerald-100 px-1.5 py-0.2 text-[9px] font-extrabold text-emerald-700 dark:bg-emerald-400/20 dark:text-emerald-300">
+                                <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[9px] font-extrabold text-emerald-700 dark:bg-emerald-400/20 dark:text-emerald-300">
                                     {setorCount}
                                 </span>
                             )}
@@ -256,9 +256,9 @@ export default function NotificationDropdown() {
                                             }`}
                                         >
                                             {isTerima ? (
-                                                <AlertTriangle className="h-4.5 w-4.5" />
+                                                <AlertTriangle className="h-4 w-4" />
                                             ) : (
-                                                <CheckCircle2 className="h-4.5 w-4.5" />
+                                                <CheckCircle2 className="h-4 w-4" />
                                             )}
                                         </span>
 

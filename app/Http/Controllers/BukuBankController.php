@@ -6,6 +6,7 @@ use App\Config\VariantConfig; // Added Sts model
 // Adjusted Model Name
 use App\Exports\BkpBankExport;
 use App\Models\Sts;
+use App\Services\BkuArkasDisplayService;
 use App\Services\BukuKasService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
@@ -55,7 +56,8 @@ class BukuBankController extends Controller
         $bulan = $request->input('bulan');
 
         try {
-            $data = $this->getBkpBankDataInternal($tahun, $bulan);
+            $isArkasMode = app(BkuArkasDisplayService::class)->isArkasMode($request);
+            $data = $this->getBkpBankDataInternal($tahun, $bulan, $isArkasMode);
 
             if (! $data) {
                 return response()->json([
@@ -110,10 +112,11 @@ class BukuBankController extends Controller
             }
 
             $reportData = [];
+            $isArkasMode = app(BkuArkasDisplayService::class)->isArkasMode($request);
 
             foreach ($monthsToProcess as $m) {
                 // Call Internal with SINGLE month
-                $data = $this->getBkpBankDataInternal($tahun, $m);
+                $data = $this->getBkpBankDataInternal($tahun, $m, $isArkasMode);
 
                 if ($data) {
                     $bulanAngka = $this->convertBulanToNumber($m);
@@ -188,10 +191,11 @@ class BukuBankController extends Controller
             }
 
             $reportData = [];
+            $isArkasMode = app(BkuArkasDisplayService::class)->isArkasMode($request);
 
             foreach ($monthsToProcess as $m) {
                 // Call Internal with SINGLE month
-                $data = $this->getBkpBankDataInternal($tahun, $m);
+                $data = $this->getBkpBankDataInternal($tahun, $m, $isArkasMode);
 
                 if ($data) {
                     $bulanAngka = $this->convertBulanToNumber($m);
@@ -288,8 +292,9 @@ class BukuBankController extends Controller
     /**
      * Internal helper to fetch data
      */
-    private function getBkpBankDataInternal($tahun, $bulan)
+    private function getBkpBankDataInternal($tahun, $bulan, bool $isArkasMode = false)
     {
+        $displayService = app(BkuArkasDisplayService::class);
         $penganggaran = ($this->Penganggaran)::where('tahun_anggaran', $tahun)->first();
 
         if (! $penganggaran) {
@@ -384,7 +389,7 @@ class BukuBankController extends Controller
 
         // Ambil list belanja NON-TUNAI untuk item
         $belanjaNonTunaiList = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
-            ->with(['kodeKegiatan', 'rekeningBelanja'])
+            ->with(['kodeKegiatan', 'rekeningBelanja', 'uraianDetails.kodeKegiatan', 'uraianDetails.rekeningBelanja'])
             ->where('is_bunga_record', false)
             ->where('jenis_transaksi', 'non-tunai')
             ->whereMonth('tanggal_transaksi', '>=', $bulanAwal)
@@ -397,6 +402,7 @@ class BukuBankController extends Controller
 
         // Ambil data Pajak Disetor Non-Tunai bulan ini
         $bkuPajakDisetorNonTunai = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
+            ->with(['rekeningBelanja'])
             ->where('is_bunga_record', false)
             ->where('jenis_transaksi', 'non-tunai')
             ->whereMonth('tanggal_lapor', '>=', $bulanAwal)
@@ -447,35 +453,58 @@ class BukuBankController extends Controller
 
         $blockCounter = 100;
         $groupMap = [];
+        $rkasMaps = $isArkasMode ? $displayService->loadRkasArkasMaps($this->variant, $penganggaran->id) : null;
 
         foreach ($belanjaNonTunaiList as $bnt) {
             $blockCounter++;
             $groupMap[$bnt->id] = $blockCounter;
 
-            $items[] = [
-                'tanggal' => $bnt->tanggal_transaksi,
-                'uraian' => $bnt->uraian ?? 'Non Tunai',
-                'uraian_opsional' => $bnt->uraian_opsional,
-                'no_bukti' => $bnt->id_transaksi ?? $bnt->nomor_nota ?? '-',
-                'kode_kegiatan' => $bnt->kodeKegiatan->kode ?? '-',
-                'kode_rekening' => $bnt->rekeningBelanja->kode_rekening ?? '-',
-                'penerimaan' => 0,
-                'pengeluaran' => $bnt->total_transaksi_kotor,
-                'type' => 'belanja_non_tunai',
-                'group_id' => $blockCounter,
-                'sort_order' => 10,
-            ];
+            $noBukti = $displayService->resolveNoBukti($bnt, $isArkasMode);
+            $headerUraian = $displayService->resolveHeaderUraian($bnt, $isArkasMode, 'Non Tunai');
+
+            if ($isArkasMode) {
+                $expandedItems = $displayService->expandArkasItems($bnt, $rkasMaps);
+                foreach ($expandedItems as $expItem) {
+                    $items[] = [
+                        'tanggal' => $bnt->tanggal_transaksi,
+                        'uraian' => $expItem['uraian'],
+                        'uraian_opsional' => null,
+                        'no_bukti' => $noBukti,
+                        'kode_kegiatan' => $expItem['kode_kegiatan'],
+                        'kode_rekening' => $expItem['kode_rekening'],
+                        'penerimaan' => 0,
+                        'pengeluaran' => $expItem['jumlah'],
+                        'type' => 'belanja_non_tunai',
+                        'group_id' => $blockCounter,
+                        'sort_order' => 10,
+                    ];
+                }
+            } else {
+                $items[] = [
+                    'tanggal' => $bnt->tanggal_transaksi,
+                    'uraian' => $bnt->uraian ?? 'Non Tunai',
+                    'uraian_opsional' => $bnt->uraian_opsional,
+                    'no_bukti' => $noBukti,
+                    'kode_kegiatan' => $bnt->kodeKegiatan->kode ?? '-',
+                    'kode_rekening' => $bnt->rekeningBelanja->kode_rekening ?? '-',
+                    'penerimaan' => 0,
+                    'pengeluaran' => $bnt->total_transaksi_kotor,
+                    'type' => 'belanja_non_tunai',
+                    'group_id' => $blockCounter,
+                    'sort_order' => 10,
+                ];
+            }
 
             // Baris Terima Pajak Pusat
             if ($bnt->total_pajak > 0) {
                 $pct = $bnt->persen_pajak ? (float) $bnt->persen_pajak : '';
-                $uraianPajak = 'Terima Pajak '.($bnt->pajak ?? '').' '.$pct.'% '.($bnt->uraian_opsional ?: $bnt->uraian);
+                $uraianPajak = 'Terima Pajak '.($bnt->pajak ?? '').' '.$pct.'% '.$headerUraian;
 
                 $items[] = [
                     'tanggal' => $bnt->tanggal_transaksi,
                     'uraian' => $uraianPajak,
                     'uraian_opsional' => null,
-                    'no_bukti' => $bnt->kode_masa_pajak ?? $bnt->id_transaksi ?? '-',
+                    'no_bukti' => $bnt->kode_masa_pajak ?? $noBukti,
                     'kode_kegiatan' => '-',
                     'kode_rekening' => '-',
                     'penerimaan' => (float) $bnt->total_pajak,
@@ -489,7 +518,7 @@ class BukuBankController extends Controller
             // Baris Terima Pajak Daerah
             if ($bnt->total_pajak_daerah > 0) {
                 $pct = $bnt->persen_pajak_daerah ? (float) $bnt->persen_pajak_daerah : '';
-                $uraianPajakDaerah = 'Terima Pajak Daerah '.($bnt->pajak_daerah ?? '').' '.$pct.'% '.($bnt->uraian_opsional ?: $bnt->uraian);
+                $uraianPajakDaerah = 'Terima Pajak Daerah '.($bnt->pajak_daerah ?? '').' '.$pct.'% '.$headerUraian;
 
                 $items[] = [
                     'tanggal' => $bnt->tanggal_transaksi,
@@ -515,10 +544,11 @@ class BukuBankController extends Controller
                 $currentGroupId = $blockCounter;
                 $groupMap[$bku->id] = $currentGroupId;
             }
+            $headerUraian = $displayService->resolveHeaderUraian($bku, $isArkasMode, 'Non Tunai');
 
             if ($bku->total_pajak > 0) {
                 $pct = $bku->persen_pajak ? (float) $bku->persen_pajak : '';
-                $uraianPajak = 'Setor Pajak '.($bku->pajak ?? '').' '.$pct.'% '.($bku->uraian_opsional ?: $bku->uraian);
+                $uraianPajak = 'Setor Pajak '.($bku->pajak ?? '').' '.$pct.'% '.$headerUraian;
 
                 $items[] = [
                     'tanggal' => $bku->tanggal_lapor,
@@ -537,7 +567,7 @@ class BukuBankController extends Controller
 
             if ($bku->total_pajak_daerah > 0) {
                 $pct = $bku->persen_pajak_daerah ? (float) $bku->persen_pajak_daerah : '';
-                $uraianPajakDaerah = 'Setor Pajak Daerah '.($bku->pajak_daerah ?? '').' '.$pct.'% '.($bku->uraian_opsional ?: $bku->uraian);
+                $uraianPajakDaerah = 'Setor Pajak Daerah '.($bku->pajak_daerah ?? '').' '.$pct.'% '.$headerUraian;
 
                 $items[] = [
                     'tanggal' => $bku->tanggal_lapor,

@@ -46,6 +46,8 @@ interface PageProps {
 
 type UpdatePhase = 'idle' | 'confirm' | 'backing_up' | 'downloading' | 'verifying' | 'installing' | 'completed' | 'error';
 
+const MAX_INSTALL_WAIT_TICKS = 300; // 300 x 2 detik = 10 menit batas tunggu ekstraksi installer & restart layanan server
+
 export default function SystemUpdateIndex({ updateInfo: initialUpdateInfo, backupSummary }: PageProps) {
     const [info, setInfo] = useState<UpdateInfo>(initialUpdateInfo);
     const [isChecking, setIsChecking] = useState(false);
@@ -68,6 +70,12 @@ export default function SystemUpdateIndex({ updateInfo: initialUpdateInfo, backu
     const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const installWaitTicksRef = useRef<number>(0);
     const serverRestartSeenRef = useRef<boolean>(false);
+    const phaseRef = useRef<UpdatePhase>('idle');
+
+    const updatePhase = (nextPhase: UpdatePhase) => {
+        phaseRef.current = nextPhase;
+        setPhase(nextPhase);
+    };
 
     const stopPolling = () => {
         if (pollingRef.current) {
@@ -115,7 +123,7 @@ export default function SystemUpdateIndex({ updateInfo: initialUpdateInfo, backu
 
     const resetModalState = (mode: 'online' | 'manual') => {
         setUpdateMode(mode);
-        setPhase('confirm');
+        updatePhase('confirm');
         setProgress(0);
         setStatusMessage('');
         setErrorMessage('');
@@ -149,8 +157,22 @@ export default function SystemUpdateIndex({ updateInfo: initialUpdateInfo, backu
         stopPolling();
         installWaitTicksRef.current = 0;
         serverRestartSeenRef.current = false;
+        let isPollingInFlight = false;
+
+        const handleInstallTimeout = () => {
+            stopPolling();
+            setFailedStep(3);
+            updatePhase('error');
+            setStatusMessage('Waktu tunggu memulai ulang layanan server habis.');
+            setErrorMessage(
+                'Waktu tunggu memulai ulang layanan server habis (lebih dari 10 menit). Berkas pembaharuan kemungkinan besar sudah terpasang, namun layanan Apache (newsikas_server) belum menyala kembali secara otomatis. Silakan buka kembali aplikasi melalui shortcut newSIKAS di Desktop (run.bat) atau jalankan service "newsikas_server", kemudian klik tombol "Muat Ulang Halaman".'
+            );
+        };
 
         pollingRef.current = setInterval(async () => {
+            if (isPollingInFlight) return;
+            isPollingInFlight = true;
+
             try {
                 const res = await axios.get(route('system-update.progress', { updateId }), {
                     timeout: 4000,
@@ -172,14 +194,14 @@ export default function SystemUpdateIndex({ updateInfo: initialUpdateInfo, backu
 
                 if (data.phase === 'error') {
                     setFailedStep(typeof data.failed_step === 'number' ? data.failed_step : data.backup_file ? 2 : 1);
-                    setPhase('error');
+                    updatePhase('error');
                     setErrorMessage(data.message || 'Terjadi kesalahan saat memasang pembaharuan.');
                     stopPolling();
                     return;
                 }
 
                 if (data.phase === 'completed') {
-                    setPhase('completed');
+                    updatePhase('completed');
                     setProgress(100);
                     setStatusMessage(data.message || 'Pembaharuan berhasil dipasang!');
                     stopPolling();
@@ -188,13 +210,13 @@ export default function SystemUpdateIndex({ updateInfo: initialUpdateInfo, backu
 
                 if (data.phase === 'backing_up') {
                     setFailedStep(1);
-                    setPhase('backing_up');
+                    updatePhase('backing_up');
                 } else if (data.phase === 'downloading' || data.phase === 'verifying') {
                     setFailedStep(2);
-                    setPhase(data.phase);
+                    updatePhase(data.phase);
                 } else if (data.phase === 'installing') {
                     setFailedStep(3);
-                    setPhase('installing');
+                    updatePhase('installing');
                     installWaitTicksRef.current += 1;
 
                     // Selesai apabila server sempat restart (koneksi sempat terputus lalu nyambung lagi) atau versi berubah
@@ -202,26 +224,41 @@ export default function SystemUpdateIndex({ updateInfo: initialUpdateInfo, backu
                         serverRestartSeenRef.current ||
                         (data.current_version && data.current_version !== initialVersion)
                     ) {
-                        setPhase('completed');
+                        updatePhase('completed');
                         setProgress(100);
                         setStatusMessage(
                             `Pembaharuan selesai dipasang! Layanan server telah aktif kembali (v${data.current_version || info.latest_version}).`
                         );
                         stopPolling();
+                    } else if (installWaitTicksRef.current > MAX_INSTALL_WAIT_TICKS) {
+                        handleInstallTimeout();
                     } else {
                         setProgress((prev) => Math.min(96, Math.max(prev, 88 + Math.min(8, installWaitTicksRef.current))));
                     }
                 }
             } catch {
-                // Saat Inno Setup menghentikan newsikas_server (Apache) untuk mengganti file,
-                // request polling akan gagal sementara — ini tanda normal bahwa installer sedang bekerja!
+                // Saat Inno Setup menghentikan newsikas_server (Apache) pada Tahap 3, request polling akan gagal
+                // sementara. Jangan tandai serverRestartSeen sebelum benar-benar memasuki fase installing.
+                if (phaseRef.current !== 'installing') {
+                    return;
+                }
+
                 serverRestartSeenRef.current = true;
+                installWaitTicksRef.current += 1;
+
+                if (installWaitTicksRef.current > MAX_INSTALL_WAIT_TICKS) {
+                    handleInstallTimeout();
+                    return;
+                }
+
                 setFailedStep(3);
-                setPhase('installing');
-                setProgress((prev) => Math.min(97, Math.max(prev, 92)));
+                updatePhase('installing');
+                setProgress((prev) => Math.min(97, Math.max(prev, 92 + Math.floor(installWaitTicksRef.current / 50))));
                 setStatusMessage(
-                    'Installer sedang mengekstrak berkas baru & memulai ulang layanan Apache. Mohon tunggu sebentar...'
+                    `Installer sedang mengekstrak berkas baru & memulai ulang layanan Apache. Mohon tunggu... (${Math.min(600, installWaitTicksRef.current * 2)} dtk)`
                 );
+            } finally {
+                isPollingInFlight = false;
             }
         }, 2000);
     };
@@ -233,14 +270,15 @@ export default function SystemUpdateIndex({ updateInfo: initialUpdateInfo, backu
 
         if (data?.success) {
             setFailedStep(3);
-            setPhase('installing');
+            updatePhase('installing');
             setProgress(88);
             setStatusMessage(
-                'Tahap 3/3: Memasang pembaharuan & memulai ulang layanan server. Mohon tunggu 15–30 detik...'
+                'Tahap 3/3: Memasang pembaharuan & memulai ulang layanan server. Mohon tunggu sebentar...'
             );
         } else {
             stopPolling();
-            setPhase('error');
+            setFailedStep(typeof data?.failed_step === 'number' ? data.failed_step : data?.backup_file ? 2 : 1);
+            updatePhase('error');
             setErrorMessage(data?.message || fallbackError);
         }
     };
@@ -248,25 +286,35 @@ export default function SystemUpdateIndex({ updateInfo: initialUpdateInfo, backu
     const executeUpdate = async () => {
         const updateId = 'upd_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
         const initialVersion = info.current_version;
+        const reusableBackup = updateMode === 'online' ? createdBackupFile : null;
 
-        setFailedStep(1);
-        setPhase('backing_up');
-        setProgress(10);
+        setFailedStep(reusableBackup ? 2 : 1);
+        updatePhase(reusableBackup ? 'downloading' : 'backing_up');
+        setProgress(reusableBackup ? 25 : 10);
         setErrorMessage('');
-        setStatusMessage('Tahap 1/3: Membuat cadangan (auto-backup) database & berkas sebelum pembaharuan...');
+        setStatusMessage(
+            reusableBackup
+                ? 'Tahap 2/3: Menggunakan cadangan database sebelumnya & melanjutkan unduhan installer...'
+                : 'Tahap 1/3: Membuat cadangan (auto-backup) database & berkas sebelum pembaharuan...'
+        );
 
         startPollingProgress(updateId, initialVersion);
 
         try {
             if (updateMode === 'online') {
-                const res = await axios.post(route('system-update.start-online'), {
-                    update_id: updateId,
-                });
+                const res = await axios.post(
+                    route('system-update.start-online'),
+                    {
+                        update_id: updateId,
+                        reuse_backup_file: reusableBackup,
+                    },
+                    { timeout: 0 }
+                );
                 handleLaunchResponse(res.data, 'Gagal memulai proses pembaharuan online.');
             } else {
                 if (!manualFile) {
                     stopPolling();
-                    setPhase('error');
+                    updatePhase('error');
                     setErrorMessage('Berkas installer (.exe) belum dipilih.');
                     return;
                 }
@@ -276,6 +324,7 @@ export default function SystemUpdateIndex({ updateInfo: initialUpdateInfo, backu
                 formData.append('installer_file', manualFile);
 
                 const res = await axios.post(route('system-update.upload-manual'), formData, {
+                    timeout: 0,
                     headers: { 'Content-Type': 'multipart/form-data' },
                     onUploadProgress: (progressEvent) => {
                         if (progressEvent.total) {
@@ -288,12 +337,30 @@ export default function SystemUpdateIndex({ updateInfo: initialUpdateInfo, backu
                 handleLaunchResponse(res.data, 'Gagal memproses berkas installer manual.');
             }
         } catch (err: any) {
-            if (!err?.response && phase === 'installing') {
-                serverRestartSeenRef.current = true;
-                return;
+            if (!err?.response) {
+                if (phaseRef.current === 'installing') {
+                    serverRestartSeenRef.current = true;
+                    return;
+                }
+                // Jika koneksi POST start-online terputus karena unduhan > 1 GB berjalan sangat lama,
+                // biarkan polling progress yang terus memantau proses di background (ignore_user_abort=true).
+                if (
+                    updateMode === 'online' &&
+                    (phaseRef.current === 'backing_up' ||
+                        phaseRef.current === 'downloading' ||
+                        phaseRef.current === 'verifying')
+                ) {
+                    return;
+                }
+            }
+            if (err?.response?.data?.backup_file) {
+                setCreatedBackupFile(err.response.data.backup_file);
+            }
+            if (typeof err?.response?.data?.failed_step === 'number') {
+                setFailedStep(err.response.data.failed_step);
             }
             stopPolling();
-            setPhase('error');
+            updatePhase('error');
             setErrorMessage(
                 err?.response?.data?.message ||
                     err?.message ||
@@ -308,7 +375,7 @@ export default function SystemUpdateIndex({ updateInfo: initialUpdateInfo, backu
         if (isBusy) return;
         stopPolling();
         setShowModal(false);
-        setPhase('idle');
+        updatePhase('idle');
     };
 
     const getStepStatus = (stepNumber: 1 | 2 | 3 | 4): 'waiting' | 'active' | 'done' | 'error' => {
@@ -595,7 +662,7 @@ export default function SystemUpdateIndex({ updateInfo: initialUpdateInfo, backu
                             />
                             <div className="rounded-[20px] border-2 border-dashed border-slate-200 bg-slate-50/60 p-5 text-center transition hover:border-brand-400 dark:border-white/10 dark:bg-white/[0.02]">
                                 <p className="text-[12px] font-bold text-slate-700 dark:text-slate-200">
-                                    Pilih Berkas Installer <code className="rounded bg-slate-200/70 px-1.5 py-0.5 text-[11px] font-extrabold text-brand-600 dark:bg-white/10 dark:text-brand-300">newSIKAS_Installer_*.exe</code>
+                                    Pilih Berkas Full Installer (<code className="rounded bg-slate-200/70 px-1.5 py-0.5 text-[11px] font-extrabold text-brand-600 dark:bg-white/10 dark:text-brand-300">newSIKAS_Installer_*.exe</code>) atau Patch (<code className="rounded bg-slate-200/70 px-1.5 py-0.5 text-[11px] font-extrabold text-brand-600 dark:bg-white/10 dark:text-brand-300">newSIKAS_Patch_*.exe</code>)
                                 </p>
                                 <p className="mt-1 text-[10.5px] font-medium text-slate-400 dark:text-slate-500">
                                     Sistem akan tetap membuat Auto-Backup database otomatis sebelum menjalankan installer.
@@ -631,7 +698,7 @@ export default function SystemUpdateIndex({ updateInfo: initialUpdateInfo, backu
                                         ✓
                                     </span>
                                     <span>
-                                        <strong>Database Sekolah 100% Aman:</strong> Folder <code className="text-[10.5px] font-bold">dbapp</code> PostgreSQL dikunci agar tidak pernah tertimpa oleh installer baru.
+                                        <strong>Database Sekolah 100% Aman:</strong> Database dikunci agar tidak pernah tertimpa oleh installer baru.
                                     </span>
                                 </li>
                                 <li className="flex items-start gap-2.5">
@@ -647,7 +714,7 @@ export default function SystemUpdateIndex({ updateInfo: initialUpdateInfo, backu
                                         ✓
                                     </span>
                                     <span>
-                                        <strong>Lisensi NPSN Tetap Tersimpan:</strong> Konfigurasi lisensi sekolah di <code className="text-[10.5px] font-bold">ProgramData\SIKAS</code> tetap dipertahankan tanpa perlu aktivasi ulang.
+                                        <strong>Lisensi NPSN Tetap Tersimpan:</strong> Konfigurasi lisensi sekolah tetap dipertahankan tanpa perlu aktivasi ulang.
                                     </span>
                                 </li>
                             </ul>
@@ -802,7 +869,7 @@ export default function SystemUpdateIndex({ updateInfo: initialUpdateInfo, backu
                                         {
                                             step: 3 as const,
                                             label: 'Tahap 3: Memasang Pembaharuan & Migrasi Skema Database',
-                                            sub: 'Menjalankan Inno Setup (/VERYSILENT /UPDATE) & me-restart Apache',
+                                            sub: 'Menjalankan Installer & me-restart Server',
                                         },
                                         {
                                             step: 4 as const,
@@ -866,6 +933,11 @@ export default function SystemUpdateIndex({ updateInfo: initialUpdateInfo, backu
                                     {phase === 'error' && (
                                         <>
                                             <SecondaryButton onClick={closeModal}>Tutup</SecondaryButton>
+                                            {failedStep === 3 && (
+                                                <SecondaryButton onClick={() => window.location.reload()}>
+                                                    Muat Ulang Halaman
+                                                </SecondaryButton>
+                                            )}
                                             <PrimaryButton onClick={executeUpdate}>Coba Lagi</PrimaryButton>
                                         </>
                                     )}

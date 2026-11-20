@@ -4,10 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Config\VariantConfig;
 use App\Models\SekolahProfile;
+use App\Services\BkuArkasDisplayService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 
@@ -55,7 +55,8 @@ class BhmController extends Controller
             }
 
             $bulanTarget = $this->tentukanBulanDariPeriode($periode, $jenisLaporan);
-            $bhmData = $this->getBhmTransactions($penganggaran->id, $tahun, $bulanTarget);
+            $isArkasMode = app(BkuArkasDisplayService::class)->isArkasMode($request);
+            $bhmData = $this->getBhmTransactions($penganggaran->id, $tahun, $bulanTarget, $isArkasMode);
             $tanggalPeriode = $this->tentukanTanggalPeriode($periode, $tahun, $jenisLaporan);
 
             return response()->json([
@@ -96,7 +97,8 @@ class BhmController extends Controller
             $sekolah = SekolahProfile::first();
 
             $bulanTarget = $this->tentukanBulanDariPeriode($periode, $jenisLaporan);
-            $bhmData = $this->getBhmTransactions($penganggaran->id, $tahun, $bulanTarget);
+            $isArkasMode = app(BkuArkasDisplayService::class)->isArkasMode($request);
+            $bhmData = $this->getBhmTransactions($penganggaran->id, $tahun, $bulanTarget, $isArkasMode);
 
             $periodeInfo = $this->tentukanTanggalPeriode($periode, $tahun, $jenisLaporan);
             if ($jenisLaporan === 'tahunan') {
@@ -161,39 +163,64 @@ class BhmController extends Controller
     /**
      * Fetch transactions and map to flat list for BHM
      */
-    private function getBhmTransactions($penganggaranId, $tahun, $bulanTarget)
+    private function getBhmTransactions($penganggaranId, $tahun, $bulanTarget, bool $isArkasMode = false)
     {
+        $displayService = app(BkuArkasDisplayService::class);
+        $rkasMaps = $isArkasMode ? $displayService->loadRkasArkasMaps($this->variant, (int) $penganggaranId) : null;
+
         // Get BKU with '5.2' code (Barang Modal / Aset)
         $transaksis = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $penganggaranId)
             ->whereYear('tanggal_transaksi', $tahun)
-            ->whereIn(DB::raw('EXTRACT(MONTH FROM tanggal_transaksi)'), $bulanTarget)
+            ->where(function ($query) use ($bulanTarget) {
+                foreach ($bulanTarget as $monthNum) {
+                    $query->orWhereMonth('tanggal_transaksi', $monthNum);
+                }
+            })
             ->where('is_bunga_record', false)
             ->whereHas('rekeningBelanja', function ($q) {
                 $q->where('kode_rekening', 'like', '5.2%');
             })
-            ->with(['kodeKegiatan', 'rekeningBelanja', 'uraianDetails'])
+            ->with(['kodeKegiatan', 'rekeningBelanja', 'uraianDetails.kodeKegiatan', 'uraianDetails.rekeningBelanja'])
             ->orderBy('tanggal_transaksi', 'asc')
             ->get();
 
         $flattened = [];
 
         foreach ($transaksis as $bku) {
-            foreach ($bku->uraianDetails as $detail) {
-                // Determine code, fallback to parent if detail is empty
-                $kegiatan = $detail->kodeKegiatan ?? $bku->kodeKegiatan;
-                $rekening = $detail->rekeningBelanja ?? $bku->rekeningBelanja;
+            $noBukti = $displayService->resolveNoBukti($bku, $isArkasMode);
 
-                $flattened[] = [
-                    'tanggal' => Carbon::parse($bku->tanggal_transaksi)->format('d-m-Y'),
-                    'kode_kegiatan' => $kegiatan ? $kegiatan->kode : '-',
-                    'kode_rekening' => $rekening ? $rekening->kode_rekening : '-',
-                    'no_bukti' => $bku->id_transaksi,
-                    'uraian' => $detail->uraian,
-                    'volume' => (int) $detail->volume,
-                    'satuan' => $detail->satuan,
-                    'harga_satuan' => $detail->harga_satuan,
-                    'jumlah' => $detail->jumlah, // Realisasi
-                ];
+            if ($isArkasMode) {
+                foreach ($displayService->expandArkasItems($bku, $rkasMaps, false) as $expItem) {
+                    $flattened[] = [
+                        'tanggal' => Carbon::parse($bku->tanggal_transaksi)->format('d-m-Y'),
+                        'kode_kegiatan' => $expItem['kode_kegiatan'],
+                        'kode_rekening' => $expItem['kode_rekening'],
+                        'no_bukti' => $noBukti,
+                        'uraian' => $expItem['uraian'],
+                        'volume' => $expItem['volume'],
+                        'satuan' => $expItem['satuan'],
+                        'harga_satuan' => $expItem['harga_satuan'],
+                        'jumlah' => $expItem['jumlah'],
+                    ];
+                }
+            } else {
+                foreach ($bku->uraianDetails as $detail) {
+                    // Determine code, fallback to parent if detail is empty
+                    $kegiatan = $detail->kodeKegiatan ?? $bku->kodeKegiatan;
+                    $rekening = $detail->rekeningBelanja ?? $bku->rekeningBelanja;
+
+                    $flattened[] = [
+                        'tanggal' => Carbon::parse($bku->tanggal_transaksi)->format('d-m-Y'),
+                        'kode_kegiatan' => $kegiatan ? $kegiatan->kode : '-',
+                        'kode_rekening' => $rekening ? $rekening->kode_rekening : '-',
+                        'no_bukti' => $noBukti,
+                        'uraian' => $detail->uraian,
+                        'volume' => (int) $detail->volume,
+                        'satuan' => $detail->satuan,
+                        'harga_satuan' => $detail->harga_satuan,
+                        'jumlah' => $detail->jumlah, // Realisasi
+                    ];
+                }
             }
         }
 

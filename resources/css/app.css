@@ -91,6 +91,27 @@
   .perspective-1000 {
     perspective: 1000px;
   }
+
+  /* Kompensasi tinggi viewport penuh saat skala 80% (zoom: 0.8) aktif di layar >= 1024px */
+  @media (min-width: 1024px) {
+    .min-h-screen {
+      min-height: 125vh;
+    }
+
+    .h-screen {
+      height: 125vh;
+    }
+  }
+
+  @media print {
+    .min-h-screen {
+      min-height: auto !important;
+    }
+
+    .h-screen {
+      height: auto !important;
+    }
+  }
 }
 
 /* Smooth anchor scroll hanya aktif saat halaman landing terpasang. */
@@ -139,6 +160,8 @@ html.landing-active {
   }
  
   .dark {
+    color-scheme: dark;
+
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
  
@@ -170,34 +193,57 @@ html.landing-active {
 }
  
 @layer base {
+  html {
+    font-size: 15px;
+  }
+
+  /* Desktop, Laptop & Notebook: skala tampilan 80% otomatis setara browser zoom 80% */
+  @media (min-width: 1024px) {
+    html {
+      font-size: 16px;
+      zoom: 0.8;
+    }
+  }
+
+  @media print {
+    html {
+      font-size: 16px !important;
+      zoom: 1 !important;
+    }
+  }
+
   * {
     @apply border-border;
   }
   body {
     @apply bg-background text-foreground;
   }
+
+  .dark select option,
+  .dark select optgroup {
+    background-color: #15131f;
+    color: #f8fafc;
+  }
 }
 
 /* ==========================================================================
-   Auth pages (Login / Register) — "Paper & Clay"
-   Scoped tokens, hand-made texture, and motion. Aditif: hanya dipakai oleh
+   Auth pages (Login / Register / Recovery) — "Midnight Teal & Mint Aqua"
+   Serasi dengan tema Welcome. Aditif: hanya dipakai oleh
    Layouts/GuestLayout + Components/Auth + Pages/Auth/*.
    ========================================================================== */
 
 @layer base {
   .auth-shell {
-    --auth-paper: #faf4e8;
-    --auth-paper-deep: #f3ead9;
-    --auth-card: #fffdf8;
-    --auth-ink: #221c33;
-    --auth-ink-soft: #6b6178;
-    --auth-violet: #6d4de0;
-    --auth-violet-deep: #4a2fb0;
-    --auth-lilac: #e5dbff;
-    --auth-peach: #f3a87c;
-    --auth-sage: #8fae8b;
-    --auth-gold: #e7c069;
-    --auth-line: rgba(34, 28, 51, 0.1);
+    --auth-paper: #f8fbfb;
+    --auth-paper-deep: #eaf4f4;
+    --auth-card: #ffffff;
+    --auth-ink: #08222b;
+    --auth-ink-soft: #45636d;
+    --auth-teal: #146670;
+    --auth-teal-deep: #0b414a;
+    --auth-mint: #8be6dc;
+    --auth-mint-soft: #d5eaea;
+    --auth-line: rgba(8, 34, 43, 0.1);
 
     background-color: var(--auth-paper);
     color: var(--auth-ink);
@@ -208,23 +254,23 @@ html.landing-active {
   }
 
   .auth-shell ::selection {
-    background: #e5dbff;
-    color: #221c33;
+    background: rgba(139, 230, 220, 0.38);
+    color: #06222b;
   }
 }
 
 @layer utilities {
-  /* Pasir kertas: noise halus supaya bidang besar tidak terasa digital. */
+  /* Pasir halus untuk tekstur permukaan. */
   .auth-grain {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.42'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.35'/%3E%3C/svg%3E");
     background-size: 160px 160px;
-    opacity: 0.07;
+    opacity: 0.05;
     mix-blend-mode: multiply;
   }
 
-  /* Titik-titik tipis ala kertas buku tulis, bukan grid neon. */
+  /* Titik-titik tipis bernuansa teal lembut. */
   .auth-dots {
-    background-image: radial-gradient(rgba(34, 28, 51, 0.16) 1px, transparent 1px);
+    background-image: radial-gradient(rgba(11, 65, 74, 0.14) 1px, transparent 1px);
     background-size: 20px 20px;
   }
 
@@ -289,7 +335,7 @@ html.landing-active {
   }
 
   .auth-link:focus-visible {
-    outline: 2px solid #6d4de0;
+    outline: 2px solid #146670;
     outline-offset: 3px;
     border-radius: 3px;
   }
@@ -301,7 +347,7 @@ html.landing-active {
     bottom: -30%;
     left: -60%;
     width: 45%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.24), transparent);
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.42), transparent);
     transform: skewX(-18deg);
     opacity: 0;
     pointer-events: none;
@@ -311,13 +357,13 @@ html.landing-active {
     animation: authSheen 0.95s cubic-bezier(0.22, 1, 0.36, 1);
   }
 
-  /* Autofill browser tetap memakai warna kertas, bukan biru default. */
+  /* Autofill browser tetap memakai warna ice-white, bukan biru default. */
   .auth-input:-webkit-autofill,
   .auth-input:-webkit-autofill:hover,
   .auth-input:-webkit-autofill:focus {
-    -webkit-text-fill-color: #221c33;
-    -webkit-box-shadow: 0 0 0 1000px #fffcf5 inset;
-    caret-color: #221c33;
+    -webkit-text-fill-color: #08222b;
+    -webkit-box-shadow: 0 0 0 1000px #f8fbfb inset;
+    caret-color: #08222b;
     transition: background-color 9999s ease-out 0s;
   }
 
@@ -479,12 +525,6 @@ html.landing-active {
   transition: all 200ms ease;
 }
 
-.bento-tab-active {
-  background-color: #7c5cff;
-  color: #ffffff;
-  box-shadow: 0 10px 25px -10px rgba(124, 92, 255, 0.5);
-}
-
 .bento-tab-inactive {
   color: #64748b;
 }
@@ -503,53 +543,6 @@ html.landing-active {
   background-color: rgba(255, 255, 255, 0.06);
 }
 
-/* Global Modern Table Surface Enhancement */
-.bento-table-wrapper {
-  overflow: hidden;
-  border-radius: 1.5rem;
-  border: 1px solid rgba(226, 232, 240, 0.8);
-  background: #ffffff;
-}
-
-.dark .bento-table-wrapper {
-  border-color: rgba(255, 255, 255, 0.08);
-  background: #151324;
-}
-
-.bento-table-wrapper table th {
-  background-color: rgba(248, 250, 252, 0.8);
-  font-weight: 600;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #64748b;
-  border-bottom: 1px solid rgba(226, 232, 240, 0.8);
-  padding: 0.875rem 1rem;
-}
-
-.dark .bento-table-wrapper table th {
-  background-color: rgba(255, 255, 255, 0.03);
-  color: #94a3b8;
-  border-bottom-color: rgba(255, 255, 255, 0.08);
-}
-
-.bento-table-wrapper table tbody tr {
-  transition: background-color 150ms ease;
-  border-bottom: 1px solid rgba(241, 245, 249, 0.8);
-}
-
-.dark .bento-table-wrapper table tbody tr {
-  border-bottom-color: rgba(255, 255, 255, 0.04);
-}
-
-.bento-table-wrapper table tbody tr:hover {
-  background-color: rgba(248, 250, 252, 0.9);
-}
-
-.dark .bento-table-wrapper table tbody tr:hover {
-  background-color: rgba(255, 255, 255, 0.04);
-}
-
 /* ==========================================================================
    SIKAS App Shell v2 — "Neo-Bento Full-Color"
    Lapisan aditif (2026-11-12): token & utilitas untuk seluruh halaman aplikasi.
@@ -564,7 +557,13 @@ html.landing-active {
     radial-gradient(50rem 34rem at 96% 4%, rgba(216, 242, 117, 0.28), transparent 62%),
     radial-gradient(46rem 30rem at 82% 92%, rgba(255, 180, 137, 0.2), transparent 65%),
     radial-gradient(40rem 28rem at 18% 96%, rgba(124, 92, 255, 0.14), transparent 60%);
-  background-attachment: fixed;
+  background-attachment: scroll;
+}
+
+@media (min-width: 1024px) {
+  .sikas-canvas {
+    background-attachment: fixed;
+  }
 }
 
 .dark .sikas-canvas {

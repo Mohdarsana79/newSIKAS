@@ -1,9 +1,17 @@
+export type ModulePermissionLevel = 'none' | 'read' | 'write';
+
+export interface PermissionMatrixData {
+    modules: Record<string, ModulePermissionLevel>;
+    abilities: Record<string, boolean>;
+}
+
 export interface User {
     id: number;
     name: string;
     email: string;
     username: string;
     role?: string;
+    role_name?: string;
     is_kepala_sekolah?: boolean;
     is_bendahara?: boolean;
     is_security_code_enabled: boolean;
@@ -28,6 +36,16 @@ export type PageProps<
 > = T & {
     auth: {
         user: User;
+        permissions?: PermissionMatrixData & {
+            has_custom_override?: boolean;
+        };
     };
     sekolah?: SharedSekolah | null;
+    flash?: {
+        success?: string | null;
+        warning?: string | null;
+        error?: string | null;
+        show_changelog?: unknown;
+        arkas_sync_report?: unknown;
+    };
 };

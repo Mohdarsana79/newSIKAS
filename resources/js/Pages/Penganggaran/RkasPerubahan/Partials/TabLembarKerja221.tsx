@@ -2,16 +2,18 @@ import React, { Fragment } from 'react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import DocKopSuratHeader from '@/Components/DocKopSuratHeader';
+import { getDisplayUraian } from '@/Utils/rkasUraian';
 
 
 interface TabLembarKerja221Props {
     anggaran: any;
     lembarData: any;
     totalBelanja: any;
+    showArkasUraian?: boolean;
     onPrint: (target: string) => void;
 }
 
-export default function TabLembarKerja221({ anggaran, lembarData, totalBelanja, onPrint }: TabLembarKerja221Props) {
+export default function TabLembarKerja221({ anggaran, lembarData, totalBelanja, showArkasUraian = false, onPrint }: TabLembarKerja221Props) {
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('id-ID').format(amount);
     };
@@ -126,7 +128,7 @@ export default function TabLembarKerja221({ anggaran, lembarData, totalBelanja, 
                                                     {lembarData && lembarData.map((row: any, idx: number) => (
                                                         <tr key={idx} className={`divide - x divide - gray - 900 dark: divide - gray - 600 ${row.type === 'header' ? 'bg-slate-50 dark:bg-white/5 font-bold' : 'bg-white dark:bg-[#15131F]'} `}>
                                                             <td className="px-3 py-1.5 align-top">{row.kode_rekening}</td>
-                                                            <td className="px-3 py-1.5 align-top">{row.uraian}</td>
+                                                            <td className="px-3 py-1.5 align-top">{row.type === 'item' ? getDisplayUraian(row, showArkasUraian) : row.uraian}</td>
 
                                                             <td className="px-2 py-1.5 text-center align-top">{row.volume}</td>
                                                             <td className="px-2 py-1.5 text-center align-top">{row.satuan}</td>

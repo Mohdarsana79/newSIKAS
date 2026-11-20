@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Config\VariantConfig;
 use App\Models\SekolahProfile; // CHANGED FROM Sekolah
+use App\Services\BkuArkasDisplayService;
 use App\Services\BukuKasService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
@@ -58,60 +59,15 @@ class BukuRobController extends Controller
             $bulan = ucfirst(strtolower($bulan));
             $bulanAngka = $this->convertBulanToNumber($bulan);
             $saldoAwal = $this->hitungSaldoAwalRob($penganggaran->id, $tahun, $bulan);
+            $isArkasMode = app(BkuArkasDisplayService::class)->isArkasMode($request);
 
-            // Fetch BKU Records - FIXED Logic for is_bunga_record
-            $bkuData = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
-                ->whereMonth('tanggal_transaksi', $bulanAngka)
-                ->whereYear('tanggal_transaksi', $tahun)
-                ->where(function ($query) {
-                    $query->where('is_bunga_record', false)->orWhereNull('is_bunga_record');
-                })
-                ->with(['rekeningBelanja', 'kodeKegiatan'])
-                ->orderBy('rekening_belanja_id') // Corrected Column
-                ->orderBy('tanggal_transaksi')
-                ->get();
-
-            Log::info('BKU Data Count for ROB: '.$bkuData->count());
-
-            $robData = [];
-            $totalRealisasi = 0;
-            $runningTotal = 0;
-
-            foreach ($bkuData as $transaksi) {
-                // Safe navigation for relationships
-                $kodeRekening = $transaksi->rekeningBelanja?->kode_rekening ?? 'N/A';
-                $namaRekening = $transaksi->rekeningBelanja?->rincian_objek ?? 'N/A';
-
-                // Skip items without valid account code if they shouldn't be here (optional)
-                if ($kodeRekening === 'N/A') {
-                    Log::warning("Skipping transaction ID {$transaksi->id} due to missing Rekening Belanja");
-
-                    continue;
-                }
-
-                if (! isset($robData[$kodeRekening])) {
-                    $robData[$kodeRekening] = [
-                        'kode' => $kodeRekening,
-                        'nama_rekening' => $namaRekening,
-                        'transaksi' => [],
-                        'total_realisasi' => 0,
-                    ];
-                }
-
-                $realisasi = $transaksi->total_transaksi_kotor;
-                $runningTotal += $realisasi;
-                $totalRealisasi += $realisasi;
-                $robData[$kodeRekening]['total_realisasi'] += $realisasi;
-
-                $robData[$kodeRekening]['transaksi'][] = [
-                    'tanggal' => $transaksi->tanggal_transaksi->format('d-m-Y'),
-                    'no_bukti' => $transaksi->id_transaksi ?? $transaksi->id, // Fallback ID
-                    'uraian' => $transaksi->uraian_opsional ?? $transaksi->uraian,
-                    'realisasi' => $realisasi,
-                    'jumlah' => $runningTotal,
-                    'sisa_anggaran' => $saldoAwal - $runningTotal,
-                ];
-            }
+            [$robData, $totalRealisasi] = $this->buildRobDataForMonth(
+                $penganggaran->id,
+                $tahun,
+                $bulanAngka,
+                $saldoAwal,
+                $isArkasMode
+            );
 
             // HTML return is kept empty if view doesn't exist, to prevent error.
             // If user has the view, they can uncomment or I can wrap in try-catch
@@ -182,57 +138,19 @@ class BukuRobController extends Controller
             }
 
             $reports = [];
+            $isArkasMode = app(BkuArkasDisplayService::class)->isArkasMode($request);
 
             foreach ($monthsToProcess as $bulan) {
                 $bulanAngka = $this->convertBulanToNumber($bulan);
                 $saldoAwal = $this->hitungSaldoAwalRob($penganggaran->id, $tahun, $bulan);
 
-                $bkuData = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
-                    ->whereMonth('tanggal_transaksi', $bulanAngka)
-                    ->whereYear('tanggal_transaksi', $tahun)
-                    ->where(function ($query) {
-                        $query->where('is_bunga_record', false)->orWhereNull('is_bunga_record');
-                    })
-                    ->with(['rekeningBelanja', 'kodeKegiatan'])
-                    ->orderBy('rekening_belanja_id')
-                    ->orderBy('tanggal_transaksi')
-                    ->get();
-
-                $robData = [];
-                $totalRealisasi = 0;
-                $runningTotal = 0;
-
-                foreach ($bkuData as $transaksi) {
-                    $kodeRekening = $transaksi->rekeningBelanja?->kode_rekening ?? 'N/A';
-                    $namaRekening = $transaksi->rekeningBelanja?->rincian_objek ?? 'N/A';
-
-                    if ($kodeRekening === 'N/A') {
-                        continue;
-                    }
-
-                    if (! isset($robData[$kodeRekening])) {
-                        $robData[$kodeRekening] = [
-                            'kode' => $kodeRekening,
-                            'nama_rekening' => $namaRekening,
-                            'transaksi' => [],
-                            'total_realisasi' => 0,
-                        ];
-                    }
-
-                    $realisasi = $transaksi->total_transaksi_kotor;
-                    $runningTotal += $realisasi;
-                    $totalRealisasi += $realisasi;
-                    $robData[$kodeRekening]['total_realisasi'] += $realisasi;
-
-                    $robData[$kodeRekening]['transaksi'][] = [
-                        'tanggal' => $transaksi->tanggal_transaksi->format('d-m-Y'),
-                        'no_bukti' => $transaksi->id_transaksi ?? $transaksi->id,
-                        'uraian' => $transaksi->uraian_opsional ?? $transaksi->uraian,
-                        'realisasi' => $realisasi,
-                        'jumlah' => $runningTotal,
-                        'sisa_anggaran' => $saldoAwal - $runningTotal,
-                    ];
-                }
+                [$robData, $totalRealisasi] = $this->buildRobDataForMonth(
+                    $penganggaran->id,
+                    $tahun,
+                    $bulanAngka,
+                    $saldoAwal,
+                    $isArkasMode
+                );
 
                 // Ambil tanggal tutup BKU jika ada
                 $bungaRecord = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
@@ -337,6 +255,89 @@ class BukuRobController extends Controller
 
             return 0;
         }
+    }
+
+    /**
+     * Bangun data transaksi BKP ROB untuk satu bulan dalam mode SIKAS atau ARKAS.
+     *
+     * @return array{0: array<string, mixed>, 1: float}
+     */
+    private function buildRobDataForMonth(int $penganggaranId, int|string $tahun, int $bulanAngka, float $saldoAwal, bool $isArkasMode = false): array
+    {
+        $displayService = app(BkuArkasDisplayService::class);
+        $rkasMaps = $isArkasMode ? $displayService->loadRkasArkasMaps($this->variant, $penganggaranId) : null;
+
+        $bkuData = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $penganggaranId)
+            ->whereMonth('tanggal_transaksi', $bulanAngka)
+            ->whereYear('tanggal_transaksi', $tahun)
+            ->where(function ($query) {
+                $query->where('is_bunga_record', false)->orWhereNull('is_bunga_record');
+            })
+            ->with(['rekeningBelanja', 'kodeKegiatan', 'uraianDetails.kodeKegiatan', 'uraianDetails.rekeningBelanja'])
+            ->orderBy('rekening_belanja_id')
+            ->orderBy('tanggal_transaksi')
+            ->get();
+
+        $robData = [];
+        $totalRealisasi = 0.0;
+        $runningTotal = 0.0;
+
+        foreach ($bkuData as $transaksi) {
+            $kodeRekening = $transaksi->rekeningBelanja?->kode_rekening ?? 'N/A';
+            $namaRekening = $transaksi->rekeningBelanja?->rincian_objek ?? 'N/A';
+
+            if ($kodeRekening === 'N/A') {
+                Log::warning("Skipping transaction ID {$transaksi->id} due to missing Rekening Belanja");
+
+                continue;
+            }
+
+            if (! isset($robData[$kodeRekening])) {
+                $robData[$kodeRekening] = [
+                    'kode' => $kodeRekening,
+                    'nama_rekening' => $namaRekening,
+                    'transaksi' => [],
+                    'total_realisasi' => 0,
+                ];
+            }
+
+            $noBukti = $displayService->resolveNoBukti($transaksi, $isArkasMode, (string) $transaksi->id);
+
+            if ($isArkasMode) {
+                $expandedItems = $displayService->expandArkasItems($transaksi, $rkasMaps);
+                foreach ($expandedItems as $expItem) {
+                    $realisasi = (float) $expItem['jumlah'];
+                    $runningTotal += $realisasi;
+                    $totalRealisasi += $realisasi;
+                    $robData[$kodeRekening]['total_realisasi'] += $realisasi;
+
+                    $robData[$kodeRekening]['transaksi'][] = [
+                        'tanggal' => $transaksi->tanggal_transaksi->format('d-m-Y'),
+                        'no_bukti' => $noBukti,
+                        'uraian' => $expItem['uraian'],
+                        'realisasi' => $realisasi,
+                        'jumlah' => $runningTotal,
+                        'sisa_anggaran' => $saldoAwal - $runningTotal,
+                    ];
+                }
+            } else {
+                $realisasi = (float) $transaksi->total_transaksi_kotor;
+                $runningTotal += $realisasi;
+                $totalRealisasi += $realisasi;
+                $robData[$kodeRekening]['total_realisasi'] += $realisasi;
+
+                $robData[$kodeRekening]['transaksi'][] = [
+                    'tanggal' => $transaksi->tanggal_transaksi->format('d-m-Y'),
+                    'no_bukti' => $noBukti,
+                    'uraian' => $transaksi->uraian_opsional ?? $transaksi->uraian,
+                    'realisasi' => $realisasi,
+                    'jumlah' => $runningTotal,
+                    'sisa_anggaran' => $saldoAwal - $runningTotal,
+                ];
+            }
+        }
+
+        return [$robData, $totalRealisasi];
     }
 
     // Helper methods (proxies to service)

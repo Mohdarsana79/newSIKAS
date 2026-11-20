@@ -3,6 +3,18 @@
 return [
     /*
     |--------------------------------------------------------------------------
+    | Mode Lisensi NPSN
+    |--------------------------------------------------------------------------
+    | Atur LICENSE_ENABLED=false di .env jika aplikasi dijalankan bebas di VPS/server sendiri
+    | tanpa verifikasi whitelist NPSN. Nilai APP_NPSN_CODE dibaca lewat config() agar aman
+    | ketika `php artisan config:cache` aktif.
+    */
+    'enabled' => filter_var(env('LICENSE_ENABLED', true), FILTER_VALIDATE_BOOLEAN),
+
+    'npsn_code' => trim((string) env('APP_NPSN_CODE', '')),
+
+    /*
+    |--------------------------------------------------------------------------
     | Whitelist NPSN Berlisensi Resmi
     |--------------------------------------------------------------------------
     | Daftar NPSN sekolah yang resmi memiliki lisensi untuk menjalankan SIKAS.

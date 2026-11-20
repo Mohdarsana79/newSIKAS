@@ -3,9 +3,9 @@
 namespace App\Console\Commands;
 
 use App\Models\RefBarang;
+use App\Services\ArkasEngineService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
-use Symfony\Component\Process\Process;
 
 class SyncArkasCatalogCommand extends Command
 {
@@ -27,59 +27,11 @@ class SyncArkasCatalogCommand extends Command
         $year = (string) $this->option('year');
         $this->info("Memulai sinkronisasi katalog ARKAS (Tahun: {$year})...");
 
-        $pythonPath = storage_path('app/arkas_engine/python.exe');
-        $scriptPath = storage_path('app/arkas_engine/query.py');
-
-        if (! file_exists($pythonPath) || ! file_exists($scriptPath)) {
-            $this->error('Engine python ARKAS tidak ditemukan di direktori storage/app/arkas_engine.');
-
-            return 1;
-        }
-
-        $env = $_SERVER;
-        unset($env['OPENSSL_CONF']);
-
-        $appdata = $env['APPDATA'] ?? null;
-        $userprofile = $env['USERPROFILE'] ?? null;
-
-        if (empty($appdata)) {
-            $appdata = trim(shell_exec("powershell -Command \"[Environment]::GetFolderPath('ApplicationData')\""));
-        }
-        if (empty($userprofile)) {
-            $userprofile = trim(shell_exec("powershell -Command \"[Environment]::GetFolderPath('UserProfile')\""));
-        }
-        if (empty($userprofile) && ! empty($appdata)) {
-            $userprofile = dirname(dirname($appdata));
-        }
-        if (empty($appdata) && ! empty($userprofile)) {
-            $appdata = $userprofile.'\\AppData\\Roaming';
-        }
-
-        $env['SystemRoot'] = $env['SystemRoot'] ?? 'C:\\Windows';
-        $env['SystemDrive'] = $env['SystemDrive'] ?? 'C:';
-        $env['USERPROFILE'] = ! empty($userprofile) ? $userprofile : ($env['USERPROFILE'] ?? 'C:\\Users\\Digitalisasi');
-        $env['APPDATA'] = ! empty($appdata) ? $appdata : ($env['APPDATA'] ?? 'C:\\Users\\Digitalisasi\\AppData\\Roaming');
-
-        $dbPathManual = env('ARKAS_DB_PATH', '');
-        $dbPathManual = trim($dbPathManual, '"\' ');
-        $dbPathManual = str_replace('\\', '/', $dbPathManual);
-
         $this->info('Mengeksekusi engine query ARKAS SQLite...');
-        $process = new Process([$pythonPath, $scriptPath, '__ALL__', $year, $dbPathManual], null, $env);
-        $process->setTimeout(300); // 5 menit untuk dump besar
-        $process->run();
-
-        if (! $process->isSuccessful()) {
-            $this->error('Gagal mengeksekusi engine ARKAS: '.$process->getErrorOutput());
-
-            return 1;
-        }
-
-        $output = $process->getOutput();
-        $result = json_decode($output, true);
+        $result = app(ArkasEngineService::class)->runScriptRaw('query.py', ['__ALL__', $year], 300);
 
         if (! $result || ! isset($result['data'])) {
-            $this->error('Format data dari engine ARKAS tidak valid atau error: '.($result['error'] ?? 'Unknown error'));
+            $this->error('Format data dari engine ARKAS tidak valid atau error: '.($result['error'] ?? $result['message'] ?? 'Unknown error'));
 
             return 1;
         }

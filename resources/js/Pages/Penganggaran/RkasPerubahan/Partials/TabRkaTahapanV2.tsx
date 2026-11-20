@@ -2,15 +2,17 @@ import { Fragment } from 'react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import DocKopSuratHeader from '@/Components/DocKopSuratHeader';
+import { getDisplayUraian } from '@/Utils/rkasUraian';
 
 interface TabRkaTahapanV2Props {
     anggaran: any;
     tahapanData: any;
+    showArkasUraian?: boolean;
     onPrint: (target: string) => void;
     onExportExcel: (target: string) => void;
 }
 
-export default function TabRkaTahapanV2({ anggaran, tahapanData, onPrint, onExportExcel }: TabRkaTahapanV2Props) {
+export default function TabRkaTahapanV2({ anggaran, tahapanData, showArkasUraian = false, onPrint, onExportExcel }: TabRkaTahapanV2Props) {
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('id-ID').format(amount);
     };
@@ -245,7 +247,7 @@ export default function TabRkaTahapanV2({ anggaran, tahapanData, onPrint, onExpo
                                                                         <td className="px-2 py-2 text-center text-slate-600 dark:text-slate-400"></td>
                                                                         <td className="px-2 py-2 text-sm text-slate-800 dark:text-slate-200">{item.kode_rekening}</td>
                                                                         <td className="px-2 py-2 text-center text-sm text-slate-800 dark:text-slate-200">{urProgram.urCode}</td>
-                                                                        <td className="px-4 py-2 text-sm text-slate-800 dark:text-slate-200">{item.uraian}</td>
+                                                                        <td className="px-4 py-2 text-sm text-slate-800 dark:text-slate-200">{getDisplayUraian(item, showArkasUraian)}</td>
 
                                                                         <td className="px-2 py-2 text-center text-sm text-slate-600 dark:text-slate-400 font-bold">{volTotal}</td>
                                                                         <td className="px-2 py-2 text-center text-sm text-slate-600 dark:text-slate-400">{volT1}</td>

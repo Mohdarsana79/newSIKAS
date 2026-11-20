@@ -2,14 +2,16 @@ import { Fragment } from 'react';
 import DataTable from '@/Components/ui/DataTable';
 import IconTile from '@/Components/ui/IconTile';
 import DocKopSuratHeader from '@/Components/DocKopSuratHeader';
+import { getDisplayUraian } from '@/Utils/rkasUraian';
 
 interface TabRincianProps {
     rincianData: any[];
+    showArkasUraian?: boolean;
     onPrint: (target: string) => void;
     onExportExcel: (target: string) => void;
 }
 
-export default function TabRincian({ rincianData, onPrint, onExportExcel }: TabRincianProps) {
+export default function TabRincian({ rincianData, showArkasUraian = false, onPrint, onExportExcel }: TabRincianProps) {
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('id-ID').format(amount);
     };
@@ -81,7 +83,7 @@ export default function TabRincian({ rincianData, onPrint, onExportExcel }: TabR
                                         <td>
                                             <div className="flex items-center gap-2">
                                                 <div className="h-1.5 w-1.5 rounded-full bg-slate-300 dark:bg-slate-600"></div>
-                                                {item.uraian}
+                                                {getDisplayUraian(item, showArkasUraian)}
                                             </div>
                                         </td>
                                         <td className="whitespace-nowrap text-right text-sikas-num !font-semibold">{formatCurrency(item.jumlah)}</td>

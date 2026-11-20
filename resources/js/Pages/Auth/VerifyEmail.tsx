@@ -32,10 +32,10 @@ export default function VerifyEmail({ status }: { status?: string }) {
 
             {status === 'verification-link-sent' && (
                 <div
-                    className="auth-rise mt-5 flex items-start gap-2.5 rounded-2xl border border-[#C3D6BC] bg-[#F2F7EC] px-3.5 py-3 text-[12.5px] font-medium leading-relaxed text-[#3F6B43]"
+                    className="auth-rise mt-5 flex items-start gap-2.5 rounded-2xl border border-[#B5E5DF] bg-[#ECF9F7] px-3.5 py-3 text-[12.5px] font-medium leading-relaxed text-[#0E5862]"
                     style={{ animationDelay: '80ms' }}
                 >
-                    <CheckCircle2 aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-[#5E8C5A]" />
+                    <CheckCircle2 aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-[#146670]" />
                     <span>Tautan verifikasi baru telah dikirim ke alamat email yang Anda daftarkan.</span>
                 </div>
             )}
@@ -51,7 +51,7 @@ export default function VerifyEmail({ status }: { status?: string }) {
                     href={route('logout')}
                     method="post"
                     as="button"
-                    className="auth-link inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#5B3DF5] transition-colors hover:text-[#4A2FB0]"
+                    className="auth-link inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#146670] transition-colors hover:text-[#08222B]"
                 >
                     <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
                     Keluar
@@ -59,10 +59,10 @@ export default function VerifyEmail({ status }: { status?: string }) {
             </div>
 
             <div
-                className="auth-rise mt-6 flex items-center justify-center gap-1.5 text-center text-[10.5px] tracking-[0.02em] text-[#7A7085]"
+                className="auth-rise mt-6 flex items-center justify-center gap-1.5 text-center text-[10.5px] tracking-[0.02em] text-[#5A7882]"
                 style={{ animationDelay: '230ms' }}
             >
-                <ShieldCheck aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-[#8FAE8B]" strokeWidth={1.8} />
+                <ShieldCheck aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-[#146670]" strokeWidth={1.8} />
                 <span>Email terverifikasi menjaga akses ke data keuangan sekolah.</span>
             </div>
         </GuestLayout>

@@ -18,7 +18,7 @@ class SekolahProfileController extends Controller
     {
         // Get the single profile
         $sekolah = SekolahProfile::first();
-        $licensedNpsn = (string) env('APP_NPSN_CODE');
+        $licensedNpsn = (string) config('license.npsn_code', '');
 
         return Inertia::render('DataMaster/SekolahProfile/Index', [
             'sekolah' => $sekolah,
@@ -31,12 +31,10 @@ class SekolahProfileController extends Controller
      */
     public function store(Request $request)
     {
-        $licensedNpsn = (string) env('APP_NPSN_CODE');
-
         // Validate
         $request->validate([
             'nama_sekolah' => 'required|string|max:255',
-            'npsn' => ['required', 'string', 'max:20', Rule::in([$licensedNpsn])],
+            'npsn' => $this->npsnValidationRules(),
             'status_sekolah' => 'required|string',
             'jenjang_sekolah' => 'required|string',
             'kelurahan_desa' => 'required|string',
@@ -63,11 +61,10 @@ class SekolahProfileController extends Controller
     public function update(Request $request, string $id)
     {
         $sekolah = SekolahProfile::findOrFail($id);
-        $licensedNpsn = (string) env('APP_NPSN_CODE');
 
         $request->validate([
             'nama_sekolah' => 'required|string|max:255',
-            'npsn' => ['required', 'string', 'max:20', Rule::in([$licensedNpsn]), 'unique:sekolahs,npsn,'.$id],
+            'npsn' => $this->npsnValidationRules($id),
             'status_sekolah' => 'required|string',
             'jenjang_sekolah' => 'required|string',
             'kelurahan_desa' => 'required|string',
@@ -85,6 +82,24 @@ class SekolahProfileController extends Controller
         Penganggaran::whereNull('sekolah_id')->update(['sekolah_id' => $sekolah->id]);
 
         return redirect()->back()->with('success', 'Data Sekolah berhasil diperbarui.');
+    }
+
+    /**
+     * Build NPSN validation rules respecting LICENSE_ENABLED mode.
+     *
+     * @return array<int, mixed>
+     */
+    protected function npsnValidationRules(?string $ignoreId = null): array
+    {
+        $rules = ['required', 'string', 'max:20'];
+        if ($ignoreId !== null) {
+            $rules[] = 'unique:sekolahs,npsn,'.$ignoreId;
+        }
+        if (config('license.enabled', true)) {
+            $rules[] = Rule::in([(string) config('license.npsn_code', '')]);
+        }
+
+        return $rules;
     }
 
     /**

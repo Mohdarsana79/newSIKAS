@@ -1,214 +1,139 @@
-import React, { useState, useEffect, useRef } from 'react';
+import IconTile, { IconTileTone } from '@/Components/ui/IconTile';
 import useVariantRoute from '@/Hooks/useVariantRoute';
-import { usePage, Link, router } from '@inertiajs/react';
+import type { CopilotWindowState } from '@/Layouts/AuthenticatedLayout';
+import type { PageProps } from '@/types';
+import { Link, usePage } from '@inertiajs/react';
 import axios from 'axios';
-import Chart from 'react-apexcharts';
-import { 
-    Sparkles, 
-    X, 
-    Send, 
-    Brain, 
-    RotateCcw, 
-    CheckCircle2, 
-    AlertTriangle, 
-    ExternalLink, 
+import {
+    AlertTriangle,
     ArrowRight,
-    Loader2,
-    Calendar,
-    Coins,
-    Building2,
-    ChevronRight,
-    Minimize2,
-    Maximize2,
-    Minus,
     BarChart3,
     BookOpen,
-    Compass,
-    FileText,
-    FileCheck,
+    Brain,
+    Calculator,
+    Check,
+    ChevronRight,
+    ChevronUp,
+    Coins,
+    Copy,
+    Download,
+    FileCheck2,
+    Maximize2,
+    Minimize2,
+    Minus,
     Printer,
-    Layers,
-    Settings,
-    FolderSync,
-    ShieldCheck
+    Receipt,
+    RotateCcw,
+    Scale,
+    Send,
+    Sparkles,
+    X,
 } from 'lucide-react';
-import type { CopilotWindowState } from '@/Layouts/AuthenticatedLayout';
+import { ReactNode, useEffect, useRef, useState } from 'react';
+import { COPILOT_HTML_STYLES, sanitizeAndFormatHtml } from './copilot/copilotFormatter';
+import {
+    CopilotActionButtonsCard,
+    CopilotAnalyticsChartCard,
+    CopilotStagingDraftCard,
+} from './copilot/CopilotMessageCards';
+import type { ActionButton, Message, StagingDraft } from './copilot/types';
 
-export interface ActionButton {
+export type { ActionButton };
+
+interface QuickPromptItem {
+    text: string;
     label: string;
-    url: string;
-    icon?: string;
-    description?: string;
+    icon: ReactNode;
+    tone: IconTileTone;
 }
 
-interface StagingDraft {
-    type: 'bku_transaction_draft';
-    variant: string;
-    tahun: number;
-    tanggal: string;
-    jenis_transaksi: string;
-    rkas_id: number;
-    kode_kegiatan_id: number;
-    nama_kegiatan: string;
-    kode_rekening_id: number;
-    kode_rekening: string;
-    nama_rekening: string;
-    uraian: string;
-    nama_toko: string;
-    nominal: number;
-    volume: number;
-    satuan: string;
-    harga_satuan: number;
-    total_pajak: number;
-    pajak_label: string;
-    sisa_pagu_sebelum: number;
-    sisa_pagu_sesudah: number;
-    is_over_budget: boolean;
-    is_committed?: boolean;
-    bku_id?: number;
-}
+const GUIDE_PROMPTS: QuickPromptItem[] = [
+    {
+        label: 'Alur & cara tutup buku BKU akhir bulan',
+        text: 'Bagaimana alur dan cara tutup buku BKU setiap akhir bulan?',
+        icon: <BookOpen />,
+        tone: 'violet',
+    },
+    {
+        label: 'Cara tarik data RKAS & BKU dari ARKAS desktop',
+        text: 'Bagaimana cara tarik data RKAS & BKU dari ARKAS desktop?',
+        icon: <Download />,
+        tone: 'lime',
+    },
+    {
+        label: 'Cetak kuitansi SPJ secara massal / sekaligus',
+        text: 'Bagaimana cara mencetak kuitansi SPJ secara massal/sekaligus?',
+        icon: <Printer />,
+        tone: 'sky',
+    },
+    {
+        label: 'Mengatasi selisih kas di BKU dan Buku Bank',
+        text: 'Bagaimana cara mengatasi selisih kas di BKU dan Buku Bank?',
+        icon: <Scale />,
+        tone: 'amber',
+    },
+    {
+        label: 'Cara membuat Berita Acara Serah Terima (BAST)',
+        text: 'Bagaimana cara membuat Berita Acara Serah Terima (BAST)?',
+        icon: <FileCheck2 />,
+        tone: 'peach',
+    },
+];
 
-interface Message {
-    id: string;
-    role: 'user' | 'assistant';
-    content: string;
-    staging_card?: StagingDraft;
-    analytics_chart?: any;
-    action_buttons?: ActionButton[];
-    timestamp: string;
-}
+const FINANCE_PROMPTS: QuickPromptItem[] = [
+    {
+        label: 'Cek pagu anggaran & penerimaan dana tahun ini',
+        text: 'Berapa pagu anggaran dan penerimaan dana tahun ini?',
+        icon: <Coins />,
+        tone: 'lime',
+    },
+    {
+        label: 'Catat draf belanja konsumsi rapat Rp 350.000 tunai',
+        text: 'Catat belanja konsumsi rapat Rp 350.000 tunai ke Katering Berkah',
+        icon: <Receipt />,
+        tone: 'mint',
+    },
+    {
+        label: 'Bandingkan realisasi serapan belanja per triwulan',
+        text: 'Bandingkan realisasi serapan belanja per triwulan',
+        icon: <BarChart3 />,
+        tone: 'violet',
+    },
+    {
+        label: 'Hitung tarif pajak belanja laptop Rp 8.500.000',
+        text: 'Berapa tarif pajak untuk belanja laptop Rp 8.500.000?',
+        icon: <Calculator />,
+        tone: 'sky',
+    },
+];
 
-function renderParsedTable(rows: string[]): string {
-    if (rows.length < 2) return rows.join('\n');
+const VARIANT_LABELS: Record<string, string> = {
+    reguler: 'BOSP Reguler',
+    kinerja: 'BOSP Kinerja',
+    silpa: 'SiLPA BOSP Reguler',
+    kinerja_silpa: 'SiLPA BOSP Kinerja',
+};
 
-    const headerCells = rows[0].split('|').slice(1, -1).map(c => c.trim());
-    const delimiterCells = rows[1].split('|').slice(1, -1).map(c => c.trim());
-
-    const aligns = delimiterCells.map(d => {
-        if (d.startsWith(':') && d.endsWith(':')) return 'text-center';
-        if (d.endsWith(':')) return 'text-right';
-        return 'text-left';
+function formatCurrentTime(): string {
+    return new Date().toLocaleTimeString('id-ID', {
+        hour: '2-digit',
+        minute: '2-digit',
     });
-
-    const dataRows = rows.slice(2);
-
-    let html = '<div class="overflow-x-auto overflow-y-auto max-h-80 my-2.5 rounded-xl border border-slate-200 dark:border-gray-700 shadow-xs bg-white dark:bg-gray-800 scroll-smooth">';
-    html += '<table class="min-w-full text-xs divide-y divide-slate-200 dark:divide-gray-700">';
-    
-    // Header (Sticky on vertical scroll)
-    html += '<thead class="bg-slate-100/95 dark:bg-gray-750 sticky top-0 z-10 backdrop-blur-xs shadow-xs"><tr>';
-    headerCells.forEach((th, idx) => {
-        const align = aligns[idx] || 'text-left';
-        html += `<th class="px-3 py-2 ${align} font-bold text-slate-700 dark:text-gray-200 uppercase tracking-wider text-[11px] whitespace-nowrap border-b border-slate-200 dark:border-gray-700">${th}</th>`;
-    });
-    html += '</tr></thead>';
-
-    // Body
-    html += '<tbody class="divide-y divide-slate-100 dark:divide-gray-700/60 bg-white dark:bg-gray-800">';
-    dataRows.forEach((row, rowIdx) => {
-        const cells = row.split('|').slice(1, -1).map(c => c.trim());
-        const bgClass = rowIdx % 2 === 1 ? 'bg-slate-50/50 dark:bg-gray-800/50' : '';
-        html += `<tr class="${bgClass} hover:bg-indigo-50/40 dark:hover:bg-indigo-950/20 transition-colors">`;
-        cells.forEach((td, idx) => {
-            let align = aligns[idx] || 'text-left';
-            let extraClass = '';
-            if (td.startsWith('Rp') || /^-?\d[\d.,]*%?$/.test(td)) {
-                align = 'text-right font-mono font-medium';
-                extraClass = 'whitespace-nowrap';
-            }
-            html += `<td class="px-3 py-2 text-slate-700 dark:text-gray-300 ${align} ${extraClass}">${td}</td>`;
-        });
-        html += '</tr>';
-    });
-    html += '</tbody></table></div>';
-
-    return html;
 }
 
-function parseMarkdownTables(text: string): string {
-    const lines = text.split('\n');
-    const result: string[] = [];
-    let inTable = false;
-    let tableRows: string[] = [];
-
-    const isTableRow = (l: string) => /^\s*\|(.+)\|\s*$/.test(l);
-    const isDelimiterRow = (l: string) => /^\s*\|(\s*:?-+:?\s*\|)+\s*$/.test(l);
-
-    for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-
-        if (isTableRow(line)) {
-            if (!inTable && i + 1 < lines.length && isDelimiterRow(lines[i + 1])) {
-                inTable = true;
-                tableRows = [line];
-            } else if (inTable) {
-                tableRows.push(line);
-            } else {
-                result.push(line);
-            }
-        } else {
-            if (inTable) {
-                result.push(renderParsedTable(tableRows));
-                inTable = false;
-                tableRows = [];
-            }
-            result.push(line);
-        }
+function extractAxiosError(error: unknown, fallback: string): string {
+    if (axios.isAxiosError(error) && error.response?.data?.message) {
+        return String(error.response.data.message);
     }
-
-    if (inTable && tableRows.length > 0) {
-        result.push(renderParsedTable(tableRows));
-    }
-
-    return result.join('\n');
+    return fallback;
 }
 
-function sanitizeAndFormatHtml(content: string): string {
-    if (!content) return '';
-
-    // 1. Strip markdown code fences around HTML or markdown table
-    let processed = content
-        .replace(/```(?:html|markdown|xml)?\s*([\s\S]*?)\s*```/gi, '$1')
-        .replace(/```/g, '');
-
-    // 2. Parse any markdown tables into styled HTML tables
-    processed = parseMarkdownTables(processed);
-
-    // 3. Clean dangerous script tags and event handlers
-    processed = processed
-        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-        .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
-        .replace(/<object\b[^<]*(?:(?!<\/object>)<[^<]*)*<\/object>/gi, '')
-        .replace(/\son\w+\s*=\s*["'][^"']*["']/gi, '')
-        .replace(/javascript:/gi, '');
-
-    // 4. Wrap any raw HTML <table> tags that are not already enclosed in an overflow container
-    processed = processed.replace(
-        /(<div class="[^"]*overflow-x-auto[^"]*">[\s\S]*?<\/table><\/div>)|(<table[\s\S]*?<\/table>)/gi,
-        (match, alreadyWrapped, unwrappedTable) => {
-            if (alreadyWrapped) {
-                return alreadyWrapped;
-            }
-            return `<div class="overflow-x-auto overflow-y-auto max-h-80 my-2.5 rounded-xl border border-slate-200 dark:border-gray-700 shadow-xs bg-white dark:bg-gray-800 scroll-smooth">${unwrappedTable}</div>`;
-        }
+function stripTransientErrors(msgs: Message[]): Message[] {
+    return msgs.map((m) =>
+        m.staging_card?.commit_error
+            ? { ...m, staging_card: { ...m.staging_card, commit_error: undefined } }
+            : m,
     );
-
-    // 5. Convert markdown headers: ### Title -> <h6 ...>Title</h6>
-    processed = processed.replace(/^###\s+(.+)$/gm, '<h6 class="font-bold text-gray-900 dark:text-gray-100 mt-2 mb-1 text-xs">$1</h6>');
-    processed = processed.replace(/^##\s+(.+)$/gm, '<h5 class="font-bold text-gray-900 dark:text-gray-100 mt-2.5 mb-1 text-sm">$1</h5>');
-    
-    // 6. Markdown bold **text**
-    processed = processed.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-    
-    // 7. Markdown bullet points: lines starting with "- " or "* "
-    processed = processed.replace(/(?:^|\n)[-*]\s+(.+)/g, '<div class="flex items-start gap-1.5 my-1 ml-1 text-xs"><span class="text-indigo-500 font-bold">•</span><span>$1</span></div>');
-
-    // 8. Line breaks: convert newlines outside of HTML tags
-    processed = processed
-        .replace(/\n\n+/g, '<div class="my-1.5"></div>')
-        .replace(/(?<!>)\n(?!<)/g, '<br/>');
-
-    return processed;
 }
 
 interface CopilotDrawerProps {
@@ -222,11 +147,16 @@ export default function CopilotDrawer({
     setCopilotState,
     sidebarOpen = true,
 }: CopilotDrawerProps = {}) {
-    const { auth, variant: pageVariant, tahun: pageTahun } = usePage<any>().props;
+    const {
+        auth,
+        variant: pageVariant,
+        tahun: pageTahun,
+    } = usePage<PageProps<{ variant?: string; tahun?: number | string }>>().props;
     const vroute = useVariantRoute();
 
     const userId = auth?.user?.id || 'guest';
     const variant = pageVariant || 'reguler';
+    const variantLabel = VARIANT_LABELS[variant] || `BOSP ${variant}`;
     const currentYear = pageTahun || new Date().getFullYear();
 
     // Internal fallback state if not passed from AuthenticatedLayout
@@ -237,32 +167,45 @@ export default function CopilotDrawer({
     const isOpen = state !== 'closed';
     const isMinimized = state === 'minimized';
     const isMaximized = state === 'maximized';
+
     const [messages, setMessages] = useState<Message[]>([]);
     const [inputMessage, setInputMessage] = useState('');
     const [isSending, setIsSending] = useState(false);
-    const [contextData, setContextData] = useState<any>(null);
+    const [contextData, setContextData] = useState<{ has_api_key?: boolean } | null>(null);
     const [committingDraftIndex, setCommittingDraftIndex] = useState<number | null>(null);
+    const [promptCategory, setPromptCategory] = useState<'guide' | 'finance'>('guide');
+    const [confirmingClear, setConfirmingClear] = useState(false);
+    const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const loadedStorageKeyRef = useRef<string | null>(null);
     const storageKey = `sikas_copilot_chat_${userId}_${variant}`;
 
-    // Load messages from localStorage on initial render
+    // Load messages from localStorage on initial render or variant switch
     useEffect(() => {
+        loadedStorageKeyRef.current = null;
         try {
             const saved = localStorage.getItem(storageKey);
             if (saved) {
                 setMessages(JSON.parse(saved));
+            } else {
+                setMessages([]);
             }
         } catch (e) {
             console.error('Failed to load chat history:', e);
+            setMessages([]);
         }
+        loadedStorageKeyRef.current = storageKey;
     }, [storageKey]);
 
-    // Save messages to localStorage when updated
+    // Save messages to localStorage only for the currently loaded storageKey
     useEffect(() => {
+        if (loadedStorageKeyRef.current !== storageKey) return;
         if (messages.length > 0) {
             try {
-                localStorage.setItem(storageKey, JSON.stringify(messages));
+                localStorage.setItem(storageKey, JSON.stringify(stripTransientErrors(messages)));
             } catch (e) {
                 console.error('Failed to save chat history:', e);
             }
@@ -272,15 +215,16 @@ export default function CopilotDrawer({
     // Fetch quick context
     useEffect(() => {
         if (isOpen && !contextData) {
-            axios.get(vroute('api.ai.copilot.context', { tahun: currentYear }))
-                .then(res => {
+            axios
+                .get(vroute('api.ai.copilot.context', { tahun: currentYear }))
+                .then((res) => {
                     if (res.data.success) {
                         setContextData(res.data);
                     }
                 })
-                .catch(err => console.error('Error fetching context:', err));
+                .catch((err) => console.error('Error fetching context:', err));
         }
-    }, [isOpen, currentYear]);
+    }, [isOpen, currentYear, contextData]);
 
     // Auto-scroll to bottom of chat
     useEffect(() => {
@@ -289,35 +233,72 @@ export default function CopilotDrawer({
         }
     }, [messages, isOpen, isMinimized, isSending]);
 
-    const [promptCategory, setPromptCategory] = useState<'guide' | 'finance'>('guide');
+    // Tutup bar konfirmasi reset saat minimize/close
+    useEffect(() => {
+        if (!isOpen || isMinimized) {
+            setConfirmingClear(false);
+        }
+    }, [isOpen, isMinimized]);
 
+    // Cleanup timer salin saat unmount
+    useEffect(() => {
+        return () => {
+            if (copyTimerRef.current) {
+                clearTimeout(copyTimerRef.current);
+            }
+        };
+    }, []);
 
+    // Auto-resize textarea (1–4 baris, maks 112px)
+    useEffect(() => {
+        const el = textareaRef.current;
+        if (!el) return;
+        el.style.height = 'auto';
+        el.style.height = `${Math.min(el.scrollHeight, 112)}px`;
+    }, [inputMessage, isOpen, isMinimized]);
 
-    const handleClearChat = () => {
-        if (confirm('Mulai obrolan baru dan bersihkan riwayat sesi ini?')) {
-            setMessages([]);
+    const executeClearChat = () => {
+        setMessages([]);
+        try {
             localStorage.removeItem(storageKey);
+        } catch {
+            // Abaikan bila storage diblokir
+        }
+        setConfirmingClear(false);
+    };
+
+    const handleCopyMessage = async (msg: Message) => {
+        try {
+            await navigator.clipboard.writeText(msg.content);
+            setCopiedMessageId(msg.id);
+            if (copyTimerRef.current) {
+                clearTimeout(copyTimerRef.current);
+            }
+            copyTimerRef.current = setTimeout(() => setCopiedMessageId(null), 2000);
+        } catch {
+            // Abaikan bila clipboard API tidak tersedia
         }
     };
 
     const handleSendMessage = async (textToSend?: string) => {
-        const text = (textToSend || inputMessage).trim();
+        const text = (textToSend ?? inputMessage).trim();
         if (!text || isSending) return;
 
         const userMsg: Message = {
             id: `usr_${Date.now()}`,
             role: 'user',
             content: text,
-            timestamp: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+            timestamp: formatCurrentTime(),
         };
 
         const updatedMessages = [...messages, userMsg];
         setMessages(updatedMessages);
         setInputMessage('');
+        setConfirmingClear(false);
         setIsSending(true);
 
         try {
-            const apiMessages = updatedMessages.map(m => ({
+            const apiMessages = updatedMessages.map((m) => ({
                 role: m.role,
                 content: m.content,
             }));
@@ -327,6 +308,8 @@ export default function CopilotDrawer({
                 messages: apiMessages,
             });
 
+            const replyTime = formatCurrentTime();
+
             if (response.data.success) {
                 const assistantMsg: Message = {
                     id: `ast_${Date.now()}`,
@@ -335,24 +318,29 @@ export default function CopilotDrawer({
                     staging_card: response.data.staging_card || undefined,
                     analytics_chart: response.data.analytics_chart || undefined,
                     action_buttons: response.data.action_buttons || undefined,
-                    timestamp: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+                    timestamp: replyTime,
                 };
                 setMessages([...updatedMessages, assistantMsg]);
             } else {
                 const errorMsg: Message = {
                     id: `ast_err_${Date.now()}`,
                     role: 'assistant',
-                    content: response.data.message || 'Maaf, terjadi kendala saat memproses instruksi.',
-                    timestamp: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+                    content:
+                        response.data.message ||
+                        'Maaf, terjadi kendala saat memproses instruksi.',
+                    timestamp: replyTime,
                 };
                 setMessages([...updatedMessages, errorMsg]);
             }
-        } catch (error: any) {
+        } catch (error: unknown) {
             const errorMsg: Message = {
                 id: `ast_err_${Date.now()}`,
                 role: 'assistant',
-                content: error.response?.data?.message || 'Gagal menghubungi SIKAS AI Copilot. Periksa koneksi jaringan dan API Key Anda.',
-                timestamp: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+                content: extractAxiosError(
+                    error,
+                    'Gagal menghubungi SIKAS AI Copilot. Periksa koneksi jaringan dan API Key Anda.',
+                ),
+                timestamp: formatCurrentTime(),
             };
             setMessages([...updatedMessages, errorMsg]);
         } finally {
@@ -360,515 +348,498 @@ export default function CopilotDrawer({
         }
     };
 
+    const updateStagingCard = (
+        messageIndex: number,
+        updater: (prev: StagingDraft) => StagingDraft,
+    ) => {
+        setMessages((prevMessages) =>
+            prevMessages.map((msg, idx) =>
+                idx === messageIndex && msg.staging_card
+                    ? { ...msg, staging_card: updater(msg.staging_card) }
+                    : msg,
+            ),
+        );
+    };
+
     const handleCommitDraft = async (draft: StagingDraft, messageIndex: number) => {
         setCommittingDraftIndex(messageIndex);
+        updateStagingCard(messageIndex, (prev) => ({ ...prev, commit_error: undefined }));
 
         try {
             const response = await axios.post(vroute('api.ai.copilot.commit'), {
                 tahun: currentYear,
-                draft: draft,
+                draft,
             });
 
             if (response.data.success) {
-                // Update staging card state in messages
-                const nextMessages = [...messages];
-                if (nextMessages[messageIndex]?.staging_card) {
-                    nextMessages[messageIndex].staging_card = {
-                        ...nextMessages[messageIndex].staging_card!,
-                        is_committed: true,
-                        bku_id: response.data.bku_id,
-                    };
-                    setMessages(nextMessages);
-                }
+                updateStagingCard(messageIndex, (prev) => ({
+                    ...prev,
+                    is_committed: true,
+                    bku_id: response.data.bku_id,
+                    commit_error: undefined,
+                }));
             } else {
-                alert(response.data.message || 'Gagal menyimpan transaksi ke BKU.');
+                updateStagingCard(messageIndex, (prev) => ({
+                    ...prev,
+                    commit_error: response.data.message || 'Gagal menyimpan transaksi ke BKU.',
+                }));
             }
-        } catch (error: any) {
-            alert(error.response?.data?.message || 'Terjadi kesalahan saat menyimpan transaksi.');
+        } catch (error: unknown) {
+            updateStagingCard(messageIndex, (prev) => ({
+                ...prev,
+                commit_error: extractAxiosError(
+                    error,
+                    'Terjadi kesalahan saat menyimpan transaksi ke BKU.',
+                ),
+            }));
         } finally {
             setCommittingDraftIndex(null);
         }
     };
 
     const hasApiKey = contextData?.has_api_key ?? true;
+    const activePrompts = promptCategory === 'guide' ? GUIDE_PROMPTS : FINANCE_PROMPTS;
 
     return (
         <>
-            {/* Scoped Styling untuk Tabel dan Elemen HTML Chat Copilot */}
-            <style>{`
-                .ai-html-content table {
-                    width: 100%;
-                    border-collapse: collapse;
-                    font-size: 0.725rem;
-                    line-height: 1.25rem;
-                }
-                .ai-html-content thead {
-                    position: sticky;
-                    top: 0;
-                    z-index: 10;
-                }
-                .ai-html-content th {
-                    position: sticky;
-                    top: 0;
-                    z-index: 10;
-                    background-color: rgba(241, 245, 249, 0.98);
-                    backdrop-filter: blur(4px);
-                    color: #334155;
-                    font-weight: 700;
-                    padding: 6px 8px;
-                    text-align: left;
-                    border-bottom: 1px solid #cbd5e1;
-                    white-space: nowrap;
-                }
-                .dark .ai-html-content th {
-                    background-color: rgba(30, 41, 59, 0.98);
-                    backdrop-filter: blur(4px);
-                    color: #e2e8f0;
-                    border-bottom: 1px solid #475569;
-                }
-                .ai-html-content td {
-                    padding: 6px 8px;
-                    border-bottom: 1px solid #f1f5f9;
-                    color: #1e293b;
-                }
-                .dark .ai-html-content td {
-                    border-bottom: 1px solid rgba(51, 65, 85, 0.5);
-                    color: #cbd5e1;
-                }
-                .ai-html-content tr:last-child td {
-                    border-bottom: none;
-                }
-                .ai-html-content tr:hover td {
-                    background-color: rgba(248, 250, 252, 0.7);
-                }
-                .dark .ai-html-content tr:hover td {
-                    background-color: rgba(30, 41, 59, 0.4);
-                }
-                .ai-html-content p {
-                    margin-bottom: 0.4rem;
-                }
-                .ai-html-content p:last-child {
-                    margin-bottom: 0;
-                }
-                .ai-html-content ul {
-                    list-style-type: disc;
-                    padding-left: 1.25rem;
-                    margin-bottom: 0.4rem;
-                }
-                .ai-html-content ol {
-                    list-style-type: decimal;
-                    padding-left: 1.25rem;
-                    margin-bottom: 0.4rem;
-                }
-                .ai-html-content li {
-                    margin-bottom: 0.2rem;
-                }
-                .ai-html-content strong {
-                    font-weight: 700;
-                    color: #0f172a;
-                }
-                .dark .ai-html-content strong {
-                    color: #f8fafc;
-                }
-                .ai-html-content code {
-                    background-color: rgba(241, 245, 249, 0.8);
-                    padding: 0.1rem 0.3rem;
-                    border-radius: 0.25rem;
-                    font-family: monospace;
-                    font-size: 0.7rem;
-                }
-                .dark .ai-html-content code {
-                    background-color: rgba(51, 65, 85, 0.6);
-                    color: #e2e8f0;
-                }
-                /* Sleek Custom Scrollbar untuk Tabel yang Panjang */
-                .ai-html-content .overflow-x-auto::-webkit-scrollbar,
-                .ai-html-content .overflow-y-auto::-webkit-scrollbar {
-                    width: 5px;
-                    height: 5px;
-                }
-                .ai-html-content .overflow-x-auto::-webkit-scrollbar-track,
-                .ai-html-content .overflow-y-auto::-webkit-scrollbar-track {
-                    background: transparent;
-                }
-                .ai-html-content .overflow-x-auto::-webkit-scrollbar-thumb,
-                .ai-html-content .overflow-y-auto::-webkit-scrollbar-thumb {
-                    background: #cbd5e1;
-                    border-radius: 9999px;
-                }
-                .dark .ai-html-content .overflow-x-auto::-webkit-scrollbar-thumb,
-                .dark .ai-html-content .overflow-y-auto::-webkit-scrollbar-thumb {
-                    background: #475569;
-                }
-                .copilot-maximized .ai-html-content .overflow-y-auto {
-                    max-height: 55vh;
-                }
-            `}</style>
+            <style>{COPILOT_HTML_STYLES}</style>
 
-            {/* Slide-over Drawer Chat Panel */}
             {isOpen && (
-                <div className={`fixed z-40 flex flex-col bg-white dark:bg-gray-800 shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden transition-all duration-300 ${
-                    isMaximized
-                        ? `top-2 bottom-2 left-2 right-2 md:top-4 md:bottom-4 md:right-4 ${
-                            sidebarOpen ? 'md:left-[17rem]' : 'md:left-[6rem]'
-                          } w-auto h-auto rounded-2xl copilot-maximized`
-                        : isMinimized
-                        ? 'bottom-4 right-4 w-80 h-14 rounded-2xl'
-                        : 'bottom-4 right-4 w-full sm:w-[500px] h-[650px] max-h-[90vh] rounded-2xl'
-                }`}>
-                    
-                    {/* Header Drawer */}
-                    <div className="px-4 py-3.5 bg-gradient-to-r from-purple-700 via-indigo-600 to-indigo-800 text-white flex items-center justify-between cursor-pointer select-none">
-                        <div 
-                            className="flex items-center gap-2.5 flex-1 overflow-hidden pr-2" 
-                            onClick={() => {
-                                if (isMinimized) setState('normal');
-                            }}
-                        >
-                            <div className="p-1.5 bg-white/10 rounded-lg flex-shrink-0">
-                                <Brain className="w-5 h-5 text-purple-200" />
-                            </div>
-                            <div className="min-w-0">
-                                <div className="flex items-center gap-1.5">
-                                    <h4 className="text-sm font-bold leading-tight truncate">SIKAS AI Copilot</h4>
-                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-white/20 uppercase tracking-widest flex-shrink-0">
-                                        V3
+                <section
+                    aria-label="SIKAS AI Copilot"
+                    className={`fixed z-40 flex flex-col overflow-hidden border border-white/80 bg-white shadow-float ring-1 ring-slate-900/[0.04] transition-all duration-300 dark:border-white/10 dark:bg-[#15131F] dark:shadow-card-dark dark:ring-white/5 ${
+                        isMaximized
+                            ? `bottom-2 left-2 right-2 top-2 lg:bottom-4 lg:right-4 lg:top-4 ${
+                                  sidebarOpen ? 'lg:left-[276px]' : 'lg:left-[98px]'
+                              } copilot-maximized h-auto w-auto rounded-[26px]`
+                            : isMinimized
+                              ? 'bottom-3 right-3 h-auto w-[min(330px,calc(100vw-1.5rem))] rounded-[22px]'
+                              : 'inset-x-2 bottom-2 h-[min(600px,calc(100vh-5.5rem))] rounded-[26px] sm:inset-x-auto sm:bottom-4 sm:right-4 sm:w-[440px] lg:w-[470px]'
+                    }`}
+                >
+                    {/* Signature SIKAS Neo-Bento Dark Header */}
+                    <div className="relative overflow-hidden bg-gradient-to-r from-[#252438] via-[#1E1D2E] to-[#15141E] px-4 py-3 text-white select-none">
+                        <div
+                            aria-hidden
+                            className="pointer-events-none absolute -left-8 -top-12 h-28 w-28 rounded-full bg-brand-500/25 blur-2xl"
+                        />
+                        <div
+                            aria-hidden
+                            className="pointer-events-none absolute -bottom-10 -right-8 h-28 w-28 rounded-full bg-lime-400/15 blur-2xl"
+                        />
+
+                        <div className="relative flex items-center justify-between gap-2">
+                            <div className="flex min-w-0 flex-1 items-center gap-2.5">
+                                <div className="relative shrink-0">
+                                    <IconTile
+                                        tone="lime"
+                                        size="md"
+                                        className="h-9 w-9 bg-gradient-to-br from-lime-300 via-lime-400 to-lime-500 text-slate-950 shadow-lime ring-0 dark:bg-gradient-to-br dark:from-lime-300 dark:via-lime-400 dark:to-lime-500 dark:text-slate-950 dark:ring-0"
+                                    >
+                                        <Brain />
+                                    </IconTile>
+                                    <span className="absolute -bottom-0.5 -right-0.5 flex h-3 w-3 items-center justify-center rounded-full bg-[#1E1D2E]">
+                                        <span className="h-2 w-2 rounded-full bg-mint animate-pulse-soft" />
                                     </span>
                                 </div>
-                                {!isMinimized && (
-                                    <p className="text-[10px] text-purple-200 leading-none mt-0.5 capitalize truncate">
-                                        Dana {variant} • TA {currentYear}
-                                    </p>
-                                )}
-                            </div>
-                        </div>
 
-                        <div className="flex items-center gap-1 text-white/80 flex-shrink-0">
-                            {!isMinimized && (
+                                <div className="min-w-0">
+                                    <div className="flex items-center gap-1.5">
+                                        <h4 className="truncate text-[13.5px] font-extrabold leading-tight tracking-tight text-white">
+                                            SIKAS AI Copilot
+                                        </h4>
+                                        <span className="shrink-0 rounded-full bg-lime-400 px-1.5 py-0.5 text-[8.5px] font-extrabold uppercase tracking-wider text-slate-950">
+                                            V3
+                                        </span>
+                                        {isMinimized && messages.length > 0 && (
+                                            <span className="text-sikas-num shrink-0 rounded-full bg-white/10 px-1.5 py-0.5 text-[9px] font-bold text-lime-200">
+                                                {messages.length}
+                                            </span>
+                                        )}
+                                    </div>
+                                    {!isMinimized && (
+                                        <p className="mt-0.5 truncate text-[10px] font-semibold text-white/60">
+                                            {variantLabel} ·{' '}
+                                            <span className="text-sikas-num text-lime-300">
+                                                TA {currentYear}
+                                            </span>
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="flex shrink-0 items-center gap-1">
+                                {!isMinimized && messages.length > 0 && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setConfirmingClear((prev) => !prev)}
+                                        title="Mulai Obrolan Baru"
+                                        aria-label="Mulai Obrolan Baru"
+                                        className={`inline-flex h-8 w-8 items-center justify-center rounded-xl border transition ${
+                                            confirmingClear
+                                                ? 'border-rose-400/40 bg-rose-500/20 text-rose-200'
+                                                : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/15 hover:text-white'
+                                        }`}
+                                    >
+                                        <RotateCcw className="h-3.5 w-3.5" />
+                                    </button>
+                                )}
+
                                 <button
                                     type="button"
-                                    onClick={handleClearChat}
-                                    title="Mulai Obrolan Baru"
-                                    className="p-1.5 hover:text-white hover:bg-white/10 rounded-md transition"
+                                    onClick={() => setState(isMinimized ? 'normal' : 'minimized')}
+                                    title={isMinimized ? 'Buka Obrolan' : 'Kecilkan (Minimize)'}
+                                    aria-label={isMinimized ? 'Buka Obrolan' : 'Kecilkan jendela Copilot'}
+                                    className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white/70 transition hover:bg-white/15 hover:text-white"
                                 >
-                                    <RotateCcw className="w-4 h-4" />
+                                    {isMinimized ? (
+                                        <ChevronUp className="h-3.5 w-3.5" />
+                                    ) : (
+                                        <Minus className="h-3.5 w-3.5" />
+                                    )}
                                 </button>
-                            )}
-                            {/* Minimize Button */}
-                            <button
-                                type="button"
-                                onClick={() => setState(isMinimized ? 'normal' : 'minimized')}
-                                title={isMinimized ? 'Buka Obrolan' : 'Kecilkan (Minimize)'}
-                                className="p-1.5 hover:text-white hover:bg-white/10 rounded-md transition"
-                            >
-                                <Minus className="w-4 h-4" />
-                            </button>
-                            {/* Maximize / Restore Button */}
-                            {!isMinimized && (
+
+                                {!isMinimized && (
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            setState(isMaximized ? 'normal' : 'maximized')
+                                        }
+                                        title={
+                                            isMaximized
+                                                ? 'Pulihkan Ukuran'
+                                                : 'Maksimalkan (Layar Penuh)'
+                                        }
+                                        aria-label={
+                                            isMaximized
+                                                ? 'Pulihkan ukuran jendela Copilot'
+                                                : 'Maksimalkan jendela Copilot'
+                                        }
+                                        className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white/70 transition hover:bg-white/15 hover:text-white"
+                                    >
+                                        {isMaximized ? (
+                                            <Minimize2 className="h-3.5 w-3.5" />
+                                        ) : (
+                                            <Maximize2 className="h-3.5 w-3.5" />
+                                        )}
+                                    </button>
+                                )}
+
                                 <button
                                     type="button"
-                                    onClick={() => setState(isMaximized ? 'normal' : 'maximized')}
-                                    title={isMaximized ? 'Pulihkan Ukuran' : 'Maksimalkan (Layar Penuh)'}
-                                    className="p-1.5 hover:text-white hover:bg-white/10 rounded-md transition"
+                                    onClick={() => setState('closed')}
+                                    title="Tutup SIKAS AI Copilot"
+                                    aria-label="Tutup SIKAS AI Copilot"
+                                    className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white/70 transition hover:border-rose-400/30 hover:bg-rose-500/20 hover:text-rose-200"
                                 >
-                                    {isMaximized ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                                    <X className="h-3.5 w-3.5" />
                                 </button>
-                            )}
-                            {/* Close Button */}
-                            <button
-                                type="button"
-                                onClick={() => setState('closed')}
-                                title="Tutup SIKAS AI Copilot"
-                                className="p-1.5 hover:text-white hover:bg-white/10 rounded-md transition"
-                            >
-                                <X className="w-4 h-4" />
-                            </button>
+                            </div>
                         </div>
                     </div>
 
-                    {/* Chat Content Body (Saat Tidak Minimize) */}
-                    {!isMinimized && (
-                        <div className="flex-1 flex flex-col overflow-hidden bg-slate-50 dark:bg-gray-900">
+                    {/* Inline Konfirmasi Reset Obrolan */}
+                    {!isMinimized && confirmingClear && (
+                        <div
+                            role="alert"
+                            className="flex flex-wrap items-center justify-between gap-2 border-b border-rose-200/70 bg-pastel-rose/80 px-4 py-2.5 dark:border-rose-400/20 dark:bg-rose-500/10"
+                        >
+                            <span className="text-[11px] font-bold text-rose-700 dark:text-rose-200">
+                                Bersihkan seluruh riwayat obrolan sesi ini?
+                            </span>
+                            <div className="flex items-center gap-1.5">
+                                <button
+                                    type="button"
+                                    onClick={() => setConfirmingClear(false)}
+                                    className="rounded-xl border border-slate-200/80 bg-white px-2.5 py-1 text-[10.5px] font-bold text-slate-600 transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10"
+                                >
+                                    Batal
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={executeClearChat}
+                                    className="rounded-xl bg-rose-500 px-2.5 py-1 text-[10.5px] font-extrabold text-white shadow-sm transition hover:bg-rose-600"
+                                >
+                                    Ya, Bersihkan
+                                </button>
+                            </div>
+                        </div>
+                    )}
 
-                            {/* Banner jika belum memiliki API Key */}
+                    {/* Chat Content Body */}
+                    {!isMinimized && (
+                        <div className="flex flex-1 flex-col overflow-hidden bg-[#F6F7FB] dark:bg-[#0D0C15]">
+                            {/* Banner API Key Belum Terpasang */}
                             {!hasApiKey && (
-                                <div className="p-3 m-3 rounded-xl bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 text-xs flex items-start gap-2 text-amber-800 dark:text-amber-200">
-                                    <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
-                                    <div>
-                                        <strong>API Key Belum Terpasang:</strong> Masukkan kunci DeepSeek Anda di menu profil untuk menggunakan Copilot.
-                                        <Link href={route('profile.edit')} className="inline-flex items-center gap-1 text-indigo-600 font-bold ml-1 hover:underline">
-                                            Buka Profil <ArrowRight className="w-3 h-3" />
+                                <div className="mx-3.5 mt-3 flex items-start gap-2.5 rounded-2xl border border-amber-200/80 bg-pastel-amber p-3 text-[11px] font-medium text-amber-800 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-200">
+                                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-300" />
+                                    <div className="min-w-0 leading-relaxed">
+                                        <strong className="font-extrabold">
+                                            API Key Belum Terpasang:
+                                        </strong>{' '}
+                                        Masukkan kunci DeepSeek Anda di menu profil untuk mulai menggunakan Copilot.
+                                        <Link
+                                            href={route('profile.edit')}
+                                            className="ml-1.5 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-extrabold text-brand-600 shadow-sm transition hover:bg-white dark:bg-white/10 dark:text-lime-300 dark:hover:bg-white/15"
+                                        >
+                                            Buka Profil
+                                            <ArrowRight className="h-3 w-3" />
                                         </Link>
                                     </div>
                                 </div>
                             )}
 
-                            {/* Message List */}
-                            <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs">
+                            {/* Area Pesan / Welcome State */}
+                            <div className="sikas-scroll flex-1 space-y-4 overflow-y-auto p-4 text-xs">
                                 {messages.length === 0 ? (
-                                    <div className="py-6 text-center space-y-3">
-                                        <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/40 rounded-2xl flex items-center justify-center mx-auto text-purple-600 dark:text-purple-300">
-                                            <Sparkles className="w-6 h-6" />
-                                        </div>
-                                        <h5 className="font-bold text-gray-800 dark:text-gray-200 text-sm">
-                                            Asisten & Pemandu SIKAS Siap Membantu
+                                    <div className="mx-auto flex flex-col items-center py-4 text-center">
+                                        <IconTile tone="violet" size="lg" className="h-14 w-14 rounded-[20px]">
+                                            <Sparkles className="h-6 w-6" />
+                                        </IconTile>
+
+                                        <h5 className="mt-3.5 text-[14.5px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+                                            Asisten &amp; Pemandu SIKAS Siap Membantu
                                         </h5>
-                                        <p className="text-gray-500 dark:text-gray-400 max-w-xs mx-auto text-[11px]">
-                                            Tanyakan panduan operasional menu aplikasi atau instruksi pencatatan belanja & analisis keuangan BOSP.
+                                        <p className="mt-1 max-w-sm text-[11px] font-medium leading-relaxed text-slate-500 dark:text-slate-400">
+                                            Tanyakan panduan operasional menu aplikasi, analisis serapan BOSP, perhitungan pajak, atau buat draf belanja BKU.
                                         </p>
 
-                                        {/* Tab Switcher Kategori Saran Cepat */}
-                                        <div className="flex items-center justify-center gap-1.5 pt-1">
+                                        {/* Glass Pill Switcher */}
+                                        <div
+                                            role="tablist"
+                                            aria-label="Kategori saran cepat"
+                                            className="mt-4 inline-flex items-center gap-1 rounded-2xl border border-slate-200/80 bg-white/90 p-1 shadow-sm dark:border-white/10 dark:bg-[#15131F]"
+                                        >
                                             <button
                                                 type="button"
+                                                role="tab"
+                                                aria-selected={promptCategory === 'guide'}
                                                 onClick={() => setPromptCategory('guide')}
-                                                className={`px-3 py-1 rounded-full text-[11px] font-bold transition flex items-center gap-1.5 ${
+                                                className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-[11px] font-extrabold transition-all ${
                                                     promptCategory === 'guide'
-                                                        ? 'bg-indigo-600 text-white shadow-xs'
-                                                        : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:text-indigo-600'
+                                                        ? 'bg-lime-400 text-slate-950 shadow-lime'
+                                                        : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
                                                 }`}
                                             >
-                                                <BookOpen className="w-3 h-3" />
+                                                <BookOpen className="h-3.5 w-3.5" />
                                                 Panduan Aplikasi
                                             </button>
                                             <button
                                                 type="button"
+                                                role="tab"
+                                                aria-selected={promptCategory === 'finance'}
                                                 onClick={() => setPromptCategory('finance')}
-                                                className={`px-3 py-1 rounded-full text-[11px] font-bold transition flex items-center gap-1.5 ${
+                                                className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-[11px] font-extrabold transition-all ${
                                                     promptCategory === 'finance'
-                                                        ? 'bg-indigo-600 text-white shadow-xs'
-                                                        : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:text-indigo-600'
+                                                        ? 'bg-lime-400 text-slate-950 shadow-lime'
+                                                        : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
                                                 }`}
                                             >
-                                                <Coins className="w-3 h-3" />
-                                                Keuangan & Draf
+                                                <Coins className="h-3.5 w-3.5" />
+                                                Keuangan &amp; Draf
                                             </button>
                                         </div>
 
-                                        {/* Suggested Quick Prompt Chips Berdasarkan Kategori */}
-                                        <div className="pt-1.5 flex flex-col gap-1.5 text-left max-w-xs mx-auto">
-                                            {promptCategory === 'guide' ? (
-                                                [
-                                                    '📖 Bagaimana alur dan cara tutup buku BKU setiap akhir bulan?',
-                                                    '📥 Bagaimana cara tarik data RKAS & BKU dari ARKAS desktop?',
-                                                    '🖨️ Bagaimana cara mencetak kuitansi SPJ secara massal/sekaligus?',
-                                                    '⚖️ Bagaimana cara mengatasi selisih kas di BKU dan Buku Bank?',
-                                                    '📝 Bagaimana cara membuat Berita Acara Serah Terima (BAST)?',
-                                                ].map((prompt, idx) => (
-                                                    <button
-                                                        key={idx}
-                                                        onClick={() => handleSendMessage(prompt)}
-                                                        className="p-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-indigo-400 dark:hover:border-indigo-500 text-gray-700 dark:text-gray-300 text-left transition flex items-center justify-between group shadow-2xs hover:shadow-xs"
-                                                    >
-                                                        <span className="truncate pr-1 text-[11px]">{prompt}</span>
-                                                        <ChevronRight className="w-3.5 h-3.5 text-gray-400 group-hover:text-indigo-600 flex-shrink-0" />
-                                                    </button>
-                                                ))
-                                            ) : (
-                                                [
-                                                    '💰 Berapa pagu anggaran dan penerimaan dana tahun ini?',
-                                                    '📝 Catat belanja konsumsi rapat Rp 350.000 tunai ke Katering Berkah',
-                                                    '📊 Bandingkan realisasi serapan belanja per triwulan',
-                                                    '🧾 Berapa tarif pajak untuk belanja laptop Rp 8.500.000?',
-                                                ].map((prompt, idx) => (
-                                                    <button
-                                                        key={idx}
-                                                        onClick={() => handleSendMessage(prompt)}
-                                                        className="p-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-indigo-400 dark:hover:border-indigo-500 text-gray-700 dark:text-gray-300 text-left transition flex items-center justify-between group shadow-2xs hover:shadow-xs"
-                                                    >
-                                                        <span className="truncate pr-1 text-[11px]">{prompt}</span>
-                                                        <ChevronRight className="w-3.5 h-3.5 text-gray-400 group-hover:text-indigo-600 flex-shrink-0" />
-                                                    </button>
-                                                ))
-                                            )}
+                                        {/* Prompt Cards Grid (1 kolom normal, 2 kolom saat maximized) */}
+                                        <div
+                                            className={`mt-4 grid w-full gap-2 text-left ${
+                                                isMaximized
+                                                    ? 'max-w-2xl grid-cols-1 md:grid-cols-2'
+                                                    : 'max-w-md grid-cols-1'
+                                            }`}
+                                        >
+                                            {activePrompts.map((prompt, idx) => (
+                                                <button
+                                                    key={idx}
+                                                    type="button"
+                                                    onClick={() => handleSendMessage(prompt.text)}
+                                                    className="group flex items-center gap-2.5 rounded-2xl border border-white bg-white p-2.5 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-lime-400/70 hover:shadow-md dark:border-white/10 dark:bg-[#15131F] dark:hover:border-lime-400/40 dark:hover:bg-[#1B1829]"
+                                                >
+                                                    <IconTile tone={prompt.tone} size="sm">
+                                                        {prompt.icon}
+                                                    </IconTile>
+                                                    <span className="min-w-0 flex-1 truncate text-[11px] font-bold text-slate-700 group-hover:text-slate-950 dark:text-slate-200 dark:group-hover:text-white">
+                                                        {prompt.label}
+                                                    </span>
+                                                    <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-brand-600 dark:text-slate-600 dark:group-hover:text-lime-300" />
+                                                </button>
+                                            ))}
                                         </div>
                                     </div>
                                 ) : (
-                                    messages.map((msg, index) => (
-                                        <div
-                                            key={msg.id}
-                                            className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
-                                        >
+                                    messages.map((msg, index) => {
+                                        const isUser = msg.role === 'user';
+                                        const isCopied = copiedMessageId === msg.id;
+
+                                        return (
                                             <div
-                                                className={`rounded-2xl px-3.5 py-2.5 shadow-sm text-xs leading-relaxed ${
-                                                    isMaximized ? 'max-w-[96%]' : 'max-w-[88%]'
-                                                } ${
-                                                    msg.role === 'user'
-                                                        ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-br-none'
-                                                        : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 border border-gray-200/80 dark:border-gray-700 rounded-bl-none'
+                                                key={msg.id}
+                                                className={`flex flex-col ${
+                                                    isUser ? 'items-end' : 'items-start'
                                                 }`}
                                             >
-                                                {msg.role === 'user' ? (
-                                                    <div className="whitespace-pre-wrap">{msg.content}</div>
-                                                ) : (
+                                                <div
+                                                    className={`flex items-end gap-2 ${
+                                                        isMaximized
+                                                            ? 'max-w-[92%]'
+                                                            : 'max-w-[90%]'
+                                                    } ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
+                                                >
+                                                    {!isUser && (
+                                                        <span className="mb-1 hidden h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#252438] to-[#1E1D2E] text-lime-300 shadow-sm ring-1 ring-white/10 sm:inline-flex">
+                                                            <Brain className="h-3.5 w-3.5" />
+                                                        </span>
+                                                    )}
+
                                                     <div
-                                                        className="ai-html-content text-xs leading-relaxed"
-                                                        dangerouslySetInnerHTML={{ __html: sanitizeAndFormatHtml(msg.content) }}
-                                                    />
-                                                )}
+                                                        className={`min-w-0 rounded-[20px] px-4 py-3 text-xs leading-relaxed shadow-sm ${
+                                                            isUser
+                                                                ? 'rounded-br-md bg-gradient-to-br from-[#252438] to-[#1E1D2E] text-white dark:from-brand-600 dark:to-brand-700'
+                                                                : 'rounded-bl-md border border-slate-200/80 bg-white text-slate-800 dark:border-white/10 dark:bg-[#171524] dark:text-slate-200'
+                                                        }`}
+                                                    >
+                                                        {isUser ? (
+                                                            <div className="whitespace-pre-wrap font-medium">
+                                                                {msg.content}
+                                                            </div>
+                                                        ) : (
+                                                            <div
+                                                                className="ai-html-content text-xs leading-relaxed"
+                                                                dangerouslySetInnerHTML={{
+                                                                    __html: sanitizeAndFormatHtml(
+                                                                        msg.content,
+                                                                    ),
+                                                                }}
+                                                            />
+                                                        )}
 
-                                                {/* STAGING CARD DRAF TRANSAKSI */}
-                                                {msg.staging_card && (
-                                                    <div className="mt-3 p-3.5 rounded-xl bg-slate-50 dark:bg-gray-850 border border-indigo-200 dark:border-indigo-800/60 text-gray-900 dark:text-gray-100 shadow-sm space-y-2.5">
-                                                        <div className="flex items-center justify-between border-b pb-2 border-gray-200 dark:border-gray-700">
-                                                            <div className="flex items-center gap-1.5 font-bold text-indigo-700 dark:text-indigo-300">
-                                                                <Coins className="w-4 h-4" />
-                                                                Draf Transaksi BKU
-                                                            </div>
-                                                            <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-300">
-                                                                {msg.staging_card.jenis_transaksi}
-                                                            </span>
-                                                        </div>
+                                                        {msg.staging_card && (
+                                                            <CopilotStagingDraftCard
+                                                                draft={msg.staging_card}
+                                                                isCommitting={
+                                                                    committingDraftIndex === index
+                                                                }
+                                                                onCommit={() =>
+                                                                    handleCommitDraft(
+                                                                        msg.staging_card!,
+                                                                        index,
+                                                                    )
+                                                                }
+                                                            />
+                                                        )}
 
-                                                        <div className="space-y-1 text-[11px]">
-                                                            <div>
-                                                                <span className="text-gray-500">Kegiatan:</span>{' '}
-                                                                <strong className="text-gray-800 dark:text-gray-200">{msg.staging_card.nama_kegiatan}</strong>
-                                                            </div>
-                                                            <div>
-                                                                <span className="text-gray-500">Rekening:</span>{' '}
-                                                                <span className="font-mono">{msg.staging_card.kode_rekening}</span> - {msg.staging_card.nama_rekening}
-                                                            </div>
-                                                            <div>
-                                                                <span className="text-gray-500">Penyedia:</span>{' '}
-                                                                <strong>{msg.staging_card.nama_toko}</strong> ({msg.staging_card.tanggal})
-                                                            </div>
-                                                            <div className="pt-1 flex items-center justify-between border-t border-gray-200 dark:border-gray-700">
-                                                                <span className="font-bold">Total Nominal:</span>
-                                                                <span className="font-bold text-sm text-indigo-600 dark:text-indigo-400">
-                                                                    Rp {msg.staging_card.nominal.toLocaleString('id-ID')}
-                                                                </span>
-                                                            </div>
-                                                            {msg.staging_card.total_pajak > 0 && (
-                                                                <div className="flex items-center justify-between text-rose-600 text-[10px]">
-                                                                    <span>Potongan Pajak:</span>
-                                                                    <span>Rp {msg.staging_card.total_pajak.toLocaleString('id-ID')}</span>
-                                                                </div>
+                                                        {msg.analytics_chart && (
+                                                            <CopilotAnalyticsChartCard
+                                                                chart={msg.analytics_chart}
+                                                            />
+                                                        )}
+
+                                                        {msg.action_buttons &&
+                                                            msg.action_buttons.length > 0 && (
+                                                                <CopilotActionButtonsCard
+                                                                    buttons={msg.action_buttons}
+                                                                    isMaximized={isMaximized}
+                                                                />
                                                             )}
-                                                            <div className="pt-1 flex items-center justify-between text-[10px] text-gray-500">
-                                                                <span>Sisa Pagu RKAS:</span>
-                                                                <span className={msg.staging_card.is_over_budget ? 'text-rose-600 font-bold' : 'text-emerald-600 font-bold'}>
-                                                                    Rp {msg.staging_card.sisa_pagu_sebelum.toLocaleString('id-ID')} → Rp {msg.staging_card.sisa_pagu_sesudah.toLocaleString('id-ID')}
-                                                                </span>
-                                                            </div>
-                                                        </div>
+                                                    </div>
+                                                </div>
 
-                                                        {/* Actions Button di Card */}
-                                                        <div className="pt-2 border-t border-gray-200 dark:border-gray-700 flex items-center justify-end gap-2">
-                                                            {msg.staging_card.is_committed ? (
-                                                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-2.5 py-1 rounded-md border border-emerald-200 dark:border-emerald-800">
-                                                                    <CheckCircle2 className="w-3.5 h-3.5" />
-                                                                    Tersimpan di BKU (#{msg.staging_card.bku_id})
-                                                                </span>
+                                                {/* Baris meta jam & tombol salin 1-klik */}
+                                                <div
+                                                    className={`mt-1 flex items-center gap-2 px-1 ${
+                                                        !isUser ? 'sm:pl-9' : ''
+                                                    }`}
+                                                >
+                                                    <span className="text-sikas-num text-[9.5px] font-semibold text-slate-400 dark:text-slate-500">
+                                                        {msg.timestamp}
+                                                    </span>
+                                                    {!isUser && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleCopyMessage(msg)}
+                                                            aria-label={isCopied ? 'Jawaban tersalin' : 'Salin jawaban AI'}
+                                                            className="inline-flex items-center gap-1 rounded-lg px-1.5 py-0.5 text-[9.5px] font-bold text-slate-400 transition hover:bg-slate-200/60 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-white/10 dark:hover:text-slate-200"
+                                                        >
+                                                            {isCopied ? (
+                                                                <>
+                                                                    <Check className="h-3 w-3 text-emerald-500 dark:text-emerald-300" />
+                                                                    <span className="text-emerald-600 dark:text-emerald-300">
+                                                                        Tersalin!
+                                                                    </span>
+                                                                </>
                                                             ) : (
-                                                                <button
-                                                                    onClick={() => handleCommitDraft(msg.staging_card!, index)}
-                                                                    disabled={committingDraftIndex === index || msg.staging_card.is_over_budget}
-                                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md font-bold text-[11px] shadow-sm transition disabled:opacity-50"
-                                                                >
-                                                                    {committingDraftIndex === index ? (
-                                                                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                                                    ) : (
-                                                                        <CheckCircle2 className="w-3.5 h-3.5" />
-                                                                    )}
-                                                                    Konfirmasi & Simpan ke BKU
-                                                                </button>
+                                                                <>
+                                                                    <Copy className="h-3 w-3" />
+                                                                    <span>Salin</span>
+                                                                </>
                                                             )}
-                                                        </div>
-                                                    </div>
-                                                )}
-
-                                                {/* MINI ANALYTICS CHART */}
-                                                {msg.analytics_chart && (
-                                                    <div className="mt-3 p-3 rounded-xl bg-white dark:bg-gray-850 border border-gray-200 dark:border-gray-700 shadow-sm">
-                                                        <div className="flex items-center gap-1.5 font-bold text-gray-800 dark:text-gray-200 mb-2">
-                                                            <BarChart3 className="w-4 h-4 text-purple-600" />
-                                                            {msg.analytics_chart.title}
-                                                        </div>
-                                                        <Chart
-                                                            options={{
-                                                                chart: {
-                                                                    toolbar: { show: false },
-                                                                    sparkline: { enabled: false },
-                                                                },
-                                                                xaxis: {
-                                                                    categories: msg.analytics_chart.categories,
-                                                                    labels: { style: { fontSize: '10px' } },
-                                                                },
-                                                                yaxis: {
-                                                                    labels: {
-                                                                        formatter: (val: number) => `Rp ${(val / 1000000).toFixed(1)}jt`,
-                                                                        style: { fontSize: '9px' },
-                                                                    },
-                                                                },
-                                                                colors: ['#6366f1', '#10b981'],
-                                                                dataLabels: { enabled: false },
-                                                                grid: { borderColor: '#f1f5f9' },
-                                                            }}
-                                                            series={msg.analytics_chart.series}
-                                                            type="bar"
-                                                            height={180}
-                                                        />
-                                                    </div>
-                                                )}
-
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </div>
-                                            <span className="text-[9px] text-gray-400 mt-1 px-1">
-                                                {msg.timestamp}
-                                            </span>
-                                        </div>
-                                    ))
+                                        );
+                                    })
                                 )}
 
-                                {/* Typing indicator */}
+                                {/* Typing Indicator Neo-Bento */}
                                 {isSending && (
-                                    <div className="flex items-center gap-2 text-gray-400 bg-white dark:bg-gray-800 p-2.5 rounded-xl border border-gray-200 dark:border-gray-700 w-32 shadow-sm">
-                                        <Sparkles className="w-3.5 h-3.5 text-purple-600 animate-spin" />
-                                        <span className="text-[11px] font-medium">Sedang berpikir...</span>
+                                    <div className="flex items-center gap-2">
+                                        <span className="hidden h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#252438] to-[#1E1D2E] text-lime-300 shadow-sm ring-1 ring-white/10 sm:inline-flex">
+                                            <Brain className="h-3.5 w-3.5" />
+                                        </span>
+                                        <div className="inline-flex items-center gap-2.5 rounded-2xl rounded-bl-md border border-slate-200/80 bg-white px-3.5 py-2.5 shadow-sm dark:border-white/10 dark:bg-[#171524]">
+                                            <span className="flex items-center gap-1">
+                                                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-brand-500 [animation-delay:-0.25s]" />
+                                                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-lime-400 [animation-delay:-0.12s]" />
+                                                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-brand-400" />
+                                            </span>
+                                            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                                                SIKAS AI sedang menganalisis...
+                                            </span>
+                                        </div>
                                     </div>
                                 )}
                                 <div ref={messagesEndRef} />
                             </div>
 
-                            {/* Input Form Footer */}
-                            <div className="p-3 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
+                            {/* Input Composer Neo-Bento */}
+                            <div className="border-t border-slate-100 bg-white/95 p-3 backdrop-blur-sm dark:border-white/10 dark:bg-[#15131F]">
                                 <form
                                     onSubmit={(e) => {
                                         e.preventDefault();
-                                        handleSendMessage();
+                                        void handleSendMessage();
                                     }}
-                                    className="flex items-center gap-2"
+                                    className="flex items-end gap-2 rounded-2xl border border-slate-200/90 bg-slate-50/80 p-1.5 pl-3 transition focus-within:border-lime-400 focus-within:bg-white focus-within:ring-4 focus-within:ring-lime-200/60 dark:border-white/10 dark:bg-white/[0.04] dark:focus-within:border-lime-400/70 dark:focus-within:bg-white/[0.06] dark:focus-within:ring-lime-400/10"
                                 >
                                     <textarea
+                                        ref={textareaRef}
                                         rows={1}
+                                        aria-label="Tulis pesan ke SIKAS AI Copilot"
                                         value={inputMessage}
                                         onChange={(e) => setInputMessage(e.target.value)}
                                         onKeyDown={(e) => {
                                             if (e.key === 'Enter' && !e.shiftKey) {
                                                 e.preventDefault();
-                                                handleSendMessage();
+                                                void handleSendMessage();
                                             }
                                         }}
-                                        placeholder="Ketik instruksi belanja atau pertanyaan..."
+                                        placeholder="Ketik instruksi belanja, tanya pajak, atau panduan SIKAS..."
                                         disabled={isSending}
-                                        className="flex-1 resize-none rounded-xl border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-xs py-2 px-3 text-gray-900 dark:text-white dark:bg-gray-700"
+                                        className="sikas-scroll max-h-28 flex-1 resize-none border-0 bg-transparent py-1.5 text-[12px] font-semibold text-slate-800 placeholder:font-medium placeholder:text-slate-400 focus:outline-none focus:ring-0 disabled:opacity-60 dark:text-white dark:placeholder:text-slate-500"
                                     />
                                     <button
                                         type="submit"
                                         disabled={isSending || !inputMessage.trim()}
-                                        className="p-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl shadow-md transition disabled:opacity-40"
+                                        aria-label="Kirim pesan"
+                                        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-lime-400 text-slate-950 shadow-lime transition hover:-translate-y-0.5 hover:bg-lime-300 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0"
                                     >
-                                        <Send className="w-4 h-4" />
+                                        <Send className="h-4 w-4" />
                                     </button>
                                 </form>
-                                <p className="text-[10px] text-gray-400 text-center mt-1.5">
-                                    Tekan Enter untuk kirim • Shift+Enter baris baru
-                                </p>
                             </div>
                         </div>
                     )}
-
-                </div>
+                </section>
             )}
         </>
     );

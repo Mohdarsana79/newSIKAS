@@ -3,11 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\RefBarang;
+use App\Services\ArkasEngineService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
-use Symfony\Component\Process\Process;
 
 class ArkasToolController extends Controller
 {
@@ -166,6 +166,107 @@ class ArkasToolController extends Controller
             'source' => 'local_database',
             'total_db' => $totalLocal,
             'is_empty_db' => ($totalLocal === 0),
+        ]);
+    }
+
+    /**
+     * Pencarian katalog Uraian Arkas berdasarkan tahun anggaran & kode rekening untuk form RKAS / RKAS Perubahan.
+     */
+    public function byRekening(Request $request)
+    {
+        $year = (int) $request->input('year', date('Y'));
+        $kodeRekening = trim((string) $request->input('kode_rekening', ''));
+        $keyword = trim((string) $request->input('keyword', ''));
+        $idBarang = trim((string) $request->input('id_barang', ''));
+        $uraianArkas = trim((string) $request->input('uraian_arkas', ''));
+
+        $yearSynced = RefBarang::where('tahun', $year)->exists();
+
+        if (! $yearSynced || $kodeRekening === '') {
+            return response()->json([
+                'status' => 'success',
+                'year' => $year,
+                'kode_rekening' => $kodeRekening,
+                'year_synced' => $yearSynced,
+                'has_rekening_catalog' => false,
+                'total_rekening_items' => 0,
+                'data' => [],
+                'selected_item' => null,
+            ]);
+        }
+
+        $baseQuery = RefBarang::where('tahun', $year)
+            ->where('kode_rekening', $kodeRekening);
+
+        $totalRekeningItems = (clone $baseQuery)->count();
+        $hasRekeningCatalog = $totalRekeningItems > 0;
+
+        if (! $hasRekeningCatalog) {
+            return response()->json([
+                'status' => 'success',
+                'year' => $year,
+                'kode_rekening' => $kodeRekening,
+                'year_synced' => true,
+                'has_rekening_catalog' => false,
+                'total_rekening_items' => 0,
+                'data' => [],
+                'selected_item' => null,
+            ]);
+        }
+
+        $itemsQuery = clone $baseQuery;
+        if ($keyword !== '') {
+            $operator = DB::connection()->getDriverName() === 'pgsql' ? 'ILIKE' : 'LIKE';
+            $itemsQuery->where(function ($q) use ($operator, $keyword) {
+                $q->where('nama_barang', $operator, "%{$keyword}%")
+                    ->orWhere('id_barang', $operator, "%{$keyword}%");
+            });
+        }
+
+        $items = $itemsQuery->orderBy('nama_barang')
+            ->orderBy('id_barang')
+            ->limit(150)
+            ->get()
+            ->map(fn ($item) => [
+                'id_barang' => $item->id_barang,
+                'nama_barang' => $item->nama_barang,
+                'kode_rekening' => $item->kode_rekening,
+                'rekening' => $item->rekening,
+                'satuan' => $item->satuan,
+                'batas_atas' => (float) $item->batas_atas,
+                'tahun' => (int) $item->tahun,
+            ])
+            ->values();
+
+        $selectedModel = null;
+        if ($idBarang !== '') {
+            $selectedModel = (clone $baseQuery)->where('id_barang', $idBarang)->first();
+        }
+        if (! $selectedModel && $uraianArkas !== '') {
+            $selectedModel = (clone $baseQuery)
+                ->whereRaw('LOWER(TRIM(nama_barang)) = LOWER(TRIM(?))', [$uraianArkas])
+                ->first();
+        }
+
+        $selectedItem = $selectedModel ? [
+            'id_barang' => $selectedModel->id_barang,
+            'nama_barang' => $selectedModel->nama_barang,
+            'kode_rekening' => $selectedModel->kode_rekening,
+            'rekening' => $selectedModel->rekening,
+            'satuan' => $selectedModel->satuan,
+            'batas_atas' => (float) $selectedModel->batas_atas,
+            'tahun' => (int) $selectedModel->tahun,
+        ] : null;
+
+        return response()->json([
+            'status' => 'success',
+            'year' => $year,
+            'kode_rekening' => $kodeRekening,
+            'year_synced' => true,
+            'has_rekening_catalog' => true,
+            'total_rekening_items' => $totalRekeningItems,
+            'data' => $items,
+            'selected_item' => $selectedItem,
         ]);
     }
 
@@ -451,62 +552,12 @@ class ArkasToolController extends Controller
      */
     private function runPythonQuery($keyword, $year = 'ALL')
     {
-        $pythonPath = storage_path('app/arkas_engine/python.exe');
-        $scriptPath = storage_path('app/arkas_engine/query.py');
+        $timeout = $keyword === '__YEARS__' ? 15 : 180;
 
-        if (! file_exists($pythonPath) || ! file_exists($scriptPath)) {
-            return ['error' => 'Arkas Engine tidak ditemukan.'];
-        }
-
-        $env = $_SERVER;
-        unset($env['OPENSSL_CONF']);
-
-        $appdata = $env['APPDATA'] ?? null;
-        $userprofile = $env['USERPROFILE'] ?? null;
-
-        if (empty($appdata)) {
-            $appdata = trim(shell_exec("powershell -Command \"[Environment]::GetFolderPath('ApplicationData')\""));
-        }
-
-        if (empty($userprofile)) {
-            $userprofile = trim(shell_exec("powershell -Command \"[Environment]::GetFolderPath('UserProfile')\""));
-        }
-
-        if (empty($userprofile) && ! empty($appdata)) {
-            $userprofile = dirname(dirname($appdata));
-        }
-
-        if (empty($appdata) && ! empty($userprofile)) {
-            $appdata = $userprofile.'\\AppData\\Roaming';
-        }
-
-        $env['SystemRoot'] = $env['SystemRoot'] ?? 'C:\\Windows';
-        $env['SystemDrive'] = $env['SystemDrive'] ?? 'C:';
-        $env['USERPROFILE'] = ! empty($userprofile) ? $userprofile : ($env['USERPROFILE'] ?? 'C:\\Users\\Digitalisasi');
-        $env['APPDATA'] = ! empty($appdata) ? $appdata : ($env['APPDATA'] ?? 'C:\\Users\\Digitalisasi\\AppData\\Roaming');
-        $env['LOCALAPPDATA'] = $env['LOCALAPPDATA'] ?? (empty($userprofile) ? '' : $userprofile.'\\AppData\\Local');
-        $env['TEMP'] = $env['TEMP'] ?? (empty($userprofile) ? '' : $userprofile.'\\AppData\\Local\\Temp');
-        $env['TMP'] = $env['TMP'] ?? $env['TEMP'];
-
-        $dbPathManual = env('ARKAS_DB_PATH', '');
-        $dbPathManual = trim($dbPathManual, '"\' ');
-        $dbPathManual = str_replace('\\', '/', $dbPathManual);
-
-        $process = new Process([$pythonPath, $scriptPath, $keyword, (string) $year, $dbPathManual], null, $env);
-        $process->setTimeout($keyword === '__YEARS__' ? 15 : 180); // 15s untuk daftar tahun, 180s untuk dump penuh
-        $process->run();
-
-        if (! $process->isSuccessful()) {
-            return ['error' => 'Gagal mengeksekusi engine ARKAS. '.$process->getErrorOutput()];
-        }
-
-        $output = $process->getOutput();
-        $result = json_decode($output, true);
-
-        if (! $result) {
-            return ['error' => 'Gagal membaca output dari engine ARKAS.'];
-        }
-
-        return $result;
+        return app(ArkasEngineService::class)->runScriptRaw(
+            'query.py',
+            [(string) $keyword, (string) $year],
+            $timeout
+        );
     }
 }

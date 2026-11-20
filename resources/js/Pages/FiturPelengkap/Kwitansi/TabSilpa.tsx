@@ -13,7 +13,7 @@ import PdfPreviewModal from '@/Components/PdfPreviewModal';
 import Dropdown from '@/Components/Dropdown';
 import DatePicker from '@/Components/DatePicker';
 import { format } from 'date-fns';
-import Select from 'react-select';
+import { KwitansiFormat, KwitansiRowActions, KwitansiSelect } from './components/KwitansiSelect';
 import DataTable from '@/Components/ui/DataTable';
 import EmptyState from '@/Components/ui/EmptyState';
 import FilterBar from '@/Components/ui/FilterBar';
@@ -66,90 +66,6 @@ interface YearData {
     tahun: string;
 }
 
-const formatOptions = [
-    { value: 1, label: 'Format 1' },
-    { value: 2, label: 'Format 2' },
-    { value: 3, label: 'Format 3' },
-    { value: 4, label: 'Format 4' }
-];
-
-const KwitansiRowActions = ({ item, onPrint, onPreview }: { item: KwitansiData, onPrint: (id: number, format: 1 | 2 | 3 | 4) => void, onPreview: (url: string) => void }) => {
-    const [format, setFormat] = useState<1 | 2 | 3 | 4>(3);
-    
-    const handlePreview = () => {
-        let url = item.preview_url;
-        if (format === 2) url = item.preview_url_2;
-        if (format === 3) url = item.preview_url_3;
-        if (format === 4) url = item.preview_url_4;
-        onPreview(url);
-    };
-
-    return (
-        <div className="flex items-center justify-end gap-2">
-            <div className="w-36 text-left">
-                <Select
-                    options={formatOptions}
-                    value={formatOptions.find(opt => opt.value === format)}
-                    onChange={(selectedOption) => setFormat(selectedOption?.value as 1 | 2 | 3 | 4)}
-                    menuPortalTarget={document.body}
-                    styles={{
-                        menuPortal: base => ({ ...base, zIndex: 9999 }),
-                        control: (base, state) => ({
-                            ...base,
-                            minHeight: '28px',
-                            height: '28px',
-                            fontSize: '0.75rem',
-                            boxShadow: state.isFocused ? 'none' : base.boxShadow,
-                            borderColor: state.isFocused ? '#d1d5db' : base.borderColor,
-                            '&:hover': {
-                                borderColor: state.isFocused ? '#d1d5db' : base.borderColor
-                            }
-                        }),
-                        valueContainer: (base) => ({
-                            ...base,
-                            padding: '0 8px',
-                        }),
-                        input: (base) => ({
-                            ...base,
-                            margin: '0',
-                            padding: '0',
-                            '& input': {
-                                boxShadow: 'none !important',
-                                border: 'none !important'
-                            },
-                            '& input:focus': {
-                                boxShadow: 'none !important',
-                                border: 'none !important'
-                            }
-                        }),
-                        indicatorsContainer: (base) => ({
-                            ...base,
-                            height: '28px',
-                        }),
-                    }}
-                    isSearchable={true}
-                />
-            </div>
-            <button
-                onClick={() => onPrint(item.id, format)}
-                className="inline-flex items-center gap-1 rounded-xl bg-lime-400 px-2.5 py-1.5 text-[10px] font-extrabold text-slate-950 shadow-lime transition hover:-translate-y-0.5 hover:bg-lime-300"
-                title="Cetak PDF"
-            >
-                <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg> 
-                PDF
-            </button>
-            <button
-                onClick={(e) => { e.preventDefault(); handlePreview(); }}
-                className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-[10px] font-extrabold text-slate-600 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10"
-                title="Preview"
-            >
-                <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg> 
-                View
-            </button>
-        </div>
-    );
-};
-
 export default function TabSilpa({ auth }: { auth: any }) {
     const [kwitansis, setKwitansis] = useState<KwitansiData[]>([]);
     const [loading, setLoading] = useState(true);
@@ -178,7 +94,7 @@ export default function TabSilpa({ auth }: { auth: any }) {
     // Print Settings Modal State
     const [showPrintSettings, setShowPrintSettings] = useState(false);
     const [selectedKwitansiId, setSelectedKwitansiId] = useState<number | null>(null);
-    const [selectedKwitansiType, setSelectedKwitansiType] = useState<1 | 2 | 3 | 4>(1);
+    const [selectedKwitansiType, setSelectedKwitansiType] = useState<KwitansiFormat>(1);
 
     // PDF Preview Modal State
     const [showPreviewModal, setShowPreviewModal] = useState(false);
@@ -444,7 +360,7 @@ export default function TabSilpa({ auth }: { auth: any }) {
         setConfirmingDownload(false);
     };
 
-    const handlePrintClick = (id: number, type: 1 | 2 | 3 | 4) => {
+    const handlePrintClick = (id: number, type: KwitansiFormat) => {
         setSelectedKwitansiId(id);
         setSelectedKwitansiType(type);
         setShowPrintSettings(true);
@@ -712,8 +628,10 @@ export default function TabSilpa({ auth }: { auth: any }) {
 
             {/* Modal Generate Batch */}
             <Modal show={confirmingBatchGenerate} onClose={closeModal} maxWidth="lg">
-                <div className="relative overflow-hidden">
-                    <div className="pointer-events-none absolute -right-10 -top-16 h-40 w-40 rounded-full bg-lime-400/20 blur-3xl dark:bg-lime-400/10" />
+                <div className="relative overflow-visible rounded-[26px]">
+                    <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[26px]">
+                        <div className="absolute -right-10 -top-16 h-40 w-40 rounded-full bg-lime-400/20 blur-3xl dark:bg-lime-400/10" />
+                    </div>
                     <div className="relative flex items-start justify-between gap-3 border-b border-slate-100 px-6 py-4 dark:border-white/5">
                         <div className="flex items-center gap-3">
                             <IconTile tone="lime" size="lg">
@@ -747,55 +665,20 @@ export default function TabSilpa({ auth }: { auth: any }) {
                     <div className="space-y-4 px-6 py-5">
                         <div>
                             <InputLabel htmlFor="generate_year" value="Tahun Anggaran" />
-                            <Select
-                                id="generate_year"
+                            <KwitansiSelect
+                                inputId="generate_year"
                                 className="mt-1"
-                                classNamePrefix="react-select"
-                                options={availableYears.map((year) => ({ value: year.id.toString(), label: year.tahun }))}
-                                value={availableYears
-                                    .filter((year) => year.id.toString() === generateYear)
-                                    .map((year) => ({ value: year.id.toString(), label: year.tahun }))[0] || null
-                                }
-                                onChange={(val: any) => setGenerateYear(val ? val.value : '')}
-                                placeholder="Pilih Tahun Anggaran..."
-                                isDisabled={processing}
+                                size="md"
                                 isSearchable
-                                styles={{
-                                    control: (baseStyles, state) => ({
-                                        ...baseStyles,
-                                        borderColor: state.isFocused ? '#a9ce2f' : '#d1d5db',
-                                        boxShadow: state.isFocused ? '0 0 0 1px #a9ce2f' : 'none',
-                                        '&:hover': { borderColor: state.isFocused ? '#a9ce2f' : '#94a3b8' },
-                                        borderRadius: '0.75rem',
-                                        padding: '0.125rem',
-                                    }),
-                                    singleValue: (base) => ({
-                                        ...base,
-                                        color: '#1e293b',
-                                    }),
-                                    input: (base) => ({
-                                        ...base,
-                                        color: '#1e293b',
-                                        'input': {
-                                            boxShadow: 'none !important',
-                                            border: 'none !important',
-                                            outline: 'none !important',
-                                        },
-                                        'input:focus': {
-                                            boxShadow: 'none !important',
-                                            border: 'none !important',
-                                        }
-                                    }),
-                                    option: (base, state) => ({
-                                        ...base,
-                                        color: '#111827',
-                                        backgroundColor: state.isSelected ? '#e2e8f0' : state.isFocused ? '#f1f5f9' : 'transparent',
-                                    }),
-                                    menu: (baseStyles) => ({
-                                        ...baseStyles,
-                                        zIndex: 9999,
-                                    })
-                                }}
+                                isDisabled={processing}
+                                placeholder="Pilih Tahun Anggaran..."
+                                noOptionsMessage="Tahun anggaran tidak ditemukan"
+                                options={availableYears.map((year) => ({
+                                    value: year.id.toString(),
+                                    label: year.tahun,
+                                }))}
+                                value={generateYear}
+                                onChange={(val) => setGenerateYear(val ?? '')}
                             />
                         </div>
 

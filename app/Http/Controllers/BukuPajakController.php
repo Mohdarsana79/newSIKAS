@@ -7,6 +7,7 @@ use App\Exports\BkpPajakExport;
 use App\Models\Penganggaran; // Assuming SekolahProfile is the correct model from previous context
 use App\Models\Sekolah;
 use App\Models\SekolahProfile;
+use App\Services\BkuArkasDisplayService;
 use App\Services\BukuKasService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
@@ -136,8 +137,9 @@ class BukuPajakController extends Controller
             }
 
             $bulanAngka = $this->convertBulanToNumber($bulan);
+            $isArkasMode = app(BkuArkasDisplayService::class)->isArkasMode($request);
 
-            $dataPajak = $this->siapkanDataRowsBkpPajak($penganggaran, $bulanAngka, $tahun);
+            $dataPajak = $this->siapkanDataRowsBkpPajak($penganggaran, $bulanAngka, $tahun, $isArkasMode);
             $pajakRows = $dataPajak['pajakRows'];
             $totalPenerimaan = $dataPajak['totalPenerimaan'];
             $totalPengeluaran = $dataPajak['totalPengeluaran'];
@@ -241,7 +243,8 @@ class BukuPajakController extends Controller
                 $bulanAngka = $this->convertBulanToNumber($m);
 
                 // --- CORE LOGIC START (Derived from getBkpPajakData) ---
-                $dataPajak = $this->siapkanDataRowsBkpPajak($penganggaran, $bulanAngka, $tahun);
+                $isArkasMode = app(BkuArkasDisplayService::class)->isArkasMode($request);
+                $dataPajak = $this->siapkanDataRowsBkpPajak($penganggaran, $bulanAngka, $tahun, $isArkasMode);
 
                 $pajakRows = [];
                 $pajakRows[] = [
@@ -360,7 +363,8 @@ class BukuPajakController extends Controller
                 $bulanAngka = $this->convertBulanToNumber($m);
 
                 // --- CORE LOGIC START (Derived from getBkpPajakData) ---
-                $dataPajak = $this->siapkanDataRowsBkpPajak($penganggaran, $bulanAngka, $tahun);
+                $isArkasMode = app(BkuArkasDisplayService::class)->isArkasMode($request);
+                $dataPajak = $this->siapkanDataRowsBkpPajak($penganggaran, $bulanAngka, $tahun, $isArkasMode);
 
                 $pajakRows = [];
                 $pajakRows[] = [
@@ -485,8 +489,9 @@ class BukuPajakController extends Controller
         return Carbon::create($tahun, $bulanAngka, 1)->endOfMonth();
     }
 
-    private function siapkanDataRowsBkpPajak($penganggaran, $bulanAngka, $tahun)
+    private function siapkanDataRowsBkpPajak($penganggaran, $bulanAngka, $tahun, bool $isArkasMode = false)
     {
+        $displayService = app(BkuArkasDisplayService::class);
         // 1. Terima Pajak (Penerimaan)
         $bkuPajakDiterima = ($this->BukuKasUmum)::where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
             ->whereMonth('tanggal_transaksi', $bulanAngka)
@@ -522,7 +527,8 @@ class BukuPajakController extends Controller
         // --- LOOP 1: TERIMA PAJAK ---
         foreach ($bkuPajakDiterima as $transaksi) {
             $pajakName = strtolower($transaksi->pajak ?? '');
-            $baseUraian = $transaksi->uraian_opsional ?? $transaksi->uraian ?? '';
+            $baseUraian = $displayService->resolveHeaderUraian($transaksi, $isArkasMode, '');
+            $noBuktiFallback = $displayService->resolveNoBukti($transaksi, $isArkasMode);
             $hasPajakPusat = $transaksi->total_pajak > 0;
             $hasPajakDaerah = $transaksi->total_pajak_daerah > 0;
 
@@ -562,7 +568,7 @@ class BukuPajakController extends Controller
                     'transaksi' => $transaksi,
                     'tanggal' => $transaksi->tanggal_transaksi,
                     'no_kode' => $transaksi->rekeningBelanja->kode_rekening ?? '-',
-                    'no_buku' => $transaksi->kode_masa_pajak ?? $transaksi->id_transaksi,
+                    'no_buku' => $transaksi->kode_masa_pajak ?? $noBuktiFallback,
                     'uraian' => $uraianPusat,
                     'ppn' => $ppn, 'pph21' => $pph21, 'pph22' => $pph22, 'pph23' => $pph23, 'pb1' => 0,
                     'jumlah' => $jumlah, // Penerimaan
@@ -594,7 +600,8 @@ class BukuPajakController extends Controller
         // --- LOOP 2: SETOR PAJAK ---
         foreach ($bkuPajakDisetor as $transaksi) {
             $pajakName = strtolower($transaksi->pajak ?? '');
-            $baseUraian = $transaksi->uraian_opsional ?? $transaksi->uraian ?? '';
+            $baseUraian = $displayService->resolveHeaderUraian($transaksi, $isArkasMode, '');
+            $noBuktiFallback = $displayService->resolveNoBukti($transaksi, $isArkasMode);
             $hasPajakPusat = $transaksi->total_pajak > 0;
             $hasPajakDaerah = $transaksi->total_pajak_daerah > 0;
 
@@ -630,7 +637,7 @@ class BukuPajakController extends Controller
                     'transaksi' => $transaksi,
                     'tanggal' => $transaksi->tanggal_lapor,
                     'no_kode' => $transaksi->rekeningBelanja->kode_rekening ?? '-',
-                    'no_buku' => $transaksi->ntpn ?? $transaksi->id_transaksi,
+                    'no_buku' => $transaksi->ntpn ?? $noBuktiFallback,
                     'uraian' => $uraianPusat,
                     'ppn' => $ppn, 'pph21' => $pph21, 'pph22' => $pph22, 'pph23' => $pph23, 'pb1' => 0,
                     'jumlah' => 0,

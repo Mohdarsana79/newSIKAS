@@ -20,7 +20,7 @@ export default function Authenticated({
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [copilotState, setCopilotState] = useState<CopilotWindowState>('closed');
 
-    // Tutup sidebar otomatis pada layar kecil saat pertama dimuat.
+    // Tutup / ciutkan sidebar otomatis hanya di bawah 1024px (HP/tablet); di laptop & PC (>= 1024px, skala 80%) biarkan terbuka.
     useEffect(() => {
         if (typeof window !== 'undefined' && window.innerWidth < 1024) {
             setSidebarOpen(false);
@@ -43,7 +43,7 @@ export default function Authenticated({
             {/* Kolom konten */}
             <div
                 className={`flex min-h-screen flex-col transition-[padding] duration-300 ease-out ${
-                    sidebarOpen ? 'lg:pl-[286px]' : 'lg:pl-[102px]'
+                    sidebarOpen ? 'lg:pl-[276px]' : 'lg:pl-[98px]'
                 }`}
             >
                 <Navbar
@@ -55,7 +55,7 @@ export default function Authenticated({
                 />
 
                 <main className="flex-1 overflow-x-hidden">
-                    <div className="px-3 pb-6 pt-5 sm:pt-6 lg:pr-4">{children}</div>
+                    <div className="px-3 pb-6 pt-5 sm:px-4 sm:pt-6 lg:px-5">{children}</div>
                 </main>
             </div>
         </div>

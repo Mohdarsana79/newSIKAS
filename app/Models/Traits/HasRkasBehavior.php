@@ -33,6 +33,8 @@ trait HasRkasBehavior
             'kode_id',
             'kode_rekening_id',
             'uraian',
+            'uraian_arkas',
+            'id_barang_arkas',
             'harga_satuan',
             'bulan',
             'jumlah',

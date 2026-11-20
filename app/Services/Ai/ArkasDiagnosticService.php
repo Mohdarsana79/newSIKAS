@@ -6,8 +6,8 @@ use App\Config\VariantConfig;
 use App\Models\RefBarang;
 use App\Models\SekolahProfile;
 use App\Models\User;
+use App\Services\ArkasEngineService;
 use Illuminate\Support\Facades\Log;
-use Symfony\Component\Process\Process;
 
 class ArkasDiagnosticService
 {
@@ -24,7 +24,7 @@ class ArkasDiagnosticService
     public function runComprehensiveDiagnostic(User $user, string $variant, int $tahun): array
     {
         $sumberDanaId = $this->getArkasSumberDanaId($variant);
-        $manualPath = env('ARKAS_DB_PATH', '');
+        $manualPath = (string) config('arkas.db_path', '');
 
         // 1. Eksekusi scanner ARKAS
         $arkasScan = $this->runArkasEngineScanner($tahun, $sumberDanaId, $manualPath);
@@ -92,7 +92,7 @@ class ArkasDiagnosticService
     public function runContextualDiagnostic(User $user, string $variant, int $tahun, string $scope, array $context): array
     {
         $sumberDanaId = $this->getArkasSumberDanaId($variant);
-        $manualPath = env('ARKAS_DB_PATH', '');
+        $manualPath = (string) config('arkas.db_path', '');
 
         $arkasScan = $this->runArkasEngineScanner($tahun, $sumberDanaId, $manualPath);
         if (isset($arkasScan['status']) && $arkasScan['status'] === 'error') {
@@ -150,78 +150,12 @@ class ArkasDiagnosticService
      */
     protected function runArkasEngineScanner(int $tahun, int $sumberDanaId, ?string $manualPath = null): array
     {
-        $pythonPath = storage_path('app/arkas_engine/python.exe');
-        $scriptPath = storage_path('app/arkas_engine/diagnose_arkas.py');
-
-        if (! file_exists($pythonPath) || ! file_exists($scriptPath)) {
-            return [
-                'status' => 'error',
-                'error_type' => 'ENGINE_NOT_FOUND',
-                'message' => 'Engine python ARKAS tidak ditemukan di direktori storage/app/arkas_engine.',
-            ];
-        }
-
-        $env = $_SERVER;
-        unset($env['OPENSSL_CONF']);
-
-        $appdata = $env['APPDATA'] ?? null;
-        $userprofile = $env['USERPROFILE'] ?? null;
-
-        if (empty($appdata)) {
-            $appdata = trim(shell_exec("powershell -Command \"[Environment]::GetFolderPath('ApplicationData')\""));
-        }
-        if (empty($userprofile)) {
-            $userprofile = trim(shell_exec("powershell -Command \"[Environment]::GetFolderPath('UserProfile')\""));
-        }
-        if (empty($userprofile) && ! empty($appdata)) {
-            $userprofile = dirname(dirname($appdata));
-        }
-        if (empty($appdata) && ! empty($userprofile)) {
-            $appdata = $userprofile.'\\AppData\\Roaming';
-        }
-
-        $env['SystemRoot'] = $env['SystemRoot'] ?? 'C:\\Windows';
-        $env['SystemDrive'] = $env['SystemDrive'] ?? 'C:';
-        $env['USERPROFILE'] = $userprofile ?: ($env['USERPROFILE'] ?? 'C:\\Users\\Digitalisasi');
-        $env['APPDATA'] = $appdata ?: ($env['APPDATA'] ?? 'C:\\Users\\Digitalisasi\\AppData\\Roaming');
-        $env['LOCALAPPDATA'] = $env['LOCALAPPDATA'] ?? ($userprofile ? $userprofile.'\\AppData\\Local' : '');
-        $env['TEMP'] = $env['TEMP'] ?? ($userprofile ? $userprofile.'\\AppData\\Local\\Temp' : '');
-        $env['TMP'] = $env['TMP'] ?? $env['TEMP'];
-
-        $command = [$pythonPath, $scriptPath, (string) $tahun, (string) $sumberDanaId];
-        if (! empty($manualPath)) {
-            $cleanPath = str_replace('\\', '/', trim($manualPath, '"\' '));
-            $command[] = $cleanPath;
-        }
-
-        $process = new Process($command, null, $env);
-        $process->setTimeout(60);
-        $process->run();
-
-        if (! $process->isSuccessful()) {
-            Log::error('Arkas diagnostic script failed: '.$process->getErrorOutput());
-
-            return [
-                'status' => 'error',
-                'error_type' => 'PROCESS_EXECUTION_FAILED',
-                'message' => 'Gagal menjalankan proses Python: '.$process->getErrorOutput(),
-            ];
-        }
-
-        $output = trim($process->getOutput());
-        $decoded = json_decode($output, true);
-
-        if (! $decoded) {
-            Log::error('Arkas diagnostic script returned non-JSON: '.$output);
-
-            return [
-                'status' => 'error',
-                'error_type' => 'INVALID_JSON_OUTPUT',
-                'message' => 'Format keluaran dari engine ARKAS tidak valid.',
-            ];
-        }
-
-        return $decoded;
+        return app(ArkasEngineService::class)->runScriptRaw(
+            'diagnose_arkas.py',
+            [(string) $tahun, (string) $sumberDanaId],
+            60,
+            $manualPath !== '' ? $manualPath : null
+        );
     }
 
     /**
