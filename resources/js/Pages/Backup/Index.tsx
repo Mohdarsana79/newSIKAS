@@ -15,6 +15,13 @@ import DataTable from '@/Components/ui/DataTable';
 import EmptyState from '@/Components/ui/EmptyState';
 import IconTile from '@/Components/ui/IconTile';
 import StatusBadge from '@/Components/ui/StatusBadge';
+import PillTabs from '@/Components/ui/PillTabs';
+import AutoBackupPanel, {
+    AutoBackupSetting,
+    BackupRunItem,
+    SchedulerCommands,
+    WindowsSchedulerStatus,
+} from './Partials/AutoBackupPanel';
 
 interface BackupFile {
     name: string;
@@ -38,9 +45,36 @@ interface PageProps {
         error?: string;
     };
     currentNpsn?: string;
+    autoBackupSetting?: AutoBackupSetting;
+    backupRuns?: BackupRunItem[];
+    schedulerCommands?: SchedulerCommands | null;
+    windowsSchedulerStatus?: WindowsSchedulerStatus | null;
+    defaultBackupDir?: string | null;
+    canWriteBackup?: boolean;
+    appTimezone?: string;
 }
 
-export default function BackupIndex({ auth, backupFiles, stats, flash, currentNpsn }: PageProps) {
+export default function BackupIndex({
+    auth,
+    backupFiles,
+    stats,
+    flash,
+    currentNpsn,
+    autoBackupSetting,
+    backupRuns = [],
+    schedulerCommands = null,
+    windowsSchedulerStatus = null,
+    defaultBackupDir = null,
+    canWriteBackup = true,
+    appTimezone = 'UTC',
+}: PageProps) {
+    const [activeTab, setActiveTab] = useState<'manual' | 'auto'>(() => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('tab') === 'auto') return 'auto';
+        }
+        return 'manual';
+    });
     const [confirmingReset, setConfirmingReset] = useState(false);
     const [password, setPassword] = useState('');
     const [passwordError, setPasswordError] = useState('');
@@ -397,8 +431,32 @@ export default function BackupIndex({ auth, backupFiles, stats, flash, currentNp
                     ]}
                     title="Backup & Restore Database"
                     badge={<StatusBadge tone="success" dot={false}>Keamanan Data</StatusBadge>}
-                    subtitle="Buat cadangan, unduh, dan pulihkan database beserta berkas unggahan."
+                    subtitle="Buat cadangan, unduh, pulihkan database, serta atur auto-backup terjadwal dan retensi otomatis."
                 />
+
+                {/* Mode Tabs */}
+                <div className="sikas-card animate-rise inline-flex p-1.5">
+                    <PillTabs
+                        ariaLabel="Mode Manajemen Backup"
+                        value={activeTab}
+                        onChange={(key) => setActiveTab(key as 'manual' | 'auto')}
+                        items={[
+                            {
+                                key: 'manual',
+                                label: 'Backup & Restore Manual',
+                            },
+                            {
+                                key: 'auto',
+                                label: 'Auto-Backup, Retensi & Cloud',
+                                badge: autoBackupSetting?.is_enabled ? (
+                                    <span className="rounded-full bg-mint/20 px-1.5 py-0.5 text-[9px] font-extrabold text-mint">
+                                        Aktif
+                                    </span>
+                                ) : undefined,
+                            },
+                        ]}
+                    />
+                </div>
 
                 {/* Flash Messages */}
                 {flash.success && (
@@ -428,6 +486,8 @@ export default function BackupIndex({ auth, backupFiles, stats, flash, currentNp
                     </div>
                 )}
 
+                {activeTab === 'manual' ? (
+                    <>
                 {/* Stats Cards */}
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
                     <div className="sikas-card sikas-card-hover animate-rise p-4" style={{ animationDelay: '60ms' }}>
@@ -675,6 +735,20 @@ export default function BackupIndex({ auth, backupFiles, stats, flash, currentNp
                         </table>
                     </DataTable>
                 </div>
+                    </>
+                ) : (
+                    autoBackupSetting && (
+                        <AutoBackupPanel
+                            setting={autoBackupSetting}
+                            runs={backupRuns}
+                            schedulerCommands={schedulerCommands}
+                            windowsSchedulerStatus={windowsSchedulerStatus}
+                            defaultBackupDir={defaultBackupDir}
+                            canWriteBackup={canWriteBackup}
+                            appTimezone={appTimezone}
+                        />
+                    )
+                )}
             </div>
 
             {/* Reset Confirmation Modal */}

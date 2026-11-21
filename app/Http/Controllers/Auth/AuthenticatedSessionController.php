@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Models\ActivityLog;
+use App\Services\ActivityLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -45,6 +47,16 @@ class AuthenticatedSessionController extends Controller
 
             if ($request->input('security_code') !== $user->security_code) {
                 Auth::logout();
+
+                app(ActivityLogger::class)->logAuthEvent(
+                    $request,
+                    'login_failed',
+                    'Gagal login: kode keamanan 2FA salah',
+                    $user,
+                    ActivityLog::SEVERITY_WARNING,
+                    ['reason' => 'invalid_security_code'],
+                );
+
                 throw ValidationException::withMessages([
                     'security_code' => 'Kode keamanan yang Anda masukkan salah.',
                 ]);
@@ -54,6 +66,15 @@ class AuthenticatedSessionController extends Controller
         $request->session()->regenerate();
         $request->session()->flash('show_changelog', true);
 
+        app(ActivityLogger::class)->logAuthEvent(
+            $request,
+            'login',
+            'Masuk ke aplikasi SIKAS',
+            $user,
+            ActivityLog::SEVERITY_INFO,
+            ['two_factor_used' => (bool) $user->is_security_code_enabled],
+        );
+
         return redirect()->intended(route('dashboard', absolute: false));
     }
 
@@ -62,11 +83,23 @@ class AuthenticatedSessionController extends Controller
      */
     public function destroy(Request $request): RedirectResponse
     {
+        $user = $request->user();
+
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();
 
         $request->session()->regenerateToken();
+
+        if ($user) {
+            app(ActivityLogger::class)->logAuthEvent(
+                $request,
+                'logout',
+                'Keluar dari aplikasi SIKAS',
+                $user,
+                ActivityLog::SEVERITY_INFO,
+            );
+        }
 
         return redirect('/');
     }

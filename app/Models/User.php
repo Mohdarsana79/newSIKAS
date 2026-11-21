@@ -105,4 +105,14 @@ class User extends Authenticatable
     {
         return $this->hasMany(BkuAuditLog::class);
     }
+
+    public function activityLogs()
+    {
+        return $this->hasMany(ActivityLog::class);
+    }
+
+    public function userNotifications()
+    {
+        return $this->hasMany(UserNotification::class);
+    }
 }

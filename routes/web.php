@@ -1,16 +1,21 @@
 <?php
 
 use App\Config\VariantConfig;
+use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DatabaseController;
 use App\Http\Controllers\NetworkSettingController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\PublicTransparansiController;
 use App\Http\Controllers\RoleManagementController;
 use App\Http\Controllers\SkSuratController;
 use App\Http\Controllers\SystemUpdateController;
 use App\Http\Controllers\UserManagementController;
 use App\Http\Middleware\CheckNpsnLicense;
+use App\Http\Middleware\EnforceModulePermissions;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\RecordUserActivity;
 use App\Models\User;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
@@ -51,6 +56,18 @@ Route::get('/', function () {
     ]);
 });
 
+// Portal Transparansi BOSP Publik (dapat diakses masyarakat tanpa login)
+Route::get('/transparansi', [PublicTransparansiController::class, 'index'])
+    ->name('transparansi.index');
+
+Route::middleware('throttle:60,1')
+    ->prefix('api/public/transparansi')
+    ->name('api.public.transparansi.')
+    ->group(function () {
+        Route::get('/data', [PublicTransparansiController::class, 'data'])->name('data');
+        Route::get('/rka-tahapan', [PublicTransparansiController::class, 'rkaTahapan'])->name('rka-tahapan');
+    });
+
 Route::view('/license-invalid', 'errors.license')->name('license.invalid');
 
 // Endpoint pelacakan progres restore (bebas session/DB middleware agar tetap aktif saat public schema di-drop & dipulihkan)
@@ -62,6 +79,8 @@ Route::get('/backup/restore-progress/{restoreId}', [DatabaseController::class, '
         PreventRequestForgery::class,
         HandleInertiaRequests::class,
         CheckNpsnLicense::class,
+        RecordUserActivity::class,
+        EnforceModulePermissions::class,
     ])
     ->name('backup.restore-progress');
 
@@ -74,6 +93,8 @@ Route::get('/pembaharuan/progress/{updateId}', [SystemUpdateController::class, '
         PreventRequestForgery::class,
         HandleInertiaRequests::class,
         CheckNpsnLicense::class,
+        RecordUserActivity::class,
+        EnforceModulePermissions::class,
     ])
     ->name('system-update.progress');
 
@@ -88,6 +109,18 @@ Route::middleware('auth')->group(function () {
     Route::post('/profile/generate-security-code', [ProfileController::class, 'generateSecurityCode'])->name('profile.generate-security-code');
     Route::post('/profile/deepseek-settings', [ProfileController::class, 'updateDeepSeekSettings'])->name('profile.deepseek-settings');
     Route::post('/profile/deepseek-test', [ProfileController::class, 'testDeepSeekConnection'])->name('profile.deepseek-test');
+
+    Route::prefix('api/notifications')->name('api.notifications.')->group(function () {
+        Route::get('/unified', [NotificationController::class, 'getUnifiedNotifications'])->name('unified');
+        Route::post('/read', [NotificationController::class, 'markAsRead'])->name('read');
+        Route::post('/read-all', [NotificationController::class, 'markAllAsRead'])->name('read-all');
+    });
+
+    Route::prefix('log-aktivitas')->name('activity-logs.')->group(function () {
+        Route::get('/', [ActivityLogController::class, 'index'])->name('index');
+        Route::get('/export', [ActivityLogController::class, 'export'])->name('export');
+        Route::post('/prune', [ActivityLogController::class, 'prune'])->name('prune');
+    });
 
     Route::middleware(['role:bendahara'])->group(function () {
         Route::get('/management-role', [UserManagementController::class, 'page'])->name('management-role.index');

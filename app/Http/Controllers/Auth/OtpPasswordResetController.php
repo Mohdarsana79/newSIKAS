@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Mail\OtpMail;
+use App\Models\ActivityLog;
 use App\Models\User;
+use App\Services\ActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -95,11 +97,24 @@ class OtpPasswordResetController extends Controller
         }
 
         $user = User::where('email', $request->email)->first();
+        if (! $user) {
+            return response()->json(['message' => 'Akun pengguna tidak ditemukan.'], 404);
+        }
+
         $user->password = Hash::make($request->password);
         $user->save();
 
         // Delete token
         DB::table('password_reset_tokens')->where('email', $request->email)->delete();
+
+        app(ActivityLogger::class)->logAuthEvent(
+            $request,
+            'password_reset',
+            'Mereset kata sandi akun melalui OTP email',
+            $user,
+            ActivityLog::SEVERITY_CRITICAL,
+            ['method' => 'email_otp'],
+        );
 
         return response()->json(['message' => 'Password berhasil diubah. Silakan login kembali.']);
     }

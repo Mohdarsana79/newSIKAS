@@ -263,19 +263,49 @@ class NetworkAccessService
     }
 
     /**
+     * Read a single key's raw value from the active .env file, or null if absent.
+     */
+    public function getEnvValue(string $key): ?string
+    {
+        $envPath = app()->environmentFilePath();
+        if (! File::exists($envPath)) {
+            return null;
+        }
+
+        $lines = preg_split("/\r\n|\n|\r/", rtrim(File::get($envPath), "\r\n"));
+        if (! is_array($lines)) {
+            return null;
+        }
+
+        foreach ($lines as $line) {
+            if (str_starts_with($line, "{$key}=")) {
+                return trim(substr($line, strlen($key) + 1), " \t\"'");
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Persist selected keys into the active .env file (root or C:\ProgramData\SIKAS\.env).
      *
      * @param  array<string, string>  $pairs
+     *
+     * @throws \RuntimeException
      */
     public function updateEnvKeys(array $pairs): void
     {
         $envPath = app()->environmentFilePath();
         if (! File::exists($envPath)) {
-            return;
+            throw new \RuntimeException("File konfigurasi .env tidak ditemukan di {$envPath}.");
         }
 
-        $raw = File::get($envPath);
-        $lines = preg_split("/\r\n|\n|\r/", $raw);
+        if (! is_writable($envPath)) {
+            throw new \RuntimeException("File konfigurasi .env tidak dapat ditulis ({$envPath}). Periksa izin akses folder.");
+        }
+
+        $raw = rtrim(File::get($envPath), "\r\n");
+        $lines = $raw === '' ? [] : preg_split("/\r\n|\n|\r/", $raw);
         if (! is_array($lines)) {
             $lines = [];
         }
@@ -297,13 +327,18 @@ class NetworkAccessService
             $lines[] = "{$key}={$formatted}";
         }
 
-        File::put($envPath, implode("\n", $lines)."\n");
+        if (File::put($envPath, implode("\n", $lines)."\n") === false) {
+            throw new \RuntimeException("Gagal menulis perubahan ke file konfigurasi ({$envPath}).");
+        }
 
         if (array_key_exists('APP_URL', $pairs)) {
             Config::set('app.url', $pairs['APP_URL']);
         }
         if (array_key_exists('FORCE_HTTPS', $pairs)) {
             Config::set('app.force_https', filter_var($pairs['FORCE_HTTPS'], FILTER_VALIDATE_BOOLEAN));
+        }
+        if (array_key_exists('TRUSTED_PROXIES', $pairs)) {
+            Config::set('trustedproxy.proxies', $pairs['TRUSTED_PROXIES']);
         }
 
         if (app()->configurationIsCached()) {

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Config\VariantConfig;
+use App\Services\SmartNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -10,7 +11,7 @@ class PenganggaranApprovalController extends Controller
 {
     protected string $variant;
 
-    public function __construct()
+    public function __construct(private readonly SmartNotificationService $smartNotifications)
     {
         $this->middleware(function ($request, $next) {
             $this->variant = app()->bound('variant') ? app('variant') : 'reguler';
@@ -37,12 +38,26 @@ class PenganggaranApprovalController extends Controller
             'catatan_persetujuan' => 'nullable|string|max:1000',
         ]);
 
+        $wasApproved = $penganggaran->status_persetujuan === 'disetujui';
+        $previousNote = (string) ($penganggaran->catatan_persetujuan ?? '');
+        $nextNote = (string) ($validated['catatan_persetujuan'] ?? '');
+
         $penganggaran->update([
             'status_persetujuan' => 'disetujui',
             'persetujuan_oleh' => $user->id,
             'tanggal_persetujuan' => now(),
             'catatan_persetujuan' => $validated['catatan_persetujuan'] ?? null,
         ]);
+
+        if (! $wasApproved || $previousNote !== $nextNote) {
+            $this->smartNotifications->notifyPenganggaranApprovalChanged(
+                $user,
+                $penganggaran,
+                $this->variant,
+                true,
+                $validated['catatan_persetujuan'] ?? null,
+            );
+        }
 
         if ($request->expectsJson()) {
             return response()->json([
@@ -69,12 +84,23 @@ class PenganggaranApprovalController extends Controller
         $modelClass = VariantConfig::getModelClass('penganggaran', $this->variant);
         $penganggaran = $modelClass::findOrFail($id);
 
+        $wasApproved = $penganggaran->status_persetujuan === 'disetujui';
+
         $penganggaran->update([
             'status_persetujuan' => 'draft',
             'persetujuan_oleh' => null,
             'tanggal_persetujuan' => null,
             'catatan_persetujuan' => null,
         ]);
+
+        if ($wasApproved) {
+            $this->smartNotifications->notifyPenganggaranApprovalChanged(
+                $user,
+                $penganggaran,
+                $this->variant,
+                false,
+            );
+        }
 
         if ($request->expectsJson()) {
             return response()->json([

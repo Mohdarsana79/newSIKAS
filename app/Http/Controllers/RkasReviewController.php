@@ -4,11 +4,28 @@ namespace App\Http\Controllers;
 
 use App\Config\VariantConfig;
 use App\Models\RkasItemReview;
+use App\Services\SmartNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 
 class RkasReviewController extends Controller
 {
+    public function __construct(private readonly SmartNotificationService $smartNotifications) {}
+
+    /**
+     * Daftar kelas Eloquent RKAS / RKAS Perubahan yang diizinkan untuk ditelaah.
+     *
+     * @return list<string>
+     */
+    protected function allowedReviewableTypes(): array
+    {
+        return array_values(array_unique(array_filter(array_merge(
+            array_values(VariantConfig::getAllModelClasses('rkas')),
+            array_values(VariantConfig::getAllModelClasses('rkas_perubahan')),
+        ))));
+    }
+
     /**
      * Store or update review for a specific RKAS item (Kepala Sekolah).
      */
@@ -24,22 +41,21 @@ class RkasReviewController extends Controller
         }
 
         $validated = $request->validate([
-            'reviewable_type' => 'required|string',
-            'reviewable_id' => 'required|integer',
+            'reviewable_type' => ['required', 'string', Rule::in($this->allowedReviewableTypes())],
+            'reviewable_id' => 'required|integer|min:1',
             'status' => 'required|string|in:disetujui,perlu_revisi',
             'catatan' => 'nullable|string',
         ]);
 
-        // Allowed: reviewable_type must be an Eloquent model class
-        if (! class_exists($validated['reviewable_type'])) {
+        $itemModel = ($validated['reviewable_type'])::find($validated['reviewable_id']);
+        if (! $itemModel) {
             return response()->json([
                 'success' => false,
-                'message' => 'Tipe item belanja tidak valid.',
-            ], 422);
+                'message' => 'Item belanja RKAS tidak ditemukan.',
+            ], 404);
         }
 
-        $itemModel = ($validated['reviewable_type'])::find($validated['reviewable_id']);
-        if ($itemModel && $this->isItemFullySpent($itemModel)) {
+        if ($this->isItemFullySpent($itemModel)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Belanja ini sudah terealisasi penuh pada BKU sehingga tidak dapat ditelaah.',
@@ -59,6 +75,8 @@ class RkasReviewController extends Controller
         );
 
         $review->load('user:id,name,role');
+
+        $this->smartNotifications->notifyRkasItemReviewed($user, $review, $itemModel);
 
         return response()->json([
             'success' => true,
@@ -102,6 +120,8 @@ class RkasReviewController extends Controller
 
         $review->load('user:id,name,role');
 
+        $this->smartNotifications->notifyRkasItemResubmitted($user, $review, $review->reviewable);
+
         return response()->json([
             'success' => true,
             'message' => 'Perbaikan belanja berhasil diajukan kembali kepada Kepala Sekolah.',
@@ -132,7 +152,10 @@ class RkasReviewController extends Controller
             ], 422);
         }
 
+        $reviewId = (int) $review->id;
         $review->delete();
+
+        $this->smartNotifications->clearNotificationsForReview($reviewId);
 
         return response()->json([
             'success' => true,

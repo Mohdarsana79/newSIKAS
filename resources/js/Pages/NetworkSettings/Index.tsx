@@ -32,13 +32,44 @@ interface NetworkSettingsPageProps {
     networkAccess: NetworkAccessInfo;
 }
 
+function isLocalOrPrivateHost(hostname: string): boolean {
+    const normalized = hostname.toLowerCase().replace(/^\[|\]$/g, '');
+    if (normalized === 'localhost' || normalized === '127.0.0.1' || normalized === '::1' || normalized === '0.0.0.0') {
+        return true;
+    }
+
+    const ipv4Match = normalized.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+    if (!ipv4Match) {
+        return false;
+    }
+
+    const [a, b] = [Number(ipv4Match[1]), Number(ipv4Match[2])];
+    return (
+        a === 10 ||
+        a === 127 ||
+        (a === 192 && b === 168) ||
+        (a === 172 && b >= 16 && b <= 31) ||
+        (a === 169 && b === 254)
+    );
+}
+
+function isPublicDomainUrl(url: string | null | undefined): boolean {
+    if (!url) {
+        return false;
+    }
+    try {
+        const parsed = new URL(url);
+        return (parsed.protocol === 'http:' || parsed.protocol === 'https:') && !isLocalOrPrivateHost(parsed.hostname);
+    } catch {
+        return false;
+    }
+}
+
 export default function NetworkSettingsIndex({ networkAccess }: NetworkSettingsPageProps) {
     const [netState, setNetState] = useState<NetworkAccessInfo>(networkAccess);
     const [copiedValue, setCopiedValue] = useState<string | null>(null);
     const [publicUrlInput, setPublicUrlInput] = useState(
-        networkAccess.app_url && !networkAccess.app_url.startsWith('http://localhost')
-            ? networkAccess.app_url
-            : '',
+        isPublicDomainUrl(networkAccess.app_url) ? networkAccess.app_url : '',
     );
     const [forceHttpsInput, setForceHttpsInput] = useState(Boolean(networkAccess.force_https));
     const [savingNetwork, setSavingNetwork] = useState(false);
@@ -70,7 +101,10 @@ export default function NetworkSettingsIndex({ networkAccess }: NetworkSettingsP
                 force_https: forceHttpsInput,
             });
             if (res.data?.networkAccess) {
-                setNetState(res.data.networkAccess as NetworkAccessInfo);
+                const updated = res.data.networkAccess as NetworkAccessInfo;
+                setNetState(updated);
+                setPublicUrlInput(isPublicDomainUrl(updated.app_url) ? updated.app_url : '');
+                setForceHttpsInput(Boolean(updated.force_https));
             }
             setNetworkFeedback({
                 tone: 'success',
@@ -128,7 +162,7 @@ export default function NetworkSettingsIndex({ networkAccess }: NetworkSettingsP
             ? 'Perlu Izin'
             : 'Tidak Diketahui';
 
-    const hasCustomDomain = Boolean(netState.app_url && !netState.app_url.startsWith('http://localhost'));
+    const hasCustomDomain = isPublicDomainUrl(netState.app_url);
 
     return (
         <AuthenticatedLayout>
@@ -290,8 +324,8 @@ export default function NetworkSettingsIndex({ networkAccess }: NetworkSettingsP
                                     <p className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-slate-400 dark:text-slate-500">
                                         Domain Publik / Reverse Proxy (Opsional)
                                     </p>
-                                    <p className="mt-0.5 text-[10.5px] font-medium text-slate-500 dark:text-slate-400">
-                                        Isi hanya jika Anda memakai domain tetap (mis. Cloudflare Tunnel / VPS). Kosongkan bila memakai IP LAN atau URL acak <code className="font-semibold">ngrok</code>.
+                                    <p className="mt-0.5 text-[10.5px] font-medium leading-relaxed text-slate-500 dark:text-slate-400">
+                                        Isi setelah domain diarahkan ke server lewat <strong>Cloudflare Tunnel</strong> atau <strong>DNS + Reverse Proxy (Caddy/Nginx)</strong>. Mengisi kolom ini saja tidak otomatis meng-onlinekan domain. Kosongkan bila memakai IP LAN atau URL acak <code className="font-semibold">ngrok</code>.
                                     </p>
                                 </div>
 
@@ -374,15 +408,15 @@ export default function NetworkSettingsIndex({ networkAccess }: NetworkSettingsP
                         }
                     >
                         <ol className="list-decimal space-y-1.5 pl-4 text-[11px] font-medium leading-relaxed text-slate-600 dark:text-slate-300">
-                            <li>Pastikan laptop server dan perangkat lain terhubung ke jaringan WiFi atau kabel LAN sekolah yang sama.</li>
-                            <li>Pastikan status <strong>Windows Firewall</strong> pada port <code className="font-semibold">{netState.port}</code> sudah berstatus <strong>Terbuka</strong> (atau klik tombol Buka Port di atas).</li>
+                            <li>Pastikan komputer server dan perangkat lain terhubung ke jaringan WiFi atau kabel LAN sekolah yang sama.</li>
+                            <li>Pastikan status <strong>Windows Firewall</strong> pada port <code className="font-semibold">{netState.port}</code> berstatus <strong>Terbuka</strong> (klik tombol Buka Port di atas jika belum).</li>
                             <li>Buka alamat IP lokal yang tercantum di atas melalui browser Chrome/Edge/HP Android.</li>
                         </ol>
                     </Surface>
 
                     <Surface
-                        title="2. Akses Online dari Luar Sekolah (ngrok / Tunnel)"
-                        subtitle="Untuk uji coba maupun pemakaian jarak jauh lintas jaringan."
+                        title="2. Uji Coba Cepat dari Luar Sekolah (ngrok)"
+                        subtitle="Cocok untuk demo singkat tanpa membeli domain atau menyewa VPS."
                         icon={
                             <IconTile tone="violet" size="md">
                                 <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -392,9 +426,45 @@ export default function NetworkSettingsIndex({ networkAccess }: NetworkSettingsP
                         }
                     >
                         <ol className="list-decimal space-y-1.5 pl-4 text-[11px] font-medium leading-relaxed text-slate-600 dark:text-slate-300">
-                            <li>Biarkan kolom <strong>URL Domain Publik</strong> kosong jika memakai URL acak dari <code className="font-semibold">ngrok</code>.</li>
+                            <li>Biarkan kolom <strong>URL Domain Publik</strong> kosong dan <strong>FORCE_HTTPS</strong> nonaktif.</li>
                             <li>Jalankan tunnel mengarah ke port aktif server: <code className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10.5px] dark:bg-white/10">ngrok http {netState.port}</code>.</li>
-                            <li>Jika memakai domain tetap (mis. Cloudflare Tunnel / VPS), isi URL domain tersebut lalu simpan pengaturan.</li>
+                            <li>Bagikan link HTTPS yang diberikan <code className="font-semibold">ngrok</code> (alamat berubah setiap tunnel dimulai ulang pada paket gratis).</li>
+                        </ol>
+                    </Surface>
+
+                    <Surface
+                        title="3. Server Sekolah + Domain (Cloudflare Tunnel)"
+                        subtitle="Disarankan untuk PC sekolah: tidak perlu IP Publik statis & tanpa setting router."
+                        icon={
+                            <IconTile tone="mint" size="md">
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4" />
+                                </svg>
+                            </IconTile>
+                        }
+                    >
+                        <ol className="list-decimal space-y-1.5 pl-4 text-[11px] font-medium leading-relaxed text-slate-600 dark:text-slate-300">
+                            <li>Beli domain sekolah (mis. <code className="font-semibold">sekolahanda.sch.id</code>) lalu arahkan Nameserver ke akun <strong>Cloudflare</strong> (gratis).</li>
+                            <li>Pasang <code className="font-semibold">cloudflared</code> di PC server sekolah, lalu buat Tunnel dengan <em>Public Hostname</em> <code className="font-semibold">sikas.sekolahanda.sch.id</code> → <code className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10.5px] dark:bg-white/10">http://localhost:{netState.port}</code>.</li>
+                            <li>Isi <code className="font-semibold">https://sikas.sekolahanda.sch.id</code> di kolom <strong>URL Domain Publik</strong> di atas. Biarkan <strong>FORCE_HTTPS</strong> nonaktif agar akses IP LAN lokal tetap berjalan berdampingan.</li>
+                        </ol>
+                    </Surface>
+
+                    <Surface
+                        title="4. Windows VPS + Domain Sendiri (Online 24 Jam)"
+                        subtitle="Aplikasi dipasang di VPS cloud dengan IP Publik statis & SSL otomatis."
+                        icon={
+                            <IconTile tone="peach" size="md">
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
+                                </svg>
+                            </IconTile>
+                        }
+                    >
+                        <ol className="list-decimal space-y-1.5 pl-4 text-[11px] font-medium leading-relaxed text-slate-600 dark:text-slate-300">
+                            <li>Install SIKAS + PostgreSQL di Windows VPS, lalu buat <strong>DNS A Record</strong> domain (<code className="font-semibold">sikas</code> → IP Publik VPS).</li>
+                            <li>Buka hanya port <code className="font-semibold">80</code> &amp; <code className="font-semibold">443</code> di Firewall VPS (biarkan port <code className="font-semibold">{netState.port}</code> tertutup dari publik), lalu pasang Reverse Proxy SSL (mis. <strong>Caddy</strong> / Nginx) mengarah ke <code className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10.5px] dark:bg-white/10">127.0.0.1:{netState.port}</code>.</li>
+                            <li>Isi URL domain HTTPS di atas lalu aktifkan <strong>Paksa Skema HTTPS (FORCE_HTTPS)</strong>. Untuk data ARKAS di VPS, gunakan fitur upload <code className="font-semibold">arkas.db</code> di menu konfigurasi ARKAS.</li>
                         </ol>
                     </Surface>
                 </div>

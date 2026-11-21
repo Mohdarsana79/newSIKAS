@@ -5,6 +5,7 @@ use App\Http\Middleware\DetectVariant;
 use App\Http\Middleware\EnforceModulePermissions;
 use App\Http\Middleware\EnsureRole;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\RecordUserActivity;
 use App\Http\Middleware\ResolveViteHotAssetMode;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -27,6 +28,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
             CheckNpsnLicense::class,
+            RecordUserActivity::class,
             EnforceModulePermissions::class,
         ]);
 

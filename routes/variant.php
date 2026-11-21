@@ -26,6 +26,7 @@ use App\Http\Controllers\PenatausahaanController;
 use App\Http\Controllers\PenerimaanDanaController;
 use App\Http\Controllers\PenganggaranApprovalController;
 use App\Http\Controllers\PenganggaranController;
+use App\Http\Controllers\PosterTransparansiController;
 use App\Http\Controllers\ReferensiKodeController;
 use App\Http\Controllers\RegistrasiPenutupanKasController;
 use App\Http\Controllers\RekapitulasiController;
@@ -200,6 +201,10 @@ Route::get('/laporan', function () {
     ]);
 })->name('laporan.index');
 
+// Poster Infografis Transparansi BOSP
+Route::get('/poster-transparansi', [PosterTransparansiController::class, 'index'])->name('poster-transparansi.index');
+Route::get('/api/poster-transparansi/data', [PosterTransparansiController::class, 'data'])->name('api.poster-transparansi.data');
+
 // Backup
 Route::middleware(['role:bendahara'])->prefix('backup')->name('backup.')->group(function () {
     Route::get('/', [DatabaseController::class, 'index'])->name('index');
@@ -210,6 +215,17 @@ Route::middleware(['role:bendahara'])->prefix('backup')->name('backup.')->group(
     Route::post('/validate-password', [DatabaseController::class, 'validatePassword'])->name('validate-password');
     Route::post('/reset', [DatabaseController::class, 'reset'])->name('reset');
     Route::post('/update-npsn', [DatabaseController::class, 'updateNpsn'])->name('update-npsn');
+    Route::post('/auto-settings', [DatabaseController::class, 'updateAutoBackupSettings'])->name('auto-settings.update');
+    Route::post('/auto-run', [DatabaseController::class, 'runAutoBackupNow'])->name('auto-run');
+    Route::post('/auto-test-sync', [DatabaseController::class, 'testAutoBackupSync'])->name('auto-test-sync');
+    Route::post('/auto-heartbeat', [DatabaseController::class, 'autoBackupHeartbeat'])
+        ->middleware('throttle:6,1')
+        ->name('auto-heartbeat');
+    Route::post('/auto-retry-cloud', [DatabaseController::class, 'retryPendingCloudSync'])->name('auto-retry-cloud');
+    Route::get('/browse-folders', [DatabaseController::class, 'browseLocalFolders'])->name('browse-folders');
+    Route::post('/create-folder', [DatabaseController::class, 'createLocalFolder'])->name('create-folder');
+    Route::post('/auto-scheduler/install', [DatabaseController::class, 'installWindowsScheduler'])->name('auto-scheduler.install');
+    Route::post('/auto-scheduler/remove', [DatabaseController::class, 'removeWindowsScheduler'])->name('auto-scheduler.remove');
 });
 
 // Integrasi

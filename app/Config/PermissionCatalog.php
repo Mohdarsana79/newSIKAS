@@ -137,6 +137,13 @@ class PermissionCatalog
                 'description' => 'Pembuatan dan cetak laporan pertanggungjawaban.',
                 'supports_write' => true,
             ],
+            [
+                'key' => 'poster_transparansi',
+                'label' => 'Poster Transparansi BOSP',
+                'group' => 'Fitur Pelengkap',
+                'description' => 'Membuat, menyesuaikan tema, mencetak, dan mengekspor poster infografis transparansi BOSP.',
+                'supports_write' => false,
+            ],
 
             // Integrasi & Sistem
             [
@@ -172,6 +179,13 @@ class PermissionCatalog
                 'label' => 'Management & Role',
                 'group' => 'Integrasi & Sistem',
                 'description' => 'Kelola akun pengguna, role custom, dan matriks hak akses.',
+                'supports_write' => true,
+            ],
+            [
+                'key' => 'activity_logs',
+                'label' => 'Log Aktivitas (Audit Trail)',
+                'group' => 'Integrasi & Sistem',
+                'description' => 'Memantau riwayat aktivitas pengguna, ekspor CSV audit, dan pembersihan log lama.',
                 'supports_write' => true,
             ],
         ];
@@ -396,6 +410,8 @@ class PermissionCatalog
             'api.dokumen' => 'dokumen',
             'sk-surat' => 'sk_surat',
             'laporan' => 'laporan',
+            'poster-transparansi' => 'poster_transparansi',
+            'api.poster-transparansi' => 'poster_transparansi',
             'api.spmth' => 'laporan',
             'api.sptj' => 'laporan',
             'api.sp2b' => 'laporan',
@@ -406,7 +422,15 @@ class PermissionCatalog
             'system-update' => 'system_update',
             'user-management' => 'user_management',
             'management-role' => 'user_management',
+            'activity-logs' => 'activity_logs',
         ];
+
+        if ($normalizedName === 'backup.browse-folders') {
+            return [
+                'module' => 'backup',
+                'level' => self::LEVEL_WRITE,
+            ];
+        }
 
         foreach ($prefixMap as $prefix => $module) {
             if ($normalizedName === rtrim($prefix, '.') || str_starts_with($normalizedName, rtrim($prefix, '.').'.') || str_starts_with($normalizedName, $prefix)) {

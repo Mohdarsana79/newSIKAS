@@ -1,3 +1,4 @@
+import { Link } from '@inertiajs/react';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 import { AccountActions } from '@/Components/Landing/ui/AccountActions';
@@ -567,6 +568,26 @@ export default function Hero({ authenticated, hasUsers, onOpenVideoModal }: Hero
                                 </span>
                                 <span>Tonton Panduan</span>
                             </button>
+
+                            <Link
+                                href={route('transparansi.index')}
+                                className="landing-focus group inline-flex items-center gap-2.5 rounded-full border border-[#8BE6DC]/40 bg-[#8BE6DC]/12 px-5 py-3 text-[13.5px] font-semibold text-[#8BE6DC] backdrop-blur-md transition-all duration-300 hover:border-[#8BE6DC] hover:bg-[#8BE6DC]/20 hover:text-white"
+                            >
+                                <svg
+                                    aria-hidden
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth={2}
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    className="h-4 w-4 transition-transform duration-300 group-hover:scale-110"
+                                >
+                                    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+                                    <circle cx="12" cy="12" r="3" />
+                                </svg>
+                                <span>Portal Transparansi</span>
+                            </Link>
                         </div>
 
                         {/* 3 Trust Badges dengan pemisah garis vertikal seperti referensi Novara */}

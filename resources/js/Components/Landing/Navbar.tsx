@@ -1,3 +1,4 @@
+import { Link } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 
 import DarkModeSwitcher from '@/Components/DarkModeSwitcher';
@@ -237,6 +238,14 @@ export default function Navbar({ authenticated, hasUsers, onOpenGuide }: NavbarP
                                 </a>
                             );
                         })}
+                        <Link
+                            href={route('transparansi.index')}
+                            data-nav-item
+                            className="landing-focus ml-1 inline-flex items-center gap-1.5 rounded-full border border-[#8BE6DC]/35 bg-[#8BE6DC]/10 px-3.5 py-1.5 text-[13px] font-semibold text-[#8BE6DC] transition-all duration-300 hover:border-[#8BE6DC]/70 hover:bg-[#8BE6DC]/20 hover:text-white"
+                        >
+                            <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-[#8BE6DC]" />
+                            Transparansi
+                        </Link>
                     </div>
 
                     {/* Kanan: Ikon Pencarian/Panduan + Tema + Tombol Pill Mint */}
@@ -321,6 +330,14 @@ export default function Navbar({ authenticated, hasUsers, onOpenGuide }: NavbarP
                                     <ArrowRightIcon />
                                 </a>
                             ))}
+                            <Link
+                                href={route('transparansi.index')}
+                                onClick={closeMenu}
+                                className="landing-focus mt-1 flex items-center justify-between rounded-2xl border border-[#8BE6DC]/30 bg-[#8BE6DC]/10 px-3.5 py-2.5 text-sm font-semibold text-[#8BE6DC] transition-colors duration-200 hover:bg-[#8BE6DC]/20 hover:text-white"
+                            >
+                                Transparansi BOSP
+                                <ArrowRightIcon />
+                            </Link>
                         </div>
 
                         <div className="my-3 h-px bg-gradient-to-r from-transparent via-[#8BE6DC]/30 to-transparent" aria-hidden />

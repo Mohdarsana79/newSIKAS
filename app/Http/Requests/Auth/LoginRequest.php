@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Models\ActivityLog;
 use App\Models\User;
+use App\Services\ActivityLogger;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -56,6 +58,16 @@ class LoginRequest extends FormRequest
         if (! $user) {
             RateLimiter::hit($this->throttleKey());
 
+            app(ActivityLogger::class)->logAuthEvent(
+                $this,
+                'login_failed',
+                'Gagal login: username tidak terdaftar',
+                null,
+                ActivityLog::SEVERITY_WARNING,
+                ['reason' => 'username_not_found'],
+                $identifier,
+            );
+
             throw ValidationException::withMessages([
                 'username' => 'Username tidak terdaftar.',
             ]);
@@ -63,6 +75,16 @@ class LoginRequest extends FormRequest
 
         if (! Hash::check($this->password, $user->password)) {
             RateLimiter::hit($this->throttleKey());
+
+            app(ActivityLogger::class)->logAuthEvent(
+                $this,
+                'login_failed',
+                'Gagal login: kata sandi salah',
+                $user,
+                ActivityLog::SEVERITY_WARNING,
+                ['reason' => 'invalid_password'],
+                $identifier,
+            );
 
             throw ValidationException::withMessages([
                 'password' => 'Password salah.',
@@ -87,6 +109,16 @@ class LoginRequest extends FormRequest
         event(new Lockout($this));
 
         $seconds = RateLimiter::availableIn($this->throttleKey());
+
+        app(ActivityLogger::class)->logAuthEvent(
+            $this,
+            'login_failed',
+            'Gagal login: terlalu banyak percobaan (rate limit lockout)',
+            null,
+            ActivityLog::SEVERITY_CRITICAL,
+            ['reason' => 'rate_limited', 'retry_after_seconds' => $seconds],
+            trim((string) $this->username),
+        );
 
         throw ValidationException::withMessages([
             'username' => trans('auth.throttle', [

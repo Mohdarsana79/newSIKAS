@@ -309,6 +309,37 @@ class OnlineOfflineReadinessTest extends TestCase
             $this->assertStringContainsString('APP_URL=https://sikas.sekolah.sch.id', $savedEnv);
             $this->assertStringContainsString('FORCE_HTTPS=true', $savedEnv);
             $this->assertStringContainsString('TRUSTED_PROXIES=*', $savedEnv);
+
+            // Repeated saves must not accumulate trailing blank lines
+            $this->actingAs($bendahara)->postJson('/pengaturan-jaringan', [
+                'app_url' => 'https://sikas.sekolah.sch.id',
+                'force_https' => false,
+            ])->assertOk();
+            $savedAgain = file_get_contents($tempEnvPath);
+            $this->assertStringEndsNotWith("\n\n", $savedAgain);
+
+            // Custom TRUSTED_PROXIES configured for hardened VPS must be preserved
+            file_put_contents($tempEnvPath, "APP_URL=http://localhost\nFORCE_HTTPS=false\nTRUSTED_PROXIES=127.0.0.1\n");
+            $this->actingAs($bendahara)->postJson('/pengaturan-jaringan', [
+                'app_url' => 'https://vps.sekolah.sch.id',
+                'force_https' => true,
+            ])->assertOk();
+            $this->assertStringContainsString('TRUSTED_PROXIES=127.0.0.1', file_get_contents($tempEnvPath));
+
+            // Non-HTTP URL schemes must be rejected
+            $this->actingAs($bendahara)->postJson('/pengaturan-jaringan', [
+                'app_url' => 'ftp://sikas.sekolah.sch.id',
+                'force_https' => false,
+            ])->assertStatus(422);
+
+            // Missing .env must fail cleanly with 422 instead of false 200 success
+            @unlink($tempEnvPath);
+            $this->actingAs($bendahara)->postJson('/pengaturan-jaringan', [
+                'app_url' => 'https://sikas.sekolah.sch.id',
+                'force_https' => true,
+            ])->assertStatus(422)->assertJson([
+                'status' => 'error',
+            ]);
         } finally {
             $this->app->useEnvironmentPath($origEnvPath);
             $this->app->loadEnvironmentFrom($origEnvFile);

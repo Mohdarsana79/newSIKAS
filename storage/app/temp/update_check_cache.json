@@ -1,7 +1,7 @@
 {
     "status": "ok",
     "error_message": null,
-    "current_version": "2026.32",
+    "current_version": "2026.30",
     "latest_version": "2099.10",
     "tag_name": "v2099.10",
     "release_name": "newSIKAS 2099.10",
@@ -15,6 +15,6 @@
         "api_url": "https://api.github.com/repos/Mohdarsana79/newSIKAS-releases/releases/assets/999",
         "download_url": "https://github.com/Mohdarsana79/newSIKAS-releases/releases/download/v2099.10/newSIKAS_Installer_2099_10.exe"
     },
-    "checked_at": "19/11/2026 15:25:53",
-    "timestamp": 1795101953
+    "checked_at": "20/11/2026 09:15:16",
+    "timestamp": 1795166116
 }

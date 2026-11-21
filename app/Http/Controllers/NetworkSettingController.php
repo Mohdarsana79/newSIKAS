@@ -26,10 +26,10 @@ class NetworkSettingController extends Controller
     public function update(Request $request, NetworkAccessService $networkAccess): JsonResponse
     {
         $validated = $request->validate([
-            'app_url' => ['nullable', 'url', 'max:255'],
+            'app_url' => ['nullable', 'url:http,https', 'max:255'],
             'force_https' => ['required', 'boolean'],
         ], [
-            'app_url.url' => 'Format URL publik tidak valid (contoh: https://sikas.sekolah.sch.id).',
+            'app_url.url' => 'Format URL publik tidak valid. Gunakan awalan http:// atau https:// (contoh: https://sikas.sekolah.sch.id).',
         ]);
 
         $appUrl = trim((string) ($validated['app_url'] ?? ''));
@@ -40,11 +40,24 @@ class NetworkSettingController extends Controller
             $appUrl = rtrim($appUrl, '/');
         }
 
-        $networkAccess->updateEnvKeys([
+        $envUpdates = [
             'APP_URL' => $appUrl,
             'FORCE_HTTPS' => $validated['force_https'] ? 'true' : 'false',
-            'TRUSTED_PROXIES' => '*',
-        ]);
+        ];
+
+        $existingTrustedProxies = $networkAccess->getEnvValue('TRUSTED_PROXIES');
+        if ($existingTrustedProxies === null || $existingTrustedProxies === '') {
+            $envUpdates['TRUSTED_PROXIES'] = '*';
+        }
+
+        try {
+            $networkAccess->updateEnvKeys($envUpdates);
+        } catch (\RuntimeException $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+            ], 422);
+        }
 
         return response()->json([
             'status' => 'success',

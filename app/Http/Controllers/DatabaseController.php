@@ -2,6 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\BackupRun;
+use App\Models\BackupSetting;
+use App\Services\AutoBackupService;
+use App\Services\GoogleDriveSyncService;
+use App\Services\LocalFolderBrowserService;
+use App\Services\WindowsTaskSchedulerService;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Http\Request;
@@ -12,6 +18,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Response;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
@@ -58,6 +65,73 @@ class DatabaseController extends Controller
         $maxStorage = 5368709120; // 5GB in bytes
         $storagePercentage = round(($totalBackupSize / $maxStorage) * 100, 2);
 
+        $autoBackupSetting = BackupSetting::current()->toSafeFrontendArray();
+        $backupRuns = [];
+        try {
+            if (Schema::hasTable('backup_runs')) {
+                $tz = (string) config('app.timezone', 'UTC');
+                $backupRuns = BackupRun::query()
+                    ->orderByDesc('id')
+                    ->limit(10)
+                    ->get()
+                    ->map(fn (BackupRun $run) => [
+                        'id' => $run->id,
+                        'trigger' => $run->trigger,
+                        'status' => $run->status,
+                        'file_name' => $run->file_name,
+                        'file_size_formatted' => $run->file_size_bytes !== null
+                            ? $this->formatBytes((int) $run->file_size_bytes)
+                            : '-',
+                        'pruned_count' => (int) $run->pruned_count,
+                        'sync_mode' => $run->sync_mode,
+                        'sync_status' => $run->sync_status,
+                        'sync_target' => $run->sync_target,
+                        'message' => $run->message,
+                        'created_at_formatted' => $run->created_at?->timezone($tz)->format('d M Y, H:i') ?? '-',
+                        'created_at_human' => $run->created_at?->copy()->locale('id')->diffForHumans() ?? '',
+                    ])
+                    ->values()
+                    ->all();
+            }
+        } catch (Exception $e) {
+            Log::warning('Gagal memuat riwayat auto-backup.', ['error' => $e->getMessage()]);
+        }
+
+        $canWriteBackup = Auth::user()?->canAccessModule('backup', 'write') ?? false;
+        $schedulerCommands = null;
+        $windowsSchedulerStatus = null;
+        $defaultBackupDir = null;
+
+        if ($canWriteBackup) {
+            $winScheduler = app(WindowsTaskSchedulerService::class);
+            $basePath = base_path();
+            $isWindows = PHP_OS_FAMILY === 'Windows';
+
+            if ($isWindows) {
+                $windowsBasePath = str_replace('/', '\\', $basePath);
+                $windowsPhp = str_replace('/', '\\', $winScheduler->resolvePhpCliBinary());
+                $windowsCmdInner = '\\"'.str_replace('"', '', $windowsPhp).'\\" \\"'.str_replace('"', '', $windowsBasePath).'\\artisan\\" schedule:run';
+
+                $schedulerCommands = [
+                    'os' => 'windows',
+                    'windows' => "schtasks /Create /SC MINUTE /MO 1 /TN \"newSIKAS-AutoBackup\" /TR \"{$windowsCmdInner}\" /F",
+                    'linux' => null,
+                ];
+            } else {
+                $linuxBasePath = str_replace('\\', '/', $basePath);
+                $linuxQuotedPath = "'".str_replace("'", "'\\''", $linuxBasePath)."'";
+
+                $schedulerCommands = [
+                    'os' => 'linux',
+                    'windows' => null,
+                    'linux' => "* * * * * cd {$linuxQuotedPath} && php artisan schedule:run >> /dev/null 2>&1",
+                ];
+            }
+
+            $windowsSchedulerStatus = $winScheduler->getStatus();
+            $defaultBackupDir = str_replace('/', DIRECTORY_SEPARATOR, storage_path('app/backups'));
+        }
+
         return Inertia::render('Backup/Index', [
             'backupFiles' => $backupFiles,
             'stats' => [
@@ -68,6 +142,13 @@ class DatabaseController extends Controller
                 'lastBackupDate' => count($backupFiles) > 0 ? $backupFiles[0]['created_at'] : '-',
             ],
             'currentNpsn' => (string) config('license.npsn_code', ''),
+            'autoBackupSetting' => $autoBackupSetting,
+            'backupRuns' => $backupRuns,
+            'schedulerCommands' => $schedulerCommands,
+            'windowsSchedulerStatus' => $windowsSchedulerStatus,
+            'defaultBackupDir' => $defaultBackupDir,
+            'canWriteBackup' => $canWriteBackup,
+            'appTimezone' => (string) config('app.timezone', 'UTC'),
         ]);
     }
 
@@ -129,7 +210,7 @@ class DatabaseController extends Controller
             DB::statement('SET session_replication_role = replica;');
 
             // Daftar tabel yang akan di-skip (tidak direset)
-            $excludedTables = ['users', 'migrations', 'personal_access_tokens', 'password_reset_tokens', 'failed_jobs', 'sessions'];
+            $excludedTables = ['users', 'migrations', 'personal_access_tokens', 'password_reset_tokens', 'failed_jobs', 'sessions', 'backup_settings', 'backup_runs'];
 
             // Hapus data dari semua tabel kecuali yang dikecualikan
             foreach ($tables as $table) {
@@ -211,7 +292,7 @@ class DatabaseController extends Controller
                 $tableName = str_replace('_id_seq', '', $sequence);
 
                 // Skip jika tabel user/excluded
-                if (in_array($tableName, ['users', 'migrations'])) {
+                if (in_array($tableName, ['users', 'migrations', 'backup_settings', 'backup_runs'])) {
                     continue;
                 }
 
@@ -234,7 +315,9 @@ class DatabaseController extends Controller
     public function backup(Request $request)
     {
         $request->validate([
-            'backup_name' => 'nullable|string|max:255|regex:/^[a-zA-Z0-9_-]+$/',
+            'backup_name' => ['nullable', 'string', 'max:255', 'regex:/^[a-zA-Z0-9_-]+$/', 'not_regex:/^auto_backup/i'],
+        ], [
+            'backup_name.not_regex' => 'Nama backup manual tidak boleh diawali "auto_backup" agar terlindungi dari retensi otomatis.',
         ]);
 
         $result = $this->createBackupArchive($request->backup_name);
@@ -939,5 +1022,296 @@ class DatabaseController extends Controller
         }
 
         return back()->with('success', 'NPSN berhasil diperbarui');
+    }
+
+    /**
+     * Memperbarui pengaturan Auto-Backup Terjadwal, Retensi Otomatis & Sinkronisasi Cloud/Folder.
+     */
+    public function updateAutoBackupSettings(Request $request, AutoBackupService $autoBackup)
+    {
+        $validated = $request->validate([
+            'is_enabled' => ['required', 'boolean'],
+            'frequency' => ['required', Rule::in([
+                BackupSetting::FREQUENCY_DAILY,
+                BackupSetting::FREQUENCY_WEEKLY,
+                BackupSetting::FREQUENCY_MONTHLY,
+            ])],
+            'scheduled_time' => ['required', 'string', 'regex:/^([01]\d|2[0-3]):([0-5]\d)$/'],
+            'day_of_week' => ['required', 'integer', 'min:0', 'max:6'],
+            'day_of_month' => ['required', 'integer', 'min:1', 'max:28'],
+            'retention_enabled' => ['required', 'boolean'],
+            'retention_max_files' => ['required', 'integer', 'min:1', 'max:365'],
+            'retention_max_days' => ['nullable', 'integer', 'min:7', 'max:3650'],
+            'sync_mode' => ['required', Rule::in([
+                BackupSetting::SYNC_NONE,
+                BackupSetting::SYNC_LOCAL_FOLDER,
+                BackupSetting::SYNC_GOOGLE_DRIVE_API,
+            ])],
+            'local_sync_path' => ['nullable', 'string', 'max:500'],
+            'sync_apply_retention' => ['required', 'boolean'],
+            'gdrive_folder_id' => ['nullable', 'string', 'max:255'],
+            'gdrive_client_id' => ['nullable', 'string', 'max:255'],
+            'gdrive_client_secret' => ['nullable', 'string', 'max:2000'],
+            'gdrive_refresh_token' => ['nullable', 'string', 'max:2000'],
+            'clear_gdrive_secrets' => ['nullable', 'boolean'],
+        ], [
+            'scheduled_time.regex' => 'Format jam jadwal harus HH:MM (contoh: 22:00).',
+            'retention_max_files.min' => 'Minimal pertahankan 1 berkas auto-backup.',
+            'retention_max_days.min' => 'Batas umur retensi minimal 7 hari (atau kosongkan).',
+        ]);
+
+        $setting = BackupSetting::current();
+        $clearSecrets = (bool) ($validated['clear_gdrive_secrets'] ?? false);
+
+        $localPath = isset($validated['local_sync_path']) ? trim((string) $validated['local_sync_path']) : '';
+        $gdriveFolderId = isset($validated['gdrive_folder_id']) ? trim((string) $validated['gdrive_folder_id']) : '';
+        $gdriveClientId = isset($validated['gdrive_client_id']) ? trim((string) $validated['gdrive_client_id']) : '';
+
+        $resolvedSyncMode = $validated['sync_mode'];
+
+        // Pada mode Folder Lokal, jika dikosongkan otomatis jatuh ke folder bawaan aplikasi ('none')
+        if ($resolvedSyncMode === BackupSetting::SYNC_LOCAL_FOLDER && $localPath === '') {
+            $resolvedSyncMode = BackupSetting::SYNC_NONE;
+        }
+
+        // Jangan simpan local_sync_path tak tervalidasi saat mode 'none'
+        if ($resolvedSyncMode === BackupSetting::SYNC_NONE) {
+            $localPath = '';
+        }
+
+        // Validasi format path lokal setiap kali diisi (berlaku untuk mode lokal maupun salinan lokal opsional di mode Cloud)
+        if ($localPath !== '') {
+            $pathCheck = $autoBackup->validateLocalSyncPathFormat($localPath);
+            if (! $pathCheck['success']) {
+                return back()->withErrors([
+                    'local_sync_path' => $pathCheck['message'],
+                ]);
+            }
+        }
+
+        if ($resolvedSyncMode === BackupSetting::SYNC_GOOGLE_DRIVE_API) {
+            $errors = [];
+            if ($gdriveFolderId === '') {
+                $errors['gdrive_folder_id'] = 'Folder ID Google Drive wajib diisi.';
+            } elseif (preg_match('/^[a-zA-Z0-9_-]{5,200}$/', $gdriveFolderId) !== 1) {
+                $errors['gdrive_folder_id'] = 'Format Folder ID tidak valid. Salin hanya ID folder di akhir URL Google Drive (bukan seluruh URL).';
+            }
+
+            if ($gdriveClientId === '') {
+                $errors['gdrive_client_id'] = 'OAuth2 Client ID wajib diisi.';
+            }
+
+            $existingSecret = ! $clearSecrets && filled($setting->getRawOriginal('gdrive_client_secret'));
+            $existingToken = ! $clearSecrets && filled($setting->getRawOriginal('gdrive_refresh_token'));
+
+            if (! $existingSecret && ! filled($validated['gdrive_client_secret'] ?? null)) {
+                $errors['gdrive_client_secret'] = 'OAuth2 Client Secret wajib diisi.';
+            }
+            if (! $existingToken && ! filled($validated['gdrive_refresh_token'] ?? null)) {
+                $errors['gdrive_refresh_token'] = 'OAuth2 Refresh Token wajib diisi.';
+            }
+
+            if ($errors !== []) {
+                return back()->withErrors($errors);
+            }
+        }
+
+        $setting->fill([
+            'is_enabled' => (bool) $validated['is_enabled'],
+            'frequency' => $validated['frequency'],
+            'scheduled_time' => $validated['scheduled_time'],
+            'day_of_week' => (int) $validated['day_of_week'],
+            'day_of_month' => (int) $validated['day_of_month'],
+            'retention_enabled' => (bool) $validated['retention_enabled'],
+            'retention_max_files' => (int) $validated['retention_max_files'],
+            'retention_max_days' => ($validated['retention_max_days'] ?? null) !== null && ($validated['retention_max_days'] ?? '') !== ''
+                ? (int) $validated['retention_max_days']
+                : null,
+            'sync_mode' => $resolvedSyncMode,
+            'local_sync_path' => $localPath !== '' ? $localPath : null,
+            'sync_apply_retention' => (bool) $validated['sync_apply_retention'],
+            'gdrive_folder_id' => $gdriveFolderId !== '' ? $gdriveFolderId : null,
+            'gdrive_client_id' => $gdriveClientId !== '' ? $gdriveClientId : null,
+        ]);
+
+        if ($resolvedSyncMode !== BackupSetting::SYNC_GOOGLE_DRIVE_API) {
+            $setting->forceFill([
+                'pending_cloud_file' => null,
+                'pending_cloud_path' => null,
+                'pending_cloud_run_id' => null,
+                'pending_cloud_retry_at' => null,
+            ]);
+        }
+
+        if ($clearSecrets) {
+            $setting->gdrive_client_secret = null;
+            $setting->gdrive_refresh_token = null;
+        }
+
+        if (filled($validated['gdrive_client_secret'] ?? null)) {
+            $setting->gdrive_client_secret = trim((string) $validated['gdrive_client_secret']);
+        }
+        if (filled($validated['gdrive_refresh_token'] ?? null)) {
+            $setting->gdrive_refresh_token = trim((string) $validated['gdrive_refresh_token']);
+        }
+
+        $setting->save();
+
+        return back()->with('success', 'Pengaturan Auto-Backup, Retensi & Sinkronisasi berhasil disimpan.');
+    }
+
+    /**
+     * Menjalankan proses Auto-Backup (termasuk retensi & sinkronisasi) sekarang juga secara manual.
+     */
+    public function runAutoBackupNow(Request $request, AutoBackupService $autoBackup)
+    {
+        $result = $autoBackup->execute('manual_auto', true, null, $request->user(), $request);
+
+        if (! ($result['success'] ?? false)) {
+            return back()->with('error', $result['message']);
+        }
+
+        if (($result['status'] ?? null) === BackupRun::STATUS_PARTIAL) {
+            return back()->with('error', $result['message']);
+        }
+
+        return back()->with('success', $result['message']);
+    }
+
+    /**
+     * Menguji koneksi folder lokal / Google Drive Desktop atau Google Drive Cloud API (read-only).
+     */
+    public function testAutoBackupSync(
+        Request $request,
+        AutoBackupService $autoBackup,
+        GoogleDriveSyncService $googleDrive,
+    ) {
+        $validated = $request->validate([
+            'sync_mode' => ['required', Rule::in([
+                BackupSetting::SYNC_LOCAL_FOLDER,
+                BackupSetting::SYNC_GOOGLE_DRIVE_API,
+            ])],
+            'local_sync_path' => ['nullable', 'string', 'max:500'],
+            'gdrive_folder_id' => ['nullable', 'string', 'max:255'],
+            'gdrive_client_id' => ['nullable', 'string', 'max:255'],
+            'gdrive_client_secret' => ['nullable', 'string', 'max:2000'],
+            'gdrive_refresh_token' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        if ($validated['sync_mode'] === BackupSetting::SYNC_LOCAL_FOLDER) {
+            $result = $autoBackup->validateLocalSyncFolder($validated['local_sync_path'] ?? null);
+
+            return response()->json($result, $result['success'] ? 200 : 422);
+        }
+
+        $stored = BackupSetting::current();
+
+        $clientId = trim((string) (($validated['gdrive_client_id'] ?? '') ?: ($stored->gdrive_client_id ?? '')));
+        $folderId = trim((string) (($validated['gdrive_folder_id'] ?? '') ?: ($stored->gdrive_folder_id ?? '')));
+
+        $storedSecret = '';
+        $storedRefreshToken = '';
+        try {
+            $storedSecret = (string) ($stored->gdrive_client_secret ?? '');
+        } catch (\Throwable) {
+            $storedSecret = '';
+        }
+        try {
+            $storedRefreshToken = (string) ($stored->gdrive_refresh_token ?? '');
+        } catch (\Throwable) {
+            $storedRefreshToken = '';
+        }
+
+        $clientSecret = filled($validated['gdrive_client_secret'] ?? null)
+            ? trim((string) $validated['gdrive_client_secret'])
+            : $storedSecret;
+        $refreshToken = filled($validated['gdrive_refresh_token'] ?? null)
+            ? trim((string) $validated['gdrive_refresh_token'])
+            : $storedRefreshToken;
+
+        if ($clientId === '' || $clientSecret === '' || $refreshToken === '' || $folderId === '') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Lengkapi Folder ID, Client ID, Client Secret, dan Refresh Token terlebih dahulu.',
+            ], 422);
+        }
+
+        $result = $googleDrive->testConnection($clientId, $clientSecret, $refreshToken, $folderId);
+
+        return response()->json($result, $result['success'] ? 200 : 422);
+    }
+
+    /**
+     * Pemicu ringan in-app (Zero-Setup Inno Setup): menjalankan auto-backup saat jatuh tempo
+     * dan otomatis retry unggahan Google Drive tertunda begitu koneksi kembali online.
+     */
+    public function autoBackupHeartbeat(Request $request, AutoBackupService $autoBackup)
+    {
+        $clientOnline = $request->boolean('online', true);
+        $result = $autoBackup->handleHeartbeat($clientOnline, $request->user(), $request, true);
+
+        return response()->json($result);
+    }
+
+    /**
+     * Mengunggah ulang berkas cadangan tertunda ke Google Drive sekarang juga.
+     */
+    public function retryPendingCloudSync(Request $request, AutoBackupService $autoBackup)
+    {
+        $result = $autoBackup->retryPendingCloudSync(true, $request->user(), $request, 'manual_auto');
+
+        if (! $result['success']) {
+            return back()->with('error', $result['message']);
+        }
+
+        return back()->with('success', $result['message']);
+    }
+
+    /**
+     * Menjelajah folder lokal komputer pengguna secara aman (khusus izin backup: write).
+     */
+    public function browseLocalFolders(Request $request, LocalFolderBrowserService $browser)
+    {
+        abort_unless($request->user()?->canAccessModule('backup', 'write'), 403);
+
+        $path = $request->query('path');
+        $result = $browser->browse(is_string($path) ? $path : null);
+
+        return response()->json($result, $result['success'] ? 200 : 422);
+    }
+
+    /**
+     * Membuat sub-folder baru di lokasi pilihan pengguna melalui Modal Folder Picker.
+     */
+    public function createLocalFolder(Request $request, LocalFolderBrowserService $browser)
+    {
+        $validated = $request->validate([
+            'parent_path' => ['required', 'string', 'max:500'],
+            'folder_name' => ['required', 'string', 'max:100'],
+        ]);
+
+        $result = $browser->createFolder($validated['parent_path'], $validated['folder_name']);
+
+        return response()->json($result, $result['success'] ? 200 : 422);
+    }
+
+    /**
+     * Aktivasi 1-klik Windows Task Scheduler dinamis (berjalan senyap via VBS tanpa CMD berkedip).
+     */
+    public function installWindowsScheduler(WindowsTaskSchedulerService $scheduler)
+    {
+        $result = $scheduler->install();
+
+        return response()->json($result, $result['success'] ? 200 : 422);
+    }
+
+    /**
+     * Menonaktifkan Windows Task Scheduler `newSIKAS-AutoBackup`.
+     */
+    public function removeWindowsScheduler(WindowsTaskSchedulerService $scheduler)
+    {
+        $result = $scheduler->remove();
+
+        return response()->json($result, $result['success'] ? 200 : 422);
     }
 }

@@ -11,7 +11,7 @@ return [
     | Pastikan nilai ini sama dengan #define MyAppVersion di install_beta.iss / install_patch.iss.
     |
     */
-    'version' => '2026.31',
+    'version' => '2026.30',
 
     /*
     |--------------------------------------------------------------------------

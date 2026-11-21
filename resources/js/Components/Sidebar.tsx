@@ -88,12 +88,14 @@ export default function Sidebar({
         canModule('surat_pesanan') ||
         canModule('dokumen') ||
         canModule('sk_surat') ||
-        canModule('laporan');
+        canModule('laporan') ||
+        canModule('poster_transparansi');
     const showIntegrasi = canModule('path_arkas', 'write');
     const showSistem =
         canModule('backup') ||
         canModule('network_settings') ||
         canModule('user_management') ||
+        canModule('activity_logs') ||
         canModule('system_update');
     const showMainMenu =
         canModule('dashboard') ||
@@ -436,6 +438,16 @@ export default function Sidebar({
                                             Laporan
                                         </NavLink>
                                     )}
+                                    {canModule('poster_transparansi') && (
+                                        <NavLink
+                                            href={route('poster-transparansi.index')}
+                                            active={route().current('poster-transparansi.*') || route().current('*-poster-transparansi.*')}
+                                            isSidebarOpen={isOpen}
+                                            icon={<IconPosterTransparansi />}
+                                        >
+                                            Poster Transparansi
+                                        </NavLink>
+                                    )}
                                 </div>
                             </div>
                         )}
@@ -485,6 +497,11 @@ export default function Sidebar({
                                     {canModule('user_management') && (
                                         <NavLink href={route('management-role.index')} active={route().current('management-role.*')} isSidebarOpen={isOpen} icon={<IconUsersRole />}>
                                             Management &amp; Role
+                                        </NavLink>
+                                    )}
+                                    {canModule('activity_logs') && (
+                                        <NavLink href={route('activity-logs.index')} active={route().current('activity-logs.*')} isSidebarOpen={isOpen} icon={<IconActivityLog />}>
+                                            Log Aktivitas
                                         </NavLink>
                                     )}
                                     {canModule('system_update') && (
@@ -915,5 +932,22 @@ const IconUsersRole = () => (
         <circle cx="9" cy="7" r="4" />
         <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
         <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+);
+
+const IconActivityLog = () => (
+    <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+        <path d="M3 3v5h5" />
+        <path d="M12 7v5l4 2" />
+    </svg>
+);
+
+const IconPosterTransparansi = () => (
+    <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M2 3h20" />
+        <path d="M21 3v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V3" />
+        <path d="m7 21 5-5 5 5" />
+        <path d="M8 10v2M12 8v4M16 9v3" />
     </svg>
 );

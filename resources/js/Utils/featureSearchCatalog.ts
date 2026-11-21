@@ -29,9 +29,11 @@ export type FeatureIconKey =
     | 'dokumen'
     | 'sk_surat'
     | 'laporan'
+    | 'poster_transparansi'
     | 'backup'
     | 'network'
     | 'roles'
+    | 'activity_logs'
     | 'update'
     | 'path_arkas'
     | 'profile'
@@ -207,6 +209,16 @@ const VARIANT_MODULE_TEMPLATES: VariantModuleTemplate[] = [
         tone: 'violet',
         moduleKey: 'laporan',
         keywords: ['laporan', 'sptj', 'sp2b', 'spmth', 'lph', 'pertanggungjawaban'],
+    },
+    {
+        idPrefix: 'poster-transparansi',
+        baseTitle: 'Poster Transparansi BOSP',
+        descriptionPrefix: 'Buat, ekspor PNG HD, dan cetak poster infografis transparansi papan pengumuman',
+        routeSuffix: 'poster-transparansi.index',
+        iconKey: 'poster_transparansi',
+        tone: 'lime',
+        moduleKey: 'poster_transparansi',
+        keywords: ['poster', 'infografis', 'transparansi', 'papan pengumuman', 'publikasi', 'cetak', 'png'],
     },
 ];
 
@@ -427,6 +439,17 @@ export const FEATURE_SEARCH_ITEMS: FeatureSearchItem[] = [
         moduleKey: 'laporan',
         action: { type: 'route', routeName: 'laporan.index' },
     },
+    {
+        id: 'poster-transparansi',
+        title: 'Poster Transparansi BOSP',
+        description: 'Studio infografis transparansi BOSP siap cetak A4/A3 & ekspor PNG HD untuk papan pengumuman.',
+        category: 'Fitur Pelengkap',
+        iconKey: 'poster_transparansi',
+        tone: 'lime',
+        keywords: ['poster', 'infografis', 'transparansi', 'papan pengumuman', 'publikasi', 'cetak', 'bosp', 'png'],
+        moduleKey: 'poster_transparansi',
+        action: { type: 'route', routeName: 'poster-transparansi.index' },
+    },
 
     // Sistem & Integrasi
     {
@@ -461,6 +484,17 @@ export const FEATURE_SEARCH_ITEMS: FeatureSearchItem[] = [
         keywords: ['user', 'pengguna', 'role', 'hak akses', 'rbac', 'izin', 'permission', 'manajemen'],
         moduleKey: 'user_management',
         action: { type: 'route', routeName: 'management-role.index' },
+    },
+    {
+        id: 'activity-logs',
+        title: 'Log Aktivitas (Audit Trail)',
+        description: 'Pantau riwayat aktivitas pengguna lintas modul & varian BOSP, ekspor CSV audit, dan retensi log.',
+        category: 'Sistem & Integrasi',
+        iconKey: 'activity_logs',
+        tone: 'violet',
+        keywords: ['audit trail', 'log aktivitas', 'riwayat', 'jejak', 'keamanan', 'aktivitas pengguna', 'history', 'log'],
+        moduleKey: 'activity_logs',
+        action: { type: 'route', routeName: 'activity-logs.index' },
     },
     {
         id: 'system-update',
