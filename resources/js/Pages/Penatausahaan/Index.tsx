@@ -645,6 +645,21 @@ export default function Index({ tahunList, penganggaranList, statusPerTahun, tah
                     </div>
 
                     <div className="px-6 py-5">
+                        {arkasPenerimaanFeedback && (
+                            <div
+                                role={arkasPenerimaanFeedback.type === 'error' ? 'alert' : 'status'}
+                                className={`mb-4 rounded-2xl border px-4 py-3 text-[11.5px] font-bold ${
+                                    arkasPenerimaanFeedback.type === 'success'
+                                        ? 'border-emerald-200 bg-emerald-50/90 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200'
+                                        : arkasPenerimaanFeedback.type === 'warning'
+                                          ? 'border-amber-200 bg-amber-50/90 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200'
+                                          : 'border-rose-200 bg-rose-50/90 text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200'
+                                }`}
+                            >
+                                {arkasPenerimaanFeedback.text}
+                            </div>
+                        )}
+
                         {!showCreateForm ? (
                             <>
                                 {/* Bar Aksi Cek ARKAS */}
@@ -676,21 +691,6 @@ export default function Index({ tahunList, penganggaranList, statusPerTahun, tah
                                         {isCheckingArkasPenerimaan ? 'Mengecek ARKAS...' : 'Cek dari ARKAS'}
                                     </button>
                                 </div>
-
-                                {arkasPenerimaanFeedback && (
-                                    <div
-                                        role={arkasPenerimaanFeedback.type === 'error' ? 'alert' : 'status'}
-                                        className={`mb-4 rounded-2xl border px-4 py-3 text-[11.5px] font-bold ${
-                                            arkasPenerimaanFeedback.type === 'success'
-                                                ? 'border-emerald-200 bg-emerald-50/90 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200'
-                                                : arkasPenerimaanFeedback.type === 'warning'
-                                                  ? 'border-amber-200 bg-amber-50/90 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200'
-                                                  : 'border-rose-200 bg-rose-50/90 text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200'
-                                        }`}
-                                    >
-                                        {arkasPenerimaanFeedback.text}
-                                    </div>
-                                )}
 
                                 {arkasPenerimaanResult?.exists &&
                                     arkasPenerimaanResult.items &&
@@ -851,21 +851,6 @@ export default function Index({ tahunList, penganggaranList, statusPerTahun, tah
                         ) : (
                             /* Form View - Grouped Neo-Bento Panels */
                             <form onSubmit={submitPenerimaan} className="space-y-4">
-                                {arkasPenerimaanFeedback && (
-                                    <div
-                                        role={arkasPenerimaanFeedback.type === 'error' ? 'alert' : 'status'}
-                                        className={`rounded-2xl border px-4 py-3 text-[11.5px] font-bold ${
-                                            arkasPenerimaanFeedback.type === 'success'
-                                                ? 'border-emerald-200 bg-emerald-50/90 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200'
-                                                : arkasPenerimaanFeedback.type === 'warning'
-                                                  ? 'border-amber-200 bg-amber-50/90 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200'
-                                                  : 'border-rose-200 bg-rose-50/90 text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200'
-                                        }`}
-                                    >
-                                        {arkasPenerimaanFeedback.text}
-                                    </div>
-                                )}
-
                                 {/* Panel 1: Sumber & Waktu Penerimaan */}
                                 <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4 dark:border-white/5 dark:bg-white/[0.02]">
                                     <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2">

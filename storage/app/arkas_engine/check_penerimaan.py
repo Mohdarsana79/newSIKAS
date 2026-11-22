@@ -58,8 +58,15 @@ def normalize_date(val):
     return text[:10] if len(text) >= 10 else text
 
 
+MULTI_STAGE_SUMBER_DANA_IDS = (1, 12)
+SILPA_SUMBER_DANA_IDS = (33, 35)
+REF_BKU_TERIMA_DANA = 2
+REF_BKU_SALDO_AWAL_REGULER = (8, 9)
+REF_BKU_SALDO_AWAL_SILPA = (28, 29)
+
+
 def detect_tahap(uraian, tanggal_str, sumber_dana_id):
-    if sumber_dana_id not in (1, 12):
+    if sumber_dana_id not in MULTI_STAGE_SUMBER_DANA_IDS:
         return None
 
     match = re.search(r'tahap\s*([12])', uraian or '', re.IGNORECASE)
@@ -80,14 +87,13 @@ def fetch_saldo_awal(cursor, id_anggaran_list, tahun, sumber_dana_id):
     if not id_anggaran_list:
         return 0.0, None
 
-    is_silpa = sumber_dana_id in (33, 35)
-    ref_ids = (28, 29) if is_silpa else (8, 9)
-    placeholders = ",".join(["?"] * len(id_anggaran_list))
+    is_silpa = sumber_dana_id in SILPA_SUMBER_DANA_IDS
+    ref_ids = REF_BKU_SALDO_AWAL_SILPA if is_silpa else REF_BKU_SALDO_AWAL_REGULER
 
-    # Ambil saldo awal Januari dari urutan id_anggaran terbaru (list sudah diurutkan revisi/aktif tertinggi dulu)
+    # Ambil saldo awal Januari dari id_anggaran terbaru yang memiliki catatan saldo awal
     for id_ang in id_anggaran_list:
         cursor.execute(
-            f"""
+            """
                 SELECT k.id_ref_bku, k.tanggal_transaksi, COALESCE(k.saldo, 0)
                 FROM kas_umum k
                 WHERE k.id_anggaran = ?
@@ -103,15 +109,11 @@ def fetch_saldo_awal(cursor, id_anggaran_list, tahun, sumber_dana_id):
         rows = cursor.fetchall()
         if rows:
             seen_ref = {}
-            tanggal_terawal = None
-            for ref_bku, tgl, saldo in rows:
+            for ref_bku, _tgl, saldo in rows:
                 if ref_bku not in seen_ref:
                     seen_ref[ref_bku] = float(saldo or 0)
-                    if tanggal_terawal is None:
-                        tanggal_terawal = normalize_date(tgl)
             total_saldo = round(sum(seen_ref.values()), 2)
-            if total_saldo > 0:
-                return total_saldo, tanggal_terawal or f"{tahun}-01-01"
+            return (total_saldo, f"{tahun}-01-01") if total_saldo > 0 else (0.0, None)
 
     return 0.0, None
 
@@ -192,12 +194,12 @@ def main():
                     SELECT k.id_kas_umum, k.tanggal_transaksi, k.uraian, COALESCE(k.saldo, 0)
                     FROM kas_umum k
                     WHERE k.id_anggaran IN ({placeholders})
-                      AND k.id_ref_bku = 2
+                      AND k.id_ref_bku = ?
                       AND k.soft_delete = 0
                       AND k.tanggal_transaksi LIKE ?
                     ORDER BY k.tanggal_transaksi ASC, k.create_date ASC
                 """,
-                id_anggaran_list + [f"{tahun}-%"],
+                id_anggaran_list + [REF_BKU_TERIMA_DANA, f"{tahun}-%"],
             )
             for _id_ku, tgl, uraian, saldo in cursor.fetchall():
                 nominal = round(float(saldo or 0), 2)
@@ -235,7 +237,7 @@ def main():
         )
         salur_by_tahap = {}
         for tahap_raw, nilai_bersih, tgl_disetujui in cursor.fetchall():
-            tahap_val = int(tahap_raw) if tahap_raw is not None and sumber_dana_id in (1, 12) else None
+            tahap_val = int(tahap_raw) if tahap_raw is not None and sumber_dana_id in MULTI_STAGE_SUMBER_DANA_IDS else None
             nominal = round(float(nilai_bersih or 0), 2)
             tgl_clean = normalize_date(tgl_disetujui)
             if tahap_val in found_tahap_set:
