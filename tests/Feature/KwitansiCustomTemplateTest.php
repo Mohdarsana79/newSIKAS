@@ -815,6 +815,231 @@ XML;
         $this->assertSame('nextPage', $trailingType);
     }
 
+    public function test_kop_surat_fits_template_margins_in_pt_and_supports_inline_size_overrides(): void
+    {
+        // Buat gambar kop surat 500x100 (rasio 5:1) dan logo 100x100 (rasio 1:1) tanpa bergantung ext-gd
+        $kopRel = 'test_kop_fit_'.uniqid().'.png';
+        $logoRel = 'test_logo_fit_'.uniqid().'.png';
+        $daerahRel = 'test_daerah_fit_'.uniqid().'.png';
+        $kopFull = storage_path('app/public/'.$kopRel);
+        $logoFull = storage_path('app/public/'.$logoRel);
+        $daerahFull = storage_path('app/public/'.$daerahRel);
+        File::ensureDirectoryExists(dirname($kopFull));
+
+        $this->tempFilesToClean[] = $kopFull;
+        $this->tempFilesToClean[] = $logoFull;
+        $this->tempFilesToClean[] = $daerahFull;
+
+        file_put_contents($kopFull, $this->buildMinimalPngBytes(500, 100));
+        file_put_contents($logoFull, $this->buildMinimalPngBytes(100, 100));
+        file_put_contents($daerahFull, $this->buildMinimalPngBytes(100, 100));
+
+        $this->sekolah->update([
+            'kop_surat' => $kopRel,
+            'logo_sekolah' => $logoRel,
+            'logo_daerah' => $daerahRel,
+        ]);
+
+        $kwitansi = $this->createRegulerKwitansi(
+            idTransaksi: 'KOP-001',
+            uraian: 'Uji Ukuran Kop Surat',
+            tanggal: '2026-04-01',
+            penerima: 'Toko Kop',
+            items: [
+                ['uraian' => 'Kertas', 'volume' => 1, 'satuan' => 'Rim', 'harga_satuan' => 50000, 'subtotal' => 50000],
+            ]
+        );
+
+        $service = app(KwitansiTemplateService::class);
+
+        // 1. Template A4 dengan margin kiri/kanan 900 twips -> area cetak = (11905 - 1800) / 20 = 505.25pt
+        //    Sekaligus uji berbagai variasi override inline (termasuk 15cmx3cm:f, size=100pxx50px, height=3cm,
+        //    15cm::f yang wajib menjaga ratio agar tidak menghasilkan height kosong, serta typo unrecognized)
+        $phpWord = new PhpWord;
+        $section = $phpWord->addSection([
+            'pageSizeW' => 11905,
+            'pageSizeH' => 16838,
+            'marginLeft' => 900,
+            'marginRight' => 900,
+        ]);
+        // Taruh ${kop_surat:5cm} di sel sempit sebelum ${kop_surat} polos -> tidak boleh mengecilkan ${kop_surat} polos
+        $narrowTbl = $section->addTable();
+        $narrowTbl->addRow();
+        $narrowTbl->addCell(2500)->addText('${kop_surat:5cm}');
+
+        $section->addText('${kop_surat}');
+        $section->addText('${kop_surat:15cm}');
+        $section->addText('${kop_surat:width=14cm}');
+        $section->addText('${kop_surat:height=3cm}');
+        $section->addText('${kop_surat:12cm:3cm:f}');
+        $section->addText('${kop_surat:15cmx3cm:f}');
+        $section->addText('${kop_surat:size=100pxx50px}');
+        $section->addText('${kop_surat:15cm::f}');
+        $section->addText('${logo_sekolah}');
+        $section->addText('${logo_daerah}');
+        $section->addText('${kop_surat:15meter}');
+
+        $srcBase = tempnam(sys_get_temp_dir(), 'kw_kop_');
+        if ($srcBase !== false && is_file($srcBase)) {
+            @unlink($srcBase);
+        }
+        $srcPath = ($srcBase ?: sys_get_temp_dir().DIRECTORY_SEPARATOR.'kw_kop_'.uniqid('', true)).'.docx';
+        $phpWord->save($srcPath, 'Word2007');
+        $this->tempFilesToClean[] = $srcPath;
+
+        // Pastikan analyzer mengenali tag valid dan tetap melaporkan typo (${kop_surat:15meter}) sebagai unrecognized
+        $analysis = $service->analyzeTemplateFile($srcPath);
+        $this->assertContains('kop_surat', $analysis['recognized']);
+        $this->assertContains('kop_surat', $analysis['image_vars']);
+        $this->assertContains('logo_sekolah', $analysis['image_vars']);
+        $this->assertContains('logo_daerah', $analysis['image_vars']);
+        $this->assertContains('kop_surat:15meter', $analysis['unrecognized']);
+
+        $storedRel = 'kwitansi_templates/'.uniqid('kop_').'.docx';
+        Storage::disk('local')->put($storedRel, file_get_contents($srcPath));
+        $template = KwitansiTemplate::create([
+            'nama' => 'Template Kop Fit',
+            'file_path' => $storedRel,
+            'original_filename' => 'kop_fit.docx',
+            'file_size' => filesize($srcPath) ?: 0,
+            'detected_variables' => $analysis,
+            'has_item_table' => false,
+            'created_by' => $this->bendahara->id,
+        ]);
+
+        $compiledPath = $service->compileSingleDocx($template, $kwitansi, 'reguler');
+        $this->tempFilesToClean[] = $compiledPath;
+
+        $xml = $this->readDocumentXml($compiledPath);
+        preg_match_all('/<v:shape[^>]*style="([^"]+)"/', $xml, $styleMatches);
+        $styles = $styleMatches[1] ?? [];
+        $this->assertCount(11, $styles);
+
+        // ${kop_surat:5cm} di sel sempit
+        $this->assertSame('width:5cm;height:1cm', $styles[0]);
+        // ${kop_surat} polos tetap pas 100% margin (505.25pt x 101.05pt), tidak terpengaruh ${kop_surat:5cm}
+        $this->assertSame('width:505.25pt;height:101.05pt', $styles[1]);
+        // ${kop_surat:15cm} proporsional 5:1 -> 15cm x 3cm (bukan 70px default PHPWord)
+        $this->assertSame('width:15cm;height:3cm', $styles[2]);
+        // ${kop_surat:width=14cm} -> 14cm x 2.8cm
+        $this->assertSame('width:14cm;height:2.8cm', $styles[3]);
+        // ${kop_surat:height=3cm} -> 15cm x 3cm (bukan 115px default PHPWord)
+        $this->assertSame('width:15cm;height:3cm', $styles[4]);
+        // ${kop_surat:12cm:3cm:f} -> eksplisit 12cm x 3cm tanpa kunci rasio
+        $this->assertSame('width:12cm;height:3cm', $styles[5]);
+        // ${kop_surat:15cmx3cm:f} -> tidak menimpa height dengan 'f'
+        $this->assertSame('width:15cm;height:3cm', $styles[6]);
+        // ${kop_surat:size=100pxx50px} -> split unit-aware tidak pecah di huruf x pada 'px'; ratio 5:1 -> 100px x 20px
+        $this->assertSame('width:100px;height:20px', $styles[7]);
+        // ${kop_surat:15cm::f} -> single-dimension wajib memaksa ratio=true agar tidak menghasilkan height kosong
+        $this->assertSame('width:15cm;height:3cm', $styles[8]);
+        // ${logo_sekolah} & ${logo_daerah} memakai satuan fisik absolut 55pt x 55pt
+        $this->assertSame('width:55pt;height:55pt', $styles[9]);
+        $this->assertSame('width:55pt;height:55pt', $styles[10]);
+
+        // 2. Uji gutter, indent paragraf, tabel pct di dalam tblW sempit dengan tcMar type="nil", serta header XML
+        //    - Page 12000 twips - left 1000 - right 1000 - gutter 400 = 9600 twips = 480pt
+        //    - Table tblW 8000 dxa, cell 50% (2500 pct) = 4000 twips, tcMar left/right type="nil" = 0, ind left=200 -> 3800 twips = 190pt
+        $complexDocXml = <<<'XML'
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    <w:tbl>
+      <w:tblPr>
+        <w:tblW w:w="8000" w:type="dxa"/>
+      </w:tblPr>
+      <w:tr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="2500" w:type="pct"/>
+            <w:tcMar>
+              <w:left w:w="0" w:type="nil"/>
+              <w:right w:w="0" w:type="nil"/>
+            </w:tcMar>
+          </w:tcPr>
+          <w:p>
+            <w:pPr><w:ind w:left="200" w:right="0"/></w:pPr>
+            <w:r><w:t>${kop_surat}</w:t></w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+    </w:tbl>
+    <w:sectPr>
+      <w:pgSz w:w="12000" w:h="16838"/>
+      <w:pgMar w:top="1000" w:right="1000" w:bottom="1000" w:left="1000" w:gutter="400"/>
+    </w:sectPr>
+  </w:body>
+</w:document>
+XML;
+        $complexSrc = $this->createMinimalDocxFromXml($complexDocXml);
+        $complexRel = 'kwitansi_templates/'.uniqid('kop_pct_').'.docx';
+        Storage::disk('local')->put($complexRel, file_get_contents($complexSrc));
+        $complexTemplate = KwitansiTemplate::create([
+            'nama' => 'Template Kop Pct Nil Ind',
+            'file_path' => $complexRel,
+            'original_filename' => 'kop_pct.docx',
+            'file_size' => filesize($complexSrc) ?: 0,
+            'detected_variables' => $service->analyzeTemplateFile($complexSrc),
+            'has_item_table' => false,
+            'created_by' => $this->bendahara->id,
+        ]);
+
+        $complexCompiled = $service->compileSingleDocx($complexTemplate, $kwitansi, 'reguler');
+        $this->tempFilesToClean[] = $complexCompiled;
+        preg_match('/<v:shape[^>]*style="([^"]+)"/', $this->readDocumentXml($complexCompiled), $complexMatch);
+        $this->assertSame('width:190.00pt;height:38pt', $complexMatch[1] ?? '');
+
+        // 3. Uji ${kop_surat} yang ditaruh di Word Header (word/header1.xml) dengan gutter 400 & ind left=400 -> (9600-400)/20 = 460pt
+        $headerWord = new PhpWord;
+        $headerSec = $headerWord->addSection([
+            'pageSizeW' => 12000,
+            'marginLeft' => 1000,
+            'marginRight' => 1000,
+            'gutter' => 400,
+        ]);
+        $header = $headerSec->addHeader();
+        $header->addText('${kop_surat}', null, ['indentation' => ['left' => 400]]);
+        $headerSec->addText('Bukti: ${no_bukti}');
+
+        $hdrBase = tempnam(sys_get_temp_dir(), 'kw_kop_hdr_');
+        if ($hdrBase !== false && is_file($hdrBase)) {
+            @unlink($hdrBase);
+        }
+        $hdrSrc = ($hdrBase ?: sys_get_temp_dir().DIRECTORY_SEPARATOR.'kw_kop_hdr_'.uniqid('', true)).'.docx';
+        $headerWord->save($hdrSrc, 'Word2007');
+        $this->tempFilesToClean[] = $hdrSrc;
+
+        $hdrRel = 'kwitansi_templates/'.uniqid('kop_hdr_').'.docx';
+        Storage::disk('local')->put($hdrRel, file_get_contents($hdrSrc));
+        $hdrTemplate = KwitansiTemplate::create([
+            'nama' => 'Template Kop Header',
+            'file_path' => $hdrRel,
+            'original_filename' => 'kop_hdr.docx',
+            'file_size' => filesize($hdrSrc) ?: 0,
+            'detected_variables' => $service->analyzeTemplateFile($hdrSrc),
+            'has_item_table' => false,
+            'created_by' => $this->bendahara->id,
+        ]);
+
+        $hdrCompiled = $service->compileSingleDocx($hdrTemplate, $kwitansi, 'reguler');
+        $this->tempFilesToClean[] = $hdrCompiled;
+        $hdrZip = new \ZipArchive;
+        $this->assertTrue($hdrZip->open($hdrCompiled) === true);
+        $hdrXml = (string) $hdrZip->getFromName('word/header1.xml');
+        $hdrZip->close();
+        preg_match('/<v:shape[^>]*style="([^"]+)"/', $hdrXml, $hdrStyleMatch);
+        $this->assertSame('width:460.00pt;height:92pt', $hdrStyleMatch[1] ?? '');
+
+        // 4. Jika file kop_surat kosong di profil sekolah, tag berargumen (${kop_surat:15cm}) tetap dibersihkan jadi ''
+        $this->sekolah->update(['kop_surat' => null]);
+        $emptyKopCompiled = $service->compileSingleDocx($template, $kwitansi->fresh(), 'reguler');
+        $this->tempFilesToClean[] = $emptyKopCompiled;
+        $emptyKopXml = $this->readDocumentXml($emptyKopCompiled);
+        $this->assertStringNotContainsString('${kop_surat}', $emptyKopXml);
+        $this->assertStringNotContainsString('${kop_surat:15cm}', $emptyKopXml);
+        $this->assertStringNotContainsString('${kop_surat:height=3cm}', $emptyKopXml);
+    }
+
     public function test_custom_template_works_on_kinerja_variant_with_dynamic_sumber_dana(): void
     {
         $template = $this->storeTemplateRecord([
@@ -1105,6 +1330,23 @@ XML;
         $this->tempFilesToClean[] = $path;
 
         return $path;
+    }
+
+    protected function buildMinimalPngBytes(int $width, int $height): string
+    {
+        $chunk = static function (string $type, string $data): string {
+            return pack('N', strlen($data)).$type.$data.pack('N', crc32($type.$data));
+        };
+
+        $ihdr = pack('NNCCCCC', $width, $height, 8, 2, 0, 0, 0);
+        $scanline = "\x00".str_repeat("\xFF\xFF\xFF", $width);
+        $raw = str_repeat($scanline, $height);
+        $idat = gzcompress($raw, 9) ?: '';
+
+        return "\x89PNG\r\n\x1A\n"
+            .$chunk('IHDR', $ihdr)
+            .$chunk('IDAT', $idat)
+            .$chunk('IEND', '');
     }
 
     protected function readDocumentXml(string $docxPath): string

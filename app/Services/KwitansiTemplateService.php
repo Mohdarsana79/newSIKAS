@@ -46,11 +46,11 @@ class KwitansiTemplateService
 
     private const MAX_UNCOMPRESSED_XML_BYTES = 20 * 1024 * 1024; // 20 MB
 
-    /** @var array<string, array{width: int, height: string, ratio: bool}> */
+    /** @var array<string, array{width: string, height: string, ratio: bool, fit_margin: bool}> */
     public const IMAGE_VARIABLES = [
-        'kop_surat' => ['width' => 600, 'height' => '', 'ratio' => true],
-        'logo_sekolah' => ['width' => 68, 'height' => '', 'ratio' => true],
-        'logo_daerah' => ['width' => 68, 'height' => '', 'ratio' => true],
+        'kop_surat' => ['width' => '482pt', 'height' => '', 'ratio' => true, 'fit_margin' => true],
+        'logo_sekolah' => ['width' => '55pt', 'height' => '', 'ratio' => true, 'fit_margin' => false],
+        'logo_daerah' => ['width' => '55pt', 'height' => '', 'ratio' => true, 'fit_margin' => false],
     ];
 
     public function __construct(
@@ -166,9 +166,9 @@ class KwitansiTemplateService
                 'type' => 'image',
                 'description' => 'Otomatis menarik gambar dari Profil Sekolah (atau bisa langsung ditempel manual di file Word).',
                 'items' => [
-                    ['key' => 'kop_surat', 'tag' => '${kop_surat}', 'label' => 'Gambar Kop Surat Sekolah', 'example' => 'Lebar penuh 600px'],
-                    ['key' => 'logo_sekolah', 'tag' => '${logo_sekolah}', 'label' => 'Logo Sekolah', 'example' => 'Lebar 68px'],
-                    ['key' => 'logo_daerah', 'tag' => '${logo_daerah}', 'label' => 'Logo Daerah / Pemda', 'example' => 'Lebar 68px'],
+                    ['key' => 'kop_surat', 'tag' => '${kop_surat}', 'label' => 'Gambar Kop Surat Sekolah', 'example' => 'Otomatis selebar margin (atau ${kop_surat:16cm})'],
+                    ['key' => 'logo_sekolah', 'tag' => '${logo_sekolah}', 'label' => 'Logo Sekolah', 'example' => 'Lebar ~2 cm (atau ${logo_sekolah:2.5cm})'],
+                    ['key' => 'logo_daerah', 'tag' => '${logo_daerah}', 'label' => 'Logo Daerah / Pemda', 'example' => 'Lebar ~2 cm (atau ${logo_daerah:2.5cm})'],
                 ],
             ],
         ];
@@ -210,7 +210,6 @@ class KwitansiTemplateService
 
         $knownLookup = array_fill_keys($this->recognizedVariableKeys(), true);
         $itemLookup = array_fill_keys(self::ITEM_TABLE_VARIABLES, true);
-        $imageLookup = array_fill_keys(array_keys(self::IMAGE_VARIABLES), true);
 
         $recognized = [];
         $unrecognized = [];
@@ -218,25 +217,26 @@ class KwitansiTemplateService
         $imageVars = [];
 
         foreach ($report['variables'] as $var) {
-            if (isset($knownLookup[$var])) {
-                $recognized[] = $var;
+            $imageBaseKey = $this->resolveImageVariableBaseKey($var);
+            if ($imageBaseKey !== null) {
+                $recognized[$imageBaseKey] = true;
+                $imageVars[$imageBaseKey] = true;
+            } elseif (isset($knownLookup[$var])) {
+                $recognized[$var] = true;
                 if (isset($itemLookup[$var])) {
-                    $itemTableVars[] = $var;
-                }
-                if (isset($imageLookup[$var])) {
-                    $imageVars[] = $var;
+                    $itemTableVars[$var] = true;
                 }
             } else {
-                $unrecognized[] = $var;
+                $unrecognized[$var] = true;
             }
         }
 
         return [
-            'recognized' => $recognized,
-            'unrecognized' => $unrecognized,
+            'recognized' => array_keys($recognized),
+            'unrecognized' => array_keys($unrecognized),
             'unclosed' => $report['unclosed'],
-            'item_table_vars' => $itemTableVars,
-            'image_vars' => $imageVars,
+            'item_table_vars' => array_keys($itemTableVars),
+            'image_vars' => array_keys($imageVars),
             'has_item_table' => $itemTableVars !== [],
         ];
     }
@@ -342,7 +342,8 @@ class KwitansiTemplateService
         $saved = false;
 
         try {
-            $processor = new TemplateProcessor($normalizedPath ?? $templatePath);
+            $sourceDocxPath = $normalizedPath ?? $templatePath;
+            $processor = new TemplateProcessor($sourceDocxPath);
             $processorTempFile = $this->extractProcessorTempFilename($processor);
             $rawTemplateVars = $processor->getVariables();
 
@@ -351,8 +352,8 @@ class KwitansiTemplateService
             // 1. Proses tabel rincian barang dinamis (cloneRow) terlebih dahulu
             $this->applyItemTableRows($processor, $rawTemplateVars, $payload['items']);
 
-            // 2. Proses placeholder gambar (kop_surat, logo_sekolah, logo_daerah)
-            $this->applyImagePlaceholders($processor, $rawTemplateVars, $payload['images']);
+            // 2. Proses placeholder gambar (kop_surat, logo_sekolah, logo_daerah) dengan satuan fisik absolut (pt) & auto-fit margin
+            $this->applyImagePlaceholders($processor, $rawTemplateVars, $payload['images'], $sourceDocxPath);
 
             // 3. Proses seluruh variabel teks (termasuk varian tag dengan spasi di XML)
             foreach ($payload['text'] as $key => $value) {
@@ -998,12 +999,16 @@ class KwitansiTemplateService
      * @param  array<int, string>  $rawTemplateVars
      * @param  array<string, ?string>  $images
      */
-    protected function applyImagePlaceholders(TemplateProcessor $processor, array $rawTemplateVars, array $images): void
-    {
+    protected function applyImagePlaceholders(
+        TemplateProcessor $processor,
+        array $rawTemplateVars,
+        array $images,
+        ?string $sourceDocxPath = null
+    ): void {
         foreach (self::IMAGE_VARIABLES as $key => $config) {
             $matchingRawVars = [];
             foreach ($rawTemplateVars as $rawVar) {
-                if (trim($rawVar) === $key) {
+                if ($this->resolveImageVariableBaseKey($rawVar) === $key) {
                     $matchingRawVars[] = $rawVar;
                 }
             }
@@ -1012,32 +1017,526 @@ class KwitansiTemplateService
                 continue;
             }
 
+            // Urutkan dari terpanjang agar tag berargumen (mis. kop_surat:15cm:3cm) diproses sebelum kop_surat
+            $matchingRawVars = array_values(array_unique($matchingRawVars));
+            usort($matchingRawVars, static fn (string $a, string $b): int => strlen($b) <=> strlen($a));
+
             $imagePath = $images[$key] ?? null;
             if ($imagePath !== null && is_file($imagePath)) {
-                $injected = false;
-                try {
-                    foreach ($matchingRawVars as $rawVar) {
-                        $processor->setImageValue($rawVar, [
-                            'path' => $imagePath,
-                            'width' => $config['width'],
-                            'height' => $config['height'],
-                            'ratio' => $config['ratio'],
-                        ]);
+                $needsAutoFitWidth = $config['fit_margin']
+                    && $sourceDocxPath !== null
+                    && $this->hasTagRequiringDefaultWidth($matchingRawVars);
+
+                $defaultWidth = $config['width'];
+                if ($needsAutoFitWidth) {
+                    $resolvedPt = $this->resolveTemplateContentWidthPt($sourceDocxPath, $key);
+                    if ($resolvedPt !== null) {
+                        $defaultWidth = number_format($resolvedPt, 2, '.', '').'pt';
                     }
-                    $injected = true;
-                } catch (\Throwable) {
-                    $injected = false;
                 }
 
-                if ($injected) {
-                    continue;
+                foreach ($matchingRawVars as $rawVar) {
+                    $dims = $this->parseInlineImageOptions($rawVar, $defaultWidth, $config['height'], $config['ratio']);
+                    try {
+                        $processor->setImageValue($rawVar, [
+                            'path' => $imagePath,
+                            'width' => $dims['width'],
+                            'height' => $dims['height'],
+                            'ratio' => $dims['ratio'] ? 'true' : 'false',
+                        ]);
+                    } catch (\Throwable) {
+                        $processor->setValue($rawVar, '');
+                    }
                 }
+
+                continue;
             }
 
             foreach ($matchingRawVars as $rawVar) {
                 $processor->setValue($rawVar, '');
             }
         }
+    }
+
+    /**
+     * @param  array<int, string>  $matchingRawVars
+     */
+    protected function hasTagRequiringDefaultWidth(array $matchingRawVars): bool
+    {
+        foreach ($matchingRawVars as $rawVar) {
+            $parsed = $this->parseRawInlineImageArgs($rawVar);
+            if ($parsed['width'] === null && $parsed['height'] === null) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Ambil base key variabel gambar (mis. "kop_surat:15cm" -> "kop_surat"), atau null jika bukan variabel gambar
+     * atau argumen inline-nya tidak valid (sehingga typo seperti ${kop_surat:15meter} tetap dilaporkan unrecognized).
+     */
+    protected function resolveImageVariableBaseKey(string $rawVar): ?string
+    {
+        $trimmed = trim($rawVar);
+        if ($trimmed === '' || str_contains($trimmed, '/')) {
+            return null;
+        }
+
+        $segments = explode(':', $trimmed, 2);
+        $base = trim($segments[0]);
+        if (! array_key_exists($base, self::IMAGE_VARIABLES)) {
+            return null;
+        }
+
+        if (! isset($segments[1])) {
+            return $base;
+        }
+
+        $parsed = $this->parseRawInlineImageArgs($trimmed);
+
+        return $parsed['valid'] ? $base : null;
+    }
+
+    /**
+     * Parsing argumen ukuran inline opsional pada tag gambar (mis. ${kop_surat:15cm}, ${kop_surat:15cm:3cm:f},
+     * ${kop_surat:15cmx3cm:f}, ${kop_surat:width=15cm}, ${kop_surat:height=3cm}) dengan satuan fisik aman.
+     *
+     * @return array{width: string, height: string, ratio: bool}
+     */
+    protected function parseInlineImageOptions(
+        string $rawVar,
+        string $defaultWidth,
+        string $defaultHeight,
+        bool $defaultRatio
+    ): array {
+        $parsed = $this->parseRawInlineImageArgs($rawVar);
+        $inlineWidth = $parsed['width'];
+        $inlineHeight = $parsed['height'];
+        $inlineRatio = $parsed['ratio'];
+
+        if ($inlineWidth === null && $inlineHeight === null) {
+            return [
+                'width' => $defaultWidth,
+                'height' => $defaultHeight,
+                'ratio' => true,
+            ];
+        }
+
+        // Bila hanya satu sisi (width atau height) diisi, wajib ratio=true agar PHPWord menghitung sisi lainnya
+        // dan tidak memproduksi VML rusak seperti style="width:15cm;height:"
+        $singleDimensionOnly = ($inlineWidth === null) !== ($inlineHeight === null);
+
+        return [
+            'width' => $inlineWidth ?? '',
+            'height' => $inlineHeight ?? '',
+            'ratio' => $singleDimensionOnly ? true : ($inlineRatio ?? $defaultRatio),
+        ];
+    }
+
+    /**
+     * @return array{width: ?string, height: ?string, ratio: ?bool, valid: bool}
+     */
+    protected function parseRawInlineImageArgs(string $rawVar): array
+    {
+        $trimmed = trim($rawVar);
+        $parts = explode(':', $trimmed);
+        array_shift($parts);
+
+        if ($parts === []) {
+            return ['width' => null, 'height' => null, 'ratio' => null, 'valid' => true];
+        }
+
+        $dimPairPattern = '/^([0-9]+(?:\.[0-9]+)?(?:cm|mm|in|pt|pc|px|%|em|ex)?|auto)x([0-9]+(?:\.[0-9]+)?(?:cm|mm|in|pt|pc|px|%|em|ex)?|auto)$/i';
+        $inlineWidth = null;
+        $inlineHeight = null;
+        $inlineRatio = null;
+        $recognizedCount = 0;
+        $sizePairSeen = false;
+
+        foreach ($parts as $idx => $part) {
+            $arg = trim($part);
+            if ($arg === '') {
+                continue;
+            }
+
+            if (str_contains($arg, '=')) {
+                [$name, $val] = explode('=', $arg, 2);
+                $name = strtolower(trim($name));
+                $val = trim($val);
+                if ($name === 'size' && preg_match($dimPairPattern, $val, $m)) {
+                    $w = $this->normalizeImageDimension($m[1]);
+                    $h = $this->normalizeImageDimension($m[2]);
+                    if (($w === null && strtolower($m[1]) !== 'auto') || ($h === null && strtolower($m[2]) !== 'auto')) {
+                        return ['width' => null, 'height' => null, 'ratio' => null, 'valid' => false];
+                    }
+                    $inlineWidth = $w;
+                    $inlineHeight = $h;
+                    $sizePairSeen = true;
+                    $recognizedCount++;
+                } elseif ($name === 'width') {
+                    $w = $this->normalizeImageDimension($val);
+                    if ($w === null && strtolower($val) !== 'auto') {
+                        return ['width' => null, 'height' => null, 'ratio' => null, 'valid' => false];
+                    }
+                    $inlineWidth = $w;
+                    $recognizedCount++;
+                } elseif ($name === 'height') {
+                    $h = $this->normalizeImageDimension($val);
+                    if ($h === null && strtolower($val) !== 'auto') {
+                        return ['width' => null, 'height' => null, 'ratio' => null, 'valid' => false];
+                    }
+                    $inlineHeight = $h;
+                    $recognizedCount++;
+                } elseif ($name === 'ratio') {
+                    $ratioVal = $this->parseRatioFlag($val);
+                    if ($ratioVal === null) {
+                        return ['width' => null, 'height' => null, 'ratio' => null, 'valid' => false];
+                    }
+                    $inlineRatio = $ratioVal;
+                    $recognizedCount++;
+                } else {
+                    return ['width' => null, 'height' => null, 'ratio' => null, 'valid' => false];
+                }
+            } elseif (preg_match($dimPairPattern, $arg, $m)) {
+                $w = $this->normalizeImageDimension($m[1]);
+                $h = $this->normalizeImageDimension($m[2]);
+                if (($w === null && strtolower($m[1]) !== 'auto') || ($h === null && strtolower($m[2]) !== 'auto')) {
+                    return ['width' => null, 'height' => null, 'ratio' => null, 'valid' => false];
+                }
+                $inlineWidth = $w;
+                $inlineHeight = $h;
+                $sizePairSeen = true;
+                $recognizedCount++;
+            } elseif ($sizePairSeen) {
+                $ratioVal = $this->parseRatioFlag($arg);
+                if ($ratioVal === null) {
+                    return ['width' => null, 'height' => null, 'ratio' => null, 'valid' => false];
+                }
+                $inlineRatio = $ratioVal;
+                $recognizedCount++;
+            } elseif ($idx === 0) {
+                $w = $this->normalizeImageDimension($arg);
+                if ($w === null && strtolower($arg) !== 'auto') {
+                    return ['width' => null, 'height' => null, 'ratio' => null, 'valid' => false];
+                }
+                $inlineWidth = $w;
+                $recognizedCount++;
+            } elseif ($idx === 1) {
+                $h = $this->normalizeImageDimension($arg);
+                if ($h === null && strtolower($arg) !== 'auto') {
+                    return ['width' => null, 'height' => null, 'ratio' => null, 'valid' => false];
+                }
+                $inlineHeight = $h;
+                $recognizedCount++;
+            } elseif ($idx === 2) {
+                $ratioVal = $this->parseRatioFlag($arg);
+                if ($ratioVal === null) {
+                    return ['width' => null, 'height' => null, 'ratio' => null, 'valid' => false];
+                }
+                $inlineRatio = $ratioVal;
+                $recognizedCount++;
+            } else {
+                return ['width' => null, 'height' => null, 'ratio' => null, 'valid' => false];
+            }
+        }
+
+        return [
+            'width' => $inlineWidth,
+            'height' => $inlineHeight,
+            'ratio' => $inlineRatio,
+            'valid' => $recognizedCount > 0,
+        ];
+    }
+
+    protected function parseRatioFlag(string $raw): ?bool
+    {
+        $lower = strtolower(trim($raw));
+        if (in_array($lower, ['-', '0', 'f', 'false', 'no'], true)) {
+            return false;
+        }
+        if (in_array($lower, ['1', 't', 'true', 'yes'], true)) {
+            return true;
+        }
+
+        return null;
+    }
+
+    protected function normalizeImageDimension(string $raw): ?string
+    {
+        $val = trim($raw);
+        if ($val === '' || strtolower($val) === 'auto') {
+            return null;
+        }
+        if (! preg_match('/^([0-9]+(?:\.[0-9]+)?)(cm|mm|in|pt|pc|px|%|em|ex)?$/i', $val, $m)) {
+            return null;
+        }
+        $num = (float) $m[1];
+        if ($num <= 0) {
+            return null;
+        }
+        $unit = isset($m[2]) && $m[2] !== '' ? strtolower($m[2]) : 'pt';
+
+        return $m[1].$unit;
+    }
+
+    /**
+     * Hitung lebar area cetak (dalam satuan fisik pt) langsung dari <w:pgSz> & <w:pgMar> template .docx,
+     * serta otomatis menyempit mengikuti lebar sel tabel / indentasi paragraf bila placeholder berada di dalamnya.
+     */
+    protected function resolveTemplateContentWidthPt(string $docxPath, string $placeholderKey): ?float
+    {
+        if (! is_file($docxPath)) {
+            return null;
+        }
+
+        $zip = new \ZipArchive;
+        if ($zip->open($docxPath) !== true) {
+            return null;
+        }
+
+        try {
+            $mainPart = $this->resolveMainDocumentPartName($zip);
+            if ($mainPart === null) {
+                return null;
+            }
+            $mainXml = $zip->getFromName($mainPart);
+            if (! is_string($mainXml) || $mainXml === '') {
+                return null;
+            }
+
+            $mainDom = $this->loadXml($mainXml);
+            $pageUsableTwips = $this->resolvePageUsableTwips($mainDom);
+            if ($pageUsableTwips === null) {
+                return null;
+            }
+
+            // Periksa apakah placeholder polos (${kop_surat}) ditaruh di dalam sel tabel atau paragraf ber-indentasi (body maupun header)
+            $containerTwips = $this->resolveContainerUsableTwips($mainDom, $placeholderKey, $pageUsableTwips);
+            if ($containerTwips === null) {
+                for ($i = 0; $i < $zip->numFiles; $i++) {
+                    $name = (string) $zip->getNameIndex($i);
+                    if (preg_match('#^word/header\d+\.xml$#i', str_replace('\\', '/', $name))) {
+                        $headerXml = $zip->getFromName($name);
+                        if (is_string($headerXml) && $headerXml !== '') {
+                            $headerDom = $this->loadXml($headerXml);
+                            $containerTwips = $this->resolveContainerUsableTwips($headerDom, $placeholderKey, $pageUsableTwips);
+                            if ($containerTwips !== null) {
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            $targetTwips = ($containerTwips !== null && $containerTwips >= 800)
+                ? min($pageUsableTwips, $containerTwips)
+                : $pageUsableTwips;
+
+            return round($targetTwips / 20.0, 2);
+        } finally {
+            $zip->close();
+        }
+    }
+
+    /**
+     * Hitung lebar area cetak halaman (pgSz/@w - pgMar/@left - pgMar/@right - pgMar/@gutter) dalam twips.
+     */
+    protected function resolvePageUsableTwips(\DOMDocument $dom): ?int
+    {
+        $xpath = new \DOMXPath($dom);
+        $xpath->registerNamespace('w', self::W_NS);
+
+        // Seksi pertama (bagian atas dokumen) diprioritaskan; fallback ke sectPr penutup w:body
+        $sectNodes = [];
+        $firstInternal = $xpath->query('(//w:pPr/w:sectPr)[1]')->item(0);
+        if ($firstInternal instanceof \DOMElement) {
+            $sectNodes[] = $firstInternal;
+        }
+        $bodySect = $xpath->query('/w:document/w:body/w:sectPr')->item(0);
+        if ($bodySect instanceof \DOMElement) {
+            $sectNodes[] = $bodySect;
+        }
+
+        if ($sectNodes === []) {
+            return null;
+        }
+
+        $pageW = null;
+        $pgMarNode = null;
+
+        foreach ($sectNodes as $sectPr) {
+            if ($pageW === null) {
+                $pgSz = $xpath->query('./w:pgSz', $sectPr)->item(0);
+                if ($pgSz instanceof \DOMElement) {
+                    $rawW = $pgSz->getAttributeNS(self::W_NS, 'w');
+                    if ($rawW !== '' && is_numeric($rawW) && (int) $rawW > 0) {
+                        $pageW = (int) $rawW;
+                    }
+                }
+            }
+
+            if ($pgMarNode === null) {
+                $candidateMar = $xpath->query('./w:pgMar', $sectPr)->item(0);
+                if ($candidateMar instanceof \DOMElement) {
+                    $pgMarNode = $candidateMar;
+                }
+            }
+        }
+
+        $pageW ??= 11906; // A4 default (210mm)
+        $marginLeft = 1440; // 1 inch default
+        $marginRight = 1440;
+        $gutter = 0;
+
+        // Baca seluruh atribut margin dari satu elemen <w:pgMar> agar tidak mencampur margin lintas seksi
+        if ($pgMarNode instanceof \DOMElement) {
+            $rawL = $pgMarNode->getAttributeNS(self::W_NS, 'left');
+            if ($rawL !== '' && is_numeric($rawL)) {
+                $marginLeft = max(0, (int) $rawL);
+            }
+            $rawR = $pgMarNode->getAttributeNS(self::W_NS, 'right');
+            if ($rawR !== '' && is_numeric($rawR)) {
+                $marginRight = max(0, (int) $rawR);
+            }
+            $rawG = $pgMarNode->getAttributeNS(self::W_NS, 'gutter');
+            if ($rawG !== '' && is_numeric($rawG)) {
+                $gutter = max(0, (int) $rawG);
+            }
+        }
+
+        $usable = $pageW - $marginLeft - $marginRight - $gutter;
+
+        return $usable >= 2000 ? $usable : null;
+    }
+
+    /**
+     * Hitung lebar bersih wadah (sel tabel / indentasi paragraf) yang memuat placeholder gambar polos (${key}), dalam twips.
+     */
+    protected function resolveContainerUsableTwips(\DOMDocument $dom, string $placeholderKey, int $pageUsableTwips): ?int
+    {
+        $xpath = new \DOMXPath($dom);
+        $xpath->registerNamespace('w', self::W_NS);
+        // Hanya cocokkan tag polos (${kop_surat}) agar tag berargumen manual (${kop_surat:5cm}) di sel sempit
+        // tidak mengecilkan ukuran tag ${kop_surat} polos di bagian lain dokumen
+        $pattern = '/\$\{\s*'.preg_quote($placeholderKey, '/').'\s*\}/u';
+
+        $paragraphs = $xpath->query('//w:p');
+        if ($paragraphs === false) {
+            return null;
+        }
+
+        foreach ($paragraphs as $paragraph) {
+            if (! $paragraph instanceof \DOMElement) {
+                continue;
+            }
+
+            $text = '';
+            $textNodes = $xpath->query('.//w:t', $paragraph);
+            if ($textNodes !== false) {
+                foreach ($textNodes as $t) {
+                    $text .= $t->textContent;
+                }
+            }
+
+            if ($text === '' || ! preg_match($pattern, $text)) {
+                continue;
+            }
+
+            $containerTwips = $pageUsableTwips;
+
+            // Jika paragraf berada di dalam sel tabel (<w:tc>), gunakan lebar sel dikurangi padding horizontal sel
+            $cell = $xpath->query('ancestor::w:tc[1]', $paragraph)->item(0);
+            if ($cell instanceof \DOMElement) {
+                $tcW = $xpath->query('./w:tcPr/w:tcW', $cell)->item(0);
+                if ($tcW instanceof \DOMElement) {
+                    $rawW = $tcW->getAttributeNS(self::W_NS, 'w');
+                    $type = strtolower($tcW->getAttributeNS(self::W_NS, 'type') ?: 'dxa');
+                    $cellTwips = 0;
+                    if ($rawW !== '' && is_numeric($rawW) && (int) $rawW > 0) {
+                        if ($type === 'dxa') {
+                            $cellTwips = (int) $rawW;
+                        } elseif ($type === 'pct') {
+                            $tableBaseTwips = $this->resolveEnclosingTableWidthTwips($xpath, $cell, $pageUsableTwips);
+                            $cellTwips = (int) round(($tableBaseTwips * (int) $rawW) / 5000);
+                        }
+                    }
+
+                    if ($cellTwips > 0) {
+                        $padLeft = $this->readHorizontalCellMarginTwips($xpath, $cell, 'left', 108);
+                        $padRight = $this->readHorizontalCellMarginTwips($xpath, $cell, 'right', 108);
+                        $containerTwips = max(0, $cellTwips - $padLeft - $padRight);
+                    }
+                }
+            }
+
+            // Kurangi indentasi kiri/kanan positif dari paragraf bila ada (bedakan '' vs '0')
+            $ind = $xpath->query('./w:pPr/w:ind', $paragraph)->item(0);
+            if ($ind instanceof \DOMElement) {
+                $indLeftAttr = $ind->getAttributeNS(self::W_NS, 'left');
+                $indLeftRaw = $indLeftAttr !== '' ? $indLeftAttr : $ind->getAttributeNS(self::W_NS, 'start');
+                $indRightAttr = $ind->getAttributeNS(self::W_NS, 'right');
+                $indRightRaw = $indRightAttr !== '' ? $indRightAttr : $ind->getAttributeNS(self::W_NS, 'end');
+                $indLeft = ($indLeftRaw !== '' && is_numeric($indLeftRaw)) ? max(0, (int) $indLeftRaw) : 0;
+                $indRight = ($indRightRaw !== '' && is_numeric($indRightRaw)) ? max(0, (int) $indRightRaw) : 0;
+                $containerTwips = max(0, $containerTwips - $indLeft - $indRight);
+            }
+
+            return $containerTwips;
+        }
+
+        return null;
+    }
+
+    protected function resolveEnclosingTableWidthTwips(\DOMXPath $xpath, \DOMElement $cell, int $pageUsableTwips): int
+    {
+        $tblW = $xpath->query('ancestor::w:tbl[1]/w:tblPr/w:tblW', $cell)->item(0);
+        if (! $tblW instanceof \DOMElement) {
+            return $pageUsableTwips;
+        }
+
+        $rawW = $tblW->getAttributeNS(self::W_NS, 'w');
+        $type = strtolower($tblW->getAttributeNS(self::W_NS, 'type') ?: 'dxa');
+        if ($rawW === '' || ! is_numeric($rawW) || (int) $rawW <= 0) {
+            return $pageUsableTwips;
+        }
+
+        if ($type === 'dxa') {
+            return min($pageUsableTwips, (int) $rawW);
+        }
+        if ($type === 'pct') {
+            return min($pageUsableTwips, (int) round(($pageUsableTwips * (int) $rawW) / 5000));
+        }
+
+        return $pageUsableTwips;
+    }
+
+    protected function readHorizontalCellMarginTwips(\DOMXPath $xpath, \DOMElement $cell, string $side, int $defaultTwips): int
+    {
+        $altSide = $side === 'left' ? 'start' : 'end';
+        $queries = [
+            "./w:tcPr/w:tcMar/w:{$side}",
+            "./w:tcPr/w:tcMar/w:{$altSide}",
+            "ancestor::w:tbl[1]/w:tblPr/w:tblCellMar/w:{$side}",
+            "ancestor::w:tbl[1]/w:tblPr/w:tblCellMar/w:{$altSide}",
+        ];
+
+        foreach ($queries as $q) {
+            $node = $xpath->query($q, $cell)->item(0);
+            if ($node instanceof \DOMElement) {
+                $type = strtolower($node->getAttributeNS(self::W_NS, 'type') ?: 'dxa');
+                if ($type === 'nil') {
+                    return 0;
+                }
+                $raw = $node->getAttributeNS(self::W_NS, 'w');
+                if ($type === 'dxa' && $raw !== '' && is_numeric($raw)) {
+                    return max(0, (int) $raw);
+                }
+            }
+        }
+
+        return $defaultTwips;
     }
 
     protected function resolvePublicImagePath(?string $storedPath): ?string
