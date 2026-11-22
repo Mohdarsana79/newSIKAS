@@ -6,6 +6,7 @@ import Hero from '@/Components/Landing/Hero';
 import ModulesSection from '@/Components/Landing/ModulesSection';
 import Navbar from '@/Components/Landing/Navbar';
 import StatsSection from '@/Components/Landing/StatsSection';
+import { createEmptyWelcomeSummary, type WelcomeSummaryData } from '@/Components/Landing/types';
 import VideoGuideModal from '@/Components/Landing/VideoGuideModal';
 import WhySection from '@/Components/Landing/WhySection';
 import { PageProps } from '@/types';
@@ -22,9 +23,16 @@ import { PageProps } from '@/types';
 export default function Welcome({
     auth,
     hasUsers,
-}: PageProps<{ laravelVersion: string; phpVersion: string; hasUsers: boolean }>) {
+    welcomeData,
+}: PageProps<{
+    laravelVersion: string;
+    phpVersion: string;
+    hasUsers: boolean;
+    welcomeData?: WelcomeSummaryData;
+}>) {
     const authenticated = Boolean(auth?.user);
     const [videoGuideOpen, setVideoGuideOpen] = useState(false);
+    const resolvedWelcomeData = welcomeData ?? createEmptyWelcomeSummary();
 
     // Smooth anchor scroll hanya aktif saat halaman landing terpasang.
     useEffect(() => {
@@ -61,11 +69,12 @@ export default function Welcome({
                 <Hero
                     authenticated={authenticated}
                     hasUsers={hasUsers}
+                    welcomeData={resolvedWelcomeData}
                     onOpenVideoModal={() => setVideoGuideOpen(true)}
                 />
                 <ModulesSection />
                 <WhySection authenticated={authenticated} hasUsers={hasUsers} />
-                <StatsSection />
+                <StatsSection stats={resolvedWelcomeData.stats} />
             </main>
 
             <Footer />

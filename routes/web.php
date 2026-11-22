@@ -17,6 +17,7 @@ use App\Http\Middleware\EnforceModulePermissions;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\RecordUserActivity;
 use App\Models\User;
+use App\Services\WelcomeSummaryService;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
@@ -37,7 +38,7 @@ use Inertia\Inertia;
 |
 */
 
-Route::get('/', function () {
+Route::get('/', function (WelcomeSummaryService $welcomeSummary) {
     $hasUsers = false;
     try {
         if (Schema::hasTable('users')) {
@@ -53,6 +54,7 @@ Route::get('/', function () {
         'hasUsers' => $hasUsers,
         'laravelVersion' => Application::VERSION,
         'phpVersion' => PHP_VERSION,
+        'welcomeData' => $welcomeSummary->buildSummary(),
     ]);
 });
 

@@ -1,5 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
+import {
+    formatCompactRupiahParts,
+    formatPercentId,
+    type WelcomeStatsSummary,
+} from '@/Components/Landing/types';
 import { animate, animateNumber, stagger, useAnimeInView } from '@/lib/anime';
 import { cn } from '@/lib/utils';
 
@@ -9,54 +14,74 @@ type StatItem = {
     decimals?: number;
     prefix?: string;
     suffix: string;
+    initialFormatted: string;
     label: string;
     icon: () => JSX.Element;
 };
 
-const STATS: readonly StatItem[] = [
-    {
-        id: 'clients',
-        target: 1200,
-        suffix: '+',
-        label: 'Transaksi BKU Rapi',
-        icon: UsersGroupStatIcon,
-    },
-    {
-        id: 'rating',
-        target: 4.9,
-        decimals: 1,
-        suffix: '/5',
-        label: 'Kepuasan Bendahara',
-        icon: StarStatIcon,
-    },
-    {
-        id: 'assets',
-        target: 750,
-        prefix: 'Rp ',
-        suffix: 'Jt+',
-        label: 'Kapasitas Pagu Tahunan',
-        icon: BarChartStatIcon,
-    },
-    {
-        id: 'experience',
-        target: 100,
-        suffix: '%',
-        label: 'Kepatuhan Format BOSP',
-        icon: ShieldCheckStatIcon,
-    },
-];
+export type StatsSectionProps = {
+    stats: WelcomeStatsSummary;
+};
 
 /**
  * Section 4: 4-Column Stats Bar dengan pemisah garis vertikal & ikon duo-tone
- * persis seperti referensi Novara Wealth Advisory, dianimasikan dengan Anime.js.
+ * menampilkan metrik real tahun anggaran aktif, dianimasikan dengan Anime.js.
  */
-export function StatsSection() {
-    const [values, setValues] = useState<Record<string, string>>(() => ({
-        clients: '1.200+',
-        rating: '4,9/5',
-        assets: 'Rp 750Jt+',
-        experience: '100%',
-    }));
+export function StatsSection({ stats }: StatsSectionProps) {
+    const statItems = useMemo<readonly StatItem[]>(() => {
+        const paguParts = formatCompactRupiahParts(stats.total_pagu);
+        const realisasiParts = formatCompactRupiahParts(stats.total_realisasi);
+        const tahunLabel = `TA ${stats.tahun}`;
+
+        return [
+            {
+                id: 'transactions',
+                target: stats.total_transaksi_bku,
+                decimals: 0,
+                suffix: '',
+                initialFormatted: Math.round(stats.total_transaksi_bku).toLocaleString('id-ID'),
+                label: `Transaksi BKU (${tahunLabel})`,
+                icon: UsersGroupStatIcon,
+            },
+            {
+                id: 'absorption',
+                target: stats.persentase_serapan,
+                decimals: 1,
+                suffix: '%',
+                initialFormatted: formatPercentId(stats.persentase_serapan),
+                label: 'Serapan Anggaran',
+                icon: ShieldCheckStatIcon,
+            },
+            {
+                id: 'pagu',
+                target: paguParts.value,
+                decimals: paguParts.decimals,
+                prefix: paguParts.prefix,
+                suffix: paguParts.suffix,
+                initialFormatted: paguParts.formatted,
+                label: `Total Pagu (${tahunLabel})`,
+                icon: BarChartStatIcon,
+            },
+            {
+                id: 'realisasi',
+                target: realisasiParts.value,
+                decimals: realisasiParts.decimals,
+                prefix: realisasiParts.prefix,
+                suffix: realisasiParts.suffix,
+                initialFormatted: realisasiParts.formatted,
+                label: 'Total Realisasi Belanja',
+                icon: StarStatIcon,
+            },
+        ];
+    }, [stats]);
+
+    const [values, setValues] = useState<Record<string, string>>(() =>
+        Object.fromEntries(statItems.map((item) => [item.id, item.initialFormatted])),
+    );
+
+    useEffect(() => {
+        setValues(Object.fromEntries(statItems.map((item) => [item.id, item.initialFormatted])));
+    }, [statItems]);
 
     const { ref: sectionRef } = useAnimeInView<HTMLElement>(
         (container, reducedMotion) => {
@@ -75,7 +100,7 @@ export function StatsSection() {
                 );
             }
 
-            STATS.forEach((stat) => {
+            statItems.forEach((stat) => {
                 const numAnim = animateNumber({
                     from: 0,
                     to: stat.target,
@@ -106,12 +131,12 @@ export function StatsSection() {
         <section
             id="statistik"
             ref={sectionRef}
-            aria-label="Statistik pencapaian SIKAS"
+            aria-label="Statistik real anggaran SIKAS"
             className="relative isolate scroll-mt-24 bg-[#F8FBFB] pb-16 pt-2 dark:bg-[#051319] sm:pb-20"
         >
             <div className="mx-auto max-w-7xl px-6 lg:px-8">
                 <div className="grid grid-cols-2 gap-y-8 border-y border-[#09242E]/10 py-8 dark:border-white/10 lg:grid-cols-4 lg:gap-y-0 lg:py-10">
-                    {STATS.map((stat, index) => (
+                    {statItems.map((stat, index) => (
                         <div
                             key={stat.id}
                             data-stat-item

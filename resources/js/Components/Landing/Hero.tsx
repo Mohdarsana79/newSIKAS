@@ -1,6 +1,15 @@
 import { Link } from '@inertiajs/react';
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
+import {
+    buildCumulativeChartGeometry,
+    createEmptyWelcomeSummary,
+    formatPercentId,
+    LANDING_MONTHS,
+    type CumulativeChartGeometry,
+    type WelcomeSummaryData,
+    type WelcomeVariantSummary,
+} from '@/Components/Landing/types';
 import { AccountActions } from '@/Components/Landing/ui/AccountActions';
 import { useReducedMotion } from '@/Hooks/useReducedMotion';
 import { animate, animateNumber, createSpring, createTimeline, stagger, svg } from '@/lib/anime';
@@ -11,157 +20,15 @@ export type HeroProps = {
     authenticated: boolean;
     /** Boolean `hasUsers` dari props Inertia. */
     hasUsers: boolean;
+    /** Ringkasan data real aplikasi untuk grafik & identitas sekolah. */
+    welcomeData: WelcomeSummaryData;
     /** Callback saat tombol "Tonton Panduan" diklik. */
     onOpenVideoModal?: () => void;
 };
 
-type BudgetVariantKey = 'reguler' | 'kinerja' | 'silpa' | 'kinerja_silpa';
-
-type BudgetDataset = {
-    key: BudgetVariantKey;
-    label: string;
-    periodLabel: string;
-    totalNominal: number;
-    growthPercent: string;
-    growthNote: string;
-    linePath: string;
-    areaPath: string;
-    points: readonly { month: string; x: number; y: number; value: string }[];
-    metrics: {
-        growth: string;
-        diversification: string;
-        risk: string;
-    };
+type ResolvedHeroDataset = WelcomeVariantSummary & {
+    chart: CumulativeChartGeometry;
 };
-
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'] as const;
-
-const BUDGET_DATASETS: readonly BudgetDataset[] = [
-    {
-        key: 'reguler',
-        label: '12 Bulan · BOSP Reguler',
-        periodLabel: '12 Bulan Terakhir',
-        totalNominal: 482230000,
-        growthPercent: '12,4%',
-        growthNote: 'vs. triwulan lalu',
-        linePath:
-            'M 18 118 C 42 118, 56 104, 78 105 C 102 106, 118 108, 142 96 C 166 84, 182 68, 206 70 C 230 72, 246 84, 270 72 C 294 60, 312 46, 336 48 C 358 50, 378 30, 402 18',
-        areaPath:
-            'M 18 118 C 42 118, 56 104, 78 105 C 102 106, 118 108, 142 96 C 166 84, 182 68, 206 70 C 230 72, 246 84, 270 72 C 294 60, 312 46, 336 48 C 358 50, 378 30, 402 18 L 402 140 L 18 140 Z',
-        points: [
-            { month: 'Jan', x: 18, y: 118, value: 'Rp 38,5 Jt' },
-            { month: 'Feb', x: 53, y: 110, value: 'Rp 74,2 Jt' },
-            { month: 'Mar', x: 88, y: 105, value: 'Rp 118,0 Jt' },
-            { month: 'Apr', x: 123, y: 102, value: 'Rp 156,4 Jt' },
-            { month: 'Mei', x: 158, y: 86, value: 'Rp 204,8 Jt' },
-            { month: 'Jun', x: 193, y: 70, value: 'Rp 248,1 Jt' },
-            { month: 'Jul', x: 228, y: 75, value: 'Rp 284,6 Jt' },
-            { month: 'Agu', x: 263, y: 74, value: 'Rp 325,0 Jt' },
-            { month: 'Sep', x: 298, y: 55, value: 'Rp 372,4 Jt' },
-            { month: 'Okt', x: 333, y: 48, value: 'Rp 412,9 Jt' },
-            { month: 'Nov', x: 368, y: 34, value: 'Rp 449,5 Jt' },
-            { month: 'Des', x: 402, y: 18, value: 'Rp 482,2 Jt' },
-        ],
-        metrics: {
-            growth: '+12,4%',
-            diversification: 'Seimbang',
-            risk: 'Terkendali',
-        },
-    },
-    {
-        key: 'kinerja',
-        label: '12 Bulan · BOSP Kinerja',
-        periodLabel: 'BOSP Kinerja',
-        totalNominal: 215800000,
-        growthPercent: '18,7%',
-        growthNote: 'capaian mutu sekolah',
-        linePath:
-            'M 18 124 C 42 120, 58 112, 78 98 C 102 82, 118 90, 142 78 C 166 66, 182 58, 206 62 C 230 66, 246 52, 270 46 C 294 40, 312 36, 336 28 C 358 22, 378 20, 402 14',
-        areaPath:
-            'M 18 124 C 42 120, 58 112, 78 98 C 102 82, 118 90, 142 78 C 166 66, 182 58, 206 62 C 230 66, 246 52, 270 46 C 294 40, 312 36, 336 28 C 358 22, 378 20, 402 14 L 402 140 L 18 140 Z',
-        points: [
-            { month: 'Jan', x: 18, y: 124, value: 'Rp 15,0 Jt' },
-            { month: 'Feb', x: 53, y: 114, value: 'Rp 32,4 Jt' },
-            { month: 'Mar', x: 88, y: 94, value: 'Rp 58,0 Jt' },
-            { month: 'Apr', x: 123, y: 86, value: 'Rp 79,5 Jt' },
-            { month: 'Mei', x: 158, y: 72, value: 'Rp 104,2 Jt' },
-            { month: 'Jun', x: 193, y: 61, value: 'Rp 128,0 Jt' },
-            { month: 'Jul', x: 228, y: 64, value: 'Rp 142,5 Jt' },
-            { month: 'Agu', x: 263, y: 48, value: 'Rp 164,0 Jt' },
-            { month: 'Sep', x: 298, y: 40, value: 'Rp 181,2 Jt' },
-            { month: 'Okt', x: 333, y: 29, value: 'Rp 196,4 Jt' },
-            { month: 'Nov', x: 368, y: 21, value: 'Rp 207,1 Jt' },
-            { month: 'Des', x: 402, y: 14, value: 'Rp 215,8 Jt' },
-        ],
-        metrics: {
-            growth: '+18,7%',
-            diversification: 'Optimal',
-            risk: 'Rendah',
-        },
-    },
-    {
-        key: 'silpa',
-        label: 'SiLPA BOSP Reguler',
-        periodLabel: 'SiLPA Reguler',
-        totalNominal: 94650000,
-        growthPercent: '100%',
-        growthNote: 'penyerapan sisa lebih',
-        linePath:
-            'M 18 112 C 42 108, 58 96, 78 92 C 102 88, 118 76, 142 74 C 166 72, 182 64, 206 56 C 230 48, 246 50, 270 42 C 294 34, 312 32, 336 26 C 358 22, 378 24, 402 20',
-        areaPath:
-            'M 18 112 C 42 108, 58 96, 78 92 C 102 88, 118 76, 142 74 C 166 72, 182 64, 206 56 C 230 48, 246 50, 270 42 C 294 34, 312 32, 336 26 C 358 22, 378 24, 402 20 L 402 140 L 18 140 Z',
-        points: [
-            { month: 'Jan', x: 18, y: 112, value: 'Rp 12,0 Jt' },
-            { month: 'Feb', x: 53, y: 100, value: 'Rp 21,5 Jt' },
-            { month: 'Mar', x: 88, y: 90, value: 'Rp 31,2 Jt' },
-            { month: 'Apr', x: 123, y: 78, value: 'Rp 42,0 Jt' },
-            { month: 'Mei', x: 158, y: 72, value: 'Rp 51,8 Jt' },
-            { month: 'Jun', x: 193, y: 59, value: 'Rp 61,4 Jt' },
-            { month: 'Jul', x: 228, y: 50, value: 'Rp 69,0 Jt' },
-            { month: 'Agu', x: 263, y: 44, value: 'Rp 76,2 Jt' },
-            { month: 'Sep', x: 298, y: 34, value: 'Rp 82,5 Jt' },
-            { month: 'Okt', x: 333, y: 27, value: 'Rp 87,9 Jt' },
-            { month: 'Nov', x: 368, y: 23, value: 'Rp 91,8 Jt' },
-            { month: 'Des', x: 402, y: 20, value: 'Rp 94,6 Jt' },
-        ],
-        metrics: {
-            growth: '+100%',
-            diversification: 'Terserap',
-            risk: 'Nihil',
-        },
-    },
-    {
-        key: 'kinerja_silpa',
-        label: 'SiLPA BOSP Kinerja',
-        periodLabel: 'SiLPA Kinerja',
-        totalNominal: 64120000,
-        growthPercent: '98,5%',
-        growthNote: 'audit BKU terverifikasi',
-        linePath:
-            'M 18 122 C 42 118, 58 110, 78 102 C 102 94, 118 84, 142 82 C 166 80, 182 72, 206 64 C 230 56, 246 48, 270 44 C 294 40, 312 30, 336 26 C 358 22, 378 18, 402 16',
-        areaPath:
-            'M 18 122 C 42 118, 58 110, 78 102 C 102 94, 118 84, 142 82 C 166 80, 182 72, 206 64 C 230 56, 246 48, 270 44 C 294 40, 312 30, 336 26 C 358 22, 378 18, 402 16 L 402 140 L 18 140 Z',
-        points: [
-            { month: 'Jan', x: 18, y: 122, value: 'Rp 6,4 Jt' },
-            { month: 'Feb', x: 53, y: 112, value: 'Rp 12,8 Jt' },
-            { month: 'Mar', x: 88, y: 100, value: 'Rp 19,5 Jt' },
-            { month: 'Apr', x: 123, y: 86, value: 'Rp 26,1 Jt' },
-            { month: 'Mei', x: 158, y: 80, value: 'Rp 32,0 Jt' },
-            { month: 'Jun', x: 193, y: 68, value: 'Rp 38,4 Jt' },
-            { month: 'Jul', x: 228, y: 56, value: 'Rp 44,2 Jt' },
-            { month: 'Agu', x: 263, y: 45, value: 'Rp 49,8 Jt' },
-            { month: 'Sep', x: 298, y: 38, value: 'Rp 54,6 Jt' },
-            { month: 'Okt', x: 333, y: 27, value: 'Rp 58,9 Jt' },
-            { month: 'Nov', x: 368, y: 20, value: 'Rp 61,7 Jt' },
-            { month: 'Des', x: 402, y: 16, value: 'Rp 64,1 Jt' },
-        ],
-        metrics: {
-            growth: '+98,5%',
-            diversification: 'Terstruktur',
-            risk: 'Aman',
-        },
-    },
-];
 
 const TRUST_BADGES = [
     {
@@ -185,25 +52,48 @@ function formatRupiah(val: number): string {
     return 'Rp ' + Math.round(val).toLocaleString('id-ID');
 }
 
+function formatStatusRkas(status: WelcomeVariantSummary['status_persetujuan']): string {
+    if (status === 'disetujui') return 'Disahkan';
+    if (status === 'draft') return 'Berjalan';
+    return 'Belum Ada';
+}
+
 /**
  * Hero Section bergaya Novara Wealth Advisory:
  * - Latar pegunungan malam/fajar bernuansa Deep Midnight Teal & Mint Aurora
- * - Kolom kiri: Eyebrow, Headline 3 baris, Deskripsi, 2 tombol CTA, 3 Trust Badges
- * - Kolom kanan: Kartu Glassmorphism Grafik Realisasi 12 Bulan interaktif + 3 Mini Cards
+ * - Kolom kiri: Eyebrow identitas sekolah, Headline 3 baris, Deskripsi, tombol CTA, 3 Trust Badges
+ * - Kolom kanan: Kartu Glassmorphism Grafik Realisasi 12 Bulan nyata lintas 4 varian + 3 Mini Cards
  * - Animasi penuh menggunakan Anime.js v4 (Timeline, SVG Drawable, Number Tween, Parallax)
  */
-export default function Hero({ authenticated, hasUsers, onOpenVideoModal }: HeroProps) {
+export default function Hero({ authenticated, hasUsers, welcomeData, onOpenVideoModal }: HeroProps) {
     const reducedMotion = useReducedMotion();
 
-    const [selectedVariantIndex, setSelectedVariantIndex] = useState(0);
+    const datasets = useMemo<ResolvedHeroDataset[]>(() => {
+        const sourceVariants =
+            welcomeData.variants.length > 0
+                ? welcomeData.variants
+                : createEmptyWelcomeSummary(welcomeData.tahun).variants;
+
+        return sourceVariants.map((variant) => ({
+            ...variant,
+            chart: buildCumulativeChartGeometry(variant.monthly_cumulative, variant.pagu_anggaran),
+        }));
+    }, [welcomeData]);
+
+    const defaultVariantIndex = useMemo(() => {
+        const idx = datasets.findIndex((item) => item.has_data);
+        return idx >= 0 ? idx : 0;
+    }, [datasets]);
+
+    const [selectedVariantIndex, setSelectedVariantIndex] = useState(defaultVariantIndex);
     const [dropdownOpen, setDropdownOpen] = useState(false);
-    const [activeMonthIndex, setActiveMonthIndex] = useState(11); // Default: Des (titik puncak kanan)
-    const [displayNominal, setDisplayNominal] = useState(() =>
-        formatRupiah(BUDGET_DATASETS[0].totalNominal),
+    const [activeMonthIndex, setActiveMonthIndex] = useState(
+        () => datasets[defaultVariantIndex]?.last_active_month_index ?? 11,
     );
 
-    const dataset = BUDGET_DATASETS[selectedVariantIndex];
-    const activePoint = dataset.points[activeMonthIndex] ?? dataset.points[11];
+    const dataset = datasets[selectedVariantIndex] ?? datasets[0];
+    const [displayNominal, setDisplayNominal] = useState(() => formatRupiah(dataset.pagu_anggaran));
+    const activePoint = dataset.chart.points[activeMonthIndex] ?? dataset.chart.points[11];
 
     const sectionRef = useRef<HTMLElement | null>(null);
     const bgParallaxRef = useRef<HTMLDivElement | null>(null);
@@ -212,7 +102,7 @@ export default function Hero({ authenticated, hasUsers, onOpenVideoModal }: Hero
     const areaPathRef = useRef<SVGPathElement | null>(null);
     const activeDotRef = useRef<SVGGElement | null>(null);
     const dropdownRef = useRef<HTMLDivElement | null>(null);
-    const previousNominalRef = useRef<number>(BUDGET_DATASETS[0].totalNominal);
+    const previousNominalRef = useRef<number>(dataset.pagu_anggaran);
 
     // Tutup dropdown varian saat klik di luar
     useEffect(() => {
@@ -251,7 +141,7 @@ export default function Hero({ authenticated, hasUsers, onOpenVideoModal }: Hero
         if (!section) return;
 
         if (reducedMotion) {
-            setDisplayNominal(formatRupiah(BUDGET_DATASETS[0].totalNominal));
+            setDisplayNominal(formatRupiah(dataset.pagu_anggaran));
             return;
         }
 
@@ -338,7 +228,7 @@ export default function Hero({ authenticated, hasUsers, onOpenVideoModal }: Hero
 
     // Animasi Grafik SVG + Angka Nominal saat mount atau saat pengguna mengganti Varian Anggaran
     useEffect(() => {
-        const targetNominal = dataset.totalNominal;
+        const targetNominal = dataset.pagu_anggaran;
         const fromNominal = previousNominalRef.current;
         previousNominalRef.current = targetNominal;
 
@@ -525,7 +415,9 @@ export default function Hero({ authenticated, hasUsers, onOpenVideoModal }: Hero
                             data-hero-reveal
                             className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#8BE6DC]/90 sm:text-xs"
                         >
-                            Transparan Hari Ini. Akuntabel Setiap Saat.
+                            {welcomeData.school?.nama_sekolah
+                                ? `${welcomeData.school.nama_sekolah} · TA ${welcomeData.tahun}`
+                                : 'Transparan Hari Ini. Akuntabel Setiap Saat.'}
                         </p>
 
                         <h1
@@ -634,17 +526,27 @@ export default function Hero({ authenticated, hasUsers, onOpenVideoModal }: Hero
                             <div className="flex flex-wrap items-start justify-between gap-4">
                                 <div>
                                     <p className="text-[12.5px] font-medium tracking-wide text-white/75">
-                                        Total Pagu Terkelola
+                                        Total Pagu Anggaran
                                     </p>
                                     <p className="mt-1.5 font-sans text-3xl font-bold tracking-[-0.03em] text-white tabular-nums sm:text-[2.35rem]">
                                         {displayNominal}
                                     </p>
                                     <div className="mt-2 flex items-center gap-2 text-xs">
-                                        <span className="inline-flex items-center gap-1 font-semibold text-[#8BE6DC]">
-                                            <TrendUpArrowIcon />
-                                            {dataset.growthPercent}
-                                        </span>
-                                        <span className="text-white/60">{dataset.growthNote}</span>
+                                        {dataset.has_data ? (
+                                            <>
+                                                <span className="inline-flex items-center gap-1 font-semibold text-[#8BE6DC]">
+                                                    <TrendUpArrowIcon />
+                                                    {formatPercentId(dataset.persentase_serapan)}
+                                                </span>
+                                                <span className="text-white/60">
+                                                    terserap dari pagu · TA {dataset.tahun}
+                                                </span>
+                                            </>
+                                        ) : (
+                                            <span className="text-white/60">
+                                                Belum dianggarkan · TA {dataset.tahun}
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
 
@@ -654,19 +556,19 @@ export default function Hero({ authenticated, hasUsers, onOpenVideoModal }: Hero
                                         type="button"
                                         onClick={() => setDropdownOpen((open) => !open)}
                                         aria-expanded={dropdownOpen}
-                                        aria-label="Pilih varian anggaran BOSP untuk simulasi grafik"
+                                        aria-label="Pilih varian anggaran BOSP untuk grafik realisasi"
                                         className="landing-focus inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/[0.09] px-3.5 py-1.5 text-xs font-medium text-white/90 backdrop-blur-md transition-colors hover:border-[#8BE6DC]/60 hover:bg-white/[0.15]"
                                     >
-                                        <span>{dataset.periodLabel}</span>
+                                        <span>{dataset.short_label}</span>
                                         <ChevronDownIcon open={dropdownOpen} />
                                     </button>
 
                                     {dropdownOpen ? (
                                         <div
                                             role="menu"
-                                            className="absolute right-0 top-[calc(100%_+_0.5rem)] z-30 w-52 overflow-hidden rounded-2xl border border-white/20 bg-[#07212B]/95 p-1.5 shadow-2xl backdrop-blur-2xl"
+                                            className="absolute right-0 top-[calc(100%_+_0.5rem)] z-30 w-56 overflow-hidden rounded-2xl border border-white/20 bg-[#07212B]/95 p-1.5 shadow-2xl backdrop-blur-2xl"
                                         >
-                                            {BUDGET_DATASETS.map((item, idx) => {
+                                            {datasets.map((item, idx) => {
                                                 const selected = idx === selectedVariantIndex;
                                                 return (
                                                     <button
@@ -675,19 +577,25 @@ export default function Hero({ authenticated, hasUsers, onOpenVideoModal }: Hero
                                                         role="menuitem"
                                                         onClick={() => {
                                                             setSelectedVariantIndex(idx);
-                                                            setActiveMonthIndex(11);
+                                                            setActiveMonthIndex(item.last_active_month_index);
                                                             setDropdownOpen(false);
                                                         }}
                                                         className={cn(
-                                                            'flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs font-medium transition-colors',
+                                                            'flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2 text-left text-xs font-medium transition-colors',
                                                             selected
                                                                 ? 'bg-[#8BE6DC]/20 text-[#8BE6DC]'
                                                                 : 'text-white/80 hover:bg-white/[0.08] hover:text-white',
                                                         )}
                                                     >
-                                                        <span>{item.label}</span>
+                                                        <span className="truncate">
+                                                            TA {item.tahun} · {item.label}
+                                                        </span>
                                                         {selected ? (
-                                                            <span className="h-1.5 w-1.5 rounded-full bg-[#8BE6DC]" />
+                                                            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#8BE6DC]" />
+                                                        ) : !item.has_data ? (
+                                                            <span className="shrink-0 text-[10px] text-white/40">
+                                                                Kosong
+                                                            </span>
                                                         ) : null}
                                                     </button>
                                                 );
@@ -701,7 +609,9 @@ export default function Hero({ authenticated, hasUsers, onOpenVideoModal }: Hero
                             <div className="relative mt-5 pt-2">
                                 {/* Tooltip Bulan Aktif */}
                                 <div className="mb-1 flex items-center justify-between text-[11px] text-white/65">
-                                    <span>Realisasi Kumulatif ({dataset.label})</span>
+                                    <span>
+                                        Realisasi Kumulatif (TA {dataset.tahun} · {dataset.label})
+                                    </span>
                                     <span className="rounded-full border border-[#8BE6DC]/30 bg-[#8BE6DC]/15 px-2.5 py-0.5 font-semibold text-[#9CF4EA] tabular-nums">
                                         {activePoint.month}: {activePoint.value}
                                     </span>
@@ -711,7 +621,7 @@ export default function Hero({ authenticated, hasUsers, onOpenVideoModal }: Hero
                                     <svg
                                         viewBox="0 0 420 148"
                                         className="h-full w-full overflow-visible"
-                                        aria-label={`Grafik realisasi anggaran ${dataset.label}`}
+                                        aria-label={`Grafik realisasi anggaran TA ${dataset.tahun} ${dataset.label}`}
                                     >
                                         <defs>
                                             <linearGradient id="hero-chart-area" x1="0" y1="0" x2="0" y2="1">
@@ -750,14 +660,14 @@ export default function Hero({ authenticated, hasUsers, onOpenVideoModal }: Hero
                                         {/* Area di bawah kurva */}
                                         <path
                                             ref={areaPathRef}
-                                            d={dataset.areaPath}
+                                            d={dataset.chart.areaPath}
                                             fill="url(#hero-chart-area)"
                                         />
 
                                         {/* Garis kurva utama beranimasi Anime.js */}
                                         <path
                                             ref={linePathRef}
-                                            d={dataset.linePath}
+                                            d={dataset.chart.linePath}
                                             fill="none"
                                             stroke="url(#hero-chart-stroke)"
                                             strokeWidth="2.8"
@@ -777,7 +687,7 @@ export default function Hero({ authenticated, hasUsers, onOpenVideoModal }: Hero
                                         />
 
                                         {/* Titik interaktif per bulan */}
-                                        {dataset.points.map((pt, idx) => {
+                                        {dataset.chart.points.map((pt, idx) => {
                                             const isCurrent = idx === activeMonthIndex;
                                             return (
                                                 <g
@@ -833,7 +743,7 @@ export default function Hero({ authenticated, hasUsers, onOpenVideoModal }: Hero
 
                                 {/* Label Bulan Jan - Des */}
                                 <div className="mt-1 grid grid-cols-12 text-center text-[10px] font-medium text-white/60 sm:text-[11px]">
-                                    {MONTHS.map((m, idx) => (
+                                    {LANDING_MONTHS.map((m, idx) => (
                                         <button
                                             key={m}
                                             type="button"
@@ -852,7 +762,7 @@ export default function Hero({ authenticated, hasUsers, onOpenVideoModal }: Hero
                                 </div>
                             </div>
 
-                            {/* 3 Mini Sub-Cards di bagian bawah Kartu Kaca (persis seperti referensi Novara) */}
+                            {/* 3 Mini Sub-Cards di bagian bawah Kartu Kaca */}
                             <div className="mt-5 grid grid-cols-3 gap-2.5 sm:gap-3.5">
                                 <div
                                     data-hero-minicard
@@ -868,7 +778,7 @@ export default function Hero({ authenticated, hasUsers, onOpenVideoModal }: Hero
                                         data-metric-value
                                         className="mt-0.5 font-sans text-sm font-bold text-white tabular-nums sm:text-lg"
                                     >
-                                        {dataset.metrics.growth}
+                                        {formatPercentId(dataset.persentase_serapan)}
                                     </p>
                                 </div>
 
@@ -880,13 +790,13 @@ export default function Hero({ authenticated, hasUsers, onOpenVideoModal }: Hero
                                         <MiniPieIcon />
                                     </span>
                                     <p className="mt-2.5 truncate text-[10.5px] font-medium text-white/65 sm:text-xs">
-                                        Alokasi BKU
+                                        Transaksi BKU
                                     </p>
                                     <p
                                         data-metric-value
-                                        className="mt-0.5 font-sans text-sm font-bold text-white sm:text-lg"
+                                        className="mt-0.5 font-sans text-sm font-bold text-white tabular-nums sm:text-lg"
                                     >
-                                        {dataset.metrics.diversification}
+                                        {dataset.jumlah_transaksi.toLocaleString('id-ID')}
                                     </p>
                                 </div>
 
@@ -898,13 +808,13 @@ export default function Hero({ authenticated, hasUsers, onOpenVideoModal }: Hero
                                         <MiniShieldIcon />
                                     </span>
                                     <p className="mt-2.5 truncate text-[10.5px] font-medium text-white/65 sm:text-xs">
-                                        Risiko Audit
+                                        Status RKAS
                                     </p>
                                     <p
                                         data-metric-value
                                         className="mt-0.5 font-sans text-sm font-bold text-white sm:text-lg"
                                     >
-                                        {dataset.metrics.risk}
+                                        {formatStatusRkas(dataset.status_persetujuan)}
                                     </p>
                                 </div>
                             </div>
