@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Select, { ClassNamesConfig, StylesConfig } from 'react-select';
 import { cn } from '@/lib/utils';
 
@@ -7,7 +7,51 @@ export interface KwitansiSelectOption<T extends string | number = string> {
     label: string;
 }
 
-export type KwitansiFormat = 1 | 2 | 3 | 4;
+export interface CustomKwitansiTemplate {
+    id: number;
+    nama: string;
+    deskripsi: string | null;
+    original_filename: string;
+    file_size: number;
+    has_item_table: boolean;
+    detected_variables: {
+        recognized: string[];
+        unrecognized: string[];
+        unclosed: string[];
+        item_table_vars: string[];
+        image_vars: string[];
+    };
+    creator_name: string | null;
+    created_at: string | null;
+    updated_at: string | null;
+}
+
+export interface KwitansiVariableItem {
+    key: string;
+    tag: string;
+    label: string;
+    example: string;
+}
+
+export interface KwitansiVariableGroup {
+    group: string;
+    type: 'text' | 'table' | 'image';
+    description: string;
+    items: KwitansiVariableItem[];
+}
+
+export type BuiltInKwitansiFormat = 1 | 2 | 3 | 4;
+export type CustomKwitansiFormat = `custom:${number}`;
+export type KwitansiFormat = BuiltInKwitansiFormat | CustomKwitansiFormat;
+
+export function parseCustomTemplateId(format: KwitansiFormat): number | null {
+    if (typeof format === 'string' && format.startsWith('custom:')) {
+        const parsed = Number(format.slice('custom:'.length));
+        return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+    }
+
+    return null;
+}
 
 export const KWITANSI_FORMAT_OPTIONS: KwitansiSelectOption<KwitansiFormat>[] = [
     { value: 1, label: 'Format 1' },
@@ -162,12 +206,13 @@ export function KwitansiSelect<T extends string | number = string>({
         if (usePortal) {
             styles.menuPortal = (base) => {
                 const zoom = getEffectiveZoom(wrapperRef.current);
+                const scaledWidth = typeof base.width === 'number' ? base.width / zoom : base.width;
                 return {
                     ...base,
                     zIndex: 9999,
                     left: typeof base.left === 'number' ? base.left / zoom : base.left,
                     top: typeof base.top === 'number' ? base.top / zoom : base.top,
-                    width: typeof base.width === 'number' ? base.width / zoom : base.width,
+                    width: typeof scaledWidth === 'number' ? Math.max(190, scaledWidth) : scaledWidth,
                 };
             };
         }
@@ -202,17 +247,56 @@ export function KwitansiSelect<T extends string | number = string>({
 
 export function KwitansiRowActions({
     item,
+    customTemplates = [],
+    libreOfficeAvailable = true,
     onPrint,
     onPreview,
+    onPreviewCustom,
+    onDownloadDocx,
 }: {
     item: KwitansiRowItem;
+    customTemplates?: CustomKwitansiTemplate[];
+    libreOfficeAvailable?: boolean;
     onPrint: (id: number, format: KwitansiFormat) => void;
     onPreview: (url: string) => void;
+    onPreviewCustom?: (id: number, templateId: number) => void;
+    onDownloadDocx?: (id: number, templateId: number) => void;
 }) {
     const [format, setFormat] = useState<KwitansiFormat>(3);
 
+    const formatOptions = useMemo<KwitansiSelectOption<KwitansiFormat>[]>(
+        () => [
+            ...KWITANSI_FORMAT_OPTIONS,
+            ...customTemplates.map((tpl) => ({
+                value: `custom:${tpl.id}` as CustomKwitansiFormat,
+                label: `Kustom: ${tpl.nama}`,
+            })),
+        ],
+        [customTemplates],
+    );
+
+    const customTemplateId = parseCustomTemplateId(format);
+
+    // Jika template kustom yang sedang dipilih dihapus oleh pengguna, kembalikan ke Format 3
+    useEffect(() => {
+        if (customTemplateId !== null && !customTemplates.some((tpl) => tpl.id === customTemplateId)) {
+            setFormat(3);
+        }
+    }, [customTemplateId, customTemplates]);
+
     const handlePreview = () => {
-        const previewUrls: Record<KwitansiFormat, string> = {
+        if (customTemplateId !== null) {
+            if (libreOfficeAvailable && onPreviewCustom) {
+                onPreviewCustom(item.id, customTemplateId);
+            }
+            return;
+        }
+
+        if (typeof format !== 'number') {
+            return;
+        }
+
+        const previewUrls: Record<BuiltInKwitansiFormat, string> = {
             1: item.preview_url,
             2: item.preview_url_2,
             3: item.preview_url_3,
@@ -221,11 +305,14 @@ export function KwitansiRowActions({
         onPreview(previewUrls[format]);
     };
 
+    const pdfDisabled = customTemplateId !== null && !libreOfficeAvailable;
+    const viewDisabled = customTemplateId !== null && (!libreOfficeAvailable || !onPreviewCustom);
+
     return (
-        <div className="flex items-center justify-end gap-2">
-            <div className="w-36 text-left">
+        <div className="flex items-center justify-end gap-1.5">
+            <div className="w-40 text-left">
                 <KwitansiSelect<KwitansiFormat>
-                    options={KWITANSI_FORMAT_OPTIONS}
+                    options={formatOptions}
                     value={format}
                     onChange={(nextFormat) => {
                         if (nextFormat) {
@@ -234,14 +321,44 @@ export function KwitansiRowActions({
                     }}
                     size="compact"
                     usePortal
-                    isSearchable={false}
+                    isSearchable={customTemplates.length > 3}
                 />
             </div>
+
+            {customTemplateId !== null && onDownloadDocx && (
+                <button
+                    type="button"
+                    onClick={() => onDownloadDocx(item.id, customTemplateId)}
+                    className="inline-flex items-center gap-1 rounded-xl border border-brand-500/20 bg-pastel-lavender/80 px-2.5 py-1.5 text-[10px] font-extrabold text-brand-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-pastel-lavender dark:border-brand-400/25 dark:bg-brand-500/15 dark:text-brand-200 dark:hover:bg-brand-500/25"
+                    title="Unduh file Word (.docx)"
+                >
+                    <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                        />
+                    </svg>
+                    DOCX
+                </button>
+            )}
+
             <button
                 type="button"
+                disabled={pdfDisabled}
                 onClick={() => onPrint(item.id, format)}
-                className="inline-flex items-center gap-1 rounded-xl bg-lime-400 px-2.5 py-1.5 text-[10px] font-extrabold text-slate-950 shadow-lime transition hover:-translate-y-0.5 hover:bg-lime-300"
-                title="Cetak PDF"
+                className={cn(
+                    'inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-[10px] font-extrabold transition',
+                    pdfDisabled
+                        ? 'cursor-not-allowed bg-slate-100 text-slate-400 dark:bg-white/5 dark:text-slate-600'
+                        : 'bg-lime-400 text-slate-950 shadow-lime hover:-translate-y-0.5 hover:bg-lime-300',
+                )}
+                title={
+                    pdfDisabled
+                        ? 'LibreOffice belum tersedia — gunakan tombol DOCX'
+                        : 'Cetak PDF'
+                }
             >
                 <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
@@ -253,14 +370,25 @@ export function KwitansiRowActions({
                 </svg>
                 PDF
             </button>
+
             <button
                 type="button"
+                disabled={viewDisabled}
                 onClick={(e) => {
                     e.preventDefault();
                     handlePreview();
                 }}
-                className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-[10px] font-extrabold text-slate-600 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10"
-                title="Preview"
+                className={cn(
+                    'inline-flex items-center gap-1 rounded-xl border px-2.5 py-1.5 text-[10px] font-extrabold shadow-sm transition',
+                    viewDisabled
+                        ? 'cursor-not-allowed border-slate-100 bg-slate-50 text-slate-300 dark:border-white/5 dark:bg-white/5 dark:text-slate-600'
+                        : 'border-slate-200 bg-white text-slate-600 hover:-translate-y-0.5 hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10',
+                )}
+                title={
+                    viewDisabled
+                        ? 'Preview PDF membutuhkan LibreOffice'
+                        : 'Preview PDF'
+                }
             >
                 <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path

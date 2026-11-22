@@ -331,6 +331,10 @@ Route::get('/kwitansi/download-all', [KwitansiController::class, 'downloadAll'])
 Route::get('/kwitansi/download-all2', [KwitansiController::class, 'downloadAll2'])->name('kwitansi.download-all2');
 Route::get('/kwitansi/download-all3', [KwitansiController::class, 'downloadAll3'])->name('kwitansi.download-all3');
 Route::get('/kwitansi/download-all4', [KwitansiController::class, 'downloadAll4'])->name('kwitansi.download-all4');
+Route::get('/kwitansi/download-all-custom/{template}', [KwitansiController::class, 'downloadAllCustom'])->whereNumber('template')->name('kwitansi.custom.download-all');
+Route::get('/kwitansi/{id}/custom/{template}/preview', [KwitansiController::class, 'previewCustomPdf'])->whereNumber(['id', 'template'])->name('kwitansi.custom.preview');
+Route::get('/kwitansi/{id}/custom/{template}/pdf', [KwitansiController::class, 'generateCustomPdf'])->whereNumber(['id', 'template'])->name('kwitansi.custom.pdf');
+Route::get('/kwitansi/{id}/custom/{template}/docx', [KwitansiController::class, 'generateCustomDocx'])->whereNumber(['id', 'template'])->name('kwitansi.custom.docx');
 
 // Resource route MUST come after specific routes to avoid 'download-all' being treated as an ID
 Route::resource('kwitansi', KwitansiController::class);

@@ -336,9 +336,9 @@ class SkSuratService
      * Create a temporary DOCX copy with unclosed ${tag typos (such as (${terbilang)) normalized
      * to ${tag} so PHPWord replaces them cleanly without modifying the original template.
      */
-    protected function createNormalizedTemplateIfNeeded(string $templatePath, string $tempDir): ?string
+    public function createNormalizedTemplateIfNeeded(string $templatePath, string $tempDir): ?string
     {
-        $tempTemplate = $tempDir.DIRECTORY_SEPARATOR.'tpl_norm_'.uniqid().'.docx';
+        $tempTemplate = $tempDir.DIRECTORY_SEPARATOR.'tpl_norm_'.uniqid('', true).'.docx';
         if (! @copy($templatePath, $tempTemplate)) {
             return null;
         }

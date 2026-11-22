@@ -3,12 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Config\VariantConfig;
+use App\Exceptions\KwitansiTemplateException;
 use App\Models\Kwitansi;
+use App\Models\KwitansiTemplate;
 use App\Models\SekolahProfile;
+use App\Services\KwitansiTemplateService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class KwitansiController extends Controller
@@ -1651,6 +1656,260 @@ class KwitansiController extends Controller
                 'message' => 'Gagal generate preview PDF: '.$e->getMessage(),
             ], 500);
         }
+    }
+
+    public function previewCustomPdf($id, KwitansiTemplate $template, KwitansiTemplateService $templateService)
+    {
+        return $this->streamCustomPdf($id, $template, $templateService, true);
+    }
+
+    public function generateCustomPdf($id, KwitansiTemplate $template, KwitansiTemplateService $templateService)
+    {
+        return $this->streamCustomPdf($id, $template, $templateService, false);
+    }
+
+    public function generateCustomDocx($id, KwitansiTemplate $template, KwitansiTemplateService $templateService)
+    {
+        try {
+            $kwitansi = $this->loadKwitansiForCustom($id);
+            $docxPath = $templateService->compileSingleDocx($template, $kwitansi, $this->variant);
+            $filename = $this->buildCustomSingleFilename($template, $kwitansi, 'docx');
+
+            return response()
+                ->download(
+                    $docxPath,
+                    $filename,
+                    ['Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
+                )
+                ->deleteFileAfterSend(true);
+        } catch (ModelNotFoundException) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Data kwitansi tidak ditemukan.',
+            ], 404);
+        } catch (KwitansiTemplateException $e) {
+            Log::warning('Error generating custom kwitansi DOCX for ID '.$id.': '.$e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        } catch (\Throwable $e) {
+            Log::error('Error generating custom kwitansi DOCX for ID '.$id.': '.$e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat membuat dokumen DOCX kwitansi.',
+            ], 500);
+        }
+    }
+
+    public function downloadAllCustom(Request $request, KwitansiTemplate $template, KwitansiTemplateService $templateService)
+    {
+        $output = strtolower((string) $request->input('output', 'docx'));
+        if (! in_array($output, ['docx', 'pdf'], true)) {
+            $output = 'docx';
+        }
+
+        if ($output === 'pdf' && ! $templateService->isLibreOfficeAvailable()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'LibreOffice tidak ditemukan di sistem. Gunakan opsi unduh DOCX Gabungan atau pastikan LibreOffice portable/sistem tersedia.',
+            ], 422);
+        }
+
+        try {
+            ini_set('memory_limit', '512M');
+            ini_set('max_execution_time', '300');
+
+            $search = trim((string) $request->input('search', ''));
+            $tahun = trim((string) $request->input('tahun', ''));
+            $startDate = trim((string) $request->input('start_date', ''));
+            $endDate = trim((string) $request->input('end_date', ''));
+
+            $query = ($this->Kwitansi)::with([
+                'sekolah',
+                'penganggaran',
+                'kodeKegiatan',
+                'rekeningBelanja',
+                'penerimaanDana',
+                'bukuKasUmum' => function ($q) {
+                    $q->with(['uraianDetails']);
+                },
+                'bkuUraianDetail',
+            ]);
+
+            if ($tahun !== '' && ctype_digit($tahun)) {
+                $tahunInt = (int) $tahun;
+                if (strlen($tahun) === 4 && $tahunInt >= 2000 && $tahunInt <= 2100) {
+                    $query->whereHas('penganggaran', function ($pq) use ($tahunInt) {
+                        $pq->where('tahun_anggaran', $tahunInt);
+                    });
+                } else {
+                    $query->where(VariantConfig::penganggaranFk($this->variant), $tahunInt);
+                }
+            }
+
+            if ($startDate !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $startDate)) {
+                $query->whereHas('bukuKasUmum', function ($q) use ($startDate) {
+                    $q->whereDate('tanggal_transaksi', '>=', $startDate);
+                });
+            }
+
+            if ($endDate !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $endDate)) {
+                $query->whereHas('bukuKasUmum', function ($q) use ($endDate) {
+                    $q->whereDate('tanggal_transaksi', '<=', $endDate);
+                });
+            }
+
+            if ($search !== '') {
+                $lowerSearch = '%'.mb_strtolower($search).'%';
+                $query->where(function ($outer) use ($lowerSearch) {
+                    $outer->whereHas('bukuKasUmum', function ($q) use ($lowerSearch) {
+                        $q->whereRaw('LOWER(COALESCE(uraian, \'\')) LIKE ?', [$lowerSearch])
+                            ->orWhereRaw('LOWER(COALESCE(uraian_opsional, \'\')) LIKE ?', [$lowerSearch]);
+                    })->orWhereHas('rekeningBelanja', function ($q) use ($lowerSearch) {
+                        $q->whereRaw('LOWER(COALESCE(kode_rekening, \'\')) LIKE ?', [$lowerSearch]);
+                    });
+                });
+            }
+
+            $kwitansis = $query->latest()->get();
+
+            if ($kwitansis->isEmpty()) {
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Tidak ada data kwitansi untuk diunduh dengan filter yang dipilih.',
+                    ], 404);
+                }
+
+                return redirect()
+                    ->route(VariantConfig::routePrefix($this->variant).'kwitansi.index')
+                    ->with('error', 'Tidak ada data kwitansi untuk diunduh dengan filter yang dipilih.');
+            }
+
+            $mergedDocxPath = $templateService->compileBulkDocx($template, $kwitansis, $this->variant);
+            $slugName = Str::slug($template->nama ?: 'template', '_') ?: 'template';
+            $baseFileName = "Kwitansi_{$slugName}_{$kwitansis->count()}data_".now()->format('Ymd_His');
+
+            if ($output === 'docx') {
+                return response()
+                    ->download(
+                        $mergedDocxPath,
+                        "{$baseFileName}.docx",
+                        ['Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
+                    )
+                    ->deleteFileAfterSend(true);
+            }
+
+            try {
+                $pdfPath = $templateService->convertDocxToPdf($mergedDocxPath);
+
+                return response()
+                    ->file($pdfPath, [
+                        'Content-Type' => 'application/pdf',
+                        'Content-Disposition' => 'inline; filename="'.$baseFileName.'.pdf"',
+                    ])
+                    ->deleteFileAfterSend(true);
+            } finally {
+                if (is_file($mergedDocxPath)) {
+                    @unlink($mergedDocxPath);
+                }
+            }
+        } catch (KwitansiTemplateException $e) {
+            Log::warning('Error downloading all custom kwitansi: '.$e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        } catch (\Throwable $e) {
+            Log::error('Error downloading all custom kwitansi: '.$e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat mengunduh semua kwitansi kustom.',
+            ], 500);
+        }
+    }
+
+    protected function streamCustomPdf($id, KwitansiTemplate $template, KwitansiTemplateService $templateService, bool $isPreview)
+    {
+        if (! $templateService->isLibreOfficeAvailable()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'LibreOffice tidak ditemukan di sistem. Silakan gunakan tombol unduh DOCX atau pastikan LibreOffice portable/sistem tersedia.',
+            ], 422);
+        }
+
+        $docxPath = null;
+
+        try {
+            $kwitansi = $this->loadKwitansiForCustom($id);
+            $docxPath = $templateService->compileSingleDocx($template, $kwitansi, $this->variant);
+            $pdfPath = $templateService->convertDocxToPdf($docxPath);
+
+            $filename = $isPreview
+                ? "Kwitansi_Custom_Preview_{$kwitansi->id}.pdf"
+                : $this->buildCustomSingleFilename($template, $kwitansi, 'pdf');
+
+            return response()
+                ->file($pdfPath, [
+                    'Content-Type' => 'application/pdf',
+                    'Content-Disposition' => 'inline; filename="'.$filename.'"',
+                ])
+                ->deleteFileAfterSend(true);
+        } catch (ModelNotFoundException) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Data kwitansi tidak ditemukan.',
+            ], 404);
+        } catch (KwitansiTemplateException $e) {
+            Log::warning('Error generating custom kwitansi PDF for ID '.$id.': '.$e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        } catch (\Throwable $e) {
+            Log::error('Error generating custom kwitansi PDF for ID '.$id.': '.$e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat membuat PDF kwitansi kustom.',
+            ], 500);
+        } finally {
+            if ($docxPath !== null && is_file($docxPath)) {
+                @unlink($docxPath);
+            }
+        }
+    }
+
+    protected function loadKwitansiForCustom($id)
+    {
+        return ($this->Kwitansi)::with([
+            'sekolah',
+            'penganggaran',
+            'kodeKegiatan',
+            'rekeningBelanja',
+            'penerimaanDana',
+            'bukuKasUmum' => function ($query) {
+                $query->with(['uraianDetails']);
+            },
+            'bkuUraianDetail',
+        ])->findOrFail($id);
+    }
+
+    protected function buildCustomSingleFilename(KwitansiTemplate $template, $kwitansi, string $extension): string
+    {
+        $templateSlug = Str::slug($template->nama ?: 'Custom', '_') ?: 'Custom';
+        $uraianSlug = Str::slug(
+            Str::limit((string) ($kwitansi->bukuKasUmum?->uraian_opsional ?: $kwitansi->bukuKasUmum?->uraian ?: 'kwitansi_'.$kwitansi->id), 45, ''),
+            '_'
+        ) ?: 'kwitansi_'.$kwitansi->id;
+
+        return "Kwitansi_{$templateSlug}_{$uraianSlug}.{$extension}";
     }
 
     protected function renderVariant($component, $props = [])

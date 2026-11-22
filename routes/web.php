@@ -4,6 +4,7 @@ use App\Config\VariantConfig;
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DatabaseController;
+use App\Http\Controllers\KwitansiTemplateController;
 use App\Http\Controllers\NetworkSettingController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
@@ -166,6 +167,15 @@ Route::middleware('auth')->group(function () {
         Route::get('/dokumen/{dokumen}/download-docx', [SkSuratController::class, 'downloadDocx'])->name('dokumen.download-docx');
         Route::get('/dokumen/{dokumen}/export-pdf', [SkSuratController::class, 'exportPdf'])->name('dokumen.export-pdf');
         Route::get('/dokumen/{dokumen}/download-archive', [SkSuratController::class, 'downloadArchive'])->name('dokumen.download-archive');
+    });
+
+    Route::prefix('api/kwitansi/templates')->name('api.kwitansi.templates.')->group(function () {
+        Route::get('/', [KwitansiTemplateController::class, 'index'])->name('index');
+        Route::get('/sample', [KwitansiTemplateController::class, 'downloadSample'])->name('sample');
+        Route::post('/', [KwitansiTemplateController::class, 'store'])->name('store');
+        Route::post('/{template}', [KwitansiTemplateController::class, 'update'])->whereNumber('template')->name('update');
+        Route::delete('/{template}', [KwitansiTemplateController::class, 'destroy'])->whereNumber('template')->name('destroy');
+        Route::get('/{template}/download', [KwitansiTemplateController::class, 'downloadSource'])->whereNumber('template')->name('download');
     });
 
     foreach (VariantConfig::VARIANTS as $variant) {

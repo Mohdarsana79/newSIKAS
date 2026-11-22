@@ -1,5 +1,5 @@
 import React, { useState, useEffect, FormEventHandler } from 'react';
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import axios from 'axios';
 import Modal from '@/Components/Modal';
 import SecondaryButton from '@/Components/SecondaryButton';
@@ -13,7 +13,16 @@ import PdfPreviewModal from '@/Components/PdfPreviewModal';
 import Dropdown from '@/Components/Dropdown';
 import DatePicker from '@/Components/DatePicker';
 import { format } from 'date-fns';
-import { KwitansiFormat, KwitansiRowActions, KwitansiSelect } from './components/KwitansiSelect';
+import {
+    BuiltInKwitansiFormat,
+    CustomKwitansiTemplate,
+    KwitansiFormat,
+    KwitansiRowActions,
+    KwitansiSelect,
+    KwitansiVariableGroup,
+    parseCustomTemplateId,
+} from './components/KwitansiSelect';
+import KwitansiTemplateModal from './components/KwitansiTemplateModal';
 import DataTable from '@/Components/ui/DataTable';
 import EmptyState from '@/Components/ui/EmptyState';
 import FilterBar from '@/Components/ui/FilterBar';
@@ -69,6 +78,11 @@ interface YearData {
 
 export default function TabReguler({ auth }: { auth: any }) {
     const vroute = useVariantRoute();
+    const pageAuth = usePage<any>().props?.auth ?? auth;
+    const canManageTemplates =
+        pageAuth?.permissions?.modules?.kwitansi === 'write' ||
+        (pageAuth?.permissions == null && Boolean(pageAuth?.user?.is_bendahara));
+
     const [kwitansis, setKwitansis] = useState<KwitansiData[]>([]);
     const [loading, setLoading] = useState(true);
     const [pagination, setPagination] = useState<Partial<PaginationData>>({});
@@ -78,6 +92,12 @@ export default function TabReguler({ auth }: { auth: any }) {
         start_date: '',
         end_date: ''
     });
+
+    // Custom PHPWord Template state
+    const [customTemplates, setCustomTemplates] = useState<CustomKwitansiTemplate[]>([]);
+    const [variableCatalog, setVariableCatalog] = useState<KwitansiVariableGroup[]>([]);
+    const [libreOfficeAvailable, setLibreOfficeAvailable] = useState(true);
+    const [showTemplateModal, setShowTemplateModal] = useState(false);
 
     // Stats state
     const [stats, setStats] = useState({
@@ -96,7 +116,7 @@ export default function TabReguler({ auth }: { auth: any }) {
     // Print Settings Modal State
     const [showPrintSettings, setShowPrintSettings] = useState(false);
     const [selectedKwitansiId, setSelectedKwitansiId] = useState<number | null>(null);
-    const [selectedKwitansiType, setSelectedKwitansiType] = useState<KwitansiFormat>(1);
+    const [selectedKwitansiType, setSelectedKwitansiType] = useState<BuiltInKwitansiFormat>(1);
 
     // PDF Preview Modal State
     const [showPreviewModal, setShowPreviewModal] = useState(false);
@@ -138,7 +158,21 @@ export default function TabReguler({ auth }: { auth: any }) {
     useEffect(() => {
         fetchYears();
         fetchStats();
+        fetchCustomTemplates();
     }, []);
+
+    const fetchCustomTemplates = async () => {
+        try {
+            const response = await axios.get(route('api.kwitansi.templates.index'));
+            if (response.data?.success) {
+                setCustomTemplates(response.data.data ?? []);
+                setVariableCatalog(response.data.variable_catalog ?? []);
+                setLibreOfficeAvailable(Boolean(response.data.libreoffice_available));
+            }
+        } catch (error) {
+            console.error('Error fetching custom kwitansi templates:', error);
+        }
+    };
 
     // Debounce search
     useEffect(() => {
@@ -362,10 +396,41 @@ export default function TabReguler({ auth }: { auth: any }) {
         setConfirmingDownload(false);
     };
 
+    const processDownloadAllCustom = (templateId: number, output: 'docx' | 'pdf') => {
+        const params = new URLSearchParams();
+        Object.entries(filters).forEach(([key, value]) => {
+            if (value) params.append(key, value);
+        });
+        params.append('output', output);
+
+        const targetUrl = vroute('kwitansi.custom.download-all', templateId);
+        window.open(`${targetUrl}?${params.toString()}`, '_blank');
+        setConfirmingDownload(false);
+    };
+
     const handlePrintClick = (id: number, type: KwitansiFormat) => {
+        const customTemplateId = parseCustomTemplateId(type);
+        if (customTemplateId !== null) {
+            if (!libreOfficeAvailable) return;
+            window.open(vroute('kwitansi.custom.pdf', [id, customTemplateId]), '_blank');
+            return;
+        }
+
+        if (typeof type !== 'number') return;
+
         setSelectedKwitansiId(id);
         setSelectedKwitansiType(type);
         setShowPrintSettings(true);
+    };
+
+    const handleDownloadCustomDocx = (id: number, templateId: number) => {
+        window.open(vroute('kwitansi.custom.docx', [id, templateId]), '_blank');
+    };
+
+    const handlePreviewCustom = (id: number, templateId: number) => {
+        if (!libreOfficeAvailable) return;
+        setPreviewUrl(vroute('kwitansi.custom.preview', [id, templateId]));
+        setShowPreviewModal(true);
     };
 
     const processPrint = (settings: PrintSettings) => {
@@ -423,6 +488,19 @@ export default function TabReguler({ auth }: { auth: any }) {
                                 <button onClick={startGenerateBatch} disabled={stats.available === 0} className={`inline-flex items-center gap-1.5 rounded-2xl px-3.5 py-2.5 text-[11px] font-extrabold transition ${stats.available === 0 ? 'cursor-not-allowed bg-slate-100 text-slate-400 dark:bg-white/5 dark:text-slate-600' : 'bg-lime-400 text-slate-950 shadow-lime hover:-translate-y-0.5 hover:bg-lime-300'}`}>
                                     <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
                                     Generate Otomatis
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowTemplateModal(true)}
+                                    className="inline-flex items-center gap-1.5 rounded-2xl border border-brand-500/20 bg-pastel-lavender/80 px-3.5 py-2.5 text-[11px] font-extrabold text-brand-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-pastel-lavender dark:border-brand-400/25 dark:bg-brand-500/15 dark:text-brand-200 dark:hover:bg-brand-500/25"
+                                >
+                                    <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                    Template Kustom
+                                    {customTemplates.length > 0 && (
+                                        <span className="rounded-full bg-brand-600 px-1.5 py-0.5 text-[9.5px] font-black text-white dark:bg-lime-400 dark:text-slate-950">
+                                            {customTemplates.length}
+                                        </span>
+                                    )}
                                 </button>
                                 <button onClick={startDownloadAll} className="inline-flex items-center gap-1.5 rounded-2xl bg-slate-900 px-3.5 py-2.5 text-[11px] font-extrabold text-white shadow-pill transition hover:-translate-y-0.5 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100">
                                     <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
@@ -593,7 +671,15 @@ export default function TabReguler({ auth }: { auth: any }) {
                                                     {item.jumlah}
                                                 </td>
                                                 <td className="whitespace-nowrap text-right">
-                                                    <KwitansiRowActions item={item} onPrint={handlePrintClick} onPreview={handlePreviewClick} />
+                                                    <KwitansiRowActions
+                                                        item={item}
+                                                        customTemplates={customTemplates}
+                                                        libreOfficeAvailable={libreOfficeAvailable}
+                                                        onPrint={handlePrintClick}
+                                                        onPreview={handlePreviewClick}
+                                                        onPreviewCustom={handlePreviewCustom}
+                                                        onDownloadDocx={handleDownloadCustomDocx}
+                                                    />
                                                 </td>
                                             </tr>
                                         ))
@@ -754,38 +840,45 @@ export default function TabReguler({ auth }: { auth: any }) {
                         <p className="text-[11.5px] font-medium leading-relaxed text-slate-500 dark:text-slate-400">
                             Anda akan mengunduh semua data kwitansi berdasarkan filter yang aktif saat ini.
                             <br />
-                            Total Data: <strong className="text-sikas-num font-extrabold text-slate-700 dark:text-slate-200">{pagination.total || stats.total}</strong>
+                            Total Data: <strong className="text-sikas-num font-extrabold text-slate-700 dark:text-slate-200">{pagination.total ?? stats.total}</strong>
                         </p>
 
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <InputLabel htmlFor="paper_size" value="Ukuran Kertas" />
-                                <select
-                                    id="paper_size"
-                                    value={downloadSettings.paperSize}
-                                    onChange={(e) => setDownloadSettings({ ...downloadSettings, paperSize: e.target.value })}
-                                    className="mt-1 block w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-[12px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
-                                >
-                                    <option value="A4">A4</option>
-                                    <option value="Letter">Letter</option>
-                                    <option value="Folio">Folio (F4)</option>
-                                    <option value="Legal">Legal</option>
-                                </select>
+                        <div className="space-y-1.5">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <InputLabel htmlFor="paper_size" value="Ukuran Kertas (Format 1-4)" />
+                                    <select
+                                        id="paper_size"
+                                        value={downloadSettings.paperSize}
+                                        onChange={(e) => setDownloadSettings({ ...downloadSettings, paperSize: e.target.value })}
+                                        className="mt-1 block w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-[12px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
+                                    >
+                                        <option value="A4">A4</option>
+                                        <option value="Letter">Letter</option>
+                                        <option value="Folio">Folio (F4)</option>
+                                        <option value="Legal">Legal</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <InputLabel htmlFor="font_size" value="Ukuran Font (Format 1-4)" />
+                                    <select
+                                        id="font_size"
+                                        value={downloadSettings.fontSize}
+                                        onChange={(e) => setDownloadSettings({ ...downloadSettings, fontSize: e.target.value })}
+                                        className="mt-1 block w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-[12px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
+                                    >
+                                        <option value="8pt">8pt</option>
+                                        <option value="9pt">9pt</option>
+                                        <option value="10pt">10pt</option>
+                                        <option value="11pt">11pt</option>
+                                    </select>
+                                </div>
                             </div>
-                            <div>
-                                <InputLabel htmlFor="font_size" value="Ukuran Font" />
-                                <select
-                                    id="font_size"
-                                    value={downloadSettings.fontSize}
-                                    onChange={(e) => setDownloadSettings({ ...downloadSettings, fontSize: e.target.value })}
-                                    className="mt-1 block w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-[12px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
-                                >
-                                    <option value="8pt">8pt</option>
-                                    <option value="9pt">9pt</option>
-                                    <option value="10pt">10pt</option>
-                                    <option value="11pt">11pt</option>
-                                </select>
-                            </div>
+                            {customTemplates.length > 0 && (
+                                <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500">
+                                    Catatan: Template Kustom mengikuti ukuran kertas dan font dari dokumen Word (.docx) yang Anda unggah.
+                                </p>
+                            )}
                         </div>
 
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -841,6 +934,73 @@ export default function TabReguler({ auth }: { auth: any }) {
                                 </span>
                             </button>
                         </div>
+
+                        {customTemplates.length > 0 && (
+                            <div className="space-y-2.5 border-t border-slate-100 pt-4 dark:border-white/10">
+                                <div className="flex items-center justify-between gap-2">
+                                    <p className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                                        Format Kustom (Word)
+                                    </p>
+                                    <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500">
+                                        Otomatis 1 file multi-halaman
+                                    </span>
+                                </div>
+
+                                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                                    {customTemplates.map((tpl) => {
+                                        const noDownloadData = (pagination.total ?? stats.total) === 0;
+                                        return (
+                                        <div
+                                            key={tpl.id}
+                                            className="flex flex-col justify-between gap-2.5 rounded-2xl border border-slate-200/80 bg-slate-50/70 p-3.5 dark:border-white/10 dark:bg-white/[0.03]"
+                                        >
+                                            <div className="min-w-0">
+                                                <p className="truncate text-[11.5px] font-extrabold text-slate-900 dark:text-white">
+                                                    {tpl.nama}
+                                                </p>
+                                                <p className="mt-0.5 truncate text-[10px] font-medium text-slate-500 dark:text-slate-400">
+                                                    {tpl.deskripsi || tpl.original_filename}
+                                                </p>
+                                            </div>
+                                            <div className="flex items-center gap-1.5">
+                                                <button
+                                                    type="button"
+                                                    disabled={noDownloadData}
+                                                    onClick={() => processDownloadAllCustom(tpl.id, 'docx')}
+                                                    className={`inline-flex flex-1 items-center justify-center gap-1 rounded-xl border px-2.5 py-1.5 text-[10.5px] font-extrabold transition ${
+                                                        noDownloadData
+                                                            ? 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 dark:border-white/5 dark:bg-white/5 dark:text-slate-600'
+                                                            : 'border-brand-500/20 bg-pastel-lavender/80 text-brand-700 hover:bg-pastel-lavender dark:border-brand-400/25 dark:bg-brand-500/15 dark:text-brand-200 dark:hover:bg-brand-500/25'
+                                                    }`}
+                                                >
+                                                    DOCX Gabungan
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    disabled={noDownloadData || !libreOfficeAvailable}
+                                                    onClick={() => processDownloadAllCustom(tpl.id, 'pdf')}
+                                                    title={
+                                                        noDownloadData
+                                                            ? 'Tidak ada data kwitansi untuk diunduh'
+                                                            : libreOfficeAvailable
+                                                              ? 'Konversi DOCX gabungan menjadi 1 file PDF'
+                                                              : 'Membutuhkan LibreOffice untuk konversi PDF'
+                                                    }
+                                                    className={`inline-flex flex-1 items-center justify-center gap-1 rounded-xl px-2.5 py-1.5 text-[10.5px] font-extrabold transition ${
+                                                        !noDownloadData && libreOfficeAvailable
+                                                            ? 'bg-lime-400 text-slate-950 shadow-lime hover:bg-lime-300'
+                                                            : 'cursor-not-allowed bg-slate-100 text-slate-400 dark:bg-white/5 dark:text-slate-600'
+                                                    }`}
+                                                >
+                                                    PDF Gabungan
+                                                </button>
+                                            </div>
+                                        </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex justify-end gap-2 border-t border-slate-100 px-6 py-4 dark:border-white/5">
@@ -916,6 +1076,17 @@ export default function TabReguler({ auth }: { auth: any }) {
                 onClose={() => setShowPreviewModal(false)}
                 pdfUrl={previewUrl}
                 title="Preview Kwitansi"
+            />
+
+            {/* Modal Kelola Template Kwitansi Kustom */}
+            <KwitansiTemplateModal
+                show={showTemplateModal}
+                onClose={() => setShowTemplateModal(false)}
+                templates={customTemplates}
+                variableCatalog={variableCatalog}
+                libreOfficeAvailable={libreOfficeAvailable}
+                canManage={canManageTemplates}
+                onTemplatesChanged={fetchCustomTemplates}
             />
         </>
     );
