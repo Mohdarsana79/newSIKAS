@@ -812,6 +812,98 @@ class SpjCustomTemplateTest extends TestCase
         $this->assertSame(1, $xp->query('./w:pBdr/w:bottom[@w:val="thickThinSmallGap"]', $kopPPr)?->length);
     }
 
+    public function test_bast_template_reusing_item_subtotal_in_footer_row_and_body_resolves_grand_total(): void
+    {
+        $phpWord = new PhpWord;
+        $section = $phpWord->addSection();
+        $section->addText('BERITA ACARA SERAH TERIMA (BAST) BARANG/JASA');
+
+        $table = $section->addTable();
+        $table->addRow();
+        foreach (['No', 'Nama Barang', 'Jumlah', 'Satuan', 'Kondisi', 'Harga Satuan (Rp)', 'Total Harga (Rp)'] as $h) {
+            $table->addCell(1200)->addText($h);
+        }
+
+        // Baris detail item (di-clone menjadi 3 baris)
+        $table->addRow();
+        foreach (['${item_no}', '${item_nama}', '${item_volume}', '${item_satuan}', '${item_kondisi}', '${item_harga}', '${item_subtotal}'] as $tag) {
+            $table->addCell(1200)->addText($tag);
+        }
+
+        // Baris footer Total Keseluruhan yang juga memakai ${item_subtotal}
+        $table->addRow();
+        $table->addCell(7200, ['gridSpan' => 6])->addText('Total Keseluruhan');
+        $table->addCell(1200)->addText('${item_subtotal}');
+
+        // Paragraf Ketentuan Tambahan di luar tabel yang juga memakai ${item_subtotal}
+        $section->addText('3. Nilai total barang yang diserah terimakan adalah sebesar Rp ${item_subtotal} (${terbilang_title})');
+
+        $baseTmp = tempnam(sys_get_temp_dir(), 'spj_bast_');
+        if ($baseTmp !== false && is_file($baseTmp)) {
+            @unlink($baseTmp);
+        }
+        $srcPath = ($baseTmp ?: sys_get_temp_dir().DIRECTORY_SEPARATOR.'spj_bast_'.uniqid('', true)).'.docx';
+        $phpWord->save($srcPath, 'Word2007');
+        $this->tempFilesToClean[] = $srcPath;
+
+        $storedRel = SpjTemplate::storageDirectoryForType('bast').'/'.uniqid('bast_dinas_').'.docx';
+        Storage::disk('local')->put($storedRel, file_get_contents($srcPath));
+        $template = SpjTemplate::create([
+            'document_type' => SpjTemplate::TYPE_BAST,
+            'nama' => 'BAST DINAS Footer Item Subtotal',
+            'file_path' => $storedRel,
+            'original_filename' => 'BAST_1.docx',
+            'file_size' => filesize($srcPath) ?: 0,
+            'detected_variables' => [],
+            'has_item_table' => true,
+            'created_by' => $this->bendahara->id,
+        ]);
+
+        $bku = $this->createBkuWithDetails(
+            idTransaksi: 'BKU-BUKU-01',
+            uraian: 'Lunas bayar belanja modal buku agama',
+            tanggal: '2026-06-29',
+            penerima: 'Penyedia Buku',
+            items: [
+                ['uraian' => 'Buku Panduan Guru Pendidikan Agama Islam', 'volume' => 1, 'satuan' => 'exemplar', 'harga_satuan' => 93900, 'subtotal' => 93900, 'kondisi' => 'Baik'],
+                ['uraian' => 'Pendidikan Agama Islam dan Budi Pekerti Kelas VIII', 'volume' => 1, 'satuan' => 'exemplar', 'harga_satuan' => 24400, 'subtotal' => 24400, 'kondisi' => 'Baik'],
+                ['uraian' => 'Pendidikan Agama Islam dan Budi Pekerti Kelas IX', 'volume' => 1, 'satuan' => 'exemplar', 'harga_satuan' => 111800, 'subtotal' => 111800, 'kondisi' => 'Baik'],
+            ]
+        );
+
+        $bast = Bast::create([
+            'sekolah_id' => $this->sekolah->id,
+            'penganggaran_id' => $this->penganggaran->id,
+            'buku_kas_umum_id' => $bku->id,
+            'nomor_bast' => '015/BAST/BOSP/2026',
+            'tanggal_bast' => '2026-06-29',
+            'pihak_pertama_nama' => 'CV. Buku Nusantara',
+            'pihak_pertama_jabatan' => 'Direktur',
+            'pihak_pertama_instansi' => 'CV. Buku Nusantara',
+            'pihak_pertama_alamat' => 'Jl. Buku No. 1',
+            'pihak_kedua_nama' => 'SMP MUHAMMADIYAH SONI',
+            'pihak_kedua_jabatan' => 'Kepala Sekolah',
+            'pihak_kedua_instansi' => 'SMP MUHAMMADIYAH SONI',
+            'pihak_kedua_alamat' => 'Jl. Santa No. 150',
+        ]);
+
+        $resp = $this->actingAs($this->bendahara)
+            ->get(route('bast.custom.docx', [$bast->id, $template->id]));
+        $resp->assertOk();
+        $outPath = $resp->getFile()->getPathname();
+        $this->tempFilesToClean[] = $outPath;
+
+        $xml = $this->readDocumentXml($outPath);
+        $plainText = strip_tags($xml);
+
+        $this->assertDoesNotMatchRegularExpression('/\$\{[^}]+\}/', $plainText);
+        $this->assertStringContainsString('93.900', $plainText);
+        $this->assertStringContainsString('24.400', $plainText);
+        $this->assertStringContainsString('111.800', $plainText);
+        $this->assertStringContainsString('Total Keseluruhan230.100', $plainText);
+        $this->assertStringContainsString('sebesar Rp 230.100 (Dua Ratus Tiga Puluh Ribu Seratus Rupiah)', $plainText);
+    }
+
     // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------

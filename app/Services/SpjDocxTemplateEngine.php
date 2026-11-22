@@ -149,6 +149,7 @@ abstract class SpjDocxTemplateEngine
                 }
             }
             $this->applyClonedRowTextFallbacks($processor, $postCloneVars, $payload['text'], $payload['items']);
+            $this->applyRemainingItemTagFallbacks($processor, $rawTemplateVars, $payload['text'], $payload['items'], $itemTableKeys);
 
             $processor->saveAs($outputPath);
 
@@ -515,12 +516,36 @@ abstract class SpjDocxTemplateEngine
 
         $itemVarLookup = array_fill_keys($itemTableKeys, true);
         $rawByKey = [];
-        $anchorCandidates = [];
 
         foreach ($rawTemplateVars as $rawVar) {
             $trimmed = trim($rawVar);
             if (isset($itemVarLookup[$trimmed])) {
                 $rawByKey[$trimmed][] = $rawVar;
+            }
+        }
+
+        // Prioritaskan variabel khusus baris detail (item_no, item_nama, dst.) sebagai anchor cloneRow
+        // sebelum variabel yang sering dipakai ulang di baris Total / paragraf ringkasan (item_subtotal, dst.)
+        $priorityOrder = [
+            'item_no',
+            'item_nama',
+            'item_penerima',
+            'item_satuan',
+            'item_kondisi',
+            'item_harga',
+            'item_harga_rupiah',
+            'item_volume',
+            'item_subtotal',
+            'item_subtotal_rupiah',
+            'item_pajak',
+            'item_pajak_rupiah',
+            'item_bersih',
+            'item_bersih_rupiah',
+        ];
+        $orderedItemKeys = array_values(array_unique(array_merge($priorityOrder, $itemTableKeys)));
+        $anchorCandidates = [];
+        foreach ($orderedItemKeys as $itemKey) {
+            foreach ($rawByKey[$itemKey] ?? [] as $rawVar) {
                 $anchorCandidates[] = $rawVar;
             }
         }
@@ -542,18 +567,6 @@ abstract class SpjDocxTemplateEngine
         }
 
         if (! $cloned) {
-            // Fallback aman jika seluruh placeholder item_* ditaruh di luar tabel Word
-            $firstRow = $items[0];
-            foreach ($firstRow as $key => $val) {
-                $replacement = $this->formatReplacementValue($val);
-                $processor->setValue($key, $replacement);
-                foreach ($rawByKey[$key] ?? [] as $rawVar) {
-                    if ($rawVar !== $key) {
-                        $processor->setValue($rawVar, $replacement);
-                    }
-                }
-            }
-
             return;
         }
 
@@ -569,6 +582,90 @@ abstract class SpjDocxTemplateEngine
                 }
             }
         }
+    }
+
+    /**
+     * Isi sisa tag item_* yang berada di luar baris detail yang di-clone (mis. ${item_subtotal}
+     * pada baris footer "Total Keseluruhan" atau di paragraf body "sebesar Rp ${item_subtotal}").
+     *
+     * @param  array<int, string>  $rawTemplateVars
+     * @param  array<string, string>  $text
+     * @param  array<int, array<string, string>>  $items
+     * @param  array<int, string>  $itemTableKeys
+     */
+    protected function applyRemainingItemTagFallbacks(
+        TemplateProcessor $processor,
+        array $rawTemplateVars,
+        array $text,
+        array $items,
+        array $itemTableKeys
+    ): void {
+        if ($itemTableKeys === []) {
+            return;
+        }
+
+        foreach ($itemTableKeys as $itemKey) {
+            $fallbackValue = $this->resolveSummaryItemTagFallback($itemKey, $text, $items);
+            $replacement = $this->formatReplacementValue($fallbackValue);
+            $processor->setValue($itemKey, $replacement);
+
+            foreach ($rawTemplateVars as $rawVar) {
+                if ($rawVar !== $itemKey && trim($rawVar) === $itemKey) {
+                    $processor->setValue($rawVar, $replacement);
+                }
+            }
+        }
+    }
+
+    /**
+     * Resolusi nilai ringkasan dokumen untuk tag item_* yang ditempatkan di luar baris rincian item.
+     *
+     * @param  array<string, string>  $text
+     * @param  array<int, array<string, string>>  $items
+     */
+    protected function resolveSummaryItemTagFallback(string $itemKey, array $text, array $items): string
+    {
+        $firstItem = $items[0] ?? [];
+
+        return match ($itemKey) {
+            'item_subtotal' => (string) ($text['jumlah_angka'] ?? $firstItem['item_subtotal'] ?? '0'),
+            'item_subtotal_rupiah' => (string) ($text['jumlah_rupiah'] ?? $firstItem['item_subtotal_rupiah'] ?? 'Rp 0'),
+            'item_bersih' => (string) ($text['jumlah_diterima'] ?? $text['jumlah_bersih'] ?? $text['jumlah_angka'] ?? $firstItem['item_bersih'] ?? '0'),
+            'item_bersih_rupiah' => (string) ($text['jumlah_diterima_rupiah'] ?? $text['jumlah_bersih_rupiah'] ?? $text['jumlah_rupiah'] ?? $firstItem['item_bersih_rupiah'] ?? 'Rp 0'),
+            'item_pajak' => (string) ($text['potongan_pajak_angka'] ?? $text['total_pajak_angka'] ?? $firstItem['item_pajak'] ?? '0'),
+            'item_pajak_rupiah' => (string) ($text['potongan_pajak'] ?? $text['total_pajak'] ?? $firstItem['item_pajak_rupiah'] ?? 'Rp 0'),
+            'item_volume' => $this->resolveTotalItemVolumeFallback($items, $text),
+            default => (string) ($firstItem[$itemKey] ?? ''),
+        };
+    }
+
+    /**
+     * @param  array<int, array<string, string>>  $items
+     * @param  array<string, string>  $text
+     */
+    protected function resolveTotalItemVolumeFallback(array $items, array $text): string
+    {
+        if (count($items) <= 1) {
+            return (string) ($items[0]['item_volume'] ?? $text['volume'] ?? '1');
+        }
+
+        $sumVolume = 0.0;
+        $hasNumeric = false;
+        foreach ($items as $row) {
+            $rawVol = str_replace(['.', ','], ['', '.'], (string) ($row['item_volume'] ?? ''));
+            if (is_numeric($rawVol)) {
+                $sumVolume += (float) $rawVol;
+                $hasNumeric = true;
+            }
+        }
+
+        if (! $hasNumeric) {
+            return (string) ($items[0]['item_volume'] ?? $text['volume'] ?? '1');
+        }
+
+        return floor($sumVolume) == $sumVolume
+            ? number_format($sumVolume, 0, ',', '.')
+            : rtrim(rtrim(number_format($sumVolume, 2, ',', '.'), '0'), ',');
     }
 
     /**
