@@ -155,6 +155,7 @@ class PenatausahaanController extends Controller
             'routePrefix' => VariantConfig::routePrefix($var),
             'sumberDanaOptions' => VariantConfig::sumberDanaOptions($var),
             'sumberDanaTahap1' => VariantConfig::sumberDanaTahap1($var),
+            'sumberDanaTahap2' => VariantConfig::sumberDanaTahap2($var),
         ]));
     }
 }

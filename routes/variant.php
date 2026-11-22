@@ -143,6 +143,7 @@ Route::prefix('penatausahaan')->name('penatausahaan.')->group(function () {
 Route::get('/penatausahaan/bku/rekap', [BukuKasUmumController::class, 'rekap'])->name('bku.rekap');
 
 // Penerimaan Dana
+Route::get('/penerimaan-dana/check-arkas/{penganggaranId}', [PenerimaanDanaController::class, 'checkArkas'])->name('penerimaan-dana.check-arkas');
 Route::post('/penerimaan-dana', [PenerimaanDanaController::class, 'store'])->name('penerimaan-dana.store');
 Route::delete('/penerimaan-dana/{id}', [PenerimaanDanaController::class, 'destroy'])->name('penerimaan-dana.destroy');
 

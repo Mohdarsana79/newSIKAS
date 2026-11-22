@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm, router, usePage } from '@inertiajs/react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import useVariantRoute from '@/Hooks/useVariantRoute';
 
 import Modal from '@/Components/Modal';
@@ -21,12 +21,57 @@ import IconTile from '@/Components/ui/IconTile';
 import StatusBadge from '@/Components/ui/StatusBadge';
 import EmptyState from '@/Components/ui/EmptyState';
 
+interface PenerimaanRecord {
+    id: number;
+    sumber_dana: string;
+    tanggal_terima: string;
+    jumlah_dana: number | string;
+    saldo_awal?: number | string | null;
+    tanggal_saldo_awal?: string | null;
+}
+
+interface ArkasPenerimaanItem {
+    tahap: number | null;
+    sumber_dana: string;
+    tanggal_terima: string;
+    jumlah_dana: number;
+    saldo_awal: number | null;
+    tanggal_saldo_awal: string | null;
+    uraian: string;
+    source: 'bku' | 'salur';
+    already_recorded: boolean;
+}
+
+interface ArkasPenerimaanResponse {
+    status: 'success' | 'error';
+    exists?: boolean;
+    tahun?: number;
+    sumber_dana_label?: string;
+    items?: ArkasPenerimaanItem[];
+    message?: string | null;
+}
+
+interface ArkasPenerimaanFeedback {
+    type: 'success' | 'warning' | 'error';
+    text: string;
+}
+
+function formatRupiahTextInput(amount: number): string {
+    return 'Rp ' + new Intl.NumberFormat('id-ID').format(Math.round(amount));
+}
+
 export default function Index({ tahunList, penganggaranList, statusPerTahun, tahun }: any) {
     const vroute = useVariantRoute();
     const pageProps = usePage<any>().props;
     const routePrefix = pageProps.routePrefix || '';
     const sumberDanaOptions: string[] = pageProps.sumberDanaOptions || [];
     const sumberDanaTahap1: string | null = pageProps.sumberDanaTahap1 || null;
+    const sumberDanaTahap2: string | null =
+        pageProps.sumberDanaTahap2 !== undefined
+            ? pageProps.sumberDanaTahap2
+            : sumberDanaOptions.length >= 2
+              ? sumberDanaOptions[1]
+              : null;
     
     let activeTab = 'BOSP Reguler';
     if (routePrefix === 'silpa-') activeTab = 'SiLPA BOSP Reguler';
@@ -34,10 +79,16 @@ export default function Index({ tahunList, penganggaranList, statusPerTahun, tah
     else if (routePrefix === 'kinerja-silpa-') activeTab = 'SiLPA BOSP Kinerja';
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [showCreateForm, setShowCreateForm] = useState(false);
-    const [penerimaanData, setPenerimaanData] = useState([]);
-    const [currentPenganggaranId, setCurrentPenganggaranId] = useState(null);
+    const [penerimaanData, setPenerimaanData] = useState<PenerimaanRecord[]>([]);
+    const [currentPenganggaranId, setCurrentPenganggaranId] = useState<number | null>(null);
     const [loading, setLoading] = useState(false);
     const [isValidationOpen, setIsValidationOpen] = useState(false); // Validation modal state
+
+    // ARKAS Penerimaan Dana Check States
+    const [isCheckingArkasPenerimaan, setIsCheckingArkasPenerimaan] = useState(false);
+    const [arkasPenerimaanResult, setArkasPenerimaanResult] = useState<ArkasPenerimaanResponse | null>(null);
+    const [arkasPenerimaanFeedback, setArkasPenerimaanFeedback] = useState<ArkasPenerimaanFeedback | null>(null);
+    const arkasPenerimaanAbortRef = useRef<AbortController | null>(null);
 
     // ARKAS BKU Pull States
     const [isArkasBkuModalOpen, setIsArkasBkuModalOpen] = useState(false);
@@ -132,30 +183,159 @@ export default function Index({ tahunList, penganggaranList, statusPerTahun, tah
         }
     };
 
+    const recordedSumberDanaSet = useMemo(
+        () => new Set(penerimaanData.map((item) => item.sumber_dana)),
+        [penerimaanData],
+    );
+
+    const hasTahap2Recorded = Boolean(sumberDanaTahap2 && recordedSumberDanaSet.has(sumberDanaTahap2));
+    const allStagesRecorded =
+        sumberDanaOptions.length > 0 && sumberDanaOptions.every((opt) => recordedSumberDanaSet.has(opt));
+    const shouldHideCreateButton = hasTahap2Recorded || allStagesRecorded;
+
+    useEffect(() => {
+        return () => {
+            arkasPenerimaanAbortRef.current?.abort();
+        };
+    }, []);
+
+    const resetArkasPenerimaanState = () => {
+        arkasPenerimaanAbortRef.current?.abort();
+        setIsCheckingArkasPenerimaan(false);
+        setArkasPenerimaanResult(null);
+        setArkasPenerimaanFeedback(null);
+    };
+
+    const applyArkasItemToForm = (item: ArkasPenerimaanItem) => {
+        const supportsSaldoAwal = Boolean(sumberDanaTahap1 && item.sumber_dana === sumberDanaTahap1);
+
+        setData((prev) => ({
+            ...prev,
+            penganggaran_id: currentPenganggaranId ? String(currentPenganggaranId) : prev.penganggaran_id,
+            sumber_dana: item.sumber_dana,
+            tanggal_terima: item.tanggal_terima || '',
+            jumlah_dana: item.jumlah_dana > 0 ? formatRupiahTextInput(item.jumlah_dana) : '',
+            saldo_awal:
+                supportsSaldoAwal && item.saldo_awal && item.saldo_awal > 0
+                    ? formatRupiahTextInput(item.saldo_awal)
+                    : '',
+            tanggal_saldo_awal:
+                supportsSaldoAwal && item.saldo_awal && item.saldo_awal > 0
+                    ? item.tanggal_saldo_awal || ''
+                    : '',
+        }));
+        clearErrors();
+        setShowCreateForm(true);
+        setArkasPenerimaanFeedback({
+            type: 'success',
+            text: `Data ${item.sumber_dana} (${formatCurrency(item.jumlah_dana)}) berhasil diisi dari ARKAS. Periksa kembali lalu klik Simpan Penerimaan.`,
+        });
+    };
+
+    const handleCheckArkasPenerimaan = async (mode: 'list' | 'form') => {
+        if (!currentPenganggaranId) {
+            setArkasPenerimaanFeedback({
+                type: 'warning',
+                text: 'Data penganggaran untuk tahun ini belum ditemukan. Buat penganggaran terlebih dahulu.',
+            });
+            return;
+        }
+
+        arkasPenerimaanAbortRef.current?.abort();
+        const controller = new AbortController();
+        arkasPenerimaanAbortRef.current = controller;
+
+        setIsCheckingArkasPenerimaan(true);
+        setArkasPenerimaanFeedback(null);
+
+        try {
+            const response = await axios.get<ArkasPenerimaanResponse>(
+                vroute('penerimaan-dana.check-arkas', currentPenganggaranId),
+                { signal: controller.signal },
+            );
+
+            if (controller.signal.aborted) return;
+
+            const payload = response.data;
+            setArkasPenerimaanResult(payload);
+
+            const items = payload.items ?? [];
+            if (payload.status === 'success' && payload.exists && items.length > 0) {
+                if (mode === 'form') {
+                    const matched = data.sumber_dana
+                        ? items.find((it) => it.sumber_dana === data.sumber_dana)
+                        : items.find((it) => !it.already_recorded && !recordedSumberDanaSet.has(it.sumber_dana));
+
+                    if (matched) {
+                        if (matched.already_recorded || recordedSumberDanaSet.has(matched.sumber_dana)) {
+                            setArkasPenerimaanFeedback({
+                                type: 'warning',
+                                text: `Data ${matched.sumber_dana} di ARKAS (${formatCurrency(matched.jumlah_dana)}) sudah tercatat di SIKAS.`,
+                            });
+                        } else {
+                            applyArkasItemToForm(matched);
+                        }
+                    } else if (data.sumber_dana) {
+                        setArkasPenerimaanFeedback({
+                            type: 'warning',
+                            text: `Data penerimaan untuk ${data.sumber_dana} belum ditemukan di ARKAS untuk tahun ${payload.tahun ?? tahun}.`,
+                        });
+                    } else {
+                        setArkasPenerimaanFeedback({
+                            type: 'warning',
+                            text: 'Seluruh data penerimaan yang ditemukan di ARKAS sudah tercatat di SIKAS.',
+                        });
+                    }
+                }
+            } else {
+                setArkasPenerimaanFeedback({
+                    type: 'warning',
+                    text:
+                        payload.message ||
+                        `Tidak ditemukan data penerimaan dana ${activeTab} di ARKAS untuk tahun ${payload.tahun ?? tahun}.`,
+                });
+            }
+        } catch (error: any) {
+            if (axios.isCancel(error)) return;
+            setArkasPenerimaanResult(null);
+            setArkasPenerimaanFeedback({
+                type: 'error',
+                text: error?.response?.data?.message || error?.message || 'Gagal mengecek penerimaan dana di ARKAS.',
+            });
+        } finally {
+            if (!controller.signal.aborted) {
+                setIsCheckingArkasPenerimaan(false);
+            }
+        }
+    };
+
     const openModal = () => {
+        resetArkasPenerimaanState();
         setIsModalOpen(true);
         setShowCreateForm(false);
         reset();
         clearErrors();
         if (currentPenganggaranId) {
             // We need to set it AFTER reset
-            setData((data) => ({ ...data, penganggaran_id: currentPenganggaranId }));
+            setData((data) => ({ ...data, penganggaran_id: String(currentPenganggaranId) }));
             fetchPenerimaanData(currentPenganggaranId);
         }
     };
 
     const closeModal = () => {
+        resetArkasPenerimaanState();
         setIsModalOpen(false);
         setShowCreateForm(false);
         reset();
     };
 
     const handleCreateClick = () => {
+        setArkasPenerimaanFeedback(null);
         setShowCreateForm(true);
         // Ensure penganggaran_id is set and clear others
         setData((data) => ({
             ...data,
-            penganggaran_id: currentPenganggaranId || '',
+            penganggaran_id: currentPenganggaranId ? String(currentPenganggaranId) : '',
             sumber_dana: '',
             tanggal_terima: '',
             jumlah_dana: '',
@@ -166,21 +346,24 @@ export default function Index({ tahunList, penganggaranList, statusPerTahun, tah
     };
 
     const handleBackToList = () => {
+        setArkasPenerimaanFeedback(null);
         setShowCreateForm(false);
         reset();
         clearErrors();
         // Re-inject penganggaran_id because reset cleared it
-        setData('penganggaran_id', currentPenganggaranId || '');
+        setData('penganggaran_id', currentPenganggaranId ? String(currentPenganggaranId) : '');
     };
 
     const submitPenerimaan = (e: any) => {
         e.preventDefault();
         post(vroute('penerimaan-dana.store'), {
             onSuccess: () => {
+                resetArkasPenerimaanState();
                 setShowCreateForm(false);
                 fetchPenerimaanData(currentPenganggaranId);
                 reset();
-                setData('penganggaran_id', currentPenganggaranId || ''); // Keep ID
+                setData('penganggaran_id', currentPenganggaranId ? String(currentPenganggaranId) : ''); // Keep ID
+                router.reload({ only: ['penganggaranList', 'statusPerTahun'] });
             },
         });
     };
@@ -464,10 +647,118 @@ export default function Index({ tahunList, penganggaranList, statusPerTahun, tah
                     <div className="px-6 py-5">
                         {!showCreateForm ? (
                             <>
+                                {/* Bar Aksi Cek ARKAS */}
+                                <div className="mb-4 flex flex-wrap items-center justify-between gap-2.5 rounded-2xl border border-slate-100 bg-slate-50/70 px-4 py-3 dark:border-white/5 dark:bg-white/[0.02]">
+                                    <div className="min-w-0">
+                                        <p className="text-[11.5px] font-extrabold text-slate-800 dark:text-slate-100">
+                                            Sinkronisasi &amp; Verifikasi ARKAS
+                                        </p>
+                                        <p className="text-[10.5px] font-medium text-slate-400 dark:text-slate-500">
+                                            Cek data salur &amp; penerimaan dana BKU dari aplikasi ARKAS untuk tahun {tahun}.
+                                        </p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => void handleCheckArkasPenerimaan('list')}
+                                        disabled={isCheckingArkasPenerimaan || !currentPenganggaranId}
+                                        className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-brand-500/25 bg-brand-600 px-3.5 py-2 text-[11px] font-extrabold text-white shadow-sm transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-brand-500 dark:hover:bg-brand-400"
+                                    >
+                                        {isCheckingArkasPenerimaan ? (
+                                            <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                            </svg>
+                                        ) : (
+                                            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.2-5.2M10.5 18a7.5 7.5 0 100-15 7.5 7.5 0 000 15z" />
+                                            </svg>
+                                        )}
+                                        {isCheckingArkasPenerimaan ? 'Mengecek ARKAS...' : 'Cek dari ARKAS'}
+                                    </button>
+                                </div>
+
+                                {arkasPenerimaanFeedback && (
+                                    <div
+                                        role={arkasPenerimaanFeedback.type === 'error' ? 'alert' : 'status'}
+                                        className={`mb-4 rounded-2xl border px-4 py-3 text-[11.5px] font-bold ${
+                                            arkasPenerimaanFeedback.type === 'success'
+                                                ? 'border-emerald-200 bg-emerald-50/90 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200'
+                                                : arkasPenerimaanFeedback.type === 'warning'
+                                                  ? 'border-amber-200 bg-amber-50/90 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200'
+                                                  : 'border-rose-200 bg-rose-50/90 text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200'
+                                        }`}
+                                    >
+                                        {arkasPenerimaanFeedback.text}
+                                    </div>
+                                )}
+
+                                {arkasPenerimaanResult?.exists &&
+                                    arkasPenerimaanResult.items &&
+                                    arkasPenerimaanResult.items.length > 0 && (
+                                        <div className="mb-5 rounded-2xl border border-brand-200/80 bg-brand-50/40 p-4 dark:border-brand-400/20 dark:bg-brand-500/[0.06]">
+                                            <div className="mb-2.5 flex items-center justify-between gap-2">
+                                                <p className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-brand-700 dark:text-brand-300">
+                                                    Hasil Cek ARKAS · {arkasPenerimaanResult.sumber_dana_label} {arkasPenerimaanResult.tahun}
+                                                </p>
+                                                <span className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400">
+                                                    {arkasPenerimaanResult.items.length} data ditemukan
+                                                </span>
+                                            </div>
+                                            <div className="space-y-2">
+                                                {arkasPenerimaanResult.items.map((arkasItem, idx) => {
+                                                    const isRecorded =
+                                                        arkasItem.already_recorded ||
+                                                        recordedSumberDanaSet.has(arkasItem.sumber_dana);
+                                                    return (
+                                                        <div
+                                                            key={`${arkasItem.sumber_dana}-${arkasItem.tanggal_terima}-${idx}`}
+                                                            className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/80 bg-white px-3.5 py-2.5 shadow-sm dark:border-white/10 dark:bg-[#1A1828]"
+                                                        >
+                                                            <div className="min-w-0 flex-1">
+                                                                <div className="flex flex-wrap items-center gap-1.5">
+                                                                    <span className="text-[12px] font-extrabold text-slate-900 dark:text-white">
+                                                                        {arkasItem.sumber_dana}
+                                                                    </span>
+                                                                    <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[9.5px] font-bold text-slate-600 dark:bg-white/10 dark:text-slate-300">
+                                                                        {arkasItem.source === 'salur' ? 'Data Salur' : 'BKU ARKAS'}
+                                                                    </span>
+                                                                </div>
+                                                                <p className="mt-0.5 text-[10.5px] font-medium text-slate-500 dark:text-slate-400">
+                                                                    Diterima: {formatDate(arkasItem.tanggal_terima)}
+                                                                    {arkasItem.saldo_awal && arkasItem.saldo_awal > 0
+                                                                        ? ` · Saldo Awal: ${formatCurrency(arkasItem.saldo_awal)}`
+                                                                        : ''}
+                                                                </p>
+                                                            </div>
+                                                            <div className="flex items-center gap-3">
+                                                                <span className="text-sikas-num text-[12.5px] font-extrabold text-slate-900 dark:text-white">
+                                                                    {formatCurrency(arkasItem.jumlah_dana)}
+                                                                </span>
+                                                                {isRecorded ? (
+                                                                    <span className="rounded-lg bg-emerald-50 px-2.5 py-1 text-[10px] font-extrabold text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:ring-emerald-500/25">
+                                                                        Sudah Tercatat
+                                                                    </span>
+                                                                ) : (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => applyArkasItemToForm(arkasItem)}
+                                                                        className="rounded-lg bg-slate-900 px-2.5 py-1.5 text-[10.5px] font-extrabold text-lime-300 shadow-sm transition hover:bg-slate-800 dark:bg-lime-400 dark:text-slate-950 dark:hover:bg-lime-300"
+                                                                    >
+                                                                        Isi ke Form
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
+
                                 {/* History List */}
                                 <div className="mb-5 space-y-3">
                                     {penerimaanData.length > 0 ? (
-                                        penerimaanData.map((item: any) => (
+                                        penerimaanData.map((item) => (
                                             <div key={item.id} className="rounded-2xl border border-slate-100 bg-slate-50/70 p-4 transition hover:border-slate-200 dark:border-white/5 dark:bg-white/[0.02] dark:hover:border-white/10">
                                                 <div className="flex items-start justify-between gap-3">
                                                     <div className="min-w-0">
@@ -490,7 +781,7 @@ export default function Index({ tahunList, penganggaranList, statusPerTahun, tah
                                                         </span>
                                                     </div>
                                                 </div>
-                                                {item.saldo_awal && (
+                                                {item.saldo_awal && Number(item.saldo_awal) > 0 && (
                                                     <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2.5 text-[11px] dark:border-white/5">
                                                         <span className="font-semibold text-slate-500 dark:text-slate-400">
                                                             Saldo Awal ({formatDate(item.tanggal_saldo_awal)})
@@ -511,26 +802,47 @@ export default function Index({ tahunList, penganggaranList, statusPerTahun, tah
                                     )}
                                 </div>
 
-                                {/* Add Button Box */}
-                                <button
-                                    type="button"
-                                    onClick={handleCreateClick}
-                                    className="group flex w-full items-center gap-3.5 rounded-2xl border-2 border-dashed border-slate-200 p-4 text-left transition-all hover:border-brand-400 hover:bg-brand-50/40 dark:border-white/10 dark:hover:border-brand-500/30 dark:hover:bg-brand-500/5"
-                                >
-                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600 transition group-hover:bg-brand-500 group-hover:text-white dark:bg-white/5 dark:text-slate-300 dark:group-hover:bg-brand-500 dark:group-hover:text-white">
-                                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-                                        </svg>
+                                {/* Add Button Box / Banner Lengkap */}
+                                {shouldHideCreateButton ? (
+                                    <div
+                                        role="status"
+                                        className="flex items-center gap-3 rounded-2xl border border-emerald-200/80 bg-emerald-50/80 px-4 py-3.5 text-emerald-800 dark:border-emerald-500/25 dark:bg-emerald-500/10 dark:text-emerald-200"
+                                    >
+                                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300">
+                                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                            </svg>
+                                        </span>
+                                        <div className="min-w-0">
+                                            <p className="text-[12px] font-extrabold">
+                                                Seluruh penerimaan dana pada tahun ini sudah tercatat.
+                                            </p>
+                                            <p className="mt-0.5 text-[10.5px] font-medium opacity-85">
+                                                Anda tetap dapat menekan tombol Cek dari ARKAS di atas kapan saja untuk memverifikasi kesesuaian data.
+                                            </p>
+                                        </div>
                                     </div>
-                                    <div className="min-w-0 flex-1">
-                                        <h4 className="text-[12.5px] font-extrabold text-slate-900 transition group-hover:text-brand-600 dark:text-white dark:group-hover:text-brand-300">
-                                            Tambah Penerimaan Tahap Berikutnya
-                                        </h4>
-                                        <p className="mt-0.5 text-[10.5px] font-medium text-slate-400 dark:text-slate-500">
-                                            Klik untuk membuka formulir pencatatan dana masuk BKU.
-                                        </p>
-                                    </div>
-                                </button>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        onClick={handleCreateClick}
+                                        className="group flex w-full items-center gap-3.5 rounded-2xl border-2 border-dashed border-slate-200 p-4 text-left transition-all hover:border-brand-400 hover:bg-brand-50/40 dark:border-white/10 dark:hover:border-brand-500/30 dark:hover:bg-brand-500/5"
+                                    >
+                                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600 transition group-hover:bg-brand-500 group-hover:text-white dark:bg-white/5 dark:text-slate-300 dark:group-hover:bg-brand-500 dark:group-hover:text-white">
+                                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                                            </svg>
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                            <h4 className="text-[12.5px] font-extrabold text-slate-900 transition group-hover:text-brand-600 dark:text-white dark:group-hover:text-brand-300">
+                                                Tambah Penerimaan Tahap Berikutnya
+                                            </h4>
+                                            <p className="mt-0.5 text-[10.5px] font-medium text-slate-400 dark:text-slate-500">
+                                                Klik untuk membuka formulir pencatatan dana masuk BKU.
+                                            </p>
+                                        </div>
+                                    </button>
+                                )}
 
                                 <div className="mt-6 flex justify-end gap-2 border-t border-slate-100 pt-4 dark:border-white/5">
                                     <SecondaryButton onClick={closeModal}>Tutup</SecondaryButton>
@@ -539,15 +851,51 @@ export default function Index({ tahunList, penganggaranList, statusPerTahun, tah
                         ) : (
                             /* Form View - Grouped Neo-Bento Panels */
                             <form onSubmit={submitPenerimaan} className="space-y-4">
+                                {arkasPenerimaanFeedback && (
+                                    <div
+                                        role={arkasPenerimaanFeedback.type === 'error' ? 'alert' : 'status'}
+                                        className={`rounded-2xl border px-4 py-3 text-[11.5px] font-bold ${
+                                            arkasPenerimaanFeedback.type === 'success'
+                                                ? 'border-emerald-200 bg-emerald-50/90 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200'
+                                                : arkasPenerimaanFeedback.type === 'warning'
+                                                  ? 'border-amber-200 bg-amber-50/90 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200'
+                                                  : 'border-rose-200 bg-rose-50/90 text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200'
+                                        }`}
+                                    >
+                                        {arkasPenerimaanFeedback.text}
+                                    </div>
+                                )}
+
                                 {/* Panel 1: Sumber & Waktu Penerimaan */}
                                 <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4 dark:border-white/5 dark:bg-white/[0.02]">
-                                    <div className="mb-3.5 flex items-center gap-2">
-                                        <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-pastel-lavender text-[10.5px] font-extrabold text-brand-600 dark:bg-brand-500/20 dark:text-brand-300">
-                                            1
-                                        </span>
-                                        <h3 className="text-[12px] font-extrabold text-slate-900 dark:text-white">
-                                            Sumber & Waktu Penerimaan
-                                        </h3>
+                                    <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2">
+                                        <div className="flex items-center gap-2">
+                                            <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-pastel-lavender text-[10.5px] font-extrabold text-brand-600 dark:bg-brand-500/20 dark:text-brand-300">
+                                                1
+                                            </span>
+                                            <h3 className="text-[12px] font-extrabold text-slate-900 dark:text-white">
+                                                Sumber &amp; Waktu Penerimaan
+                                            </h3>
+                                        </div>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => void handleCheckArkasPenerimaan('form')}
+                                            disabled={isCheckingArkasPenerimaan || !currentPenganggaranId}
+                                            className="inline-flex items-center gap-1.5 rounded-xl border border-brand-500/25 bg-brand-600 px-3 py-1.5 text-[11px] font-extrabold text-white shadow-sm transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-brand-500 dark:hover:bg-brand-400"
+                                        >
+                                            {isCheckingArkasPenerimaan ? (
+                                                <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                                </svg>
+                                            ) : (
+                                                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.2-5.2M10.5 18a7.5 7.5 0 100-15 7.5 7.5 0 000 15z" />
+                                                </svg>
+                                            )}
+                                            {isCheckingArkasPenerimaan ? 'Mengecek ARKAS...' : 'Cek dari ARKAS'}
+                                        </button>
                                     </div>
 
                                     <div className="space-y-3.5">
@@ -561,9 +909,14 @@ export default function Index({ tahunList, penganggaranList, statusPerTahun, tah
                                                 required
                                             >
                                                 <option value="">Pilih Sumber Dana</option>
-                                                {sumberDanaOptions.map((opt: string) => (
-                                                    <option key={opt} value={opt}>{opt}</option>
-                                                ))}
+                                                {sumberDanaOptions.map((opt: string) => {
+                                                    const isRecorded = recordedSumberDanaSet.has(opt);
+                                                    return (
+                                                        <option key={opt} value={opt} disabled={isRecorded}>
+                                                            {isRecorded ? `${opt} (Sudah tercatat)` : opt}
+                                                        </option>
+                                                    );
+                                                })}
                                             </select>
                                             <InputError message={errors.sumber_dana} className="mt-1.5" />
                                         </div>

@@ -4,7 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Config\VariantConfig;
 use App\Models\PenerimaanDana;
-use App\Models\Penganggaran;
+use App\Services\ArkasEngineService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
@@ -179,6 +180,91 @@ class PenerimaanDanaController extends Controller
             // Always redirect back with error for Inertia requests
             return redirect()->back()->with('error', 'Gagal menghapus penerimaan dana: '.$e->getMessage());
         }
+    }
+
+    /**
+     * Memeriksa data penerimaan dana (Tahap 1 / Tahap 2 / SiLPA & Saldo Awal) dari database ARKAS
+     * untuk penganggaran dan varian BOSP aktif.
+     */
+    public function checkArkas(int $penganggaranId, ArkasEngineService $arkasEngine): JsonResponse
+    {
+        $penganggaran = ($this->Penganggaran)::findOrFail($penganggaranId);
+        $tahun = (int) $penganggaran->tahun_anggaran;
+        $sumberDanaId = VariantConfig::arkasSumberDanaId($this->variant);
+
+        $result = $arkasEngine->runScriptRaw(
+            'check_penerimaan.py',
+            [(string) $tahun, (string) $sumberDanaId],
+            30
+        );
+
+        if (($result['status'] ?? null) === 'error' || isset($result['error'])) {
+            return response()->json([
+                'status' => 'error',
+                'error_type' => (string) ($result['error_type'] ?? 'ARKAS_ERROR'),
+                'message' => (string) ($result['message'] ?? $result['error'] ?? 'Gagal mengecek penerimaan dana di ARKAS.'),
+            ], 422);
+        }
+
+        $fk = VariantConfig::penganggaranFk($this->variant);
+        $recordedSumberDanas = ($this->PenerimaanDana)::where($fk, $penganggaran->id)
+            ->pluck('sumber_dana')
+            ->map(static fn ($val) => (string) $val)
+            ->all();
+        $recordedLookup = array_flip($recordedSumberDanas);
+
+        $sumberDanaOptions = VariantConfig::sumberDanaOptions($this->variant);
+        $tahap1Option = VariantConfig::sumberDanaTahap1($this->variant);
+        $tahap2Option = VariantConfig::sumberDanaTahap2($this->variant);
+
+        $saldoAwal = round((float) ($result['saldo_awal'] ?? 0), 2);
+        $tanggalSaldoAwal = $saldoAwal > 0 && ! empty($result['tanggal_saldo_awal'])
+            ? substr((string) $result['tanggal_saldo_awal'], 0, 10)
+            : null;
+
+        $rawItems = is_array($result['items'] ?? null) ? $result['items'] : [];
+        $mappedItems = [];
+
+        foreach ($rawItems as $item) {
+            if (! is_array($item)) {
+                continue;
+            }
+
+            $tahap = isset($item['tahap']) && is_numeric($item['tahap']) ? (int) $item['tahap'] : null;
+            if ($tahap2Option !== null && count($sumberDanaOptions) >= 2) {
+                $mappedSumberDana = $tahap === 2 ? $sumberDanaOptions[1] : $sumberDanaOptions[0];
+            } else {
+                $mappedSumberDana = $sumberDanaOptions[0] ?? VariantConfig::title($this->variant);
+            }
+
+            $supportsSaldoAwal = $tahap1Option !== null && $mappedSumberDana === $tahap1Option;
+            $sourceRaw = (string) ($item['source'] ?? 'bku');
+
+            $mappedItems[] = [
+                'tahap' => $tahap,
+                'sumber_dana' => $mappedSumberDana,
+                'tanggal_terima' => ! empty($item['tanggal_terima']) ? substr((string) $item['tanggal_terima'], 0, 10) : '',
+                'jumlah_dana' => round((float) ($item['jumlah_dana'] ?? 0), 2),
+                'saldo_awal' => $supportsSaldoAwal && $saldoAwal > 0 ? $saldoAwal : null,
+                'tanggal_saldo_awal' => $supportsSaldoAwal && $saldoAwal > 0 ? $tanggalSaldoAwal : null,
+                'uraian' => trim((string) ($item['uraian'] ?? '')),
+                'source' => $sourceRaw === 'salur' ? 'salur' : 'bku',
+                'already_recorded' => isset($recordedLookup[$mappedSumberDana]),
+            ];
+        }
+
+        $exists = (bool) ($result['exists'] ?? false) && count($mappedItems) > 0;
+
+        return response()->json([
+            'status' => 'success',
+            'exists' => $exists,
+            'tahun' => $tahun,
+            'sumber_dana_label' => (string) ($result['sumber_dana'] ?? VariantConfig::title($this->variant)),
+            'items' => $mappedItems,
+            'message' => $exists
+                ? null
+                : (string) ($result['message'] ?? "Tidak ditemukan data penerimaan dana di ARKAS untuk Tahun {$tahun}."),
+        ]);
     }
 
     /**
