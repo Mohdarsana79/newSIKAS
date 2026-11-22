@@ -142,14 +142,16 @@ Langkah query:
 
 ### 3.2 Tombol "Salin Data Kepala Sekolah, Bendahara & Komite dari Tahun Sebelumnya"
 - Diletakkan sebagai bilah aksi ringkas tepat di antara seksi *Informasi Dasar* dan seksi *Data Kepala Sekolah* (atau di bagian atas seksi penanggung jawab) sehingga alurnya alami: pengguna bisa klik **Cek Anggaran** dulu, lalu bila nama KS/Bendahara/Komite tidak sesuai atau butuh Nomor & Tanggal SK tahun lalu, tinggal 1 klik **Salin dari Tahun Sebelumnya**.
-- Algoritma pemilihan kandidat sumber (`resolvePreviousOfficialSource(targetYear)`):
-  1. Cari di `official_history` yang `source_variant === variant` dan `Number(tahun_anggaran) < targetYear` dengan tahun paling dekat (terbesar).
-  2. Jika tidak ada, cari di `official_history` yang `source_variant === 'reguler'` dan `Number(tahun_anggaran) < targetYear` dengan tahun paling dekat.
-  3. Jika masih tidak ada dan `variant !== 'reguler'`, cari di `official_history` yang `source_variant === 'reguler'` dan `Number(tahun_anggaran) === targetYear` (memudahkan saat sudah menginput BOSP Reguler tahun berjalan lalu menambah Kinerja/SiLPA tahun yang sama).
+- Sumber riwayat efektif (`buildEffectiveOfficialHistory`): gunakan prop `official_history` dari backend; bila kosong (mis. belum *full refresh* saat Vite HMR atau *partial reload* Inertia) tetapi prop `anggarans` sudah terisi, otomatis petakan `anggarans` ke format `OfficialHistoryItem[]` dengan normalisasi tanggal `YYYY-MM-DD`.
+- Algoritma pemilihan kandidat sumber (`resolvePreviousOfficialSource(history, activeVariant, targetYear)`):
+  1. Cari di riwayat efektif yang `source_variant === activeVariant` dan `Number(tahun_anggaran) < targetYear` dengan tahun paling dekat (terbesar).
+  2. Jika tidak ada dan `activeVariant !== 'reguler'`, cari yang `source_variant === 'reguler'` dan `Number(tahun_anggaran) < targetYear` dengan tahun paling dekat.
+  3. Jika masih tidak ada dan `activeVariant !== 'reguler'`, cari yang `source_variant === 'reguler'` dan `Number(tahun_anggaran) === targetYear` (memudahkan saat sudah menginput BOSP Reguler tahun berjalan lalu menambah Kinerja/SiLPA tahun yang sama).
+  4. Jika tetap belum ada (mis. sedang membuat/mengedit tahun paling awal sehingga belum ada tahun `< targetYear`), cari tahun lain terdekat (`!== targetYear`) dengan prioritas `source_variant === activeVariant` terlebih dahulu lalu `source_variant === 'reguler'` (diurutkan berdasarkan jarak tahun terkecil, tie-breaker tahun lebih baru).
 - Saat diklik (`handleCopyPreviousOfficials()`):
   - Menyalin seluruh 9 field (`komite`, `kepala_sekolah`, `nip_kepala_sekolah`, `sk_kepala_sekolah`, `tanggal_sk_kepala_sekolah`, `bendahara`, `nip_bendahara`, `sk_bendahara`, `tanggal_sk_bendahara`) ke state form tanpa mengubah `pagu_anggaran` maupun `tahun_anggaran`.
-  - Menampilkan banner feedback inline sukses yang menyebut sumber tahun & variannya (mis. *"Data Kepala Sekolah, Bendahara & Komite (termasuk Nomor & Tanggal SK) disalin dari BOSP Reguler 2025."*).
-- Jika tidak ada kandidat riwayat yang tersedia, tombol dinonaktifkan (*disabled*) dengan teks bantu singkat (*"Belum ada data tahun sebelumnya untuk disalin"*).
+  - Menampilkan banner feedback inline sukses yang menyebut sumber tahun & variannya (mis. *"Data Kepala Sekolah, Bendahara & Komite (termasuk Nomor & Tanggal SK) disalin dari BOSP Reguler 2026."*).
+- Jika memang belum ada satu pun data anggaran lain untuk disalin, tombol dinonaktifkan (*disabled*) dengan teks bantu singkat (*"Belum ada riwayat data penanggung jawab dari tahun anggaran lain untuk disalin."*).
 - Semua status feedback & saran tahun direset bersih setiap kali modal dibuka (`handleCreate` / `handleEdit`) atau ditutup (`handleCloseModal`).
 
 ---
