@@ -1,10 +1,13 @@
 import { forwardRef } from 'react';
+import { POSTER_PAPER_SIZES } from '../paperSizes';
 import type { PosterTheme } from '../themes';
-import type { PosterData, PosterJenisBelanjaItem, PosterTrenBulananItem } from '../types';
+import type { PosterData, PosterJenisBelanjaItem, PosterPaperSize, PosterTrenBulananItem } from '../types';
 
 interface PosterCanvasProps {
     data: PosterData;
     theme: PosterTheme;
+    paperSize?: PosterPaperSize;
+    framed?: boolean;
     showSignatures: boolean;
     showMonthlyTrend: boolean;
     transparencyNote: string;
@@ -42,35 +45,47 @@ function formatNip(nip?: string): string {
 }
 
 /**
- * Kanvas poster infografis siap cetak (lebar desain standar 794px proporsional A4/A3 portrait).
- * Selalu menggunakan warna terang eksplisit agar hasil cetak & PNG HD bebas distorsi dark mode.
+ * Kanvas poster infografis siap cetak (lebar desain standar 794px dengan tinggi adaptif sesuai ukuran kertas).
+ * Selalu menggunakan warna terang eksplisit agar hasil ekspor PNG 300 DPI bebas distorsi dark mode.
  */
 const PosterCanvas = forwardRef<HTMLDivElement, PosterCanvasProps>(function PosterCanvas(
-    { data, theme, showSignatures, showMonthlyTrend, transparencyNote, hideNip = false },
+    {
+        data,
+        theme,
+        paperSize = 'a4',
+        framed = true,
+        showSignatures,
+        showMonthlyTrend,
+        transparencyNote,
+        hideNip = false,
+    },
     ref,
 ) {
     const { meta, sekolah, ringkasan, jenis_belanja, program_snp, tren_bulanan, penanggung_jawab } = data;
     const maxProgramNominal = Math.max(...program_snp.map((p) => p.nominal), 1);
+    const paperSpec = POSTER_PAPER_SIZES[paperSize];
+    const isCompact = paperSpec.density === 'compact';
 
     return (
         <div
             ref={ref}
             id="transparansi-poster-sheet"
             style={{
-                width: '794px',
+                width: `${paperSpec.designWidth}px`,
+                minHeight: `${paperSpec.designHeight}px`,
                 backgroundColor: theme.pageBg,
                 color: '#0F172A',
                 fontFamily: "'Plus Jakarta Sans', system-ui, -apple-system, sans-serif",
-                WebkitPrintColorAdjust: 'exact',
-                printColorAdjust: 'exact',
             }}
-            className="mx-auto overflow-hidden rounded-[22px] border border-slate-200/90 shadow-xl print:w-full print:rounded-none print:border-0 print:shadow-none"
+            className={`mx-auto flex flex-col overflow-hidden ${
+                framed ? 'rounded-[22px] border border-slate-200/90 shadow-xl' : ''
+            }`}
         >
             {/* 1. HEADER HERO SEKOLAH */}
             <header
                 id="transparansi-poster-header"
                 style={{ backgroundColor: theme.headerBg }}
-                className="relative overflow-hidden px-7 pb-6 pt-6 text-white"
+                className={`relative overflow-hidden text-white ${isCompact ? 'px-6 pb-4 pt-4' : 'px-7 pb-6 pt-6'}`}
             >
                 <div
                     aria-hidden="true"
@@ -145,7 +160,11 @@ const PosterCanvas = forwardRef<HTMLDivElement, PosterCanvasProps>(function Post
                 </div>
 
                 {/* Strip Periode & Status */}
-                <div className="relative mt-4 flex items-center justify-between gap-3 rounded-2xl border border-white/15 bg-white/[0.08] px-4 py-2.5">
+                <div
+                    className={`relative flex items-center justify-between gap-3 rounded-2xl border border-white/15 bg-white/[0.08] px-4 ${
+                        isCompact ? 'mt-3 py-2' : 'mt-4 py-2.5'
+                    }`}
+                >
                     <div className="flex items-center gap-2">
                         <span
                             style={{
@@ -168,7 +187,11 @@ const PosterCanvas = forwardRef<HTMLDivElement, PosterCanvasProps>(function Post
             </header>
 
             {/* 2. BODY INFOGRAFIS */}
-            <div className="space-y-4 px-6 py-5">
+            <div
+                className={`flex flex-1 flex-col justify-between ${
+                    isCompact ? 'gap-2.5 px-5 py-3.5' : 'gap-4 px-6 py-5'
+                }`}
+            >
                 {/* 4 Kartu KPI Keuangan */}
                 <div className="grid grid-cols-4 gap-3">
                     <KpiTile
@@ -409,7 +432,7 @@ const PosterCanvas = forwardRef<HTMLDivElement, PosterCanvasProps>(function Post
                 {showSignatures && (
                     <div
                         style={{ borderColor: theme.cardBorder }}
-                        className="rounded-2xl border bg-white px-5 py-4 shadow-sm"
+                        className={`rounded-2xl border bg-white shadow-sm ${isCompact ? 'px-4 py-3' : 'px-5 py-4'}`}
                     >
                         <div className="mb-2 flex items-center justify-between text-[10px] font-semibold text-slate-500">
                             <span>Diterbitkan secara resmi sebagai bentuk akuntabilitas pengelolaan Dana BOSP</span>
@@ -419,21 +442,24 @@ const PosterCanvas = forwardRef<HTMLDivElement, PosterCanvasProps>(function Post
                             </span>
                         </div>
 
-                        <div className="grid grid-cols-3 gap-4 pt-2 text-center">
+                        <div className={`grid grid-cols-3 gap-4 text-center ${isCompact ? 'pt-1' : 'pt-2'}`}>
                             <SignatureColumn
                                 role="Mengetahui, Kepala Sekolah"
                                 name={penanggung_jawab.kepala_sekolah}
                                 nip={hideNip ? 'Kepala Sekolah' : formatNip(penanggung_jawab.nip_kepala_sekolah)}
+                                compact={isCompact}
                             />
                             <SignatureColumn
                                 role="Bendahara Dana BOSP"
                                 name={penanggung_jawab.bendahara}
                                 nip={hideNip ? 'Bendahara BOSP' : formatNip(penanggung_jawab.nip_bendahara)}
+                                compact={isCompact}
                             />
                             <SignatureColumn
                                 role="Menyetujui, Ketua Komite"
                                 name={penanggung_jawab.komite}
                                 nip="Komite Sekolah"
+                                compact={isCompact}
                             />
                         </div>
                     </div>
@@ -649,11 +675,21 @@ function MonthlyBarChartSvg({
     );
 }
 
-function SignatureColumn({ role, name, nip }: { role: string; name: string; nip: string }) {
+function SignatureColumn({
+    role,
+    name,
+    nip,
+    compact = false,
+}: {
+    role: string;
+    name: string;
+    nip: string;
+    compact?: boolean;
+}) {
     return (
         <div className="flex flex-col items-center">
             <p className="text-[10px] font-bold text-slate-600">{role}</p>
-            <div className="my-6 h-8 w-36 border-b border-dashed border-slate-300" />
+            <div className={`w-36 border-b border-dashed border-slate-300 ${compact ? 'my-4 h-7' : 'my-6 h-8'}`} />
             <p className="max-w-[200px] truncate text-[11px] font-extrabold text-slate-900" title={name}>
                 {name}
             </p>

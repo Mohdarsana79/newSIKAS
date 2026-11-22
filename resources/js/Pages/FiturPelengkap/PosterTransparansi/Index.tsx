@@ -7,7 +7,6 @@ import Surface from '@/Components/ui/Surface';
 import useVariantRoute from '@/Hooks/useVariantRoute';
 import { Head, router } from '@inertiajs/react';
 import axios from 'axios';
-import { toPng } from 'html-to-image';
 import {
     AlertTriangle,
     Calendar,
@@ -16,11 +15,12 @@ import {
     FileImage,
     Palette,
     Presentation,
-    Printer,
     SlidersHorizontal,
     Sparkles,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { exportPosterToPng } from './exportPosterPng';
+import { POSTER_PAPER_SIZES, POSTER_PAPER_SIZE_LIST } from './paperSizes';
 import PosterCanvas from './Partials/PosterCanvas';
 import { POSTER_THEMES, POSTER_THEME_LIST } from './themes';
 import type { PosterData, PosterPaperSize, PosterPeriode, PosterThemeKey } from './types';
@@ -55,8 +55,11 @@ export default function PosterTransparansiIndex({
     const posterRef = useRef<HTMLDivElement>(null);
     const previewContainerRef = useRef<HTMLDivElement>(null);
     const [previewScale, setPreviewScale] = useState<number>(1);
-    const [posterHeight, setPosterHeight] = useState<number>(1120);
+    const [naturalPosterHeight, setNaturalPosterHeight] = useState<number>(POSTER_PAPER_SIZES.a4.designHeight);
     const fetchAbortRef = useRef<AbortController | null>(null);
+
+    const activeTheme = POSTER_THEMES[themeKey];
+    const activePaper = POSTER_PAPER_SIZES[paperSize];
 
     useEffect(() => {
         setPosterData(initialPosterData);
@@ -64,15 +67,15 @@ export default function PosterTransparansiIndex({
         setSelectedPeriode(initialPosterData.meta.periode);
     }, [initialPosterData]);
 
-    // Hitung skala pratinjau responsif & tinggi natural kanvas agar tidak menyisakan whitespace atau terpotong kiri
+    // Hitung skala pratinjau responsif agar lembar kertas selalu pas di dalam panel tanpa terpotong
     useEffect(() => {
         const container = previewContainerRef.current;
         if (!container) return;
 
         const updateScale = () => {
             const availableWidth = container.clientWidth - 24;
-            if (availableWidth > 0 && availableWidth < 794) {
-                setPreviewScale(Math.max(0.42, availableWidth / 794));
+            if (availableWidth > 0 && availableWidth < activePaper.designWidth) {
+                setPreviewScale(Math.max(0.42, availableWidth / activePaper.designWidth));
             } else {
                 setPreviewScale(1);
             }
@@ -83,7 +86,7 @@ export default function PosterTransparansiIndex({
         observer.observe(container);
 
         return () => observer.disconnect();
-    }, []);
+    }, [activePaper.designWidth]);
 
     useEffect(() => {
         const sheet = posterRef.current;
@@ -91,7 +94,7 @@ export default function PosterTransparansiIndex({
 
         const updateHeight = () => {
             if (sheet.offsetHeight > 0) {
-                setPosterHeight(sheet.offsetHeight);
+                setNaturalPosterHeight(sheet.offsetHeight);
             }
         };
 
@@ -100,7 +103,7 @@ export default function PosterTransparansiIndex({
         observer.observe(sheet);
 
         return () => observer.disconnect();
-    }, [posterData, showSignatures, showMonthlyTrend, transparencyNote]);
+    }, [posterData, paperSize, showSignatures, showMonthlyTrend, transparencyNote]);
 
     useEffect(() => {
         return () => {
@@ -108,7 +111,8 @@ export default function PosterTransparansiIndex({
         };
     }, []);
 
-    const activeTheme = POSTER_THEMES[themeKey];
+    const contentFitScale =
+        naturalPosterHeight > activePaper.designHeight ? activePaper.designHeight / naturalPosterHeight : 1;
 
     const fetchPosterData = async (nextTahun: number, nextPeriode: PosterPeriode) => {
         fetchAbortRef.current?.abort();
@@ -180,55 +184,27 @@ export default function PosterTransparansiIndex({
         setIsExportingPng(true);
         setFeedback(null);
 
-        // Kompensasi sementara untuk aturan desktop `html { zoom: 0.8 }` agar hasil PNG 3x utuh & tajam
-        const docEl = document.documentElement;
-        const previousInlineZoom = docEl.style.zoom;
-
         try {
-            if (document.fonts?.ready) {
-                await document.fonts.ready;
-            }
-            docEl.style.zoom = '1';
-
-            const dataUrl = await toPng(node, {
-                pixelRatio: 3,
-                width: node.offsetWidth,
-                height: node.offsetHeight,
+            await exportPosterToPng({
+                node,
+                paperSize,
                 backgroundColor: activeTheme.pageBg,
-                style: {
-                    transform: 'none',
-                    zoom: '1',
-                    margin: '0',
-                    borderRadius: '0',
-                    border: 'none',
-                    boxShadow: 'none',
-                },
+                fileName: `poster-transparansi-${posterData.meta.variant}-${posterData.meta.tahun}-${posterData.meta.periode}-${paperSize}.png`,
             });
-
-            const link = document.createElement('a');
-            link.download = `poster-transparansi-${posterData.meta.variant}-${posterData.meta.tahun}-${posterData.meta.periode}.png`;
-            link.href = dataUrl;
-            link.click();
 
             setFeedback({
                 type: 'success',
-                text: 'Poster PNG Resolusi Tinggi (3×) berhasil diunduh dan siap dicetak atau dibagikan.',
+                text: `Poster PNG 300 DPI (${activePaper.label} · ${activePaper.exportWidth}×${activePaper.exportHeight} px) berhasil diunduh dan siap dicetak atau dibagikan.`,
             });
         } catch (err) {
             console.error('Gagal mengekspor poster PNG:', err);
             setFeedback({
                 type: 'error',
-                text: 'Gagal membuat gambar PNG. Silakan coba lagi atau gunakan tombol Cetak / Simpan PDF.',
+                text: 'Gagal membuat gambar PNG. Silakan coba lagi.',
             });
         } finally {
-            docEl.style.zoom = previousInlineZoom;
             setIsExportingPng(false);
         }
-    };
-
-    const handlePrintPdf = () => {
-        setFeedback(null);
-        window.print();
     };
 
     const yearOptions =
@@ -240,61 +216,9 @@ export default function PosterTransparansiIndex({
         <AuthenticatedLayout>
             <Head title="Poster Transparansi BOSP" />
 
-            {/* Aturan cetak terisolasi: sembunyikan seluruh chrome aplikasi (display: none) agar bebas halaman kosong & bebas kliping */}
-            <style>{`
-                @media print {
-                    @page {
-                        size: ${paperSize === 'a3' ? 'A3' : 'A4'} portrait;
-                        margin: 6mm;
-                    }
-                    html, body, .sikas-canvas {
-                        background: #ffffff !important;
-                        height: auto !important;
-                        min-height: 0 !important;
-                        overflow: visible !important;
-                    }
-                    aside, nav, header:not(#transparansi-poster-header) {
-                        display: none !important;
-                    }
-                    #transparansi-poster-header {
-                        display: block !important;
-                    }
-                    main, #transparansi-poster-surface, #transparansi-poster-preview-stage {
-                        padding: 0 !important;
-                        margin: 0 !important;
-                        border: none !important;
-                        box-shadow: none !important;
-                        background: transparent !important;
-                        overflow: visible !important;
-                        display: block !important;
-                    }
-                    #transparansi-poster-surface > div:first-child {
-                        display: none !important;
-                    }
-                    #transparansi-poster-scale-box,
-                    #transparansi-poster-print-wrapper {
-                        width: 100% !important;
-                        height: auto !important;
-                        transform: none !important;
-                        margin: 0 !important;
-                        padding: 0 !important;
-                    }
-                    #transparansi-poster-sheet {
-                        width: 100% !important;
-                        max-width: none !important;
-                        margin: 0 !important;
-                        box-shadow: none !important;
-                        border: none !important;
-                        border-radius: 0 !important;
-                        -webkit-print-color-adjust: exact !important;
-                        print-color-adjust: exact !important;
-                    }
-                }
-            `}</style>
-
             <div className="space-y-4">
                 <PageHeader
-                    className="animate-rise print:hidden"
+                    className="animate-rise"
                     breadcrumb={[
                         { label: 'Dashboard' },
                         { label: 'Fitur Pelengkap' },
@@ -306,40 +230,28 @@ export default function PosterTransparansiIndex({
                         </IconTile>
                     }
                     title="Poster Infografis Transparansi BOSP"
-                    subtitle="Buat poster transparansi anggaran & realisasi BOSP siap cetak papan pengumuman (A4/A3) atau bagikan ke WhatsApp Komite."
+                    subtitle="Buat dan unduh poster transparansi anggaran & realisasi BOSP dalam format PNG 300 DPI (A4, A3, F4, Legal, Letter) siap cetak papan pengumuman atau bagikan ke WhatsApp Komite."
                     badge={
                         <StatusBadge tone="lime" dot={false}>
                             <Sparkles className="h-3 w-3" />
-                            Siap Cetak HD
+                            PNG 300 DPI
                         </StatusBadge>
                     }
                     actions={
-                        <>
-                            <button
-                                type="button"
-                                onClick={() => void handleDownloadPng()}
-                                disabled={isExportingPng || isFetching}
-                                className="inline-flex items-center gap-2 rounded-2xl border border-slate-200/90 bg-white px-3.5 py-2 text-[12px] font-extrabold text-slate-800 shadow-sm transition hover:-translate-y-0.5 hover:border-brand-300 hover:text-brand-700 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:bg-[#15131F] dark:text-slate-100 dark:hover:border-brand-400/40"
-                            >
-                                <Download className="h-3.5 w-3.5 text-emerald-500" />
-                                {isExportingPng ? 'Merender PNG HD...' : 'Unduh PNG HD (3×)'}
-                            </button>
-
-                            <button
-                                type="button"
-                                onClick={handlePrintPdf}
-                                disabled={isFetching}
-                                className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-2 text-[12px] font-extrabold text-lime-300 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-800 disabled:opacity-60 dark:bg-lime-400 dark:text-slate-950 dark:hover:bg-lime-300"
-                            >
-                                <Printer className="h-3.5 w-3.5" />
-                                Cetak / Simpan PDF ({paperSize.toUpperCase()})
-                            </button>
-                        </>
+                        <button
+                            type="button"
+                            onClick={() => void handleDownloadPng()}
+                            disabled={isExportingPng || isFetching}
+                            className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-2 text-[12px] font-extrabold text-lime-300 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-lime-400 dark:text-slate-950 dark:hover:bg-lime-300"
+                        >
+                            <Download className="h-3.5 w-3.5" />
+                            {isExportingPng ? `Merender PNG ${activePaper.label}...` : `Unduh PNG HD (${activePaper.label})`}
+                        </button>
                     }
                 />
 
                 {/* Switcher 4 Varian BOSP */}
-                <div className="animate-rise print:hidden" style={{ animationDelay: '60ms' }}>
+                <div className="animate-rise" style={{ animationDelay: '60ms' }}>
                     <Surface padding="sm">
                         <PillTabs
                             ariaLabel="Varian BOSP Poster Transparansi"
@@ -361,7 +273,7 @@ export default function PosterTransparansiIndex({
                     <div
                         role={feedback.type === 'error' ? 'alert' : 'status'}
                         aria-live="polite"
-                        className={`animate-rise flex items-center gap-2.5 rounded-2xl border px-4 py-3 text-[12px] font-bold shadow-sm print:hidden ${
+                        className={`animate-rise flex items-center gap-2.5 rounded-2xl border px-4 py-3 text-[12px] font-bold shadow-sm ${
                             feedback.type === 'success'
                                 ? 'border-emerald-200/90 bg-emerald-50/90 text-emerald-800 dark:border-emerald-500/25 dark:bg-emerald-500/10 dark:text-emerald-200'
                                 : 'border-rose-200/90 bg-rose-50/90 text-rose-800 dark:border-rose-500/25 dark:bg-rose-500/10 dark:text-rose-200'
@@ -377,7 +289,7 @@ export default function PosterTransparansiIndex({
                 )}
 
                 {!posterData.meta.has_data && (
-                    <div className="animate-rise flex items-center gap-2.5 rounded-2xl border border-amber-200/90 bg-amber-50/90 px-4 py-3 text-[12px] font-bold text-amber-800 shadow-sm print:hidden dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-amber-200">
+                    <div className="animate-rise flex items-center gap-2.5 rounded-2xl border border-amber-200/90 bg-amber-50/90 px-4 py-3 text-[12px] font-bold text-amber-800 shadow-sm dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-amber-200">
                         <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
                         <span>
                             Belum ada data penganggaran {posterData.meta.variant_label} untuk Tahun Anggaran{' '}
@@ -389,7 +301,7 @@ export default function PosterTransparansiIndex({
                 {/* Studio 2 Kolom: Panel Kontrol + Live Preview Poster */}
                 <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
                     {/* Panel Kustomisasi */}
-                    <div className="space-y-4 print:hidden xl:col-span-4">
+                    <div className="space-y-4 xl:col-span-4">
                         <Surface
                             title="Pengaturan Data & Periode"
                             subtitle="Otomatis menyinkronkan angka resmi BKU & RKAS"
@@ -505,18 +417,13 @@ export default function PosterTransparansiIndex({
                                     })}
                                 </div>
 
-                                {/* Ukuran Kertas Cetak */}
+                                {/* Ukuran Kertas Ekspor PNG */}
                                 <div>
                                     <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
-                                        Ukuran Kertas Cetak (PDF / Print)
+                                        Ukuran Kertas Ekspor (PNG 300 DPI)
                                     </span>
                                     <div className="grid grid-cols-2 gap-2">
-                                        {(
-                                            [
-                                                { key: 'a4', label: 'A4 Portrait', desc: 'Standar printer kantor' },
-                                                { key: 'a3', label: 'A3 Poster', desc: 'Besar papan pengumuman' },
-                                            ] as const
-                                        ).map((opt) => (
+                                        {POSTER_PAPER_SIZE_LIST.map((opt) => (
                                             <button
                                                 key={opt.key}
                                                 type="button"
@@ -528,9 +435,20 @@ export default function PosterTransparansiIndex({
                                                         : 'border-slate-200/80 bg-white text-slate-700 hover:border-slate-300 dark:border-white/10 dark:bg-white/5 dark:text-slate-200'
                                                 }`}
                                             >
-                                                <p className="text-[11.5px] font-extrabold">{opt.label}</p>
+                                                <div className="flex items-baseline justify-between gap-1">
+                                                    <p className="text-[11.5px] font-extrabold">{opt.label}</p>
+                                                    <span
+                                                        className={`text-[9px] font-bold tabular-nums ${
+                                                            paperSize === opt.key
+                                                                ? 'text-lime-300 dark:text-slate-900/80'
+                                                                : 'text-slate-400'
+                                                        }`}
+                                                    >
+                                                        {opt.dimensionsMm}
+                                                    </span>
+                                                </div>
                                                 <p
-                                                    className={`text-[9.5px] font-medium ${
+                                                    className={`mt-0.5 text-[9.5px] font-medium ${
                                                         paperSize === opt.key
                                                             ? 'text-white/75 dark:text-slate-900/75'
                                                             : 'text-slate-400'
@@ -602,7 +520,7 @@ export default function PosterTransparansiIndex({
                         <div id="transparansi-poster-surface">
                             <Surface
                                 title="Pratinjau Langsung Poster"
-                                subtitle={`${posterData.meta.variant_label} · ${posterData.meta.periode_label} · Skala cetak ${paperSize.toUpperCase()}`}
+                                subtitle={`${posterData.meta.variant_label} · ${posterData.meta.periode_label} · ${activePaper.label} (${activePaper.exportWidth}×${activePaper.exportHeight} px · 300 DPI)`}
                                 icon={
                                     <IconTile tone="mint" size="md">
                                         <FileImage />
@@ -625,27 +543,41 @@ export default function PosterTransparansiIndex({
                                     <div
                                         id="transparansi-poster-scale-box"
                                         style={{
-                                            width: `${Math.round(794 * previewScale)}px`,
-                                            height: previewScale < 1 ? `${Math.round(posterHeight * previewScale)}px` : undefined,
-                                            overflow: previewScale < 1 ? 'hidden' : undefined,
+                                            width: `${Math.round(activePaper.designWidth * previewScale)}px`,
+                                            height: `${Math.round(activePaper.designHeight * previewScale)}px`,
+                                            overflow: 'hidden',
                                         }}
                                     >
                                         <div
-                                            id="transparansi-poster-print-wrapper"
+                                            id="transparansi-poster-preview-wrapper"
                                             style={{
                                                 transform: previewScale < 1 ? `scale(${previewScale})` : undefined,
                                                 transformOrigin: 'top left',
-                                                width: '794px',
+                                                width: `${activePaper.designWidth}px`,
+                                                height: `${activePaper.designHeight}px`,
+                                                backgroundColor: activeTheme.pageBg,
                                             }}
+                                            className="overflow-hidden rounded-[22px] border border-slate-200/90 shadow-xl"
                                         >
-                                            <PosterCanvas
-                                                ref={posterRef}
-                                                data={posterData}
-                                                theme={activeTheme}
-                                                showSignatures={showSignatures}
-                                                showMonthlyTrend={showMonthlyTrend}
-                                                transparencyNote={transparencyNote}
-                                            />
+                                            <div
+                                                style={{
+                                                    width: `${activePaper.designWidth}px`,
+                                                    transform:
+                                                        contentFitScale < 1 ? `scale(${contentFitScale})` : undefined,
+                                                    transformOrigin: 'top center',
+                                                }}
+                                            >
+                                                <PosterCanvas
+                                                    ref={posterRef}
+                                                    data={posterData}
+                                                    theme={activeTheme}
+                                                    paperSize={paperSize}
+                                                    framed={false}
+                                                    showSignatures={showSignatures}
+                                                    showMonthlyTrend={showMonthlyTrend}
+                                                    transparencyNote={transparencyNote}
+                                                />
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

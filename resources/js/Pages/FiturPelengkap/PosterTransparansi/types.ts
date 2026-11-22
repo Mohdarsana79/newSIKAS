@@ -2,7 +2,7 @@ export type PosterPeriode = 'tahunan' | 'tahap_1' | 'tahap_2';
 
 export type PosterThemeKey = 'neobento' | 'resmi' | 'emerald';
 
-export type PosterPaperSize = 'a4' | 'a3';
+export type PosterPaperSize = 'a4' | 'a3' | 'f4' | 'legal' | 'letter';
 
 export interface PosterJenisBelanjaItem {
     key: string;
