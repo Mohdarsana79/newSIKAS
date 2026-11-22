@@ -51,9 +51,11 @@ interface Anggaran {
     updated_at: string;
 }
 
+type BudgetVariant = 'reguler' | 'kinerja' | 'silpa' | 'kinerja_silpa';
+
 interface OfficialHistoryItem {
     tahun_anggaran: string;
-    source_variant: string;
+    source_variant: BudgetVariant;
     source_label: string;
     komite: string;
     kepala_sekolah: string;
@@ -98,18 +100,18 @@ function formatRupiahInput(nominal: number): string {
 
 function resolvePreviousOfficialSource(
     history: OfficialHistoryItem[],
-    activeVariant: string,
-    targetYearRaw: string,
+    activeVariant: BudgetVariant,
+    targetYearRaw: string | number,
 ): OfficialHistoryItem | null {
-    const targetYear = Number.parseInt(targetYearRaw, 10);
+    const targetYear = Number.parseInt(String(targetYearRaw ?? ''), 10);
     if (!Number.isFinite(targetYear) || history.length === 0) {
         return null;
     }
 
-    const pickNearestEarlier = (sourceVariant: string): OfficialHistoryItem | null => {
+    const pickNearestEarlier = (sourceVariant: BudgetVariant): OfficialHistoryItem | null => {
         const candidates = history
-            .filter((item) => item.source_variant === sourceVariant && Number.parseInt(item.tahun_anggaran, 10) < targetYear)
-            .sort((a, b) => Number.parseInt(b.tahun_anggaran, 10) - Number.parseInt(a.tahun_anggaran, 10));
+            .filter((item) => item.source_variant === sourceVariant && Number.parseInt(String(item.tahun_anggaran), 10) < targetYear)
+            .sort((a, b) => Number.parseInt(String(b.tahun_anggaran), 10) - Number.parseInt(String(a.tahun_anggaran), 10));
 
         return candidates[0] ?? null;
     };
@@ -126,7 +128,7 @@ function resolvePreviousOfficialSource(
         }
 
         const regulerSameYear = history.find(
-            (item) => item.source_variant === 'reguler' && Number.parseInt(item.tahun_anggaran, 10) === targetYear,
+            (item) => item.source_variant === 'reguler' && Number.parseInt(String(item.tahun_anggaran), 10) === targetYear,
         );
         if (regulerSameYear) {
             return regulerSameYear;
@@ -147,7 +149,7 @@ export default function Index({
     items: PenganggaranItem[];
     anggarans: Anggaran[];
     official_history?: OfficialHistoryItem[];
-    variant?: string;
+    variant?: BudgetVariant;
     can_create: boolean;
 }>) {
     const isKepalaSekolah = Boolean(auth?.user?.is_kepala_sekolah || auth?.user?.role === 'kepala_sekolah');
@@ -281,7 +283,7 @@ export default function Index({
     };
 
     const handleCheckArkasBudget = async (overrideYear?: string) => {
-        const yearToCheck = (overrideYear ?? data.tahun_anggaran).trim();
+        const yearToCheck = String(overrideYear ?? data.tahun_anggaran ?? '').trim();
         if (!/^\d{4}$/.test(yearToCheck)) {
             setArkasBudgetFeedback({
                 type: 'warning',
@@ -336,16 +338,19 @@ export default function Index({
                     detail: `${paguInfo} Nomor & Tanggal SK tidak tersedia di ARKAS — lengkapi manual atau klik tombol salin tahun sebelumnya di bawah.`,
                 });
             } else {
+                const lockedYear = editMode && isPerubahanLocked;
+                const hasAvailableYears = Boolean(payload.available_years && payload.available_years.length > 0);
                 setArkasBudgetFeedback({
                     type: 'warning',
                     title:
                         payload.message ||
                         `Tidak ditemukan data anggaran ${activeTab} di ARKAS untuk Tahun ${yearToCheck}.`,
-                    detail:
-                        payload.available_years && payload.available_years.length > 0
-                            ? 'Pilih salah satu tahun yang tersedia di ARKAS di bawah ini untuk langsung menarik data:'
-                            : 'Pastikan data anggaran untuk sumber dana ini sudah dibuat di aplikasi ARKAS.',
-                    availableYears: payload.available_years ?? [],
+                    detail: lockedYear
+                        ? 'Tahun anggaran tidak dapat diganti karena sudah memiliki RKAS Perubahan.'
+                        : hasAvailableYears
+                          ? 'Pilih salah satu tahun yang tersedia di ARKAS di bawah ini untuk langsung menarik data:'
+                          : 'Pastikan data anggaran untuk sumber dana ini sudah dibuat di aplikasi ARKAS.',
+                    availableYears: lockedYear ? [] : (payload.available_years ?? []),
                 });
             }
         } catch (error: any) {
@@ -444,7 +449,7 @@ export default function Index({
             setEditId(id);
             setData({
                 pagu_anggaran: formatRupiahInput(item.pagu_anggaran),
-                tahun_anggaran: item.tahun_anggaran,
+                tahun_anggaran: String(item.tahun_anggaran ?? ''),
                 komite: item.komite,
                 kepala_sekolah: item.kepala_sekolah,
                 nip_kepala_sekolah: item.nip_kepala_sekolah,

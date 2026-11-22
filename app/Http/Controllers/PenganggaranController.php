@@ -235,7 +235,8 @@ class PenganggaranController extends Controller
             ->all();
 
         if ($this->variant !== VariantConfig::REGULER) {
-            $regulerRecords = Penganggaran::query()
+            $regulerModel = VariantConfig::getModelClass('penganggaran', VariantConfig::REGULER);
+            $regulerRecords = $regulerModel::query()
                 ->orderBy('tahun_anggaran', 'desc')
                 ->get([
                     'tahun_anggaran',
