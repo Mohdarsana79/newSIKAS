@@ -26,6 +26,10 @@ class KwitansiTemplateService
 
     private const CT_NS = 'http://schemas.openxmlformats.org/package/2006/content-types';
 
+    private const VML_NS = 'urn:schemas-microsoft-com:vml';
+
+    private const OFFICE_NS = 'urn:schemas-microsoft-com:office:office';
+
     /** @var array<int, string> */
     public const ITEM_TABLE_VARIABLES = [
         'item_no',
@@ -480,7 +484,14 @@ class KwitansiTemplateService
             $baseContentTypesDom = is_string($baseContentTypesXml) && $baseContentTypesXml !== '' ? $this->loadXml($baseContentTypesXml) : null;
             $relsModified = false;
             $contentTypesModified = false;
-            $docPrIdCounter = $this->findMaxDocPrId($baseDom) + 1;
+            $usedDrawingIds = $this->collectDrawingIds($baseDom);
+            $drawingIdCounter = $this->computeNextSafeDrawingId($usedDrawingIds);
+            $baseVmlShapeTypes = $this->collectVmlShapeTypeIds($baseDom);
+            $bookmarkIdCounter = $this->findMaxBookmarkId($baseDom) + 1;
+
+            // Simpan clone sectPr penutup dokumen sebelumnya agar konfigurasi kolom (mis. TTD 3 kolom) tetap utuh
+            $pendingClosingSectPr = $baseSectPr instanceof \DOMElement ? $baseSectPr->cloneNode(true) : null;
+            $mergedAnyAppend = false;
 
             for ($i = 1; $i < count($docxPaths); $i++) {
                 $appendZip = new \ZipArchive;
@@ -536,15 +547,42 @@ class KwitansiTemplateService
                         $this->remapRelationshipIds($appendDom, $rIdMap);
                     }
 
-                    // Pastikan wp:docPr id unik di seluruh dokumen agar Microsoft Word tidak memunculkan peringatan korup
-                    $docPrIdCounter = $this->deduplicateDocPrIds($appendDom, $docPrIdCounter);
+                    // Deduplikasi seluruh ID drawing/shape/bookmark agar Word & LibreOffice tidak memperingatkan konten duplikat
+                    $drawingIdCounter = $this->deduplicateDrawingIds($appendDom, $drawingIdCounter, $usedDrawingIds);
+                    $this->deduplicateVmlShapes($appendDom, $i, $baseVmlShapeTypes);
+                    $bookmarkIdCounter = $this->deduplicateBookmarkIds($appendDom, $bookmarkIdCounter, $i);
 
-                    // Sisipkan page break hanya setelah $appendBody dipastikan valid
-                    $pageBreakNode = $this->createPageBreakNode($baseDom);
-                    if ($baseSectPr !== null) {
-                        $baseBody->insertBefore($pageBreakNode, $baseSectPr);
+                    // 1. Tutup seksi akhir kwitansi sebelumnya dengan paragraf section-break agar layout kolom (mis. TTD 3 kolom) tidak rusak
+                    if ($pendingClosingSectPr instanceof \DOMElement) {
+                        $sectionBreakPara = $this->createSectionBreakParagraph($baseDom, $pendingClosingSectPr);
+                        if ($baseSectPr !== null) {
+                            $baseBody->insertBefore($sectionBreakPara, $baseSectPr);
+                        } else {
+                            $baseBody->appendChild($sectionBreakPara);
+                        }
                     } else {
-                        $baseBody->appendChild($pageBreakNode);
+                        $pageBreakNode = $this->createPageBreakNode($baseDom);
+                        if ($baseSectPr !== null) {
+                            $baseBody->insertBefore($pageBreakNode, $baseSectPr);
+                        } else {
+                            $baseBody->appendChild($pageBreakNode);
+                        }
+                    }
+
+                    // 2. Temukan sectPr penutup milik kwitansi ini serta sectPr internal (jika template multi-seksi)
+                    $appendTrailingSectPr = null;
+                    foreach ($appendBody->childNodes as $child) {
+                        if ($child instanceof \DOMElement && $child->localName === 'sectPr') {
+                            $appendTrailingSectPr = $child;
+                        }
+                    }
+
+                    $firstInternalSectPr = $appendXpath->query('.//w:pPr/w:sectPr', $appendBody)->item(0);
+                    $isMultiSection = $firstInternalSectPr instanceof \DOMElement;
+
+                    if ($isMultiSection) {
+                        // Seksi pertama kwitansi baru wajib mulai di halaman baru, sedangkan seksi penutup (mis. TTD 3 kolom) tetap continuous
+                        $this->setSectionTypeNextPage($appendDom, $firstInternalSectPr);
                     }
 
                     foreach ($appendBody->childNodes as $child) {
@@ -558,8 +596,34 @@ class KwitansiTemplateService
                             $baseBody->appendChild($imported);
                         }
                     }
+
+                    // Siapkan sectPr penutup untuk kwitansi ini (dipakai jika ada kwitansi berikutnya atau menjadi sectPr akhir dokumen)
+                    if ($appendTrailingSectPr instanceof \DOMElement) {
+                        $nextClosingSectPr = $baseDom->importNode($appendTrailingSectPr, true);
+                    } elseif ($baseSectPr instanceof \DOMElement) {
+                        $nextClosingSectPr = $baseSectPr->cloneNode(true);
+                    } else {
+                        $nextClosingSectPr = null;
+                    }
+
+                    if (! $isMultiSection && $nextClosingSectPr instanceof \DOMElement) {
+                        // Template 1-seksi: seksi tunggal ini sekaligus seksi pertama kwitansi baru -> mulai di halaman baru
+                        $this->setSectionTypeNextPage($baseDom, $nextClosingSectPr);
+                    }
+
+                    $pendingClosingSectPr = $nextClosingSectPr;
+                    $mergedAnyAppend = true;
                 } finally {
                     $appendZip->close();
+                }
+            }
+
+            // Pasang sectPr penutup kwitansi terakhir sebagai <w:sectPr> akhir dokumen
+            if ($mergedAnyAppend && $pendingClosingSectPr instanceof \DOMElement) {
+                if ($baseSectPr instanceof \DOMElement) {
+                    $baseBody->replaceChild($pendingClosingSectPr, $baseSectPr);
+                } else {
+                    $baseBody->appendChild($pendingClosingSectPr);
                 }
             }
 
@@ -1140,6 +1204,79 @@ class KwitansiTemplateService
         return $p;
     }
 
+    /**
+     * Bungkus elemen <w:sectPr> menjadi paragraf section-break berjarak minimal (0pt)
+     * agar konfigurasi kolom/margin/ukuran halaman seksi penutup tetap terjaga
+     * tanpa mendorong baris terakhir ke halaman ekstra.
+     */
+    protected function createSectionBreakParagraph(\DOMDocument $dom, \DOMElement $sectPr): \DOMElement
+    {
+        $p = $dom->createElementNS(self::W_NS, 'w:p');
+        $pPr = $dom->createElementNS(self::W_NS, 'w:pPr');
+
+        $spacing = $dom->createElementNS(self::W_NS, 'w:spacing');
+        $spacing->setAttributeNS(self::W_NS, 'w:before', '0');
+        $spacing->setAttributeNS(self::W_NS, 'w:after', '0');
+        $spacing->setAttributeNS(self::W_NS, 'w:line', '20');
+        $spacing->setAttributeNS(self::W_NS, 'w:lineRule', 'exact');
+        $pPr->appendChild($spacing);
+
+        $rPr = $dom->createElementNS(self::W_NS, 'w:rPr');
+        $sz = $dom->createElementNS(self::W_NS, 'w:sz');
+        $sz->setAttributeNS(self::W_NS, 'w:val', '2');
+        $szCs = $dom->createElementNS(self::W_NS, 'w:szCs');
+        $szCs->setAttributeNS(self::W_NS, 'w:val', '2');
+        $rPr->appendChild($sz);
+        $rPr->appendChild($szCs);
+        $pPr->appendChild($rPr);
+
+        $sectClone = $sectPr->ownerDocument === $dom
+            ? $sectPr->cloneNode(true)
+            : $dom->importNode($sectPr, true);
+        $pPr->appendChild($sectClone);
+        $p->appendChild($pPr);
+
+        return $p;
+    }
+
+    /**
+     * Paksa <w:type w:val="nextPage"/> pada sebuah <w:sectPr> sesuai urutan skema ECMA-376 CT_SectPr
+     * (setelah headerReference/footerReference/footnotePr/endnotePr, sebelum pgSz/cols/dll.).
+     */
+    protected function setSectionTypeNextPage(\DOMDocument $dom, \DOMElement $sectPr): void
+    {
+        $precedingElements = [
+            'headerReference' => true,
+            'footerReference' => true,
+            'footnotePr' => true,
+            'endnotePr' => true,
+        ];
+
+        $insertBeforeNode = null;
+        foreach ($sectPr->childNodes as $child) {
+            if (! $child instanceof \DOMElement) {
+                continue;
+            }
+            if ($child->localName === 'type') {
+                $child->setAttributeNS(self::W_NS, 'w:val', 'nextPage');
+
+                return;
+            }
+            if ($insertBeforeNode === null && ! isset($precedingElements[$child->localName])) {
+                $insertBeforeNode = $child;
+            }
+        }
+
+        $typeNode = $dom->createElementNS(self::W_NS, 'w:type');
+        $typeNode->setAttributeNS(self::W_NS, 'w:val', 'nextPage');
+
+        if ($insertBeforeNode instanceof \DOMElement) {
+            $sectPr->insertBefore($typeNode, $insertBeforeNode);
+        } else {
+            $sectPr->appendChild($typeNode);
+        }
+    }
+
     protected function findMaxRelNumber(?\DOMDocument $relsDom): int
     {
         if ($relsDom === null) {
@@ -1305,36 +1442,244 @@ class KwitansiTemplateService
         }
     }
 
-    protected function findMaxDocPrId(\DOMDocument $dom): int
+    /**
+     * @return array<int, true>
+     */
+    protected function collectDrawingIds(\DOMDocument $dom): array
     {
-        $max = 0;
+        $used = [];
         $xpath = new \DOMXPath($dom);
-        $nodes = $xpath->query('//*[local-name()="docPr"][@id]');
+        $nodes = $xpath->query('//*[local-name()="docPr" or local-name()="cNvPr"][@id]');
         if ($nodes === false) {
-            return 0;
+            return $used;
         }
 
         foreach ($nodes as $node) {
-            if ($node instanceof \DOMElement && is_numeric($node->getAttribute('id'))) {
-                $max = max($max, (int) $node->getAttribute('id'));
+            if ($node instanceof \DOMElement) {
+                $raw = $node->getAttribute('id');
+                if (ctype_digit($raw)) {
+                    $used[(int) $raw] = true;
+                }
             }
         }
 
-        return $max;
+        return $used;
     }
 
-    protected function deduplicateDocPrIds(\DOMDocument $dom, int $nextId): int
+    /**
+     * Hitung ID awal yang aman dalam rentang 32-bit signed int (<= 2.147.483.647) agar Microsoft Word
+     * tidak menolak ID drawing akibat overflow 64-bit dari generator dokumen eksternal.
+     *
+     * @param  array<int, true>  $usedIds
+     */
+    protected function computeNextSafeDrawingId(array $usedIds): int
+    {
+        $maxSafe = 0;
+        foreach (array_keys($usedIds) as $id) {
+            if ($id > 0 && $id < 2000000000) {
+                $maxSafe = max($maxSafe, $id);
+            }
+        }
+
+        $candidate = $maxSafe + 1;
+        while (isset($usedIds[$candidate])) {
+            $candidate++;
+        }
+
+        return $candidate;
+    }
+
+    /**
+     * @param  array<int, true>  $usedIds
+     */
+    protected function deduplicateDrawingIds(\DOMDocument $dom, int $nextId, array &$usedIds): int
     {
         $xpath = new \DOMXPath($dom);
-        $nodes = $xpath->query('//*[local-name()="docPr"][@id]');
+        $nodes = $xpath->query('//*[local-name()="docPr" or local-name()="cNvPr"][@id]');
         if ($nodes === false) {
             return $nextId;
         }
 
         foreach ($nodes as $node) {
             if ($node instanceof \DOMElement) {
+                while (isset($usedIds[$nextId]) || $nextId >= 2147483647) {
+                    $nextId = $nextId >= 2147483647 ? 1 : $nextId + 1;
+                }
                 $node->setAttribute('id', (string) $nextId);
+                $usedIds[$nextId] = true;
                 $nextId++;
+            }
+        }
+
+        return $nextId;
+    }
+
+    /**
+     * @return array<string, true>
+     */
+    protected function collectVmlShapeTypeIds(\DOMDocument $dom): array
+    {
+        $ids = [];
+        $xpath = new \DOMXPath($dom);
+        $xpath->registerNamespace('v', self::VML_NS);
+        $nodes = $xpath->query('//v:shapetype[@id]');
+        if ($nodes === false) {
+            return $ids;
+        }
+
+        foreach ($nodes as $node) {
+            if ($node instanceof \DOMElement && $node->getAttribute('id') !== '') {
+                $ids[$node->getAttribute('id')] = true;
+            }
+        }
+
+        return $ids;
+    }
+
+    /**
+     * Deduplikasi elemen VML (shape, rect, group, line, oval, roundrect, polyline, curve, arc, image),
+     * atribut o:spid, serta hapus definisi v:shapetype duplikat yang sudah ada pada dokumen basis.
+     *
+     * @param  array<string, true>  $baseShapeTypeIds
+     */
+    protected function deduplicateVmlShapes(\DOMDocument $dom, int $docIndex, array &$baseShapeTypeIds): void
+    {
+        $xpath = new \DOMXPath($dom);
+        $xpath->registerNamespace('v', self::VML_NS);
+        $xpath->registerNamespace('o', self::OFFICE_NS);
+
+        // Hapus v:shapetype duplikat yang sudah didefinisikan pada dokumen basis agar @id tetap unik
+        $shapeTypes = $xpath->query('//v:shapetype[@id]');
+        if ($shapeTypes !== false) {
+            $toRemove = [];
+            foreach ($shapeTypes as $st) {
+                if (! $st instanceof \DOMElement) {
+                    continue;
+                }
+                $stId = $st->getAttribute('id');
+                if ($stId === '') {
+                    continue;
+                }
+                if (isset($baseShapeTypeIds[$stId])) {
+                    $toRemove[] = $st;
+                } else {
+                    $baseShapeTypeIds[$stId] = true;
+                }
+            }
+            foreach ($toRemove as $st) {
+                $st->parentNode?->removeChild($st);
+            }
+        }
+
+        $vmlNodes = $xpath->query('//v:shape | //v:rect | //v:group | //v:line | //v:oval | //v:roundrect | //v:polyline | //v:curve | //v:arc | //v:image');
+        if ($vmlNodes === false) {
+            return;
+        }
+
+        $renamedIds = [];
+        foreach ($vmlNodes as $idx => $node) {
+            if (! $node instanceof \DOMElement) {
+                continue;
+            }
+            $oldId = $node->getAttribute('id');
+            if ($oldId !== '') {
+                $newId = "{$oldId}_kw{$docIndex}_{$idx}";
+                $node->setAttribute('id', $newId);
+                $renamedIds['#'.$oldId] = '#'.$newId;
+            }
+            $oldSpid = $node->getAttributeNS(self::OFFICE_NS, 'spid');
+            if ($oldSpid !== '') {
+                $node->setAttributeNS(self::OFFICE_NS, 'o:spid', "{$oldSpid}_kw{$docIndex}_{$idx}");
+            }
+        }
+
+        if ($renamedIds !== []) {
+            $ruleRefs = $xpath->query('//*[@idref]');
+            if ($ruleRefs !== false) {
+                foreach ($ruleRefs as $refNode) {
+                    if ($refNode instanceof \DOMElement) {
+                        $idref = $refNode->getAttribute('idref');
+                        if (isset($renamedIds[$idref])) {
+                            $refNode->setAttribute('idref', $renamedIds[$idref]);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    protected function findMaxBookmarkId(\DOMDocument $dom): int
+    {
+        $max = 0;
+        $xpath = new \DOMXPath($dom);
+        $xpath->registerNamespace('w', self::W_NS);
+        $nodes = $xpath->query('//w:bookmarkStart[@w:id] | //w:bookmarkEnd[@w:id]');
+        if ($nodes === false) {
+            return 0;
+        }
+
+        foreach ($nodes as $node) {
+            if ($node instanceof \DOMElement) {
+                $id = $node->getAttributeNS(self::W_NS, 'id');
+                if (ctype_digit($id)) {
+                    $max = max($max, (int) $id);
+                }
+            }
+        }
+
+        return $max;
+    }
+
+    protected function deduplicateBookmarkIds(\DOMDocument $dom, int $nextId, int $docIndex): int
+    {
+        $xpath = new \DOMXPath($dom);
+        $xpath->registerNamespace('w', self::W_NS);
+        $nodes = $xpath->query('//w:bookmarkStart[@w:id] | //w:bookmarkEnd[@w:id]');
+        if ($nodes === false) {
+            return $nextId;
+        }
+
+        $idMap = [];
+        $nameMap = [];
+        $suffix = "_kw{$docIndex}";
+        $maxBaseLen = max(1, 40 - strlen($suffix));
+
+        foreach ($nodes as $node) {
+            if (! $node instanceof \DOMElement) {
+                continue;
+            }
+            $oldId = $node->getAttributeNS(self::W_NS, 'id');
+            if ($oldId === '') {
+                continue;
+            }
+            if (! isset($idMap[$oldId])) {
+                $idMap[$oldId] = (string) $nextId;
+                $nextId++;
+            }
+            $node->setAttributeNS(self::W_NS, 'w:id', $idMap[$oldId]);
+
+            if ($node->localName === 'bookmarkStart') {
+                $oldName = $node->getAttributeNS(self::W_NS, 'name');
+                if ($oldName !== '') {
+                    // Batas maksimum nama bookmark di Microsoft Word adalah 40 karakter (MS-OI29500)
+                    $newName = mb_substr($oldName, 0, $maxBaseLen).$suffix;
+                    $node->setAttributeNS(self::W_NS, 'w:name', $newName);
+                    $nameMap[$oldName] = $newName;
+                }
+            }
+        }
+
+        if ($nameMap !== []) {
+            $hyperlinks = $xpath->query('//w:hyperlink[@w:anchor]');
+            if ($hyperlinks !== false) {
+                foreach ($hyperlinks as $link) {
+                    if ($link instanceof \DOMElement) {
+                        $anchor = $link->getAttributeNS(self::W_NS, 'anchor');
+                        if (isset($nameMap[$anchor])) {
+                            $link->setAttributeNS(self::W_NS, 'w:anchor', $nameMap[$anchor]);
+                        }
+                    }
+                }
             }
         }
 

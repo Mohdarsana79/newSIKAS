@@ -17,6 +17,7 @@ use App\Models\Penganggaran;
 use App\Models\RekeningBelanja;
 use App\Models\SekolahProfile;
 use App\Models\User;
+use App\Services\KwitansiTemplateService;
 use App\Services\SkSuratService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -490,10 +491,26 @@ class KwitansiCustomTemplateTest extends TestCase
         $this->assertStringContainsString('BNU-102', $mergedXml);
         $this->assertStringContainsString('Belanja Spidol Papan Tulis', $mergedXml);
         $this->assertStringContainsString('Belanja Buku Perpustakaan', $mergedXml);
-        $this->assertStringContainsString('w:type="page"', $mergedXml);
+        $this->assertStringContainsString('w:val="nextPage"', $mergedXml);
 
         $dom = new \DOMDocument;
         $this->assertTrue($dom->loadXML($mergedXml));
+
+        // Kedua kwitansi harus sama-sama mereferensikan rId gambar hasil deduplikasi
+        $xpath = new \DOMXPath($dom);
+        $xpath->registerNamespace('r', 'http://schemas.openxmlformats.org/officeDocument/2006/relationships');
+        $imageRefs = $xpath->query('//*[local-name()="imagedata" or local-name()="blip"][@r:id or @r:embed]');
+        $refIds = [];
+        if ($imageRefs !== false) {
+            foreach ($imageRefs as $refNode) {
+                if ($refNode instanceof \DOMElement) {
+                    $refIds[] = $refNode->getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships', 'id')
+                        ?: $refNode->getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships', 'embed');
+                }
+            }
+        }
+        $this->assertCount(2, $refIds, 'Kedua kwitansi harus memuat referensi gambar logo sekolah.');
+        $this->assertCount(1, array_unique($refIds), 'Referensi gambar identik harus diarahkan ke 1 rId yang sama.');
 
         $zip = new \ZipArchive;
         $this->assertTrue($zip->open($mergedPath) === true);
@@ -548,6 +565,254 @@ class KwitansiCustomTemplateTest extends TestCase
             ]))
             ->assertNotFound()
             ->assertJsonPath('success', false);
+    }
+
+    public function test_download_all_custom_preserves_multi_column_ttd_sections_across_all_kwitansis(): void
+    {
+        // Buat template multi-seksi (seksi 1 = 1 kolom continuous, seksi 2 = TTD 3 kolom continuous)
+        // persis seperti dokumen Word / hasil konversi PDF->Word dengan kolom TTD 3 kolom.
+        $phpWord = new PhpWord;
+        $topSection = $phpWord->addSection(['breakType' => 'continuous']);
+        $topSection->addText('Bukti: ${no_bukti} | Uraian: ${uraian}');
+        $topSection->addText('Nominal: ${jumlah_rupiah}');
+
+        $ttdSection = $phpWord->addSection([
+            'breakType' => 'continuous',
+            'colsNum' => 3,
+            'colsSpace' => 720,
+        ]);
+        $ttdSection->addText('Kepala Sekolah: ${kepala_sekolah}');
+        $ttdSection->addText('Bendahara: ${bendahara}');
+        $ttdSection->addText('Penerima: ${penerima}');
+
+        $baseTmp = tempnam(sys_get_temp_dir(), 'kw_multicol_');
+        if ($baseTmp !== false && is_file($baseTmp)) {
+            @unlink($baseTmp);
+        }
+        $srcPath = ($baseTmp ?: sys_get_temp_dir().DIRECTORY_SEPARATOR.'kw_multicol_'.uniqid('', true)).'.docx';
+        $phpWord->save($srcPath, 'Word2007');
+        $this->tempFilesToClean[] = $srcPath;
+
+        $storedRel = 'kwitansi_templates/'.uniqid('multicol_').'.docx';
+        Storage::disk('local')->put($storedRel, file_get_contents($srcPath));
+
+        $template = KwitansiTemplate::create([
+            'nama' => 'Template TTD 3 Kolom',
+            'deskripsi' => 'Multi-seksi dengan TTD 3 kolom',
+            'file_path' => $storedRel,
+            'original_filename' => 'ttd_3_kolom.docx',
+            'file_size' => filesize($srcPath) ?: 0,
+            'detected_variables' => [
+                'recognized' => ['no_bukti', 'uraian', 'jumlah_rupiah', 'kepala_sekolah', 'bendahara', 'penerima'],
+                'unrecognized' => [],
+                'unclosed' => [],
+                'item_table_vars' => [],
+                'image_vars' => [],
+            ],
+            'has_item_table' => false,
+            'created_by' => $this->bendahara->id,
+        ]);
+
+        for ($n = 1; $n <= 3; $n++) {
+            $this->createRegulerKwitansi(
+                idTransaksi: "MC-00{$n}",
+                uraian: "Belanja Multi Kolom {$n}",
+                tanggal: "2026-0{$n}-10",
+                penerima: "Toko {$n}",
+                items: [
+                    ['uraian' => "Item {$n}", 'volume' => 1, 'satuan' => 'Paket', 'harga_satuan' => 100000 * $n, 'subtotal' => 100000 * $n],
+                ]
+            );
+        }
+
+        $resp = $this->actingAs($this->bendahara)
+            ->get(route('kwitansi.custom.download-all', [$template->id, 'output' => 'docx']));
+
+        $resp->assertOk();
+        $mergedPath = $resp->getFile()->getPathname();
+        $this->tempFilesToClean[] = $mergedPath;
+
+        $mergedXml = $this->readDocumentXml($mergedPath);
+        $this->assertStringContainsString('MC-001', $mergedXml);
+        $this->assertStringContainsString('MC-002', $mergedXml);
+        $this->assertStringContainsString('MC-003', $mergedXml);
+
+        $dom = new \DOMDocument;
+        $this->assertTrue($dom->loadXML($mergedXml));
+
+        $xpath = new \DOMXPath($dom);
+        $xpath->registerNamespace('w', 'http://schemas.openxmlformats.org/wordprocessingml/2006/main');
+
+        // Setiap dari 3 kwitansi harus mempertahankan seksi TTD 3 kolom miliknya sendiri (<w:cols w:num="3">)
+        // dan tetap bertipe continuous (2 di dalam w:pPr/w:sectPr, 1 sebagai w:body/w:sectPr penutup)
+        $threeColSections = $xpath->query('//w:sectPr/w:cols[@w:num="3"]');
+        $this->assertSame(3, $threeColSections ? $threeColSections->length : 0);
+
+        $inlineThreeColContinuous = $xpath->query('//w:pPr/w:sectPr[w:cols[@w:num="3"] and w:type[@w:val="continuous"]]');
+        $this->assertSame(2, $inlineThreeColContinuous ? $inlineThreeColContinuous->length : 0);
+
+        $trailingThreeColContinuous = $xpath->query('/w:document/w:body/w:sectPr[w:cols[@w:num="3"] and w:type[@w:val="continuous"]]');
+        $this->assertSame(1, $trailingThreeColContinuous ? $trailingThreeColContinuous->length : 0);
+
+        // Kwitansi ke-2 dan ke-3 harus mulai di halaman baru tepat pada seksi 1-kolom atas (bukan seksi TTD 3-kolom)
+        $nextPageTypes = $xpath->query('//w:sectPr/w:type[@w:val="nextPage"]');
+        $this->assertSame(2, $nextPageTypes ? $nextPageTypes->length : 0);
+
+        $upperNextPageSections = $xpath->query('//w:pPr/w:sectPr[not(w:cols[@w:num="3"]) and w:type[@w:val="nextPage"]]');
+        $this->assertSame(2, $upperNextPageSections ? $upperNextPageSections->length : 0);
+    }
+
+    public function test_bulk_merge_deduplicates_vml_shapes_bookmarks_and_preserves_sectpr_child_order(): void
+    {
+        $longBookmark = 'bm_very_long_bookmark_name_thirty_8_ch'; // 38 karakter (> 40 jika ditambah _kw1 tanpa potong)
+        $this->assertSame(38, strlen($longBookmark));
+
+        $makeXml = static function (string $label) use ($longBookmark): string {
+            return <<<XML
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document
+    xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+    xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+    xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+    xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"
+    xmlns:v="urn:schemas-microsoft-com:vml"
+    xmlns:o="urn:schemas-microsoft-com:office:office">
+  <w:body>
+    <w:p>
+      <w:bookmarkStart w:id="0" w:name="{$longBookmark}"/>
+      <w:r><w:t>{$label}</w:t></w:r>
+      <w:bookmarkEnd w:id="0"/>
+      <w:hyperlink w:anchor="{$longBookmark}">
+        <w:r><w:t>Link {$label}</w:t></w:r>
+      </w:hyperlink>
+    </w:p>
+    <w:p>
+      <w:r>
+        <w:drawing>
+          <wp:inline>
+            <wp:docPr id="2147483647" name="Picture 1"/>
+            <pic:cNvPr id="5" name="logo.png"/>
+          </wp:inline>
+        </w:drawing>
+      </w:r>
+      <w:r>
+        <w:pict>
+          <v:shapetype id="_x0000_t75" coordsize="21600,21600"/>
+          <v:shape id="Shape1" o:spid="_x0000_s1026" type="#_x0000_t75"/>
+          <v:line id="Line1" o:spid="_x0000_s1027" from="0,0" to="100,0"/>
+          <o:r idref="#Shape1"/>
+        </w:pict>
+      </w:r>
+    </w:p>
+    <w:sectPr>
+      <w:headerReference w:type="default" r:id="rId1"/>
+      <w:cols w:num="1" w:space="720"/>
+    </w:sectPr>
+  </w:body>
+</w:document>
+XML;
+        };
+
+        $doc1 = $this->createMinimalDocxFromXml($makeXml('KW-1'));
+        $doc2 = $this->createMinimalDocxFromXml($makeXml('KW-2'));
+
+        $service = app(KwitansiTemplateService::class);
+        $mergedPath = $service->mergeCompiledDocxFiles([$doc1, $doc2]);
+        $this->tempFilesToClean[] = $mergedPath;
+
+        $mergedXml = $this->readDocumentXml($mergedPath);
+        $dom = new \DOMDocument;
+        $this->assertTrue($dom->loadXML($mergedXml));
+
+        $xpath = new \DOMXPath($dom);
+        $xpath->registerNamespace('w', 'http://schemas.openxmlformats.org/wordprocessingml/2006/main');
+        $xpath->registerNamespace('v', 'urn:schemas-microsoft-com:vml');
+        $xpath->registerNamespace('o', 'urn:schemas-microsoft-com:office:office');
+
+        // 1. Seluruh DrawingML ID (docPr / cNvPr) harus unik dan dalam rentang 32-bit signed int (<= 2147483647)
+        $drawingNodes = $xpath->query('//*[local-name()="docPr" or local-name()="cNvPr"][@id]');
+        $this->assertSame(4, $drawingNodes ? $drawingNodes->length : 0);
+        $drawingIds = [];
+        foreach ($drawingNodes as $node) {
+            if ($node instanceof \DOMElement) {
+                $rawId = $node->getAttribute('id');
+                $this->assertTrue(ctype_digit($rawId));
+                $this->assertLessThanOrEqual(2147483647, (int) $rawId);
+                $drawingIds[] = $rawId;
+            }
+        }
+        $this->assertSame(4, count(array_unique($drawingIds)), 'Seluruh DrawingML docPr/cNvPr @id harus unik.');
+
+        // 2. v:shapetype duplikat harus dihapus (hanya tersisa 1 definisi dari dokumen basis)
+        $shapeTypes = $xpath->query('//v:shapetype[@id="_x0000_t75"]');
+        $this->assertSame(1, $shapeTypes ? $shapeTypes->length : 0);
+
+        // 2. Seluruh VML @id dan @o:spid pada v:shape & v:line harus unik dan o:r/@idref ikut diremap
+        $vmlNodes = $xpath->query('//v:shape | //v:line');
+        $this->assertSame(4, $vmlNodes ? $vmlNodes->length : 0);
+        $vmlIds = [];
+        $vmlSpids = [];
+        foreach ($vmlNodes as $node) {
+            if ($node instanceof \DOMElement) {
+                $vmlIds[] = $node->getAttribute('id');
+                $vmlSpids[] = $node->getAttributeNS('urn:schemas-microsoft-com:office:office', 'spid');
+            }
+        }
+        $this->assertSame(4, count(array_unique($vmlIds)), 'VML @id harus unik across merged docs.');
+        $this->assertSame(4, count(array_unique($vmlSpids)), 'VML @o:spid harus unik across merged docs.');
+
+        $idRefs = $xpath->query('//o:r/@idref');
+        $this->assertSame(2, $idRefs ? $idRefs->length : 0);
+        $idRefValues = [$idRefs->item(0)?->nodeValue, $idRefs->item(1)?->nodeValue];
+        $this->assertSame('#Shape1', $idRefValues[0]);
+        $this->assertNotSame('#Shape1', $idRefValues[1]);
+        $this->assertContains(ltrim((string) $idRefValues[1], '#'), $vmlIds);
+
+        // 3. Bookmark start/end tetap berpasangan dengan ID unik, nama <= 40 karakter, & w:hyperlink/@w:anchor ikut diremap
+        $bmStarts = $xpath->query('//w:bookmarkStart');
+        $bmEnds = $xpath->query('//w:bookmarkEnd');
+        $this->assertSame(2, $bmStarts ? $bmStarts->length : 0);
+        $this->assertSame(2, $bmEnds ? $bmEnds->length : 0);
+
+        $startIds = [];
+        $endIds = [];
+        $bmNames = [];
+        foreach ($bmStarts as $bm) {
+            if ($bm instanceof \DOMElement) {
+                $startIds[] = $bm->getAttributeNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'id');
+                $bmNames[] = $bm->getAttributeNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'name');
+            }
+        }
+        foreach ($bmEnds as $bm) {
+            if ($bm instanceof \DOMElement) {
+                $endIds[] = $bm->getAttributeNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'id');
+            }
+        }
+        $this->assertSame($startIds, $endIds, 'w:bookmarkStart dan w:bookmarkEnd harus tetap berpasangan.');
+        $this->assertSame(2, count(array_unique($startIds)), 'ID bookmark harus unik.');
+        $this->assertSame(2, count(array_unique($bmNames)), 'Nama bookmark harus unik.');
+        foreach ($bmNames as $bmName) {
+            $this->assertLessThanOrEqual(40, mb_strlen($bmName), 'Nama bookmark Word maksimal 40 karakter.');
+        }
+
+        $anchors = $xpath->query('//w:hyperlink/@w:anchor');
+        $this->assertSame(2, $anchors ? $anchors->length : 0);
+        $this->assertSame($bmNames[0], $anchors->item(0)?->nodeValue);
+        $this->assertSame($bmNames[1], $anchors->item(1)?->nodeValue);
+
+        // 4. Urutan elemen CT_SectPr pada sectPr penutup dokumen ke-2 (tanpa pgSz):
+        //    <w:headerReference> harus berada SEBELUM <w:type w:val="nextPage"/>, dan <w:cols> SESUDAHNYA
+        $trailingSectPr = $xpath->query('/w:document/w:body/w:sectPr')->item(0);
+        $this->assertInstanceOf(\DOMElement::class, $trailingSectPr);
+        $childNames = [];
+        foreach ($trailingSectPr->childNodes as $child) {
+            if ($child instanceof \DOMElement) {
+                $childNames[] = $child->localName;
+            }
+        }
+        $this->assertSame(['headerReference', 'type', 'cols'], $childNames);
+        $trailingType = $xpath->query('./w:type/@w:val', $trailingSectPr)->item(0)?->nodeValue;
+        $this->assertSame('nextPage', $trailingType);
     }
 
     public function test_custom_template_works_on_kinerja_variant_with_dynamic_sumber_dana(): void
@@ -820,6 +1085,26 @@ class KwitansiCustomTemplateTest extends TestCase
             'buku_kas_umum_id' => $bku->id,
             'bku_uraian_detail_id' => $firstDetailId,
         ]);
+    }
+
+    protected function createMinimalDocxFromXml(string $documentXml): string
+    {
+        $baseTmp = tempnam(sys_get_temp_dir(), 'kw_min_');
+        if ($baseTmp !== false && is_file($baseTmp)) {
+            @unlink($baseTmp);
+        }
+        $path = ($baseTmp ?: sys_get_temp_dir().DIRECTORY_SEPARATOR.'kw_min_'.uniqid('', true)).'.docx';
+
+        $zip = new \ZipArchive;
+        $this->assertTrue($zip->open($path, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true);
+        $zip->addFromString('[Content_Types].xml', '<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/></Types>');
+        $zip->addFromString('word/document.xml', $documentXml);
+        $zip->addFromString('word/_rels/document.xml.rels', '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"/>');
+        $zip->close();
+
+        $this->tempFilesToClean[] = $path;
+
+        return $path;
     }
 
     protected function readDocumentXml(string $docxPath): string
