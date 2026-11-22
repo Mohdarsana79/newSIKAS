@@ -3,16 +3,22 @@
 namespace App\Http\Controllers;
 
 use App\Config\VariantConfig;
+use App\Http\Controllers\Concerns\HandlesSpjCustomTemplates;
 use App\Models\BukuKasUmumUraianDetail;
 use App\Models\SekolahProfile;
+use App\Models\SpjTemplate;
+use App\Services\SpjTemplateService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class BastController extends Controller
 {
+    use HandlesSpjCustomTemplates;
+
     protected string $variant;
 
     protected string $Penganggaran;
@@ -466,6 +472,64 @@ class BastController extends Controller
         } else {
             return $ones[floor($number / 100)].' ratus '.$this->convertChunk($number % 100);
         }
+    }
+
+    public function previewCustomPdf($id, SpjTemplate $template, SpjTemplateService $templateService)
+    {
+        return $this->respondSpjCustomPdf(
+            SpjTemplate::TYPE_BAST,
+            $template,
+            $templateService,
+            fn () => $this->loadBastForCustom($id),
+            fn (SpjTemplate $tpl, $record, string $ext) => $this->sanitizeCustomFilename(
+                'BAST_'.(Str::slug($tpl->nama, '_') ?: 'Custom'),
+                (string) ($record->nomor_bast ?: $record->bukuKasUmum?->uraian ?: $record->getKey()),
+                $ext
+            ),
+            true
+        );
+    }
+
+    public function generateCustomPdf($id, SpjTemplate $template, SpjTemplateService $templateService)
+    {
+        return $this->respondSpjCustomPdf(
+            SpjTemplate::TYPE_BAST,
+            $template,
+            $templateService,
+            fn () => $this->loadBastForCustom($id),
+            fn (SpjTemplate $tpl, $record, string $ext) => $this->sanitizeCustomFilename(
+                'BAST_'.(Str::slug($tpl->nama, '_') ?: 'Custom'),
+                (string) ($record->nomor_bast ?: $record->bukuKasUmum?->uraian ?: $record->getKey()),
+                $ext
+            ),
+            false
+        );
+    }
+
+    public function generateCustomDocx($id, SpjTemplate $template, SpjTemplateService $templateService)
+    {
+        return $this->respondSpjCustomDocx(
+            SpjTemplate::TYPE_BAST,
+            $template,
+            $templateService,
+            fn () => $this->loadBastForCustom($id),
+            fn (SpjTemplate $tpl, $record, string $ext) => $this->sanitizeCustomFilename(
+                'BAST_'.(Str::slug($tpl->nama, '_') ?: 'Custom'),
+                (string) ($record->nomor_bast ?: $record->bukuKasUmum?->uraian ?: $record->getKey()),
+                $ext
+            )
+        );
+    }
+
+    protected function loadBastForCustom($id)
+    {
+        return ($this->Bast)::with([
+            'sekolah',
+            'penganggaran.sekolah',
+            'bukuKasUmum' => function ($q) {
+                $q->with(['uraianDetails']);
+            },
+        ])->findOrFail($id);
     }
 
     protected function renderVariant($component, $props = [])

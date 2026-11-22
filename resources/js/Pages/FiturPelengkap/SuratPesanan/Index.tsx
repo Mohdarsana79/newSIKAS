@@ -18,6 +18,9 @@ import EmptyState from '@/Components/ui/EmptyState';
 import TextInput from '@/Components/TextInput';
 import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
+import SpjTemplateSelector from '@/Components/SpjCustomTemplate/SpjTemplateSelector';
+import SpjTemplateModal from '@/Components/SpjCustomTemplate/SpjTemplateModal';
+import { resolveCanManageSpjTemplates, useSpjCustomTemplates } from '@/Components/SpjCustomTemplate/types';
 
 // Custom Toast helper
 const showToast = (message: string, type: 'success' | 'error' = 'success') => {
@@ -29,7 +32,20 @@ const SELECT_CLASS =
 
 export default function SuratPesananIndex({ auth }: { auth: any }) {
     const vroute = useVariantRoute();
-    const routePrefix = usePage<any>().props.routePrefix || '';
+    const pageProps = usePage<any>().props;
+    const routePrefix = pageProps.routePrefix || '';
+    const canManageTemplates = resolveCanManageSpjTemplates(pageProps, 'surat_pesanan');
+    const {
+        templates: customTemplates,
+        variableCatalog,
+        libreOfficeAvailable,
+        selectedFormat,
+        setSelectedFormat,
+        activeCustomTemplateId,
+        activeCustomTemplate,
+        fetchTemplates: fetchCustomTemplates,
+    } = useSpjCustomTemplates('surat_pesanan');
+    const [showTemplateModal, setShowTemplateModal] = useState(false);
     
     let activeTab = 'BOSP Reguler';
     if (routePrefix === 'silpa-') activeTab = 'SiLPA BOSP Reguler';
@@ -250,7 +266,16 @@ export default function SuratPesananIndex({ auth }: { auth: any }) {
                                     />
                                 </div>
                             </div>
-                            <div className="flex items-center justify-end">
+                            <div className="flex flex-wrap items-center justify-end gap-2">
+                                <SpjTemplateSelector
+                                    docType="surat_pesanan"
+                                    templates={customTemplates}
+                                    selectedFormat={selectedFormat}
+                                    onChangeFormat={setSelectedFormat}
+                                    onOpenModal={() => setShowTemplateModal(true)}
+                                    canManage={canManageTemplates}
+                                    libreOfficeAvailable={libreOfficeAvailable}
+                                />
                                 <PrimaryButton
                                     onClick={() => {
                                         setEditData(null);
@@ -310,17 +335,57 @@ export default function SuratPesananIndex({ auth }: { auth: any }) {
                                         <td>
                                             <div className="flex items-center justify-end gap-1.5">
                                                 <button onClick={() => {
+                                                    if (activeCustomTemplateId !== null) {
+                                                        if (!libreOfficeAvailable) {
+                                                            showToast('Preview PDF kustom memerlukan LibreOffice. Gunakan tombol DOCX.', 'error');
+                                                            return;
+                                                        }
+                                                        setPreviewData({
+                                                            title: `${suratPesanan.uraian} (${activeCustomTemplate?.nama ?? 'Template Kustom'})`,
+                                                            url: vroute('surat-pesanan.custom.preview', { id: suratPesanan.id, template: activeCustomTemplateId }),
+                                                        });
+                                                        setShowPreviewModal(true);
+                                                        return;
+                                                    }
                                                     setPreviewData({ title: suratPesanan.uraian, url: suratPesanan.preview_url });
                                                     setShowPreviewModal(true);
-                                                }} className="inline-flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 transition hover:bg-brand-500/10 hover:text-brand-600 dark:text-slate-500 dark:hover:bg-white/5 dark:hover:text-brand-300" title="Preview">
+                                                }} className="inline-flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 transition hover:bg-brand-500/10 hover:text-brand-600 dark:text-slate-500 dark:hover:bg-white/5 dark:hover:text-brand-300" title={activeCustomTemplate ? `Preview PDF (${activeCustomTemplate.nama})` : 'Preview'}>
                                                     <Eye size={18} />
                                                 </button>
                                                 <button onClick={() => {
+                                                    if (activeCustomTemplateId !== null) {
+                                                        if (!libreOfficeAvailable) {
+                                                            showToast('Unduh PDF kustom memerlukan LibreOffice. Gunakan tombol DOCX.', 'error');
+                                                            return;
+                                                        }
+                                                        window.open(
+                                                            vroute('surat-pesanan.custom.pdf', { id: suratPesanan.id, template: activeCustomTemplateId }),
+                                                            '_blank',
+                                                            'noopener,noreferrer',
+                                                        );
+                                                        return;
+                                                    }
                                                     setEditData(suratPesanan);
                                                     setShowPrintModal(true);
-                                                }} className="inline-flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 transition hover:bg-mint/10 hover:text-mint dark:text-slate-500 dark:hover:bg-white/5 dark:hover:text-mint" title="PDF">
+                                                }} className="inline-flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 transition hover:bg-mint/10 hover:text-mint dark:text-slate-500 dark:hover:bg-white/5 dark:hover:text-mint" title={activeCustomTemplate ? `Unduh PDF (${activeCustomTemplate.nama})` : 'PDF'}>
                                                     <FileText size={18} />
                                                 </button>
+                                                {activeCustomTemplateId !== null && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            window.open(
+                                                                vroute('surat-pesanan.custom.docx', { id: suratPesanan.id, template: activeCustomTemplateId }),
+                                                                '_blank',
+                                                                'noopener,noreferrer',
+                                                            );
+                                                        }}
+                                                        className="inline-flex h-8 items-center justify-center rounded-xl border border-brand-200/80 bg-brand-50/70 px-2 text-[10px] font-extrabold text-brand-700 transition hover:bg-brand-100 dark:border-brand-400/25 dark:bg-brand-500/10 dark:text-brand-300"
+                                                        title={`Unduh Word (.docx) — ${activeCustomTemplate?.nama ?? 'Template Kustom'}`}
+                                                    >
+                                                        DOCX
+                                                    </button>
+                                                )}
                                                 <button onClick={() => {
                                                     setEditData(suratPesanan);
                                                     setShowDetailModal(true);
@@ -395,6 +460,17 @@ export default function SuratPesananIndex({ auth }: { auth: any }) {
                 onClose={() => setShowDeleteModal(false)} 
                 onConfirm={handleDelete} 
                 title="Hapus Surat Pesanan"
+            />
+
+            <SpjTemplateModal
+                show={showTemplateModal}
+                onClose={() => setShowTemplateModal(false)}
+                docType="surat_pesanan"
+                templates={customTemplates}
+                variableCatalog={variableCatalog}
+                libreOfficeAvailable={libreOfficeAvailable}
+                canManage={canManageTemplates}
+                onTemplatesChanged={fetchCustomTemplates}
             />
         </AuthenticatedLayout>
     );

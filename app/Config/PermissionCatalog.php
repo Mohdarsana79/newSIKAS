@@ -2,6 +2,7 @@
 
 namespace App\Config;
 
+use App\Models\SpjTemplate;
 use Illuminate\Support\Str;
 
 class PermissionCatalog
@@ -310,7 +311,7 @@ class PermissionCatalog
      *
      * @return array{module?: string, level?: string, ability?: string}|null
      */
-    public static function resolveRouteRequirement(?string $routeName, string $method): ?array
+    public static function resolveRouteRequirement(?string $routeName, string $method, ?string $spjTemplateType = null): ?array
     {
         if (! is_string($routeName) || $routeName === '') {
             return null;
@@ -318,6 +319,17 @@ class PermissionCatalog
 
         $normalizedName = self::stripVariantPrefix($routeName);
         $isMutation = in_array(strtoupper($method), ['POST', 'PUT', 'PATCH', 'DELETE'], true);
+
+        if (str_starts_with($normalizedName, 'api.spj-templates.')) {
+            $module = in_array($spjTemplateType, SpjTemplate::TYPES, true)
+                ? $spjTemplateType
+                : '__invalid_spj_template_type__';
+
+            return [
+                'module' => $module,
+                'level' => $isMutation ? self::LEVEL_WRITE : self::LEVEL_READ,
+            ];
+        }
 
         // Route akun pribadi & autentikasi selalu diizinkan untuk semua user yang login.
         foreach ([

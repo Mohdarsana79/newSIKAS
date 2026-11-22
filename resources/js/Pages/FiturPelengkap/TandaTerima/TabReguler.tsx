@@ -1,6 +1,6 @@
 import React, { useState, useEffect, FormEventHandler } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import axios from 'axios';
 import Modal from '@/Components/Modal';
 import SecondaryButton from '@/Components/SecondaryButton';
@@ -17,6 +17,9 @@ import Surface from '@/Components/ui/Surface';
 import DataTable from '@/Components/ui/DataTable';
 import StatusBadge from '@/Components/ui/StatusBadge';
 import EmptyState from '@/Components/ui/EmptyState';
+import SpjTemplateSelector from '@/Components/SpjCustomTemplate/SpjTemplateSelector';
+import SpjTemplateModal from '@/Components/SpjCustomTemplate/SpjTemplateModal';
+import { resolveCanManageSpjTemplates, useSpjCustomTemplates } from '@/Components/SpjCustomTemplate/types';
 import { format } from 'date-fns';
 import Select from 'react-select';
 import useVariantRoute from '@/Hooks/useVariantRoute';
@@ -61,6 +64,19 @@ interface YearData {
 
 export default function TabReguler() {
     const vroute = useVariantRoute();
+    const pageProps = usePage<any>().props;
+    const canManageTemplates = resolveCanManageSpjTemplates(pageProps, 'tanda_terima');
+    const {
+        templates: customTemplates,
+        variableCatalog,
+        libreOfficeAvailable,
+        selectedFormat,
+        setSelectedFormat,
+        activeCustomTemplateId,
+        activeCustomTemplate,
+        fetchTemplates: fetchCustomTemplates,
+    } = useSpjCustomTemplates('tanda_terima');
+    const [showTemplateModal, setShowTemplateModal] = useState(false);
     const [tandaTerimas, setTandaTerimas] = useState<TandaTerimaData[]>([]);
     const [loading, setLoading] = useState(true);
     const [pagination, setPagination] = useState<Partial<PaginationData>>({});
@@ -323,7 +339,7 @@ export default function TabReguler() {
         setConfirmingDownload(true);
     };
 
-    const processDownloadAll = (mode: 'current' | 'year') => {
+    const processDownloadAll = (mode: 'current' | 'year', customOutput: 'pdf' | 'docx' = 'pdf') => {
         const params = new URLSearchParams();
 
         if (mode === 'current') {
@@ -331,6 +347,14 @@ export default function TabReguler() {
             Object.entries(filters).forEach(([key, value]) => {
                 if (value) params.append(key, value);
             });
+        }
+
+        if (activeCustomTemplateId !== null) {
+            params.append('output', customOutput);
+            const url = vroute('tanda-terima.custom.download-all', { template: activeCustomTemplateId });
+            window.open(`${url}?${params.toString()}`, '_blank', 'noopener,noreferrer');
+            setConfirmingDownload(false);
+            return;
         }
 
         // Add PDF Settings
@@ -342,8 +366,59 @@ export default function TabReguler() {
     };
 
     const handlePrintClick = (id: number) => {
+        if (activeCustomTemplateId !== null) {
+            if (!libreOfficeAvailable) {
+                window.dispatchEvent(
+                    new CustomEvent('toast-notification', {
+                        detail: {
+                            message: 'LibreOffice belum terdeteksi untuk PDF. Gunakan tombol Unduh Word (.docx).',
+                            type: 'error',
+                        },
+                    }),
+                );
+                return;
+            }
+            window.open(
+                vroute('tanda-terima.custom.pdf', { id, template: activeCustomTemplateId }),
+                '_blank',
+                'noopener,noreferrer',
+            );
+            return;
+        }
         setSelectedTandaTerimaId(id);
         setShowPrintSettings(true);
+    };
+
+    const handleDownloadCustomDocx = (id: number) => {
+        if (activeCustomTemplateId === null) return;
+        window.open(
+            vroute('tanda-terima.custom.docx', { id, template: activeCustomTemplateId }),
+            '_blank',
+            'noopener,noreferrer',
+        );
+    };
+
+    const handlePreviewClick = (item: TandaTerimaData) => {
+        if (activeCustomTemplateId !== null) {
+            if (!libreOfficeAvailable) {
+                window.dispatchEvent(
+                    new CustomEvent('toast-notification', {
+                        detail: {
+                            message: 'Preview PDF kustom memerlukan LibreOffice. Gunakan tombol Unduh Word (.docx).',
+                            type: 'error',
+                        },
+                    }),
+                );
+                return;
+            }
+            setPreviewUrl(
+                vroute('tanda-terima.custom.preview', { id: item.id, template: activeCustomTemplateId }),
+            );
+            setShowPreviewModal(true);
+            return;
+        }
+        setPreviewUrl(item.preview_url);
+        setShowPreviewModal(true);
     };
 
     const processPrint = (settings: PrintSettings) => {
@@ -356,11 +431,6 @@ export default function TabReguler() {
             });
             window.open(`${baseUrl}?${params.toString()}`, '_blank');
         }
-    };
-
-    const handlePreviewClick = (url: string) => {
-        setPreviewUrl(url);
-        setShowPreviewModal(true);
     };
 
     const closeModal = () => {
@@ -396,6 +466,15 @@ export default function TabReguler() {
                         </div>
 
                         <div className="flex flex-wrap items-center gap-2">
+                            <SpjTemplateSelector
+                                docType="tanda_terima"
+                                templates={customTemplates}
+                                selectedFormat={selectedFormat}
+                                onChangeFormat={setSelectedFormat}
+                                onOpenModal={() => setShowTemplateModal(true)}
+                                canManage={canManageTemplates}
+                                libreOfficeAvailable={libreOfficeAvailable}
+                            />
                             <button
                                 onClick={startGenerateBatch}
                                 disabled={stats.available === 0}
@@ -613,14 +692,23 @@ export default function TabReguler() {
                                                     <button
                                                         onClick={() => handlePrintClick(item.id)}
                                                         className="sikas-icon-btn h-8 w-8"
-                                                        title="Cetak PDF"
+                                                        title={activeCustomTemplate ? `Unduh PDF (${activeCustomTemplate.nama})` : 'Cetak PDF'}
                                                     >
                                                         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
                                                     </button>
+                                                    {activeCustomTemplateId !== null && (
+                                                        <button
+                                                            onClick={() => handleDownloadCustomDocx(item.id)}
+                                                            className="sikas-icon-btn h-8 px-2 text-[10px] font-extrabold text-brand-700 dark:text-brand-300"
+                                                            title={`Unduh Word (.docx) — ${activeCustomTemplate?.nama ?? 'Template Kustom'}`}
+                                                        >
+                                                            DOCX
+                                                        </button>
+                                                    )}
                                                     <button
-                                                        onClick={(e) => { e.preventDefault(); handlePreviewClick(item.preview_url); }}
+                                                        onClick={(e) => { e.preventDefault(); handlePreviewClick(item); }}
                                                         className="sikas-icon-btn h-8 w-8"
-                                                        title="Preview"
+                                                        title={activeCustomTemplate ? `Preview PDF (${activeCustomTemplate.nama})` : 'Preview'}
                                                     >
                                                         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
                                                     </button>
@@ -807,55 +895,105 @@ export default function TabReguler() {
                             Total Data: <strong className="text-sikas-num font-extrabold text-slate-900 dark:text-white">{pagination.total || stats.total}</strong>
                         </div>
 
-                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                            <div>
-                                <InputLabel htmlFor="paper_size" value="Ukuran Kertas" />
-                                <select
-                                    id="paper_size"
-                                    value={downloadSettings.paperSize}
-                                    onChange={(e) => setDownloadSettings({ ...downloadSettings, paperSize: e.target.value })}
-                                    className="mt-1 block w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-[12px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
-                                >
-                                    <option value="A4">A4</option>
-                                    <option value="Letter">Letter</option>
-                                    <option value="Folio">Folio (F4)</option>
-                                    <option value="Legal">Legal</option>
-                                </select>
+                        {activeCustomTemplate ? (
+                            <div className="space-y-3">
+                                <div className="rounded-2xl border border-brand-200/80 bg-brand-50/60 px-4 py-3 text-[11px] font-medium text-brand-800 dark:border-brand-400/20 dark:bg-brand-500/10 dark:text-brand-200">
+                                    Format aktif: <strong className="font-extrabold">Template Kustom — {activeCustomTemplate.nama}</strong>. Ukuran kertas &amp; font mengikuti desain file Word template Anda.
+                                </div>
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                    <button
+                                        onClick={() => processDownloadAll('current', 'docx')}
+                                        className="group flex items-start gap-3 rounded-2xl border border-slate-200/90 bg-white p-4 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-300 hover:bg-brand-50/60 dark:border-white/10 dark:bg-white/5 dark:hover:border-brand-400/40 dark:hover:bg-brand-500/10"
+                                    >
+                                        <IconTile tone="violet" size="md">
+                                            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                                <polyline points="14 2 14 8 20 8" />
+                                            </svg>
+                                        </IconTile>
+                                        <span className="min-w-0">
+                                            <span className="block text-[12px] font-extrabold text-slate-900 group-hover:underline dark:text-white">Unduh Gabungan Word (.docx)</span>
+                                            <span className="mt-0.5 block text-[10.5px] font-medium text-slate-500 dark:text-slate-400">
+                                                Bisa diedit lagi di Microsoft Word
+                                            </span>
+                                        </span>
+                                    </button>
+                                    <button
+                                        onClick={() => processDownloadAll('current', 'pdf')}
+                                        disabled={!libreOfficeAvailable}
+                                        className={`group flex items-start gap-3 rounded-2xl border p-4 text-left shadow-sm transition-all duration-200 ${
+                                            libreOfficeAvailable
+                                                ? 'border-slate-200/90 bg-white hover:-translate-y-0.5 hover:border-lime-300 hover:bg-lime-100/60 dark:border-white/10 dark:bg-white/5 dark:hover:border-lime-400/40 dark:hover:bg-lime-400/10'
+                                                : 'cursor-not-allowed border-slate-200/60 bg-slate-50 opacity-60 dark:border-white/5 dark:bg-white/[0.02]'
+                                        }`}
+                                    >
+                                        <IconTile tone="lime" size="md">
+                                            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                            </svg>
+                                        </IconTile>
+                                        <span className="min-w-0">
+                                            <span className="block text-[12px] font-extrabold text-slate-900 group-hover:underline dark:text-white">Unduh Gabungan PDF (.pdf)</span>
+                                            <span className="mt-0.5 block text-[10.5px] font-medium text-slate-500 dark:text-slate-400">
+                                                {libreOfficeAvailable ? 'Siap cetak (konversi LibreOffice)' : 'Memerlukan LibreOffice'}
+                                            </span>
+                                        </span>
+                                    </button>
+                                </div>
                             </div>
-                            <div>
-                                <InputLabel htmlFor="font_size" value="Ukuran Font" />
-                                <select
-                                    id="font_size"
-                                    value={downloadSettings.fontSize}
-                                    onChange={(e) => setDownloadSettings({ ...downloadSettings, fontSize: e.target.value })}
-                                    className="mt-1 block w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-[12px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
-                                >
-                                    <option value="8pt">8pt</option>
-                                    <option value="9pt">9pt</option>
-                                    <option value="10pt">10pt</option>
-                                    <option value="11pt">11pt</option>
-                                </select>
-                            </div>
-                        </div>
+                        ) : (
+                            <>
+                                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                    <div>
+                                        <InputLabel htmlFor="paper_size" value="Ukuran Kertas" />
+                                        <select
+                                            id="paper_size"
+                                            value={downloadSettings.paperSize}
+                                            onChange={(e) => setDownloadSettings({ ...downloadSettings, paperSize: e.target.value })}
+                                            className="mt-1 block w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-[12px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
+                                        >
+                                            <option value="A4">A4</option>
+                                            <option value="Letter">Letter</option>
+                                            <option value="Folio">Folio (F4)</option>
+                                            <option value="Legal">Legal</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <InputLabel htmlFor="font_size" value="Ukuran Font" />
+                                        <select
+                                            id="font_size"
+                                            value={downloadSettings.fontSize}
+                                            onChange={(e) => setDownloadSettings({ ...downloadSettings, fontSize: e.target.value })}
+                                            className="mt-1 block w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-[12px] font-semibold text-slate-800 shadow-sm transition focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10"
+                                        >
+                                            <option value="8pt">8pt</option>
+                                            <option value="9pt">9pt</option>
+                                            <option value="10pt">10pt</option>
+                                            <option value="11pt">11pt</option>
+                                        </select>
+                                    </div>
+                                </div>
 
-                        <div className="grid grid-cols-1 gap-4">
-                            <button
-                                onClick={() => processDownloadAll('current')}
-                                className="group flex items-start gap-3 rounded-2xl border border-slate-200/90 bg-white p-4 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-lime-300 hover:bg-lime-100/60 dark:border-white/10 dark:bg-white/5 dark:hover:border-lime-400/40 dark:hover:bg-lime-400/10"
-                            >
-                                <IconTile tone="lime" size="md" className="transition-transform duration-300 group-hover:scale-105">
-                                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                    </svg>
-                                </IconTile>
-                                <span className="min-w-0">
-                                    <span className="block text-[12px] font-extrabold text-slate-900 group-hover:underline dark:text-white">Filter Saat Ini</span>
-                                    <span className="mt-0.5 block text-[10.5px] font-medium text-slate-500 dark:text-slate-400">
-                                        Download data sesuai pencarian & filter bulan/tahun yang aktif
-                                    </span>
-                                </span>
-                            </button>
-                        </div>
+                                <div className="grid grid-cols-1 gap-4">
+                                    <button
+                                        onClick={() => processDownloadAll('current')}
+                                        className="group flex items-start gap-3 rounded-2xl border border-slate-200/90 bg-white p-4 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-lime-300 hover:bg-lime-100/60 dark:border-white/10 dark:bg-white/5 dark:hover:border-lime-400/40 dark:hover:bg-lime-400/10"
+                                    >
+                                        <IconTile tone="lime" size="md" className="transition-transform duration-300 group-hover:scale-105">
+                                            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                            </svg>
+                                        </IconTile>
+                                        <span className="min-w-0">
+                                            <span className="block text-[12px] font-extrabold text-slate-900 group-hover:underline dark:text-white">Filter Saat Ini</span>
+                                            <span className="mt-0.5 block text-[10.5px] font-medium text-slate-500 dark:text-slate-400">
+                                                Download data sesuai pencarian &amp; filter bulan/tahun yang aktif
+                                            </span>
+                                        </span>
+                                    </button>
+                                </div>
+                            </>
+                        )}
                     </div>
 
                     <div className="flex shrink-0 items-center justify-end gap-2 border-t border-slate-100 px-6 py-4 dark:border-white/5">
@@ -928,6 +1066,18 @@ export default function TabReguler() {
                 onClose={() => setShowPreviewModal(false)}
                 pdfUrl={previewUrl}
                 title="Preview Tanda Terima"
+            />
+
+            {/* Custom Template Modal */}
+            <SpjTemplateModal
+                show={showTemplateModal}
+                onClose={() => setShowTemplateModal(false)}
+                docType="tanda_terima"
+                templates={customTemplates}
+                variableCatalog={variableCatalog}
+                libreOfficeAvailable={libreOfficeAvailable}
+                canManage={canManageTemplates}
+                onTemplatesChanged={fetchCustomTemplates}
             />
         </div>
     );

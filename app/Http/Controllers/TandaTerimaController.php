@@ -3,17 +3,24 @@
 namespace App\Http\Controllers;
 
 use App\Config\VariantConfig; // CHANGED
+use App\Exceptions\KwitansiTemplateException;
+use App\Http\Controllers\Concerns\HandlesSpjCustomTemplates;
 use App\Models\SekolahProfile;
+use App\Models\SpjTemplate;
 use App\Models\TandaTerima;
+use App\Services\SpjTemplateService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class TandaTerimaController extends Controller
 {
+    use HandlesSpjCustomTemplates;
+
     protected string $variant;
 
     protected string $Penganggaran;
@@ -713,6 +720,209 @@ class TandaTerimaController extends Controller
         $tanggalObj = Carbon::parse($tanggal);
 
         return "Lunas Bayar, {$tanggalObj->format('d')} ".($bulanIndonesia[$tanggalObj->format('F')] ?? '')." {$tanggalObj->format('Y')}";
+    }
+
+    public function previewCustomPdf($id, SpjTemplate $template, SpjTemplateService $templateService)
+    {
+        return $this->respondSpjCustomPdf(
+            SpjTemplate::TYPE_TANDA_TERIMA,
+            $template,
+            $templateService,
+            fn () => $this->loadTandaTerimaForCustom($id),
+            fn (SpjTemplate $tpl, $record, string $ext) => $this->sanitizeCustomFilename(
+                'Tanda_Terima_'.(Str::slug($tpl->nama, '_') ?: 'Custom'),
+                (string) ($record->bukuKasUmum?->uraian_opsional ?: $record->bukuKasUmum?->uraian ?: $record->getKey()),
+                $ext
+            ),
+            true
+        );
+    }
+
+    public function generateCustomPdf($id, SpjTemplate $template, SpjTemplateService $templateService)
+    {
+        return $this->respondSpjCustomPdf(
+            SpjTemplate::TYPE_TANDA_TERIMA,
+            $template,
+            $templateService,
+            fn () => $this->loadTandaTerimaForCustom($id),
+            fn (SpjTemplate $tpl, $record, string $ext) => $this->sanitizeCustomFilename(
+                'Tanda_Terima_'.(Str::slug($tpl->nama, '_') ?: 'Custom'),
+                (string) ($record->bukuKasUmum?->uraian_opsional ?: $record->bukuKasUmum?->uraian ?: $record->getKey()),
+                $ext
+            ),
+            false
+        );
+    }
+
+    public function generateCustomDocx($id, SpjTemplate $template, SpjTemplateService $templateService)
+    {
+        return $this->respondSpjCustomDocx(
+            SpjTemplate::TYPE_TANDA_TERIMA,
+            $template,
+            $templateService,
+            fn () => $this->loadTandaTerimaForCustom($id),
+            fn (SpjTemplate $tpl, $record, string $ext) => $this->sanitizeCustomFilename(
+                'Tanda_Terima_'.(Str::slug($tpl->nama, '_') ?: 'Custom'),
+                (string) ($record->bukuKasUmum?->uraian_opsional ?: $record->bukuKasUmum?->uraian ?: $record->getKey()),
+                $ext
+            )
+        );
+    }
+
+    public function downloadAllCustom(Request $request, SpjTemplate $template, SpjTemplateService $templateService)
+    {
+        if ($template->document_type !== SpjTemplate::TYPE_TANDA_TERIMA) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Template tidak sesuai untuk dokumen Tanda Terima.',
+            ], 404);
+        }
+
+        $output = strtolower((string) $request->input('output', 'docx'));
+        if (! in_array($output, ['docx', 'pdf'], true)) {
+            $output = 'docx';
+        }
+
+        if ($output === 'pdf' && ! $templateService->isLibreOfficeAvailable()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'LibreOffice tidak ditemukan di sistem. Gunakan opsi unduh DOCX Gabungan atau pastikan LibreOffice portable/sistem tersedia.',
+            ], 422);
+        }
+
+        $mergedDocxPath = null;
+        $pdfPath = null;
+        $pdfHandedOff = false;
+        try {
+            ini_set('memory_limit', '512M');
+            ini_set('max_execution_time', '300');
+
+            $search = trim((string) $request->input('search', ''));
+            $tahun = trim((string) $request->input('tahun', ''));
+            $startDate = trim((string) $request->input('start_date', ''));
+            $endDate = trim((string) $request->input('end_date', ''));
+
+            $query = ($this->TandaTerima)::with([
+                'sekolah',
+                'penganggaran.sekolah',
+                'kodeKegiatan',
+                'rekeningBelanja',
+                'penerimaanDana',
+                'bukuKasUmum' => function ($q) {
+                    $q->with(['uraianDetails']);
+                },
+            ]);
+
+            if ($tahun !== '' && ctype_digit($tahun)) {
+                $tahunInt = (int) $tahun;
+                if (strlen($tahun) === 4 && $tahunInt >= 2000 && $tahunInt <= 2100) {
+                    $query->whereHas('penganggaran', function ($pq) use ($tahunInt) {
+                        $pq->where('tahun_anggaran', $tahunInt);
+                    });
+                } else {
+                    $query->where(VariantConfig::penganggaranFk($this->variant), $tahunInt);
+                }
+            }
+
+            if ($startDate !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $startDate)) {
+                $query->whereHas('bukuKasUmum', function ($q) use ($startDate) {
+                    $q->whereDate('tanggal_transaksi', '>=', $startDate);
+                });
+            }
+
+            if ($endDate !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $endDate)) {
+                $query->whereHas('bukuKasUmum', function ($q) use ($endDate) {
+                    $q->whereDate('tanggal_transaksi', '<=', $endDate);
+                });
+            }
+
+            if ($search !== '') {
+                $lowerSearch = '%'.mb_strtolower($search).'%';
+                $query->where(function ($outer) use ($lowerSearch) {
+                    $outer->whereHas('bukuKasUmum', function ($q) use ($lowerSearch) {
+                        $q->whereRaw("LOWER(COALESCE(uraian, '')) LIKE ?", [$lowerSearch])
+                            ->orWhereRaw("LOWER(COALESCE(uraian_opsional, '')) LIKE ?", [$lowerSearch]);
+                    })->orWhereHas('rekeningBelanja', function ($q) use ($lowerSearch) {
+                        $q->whereRaw("LOWER(COALESCE(kode_rekening, '')) LIKE ?", [$lowerSearch]);
+                    });
+                });
+            }
+
+            $records = $query->latest()->get();
+            if ($records->isEmpty()) {
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Tidak ada data tanda terima yang sesuai dengan filter.',
+                    ], 404);
+                }
+
+                return redirect()->back()->with('error', 'Tidak ada data tanda terima yang sesuai dengan filter.');
+            }
+
+            $mergedDocxPath = $templateService->compileBulkDocx($template, $records, $this->variant);
+            $templateSlug = Str::slug($template->nama, '_') ?: 'Custom';
+            $dateStamp = now()->format('Ymd_His');
+
+            if ($output === 'pdf') {
+                $pdfPath = $templateService->convertDocxToPdf($mergedDocxPath);
+                @unlink($mergedDocxPath);
+                $mergedDocxPath = null;
+
+                $response = response()
+                    ->download($pdfPath, "Tanda_Terima_All_{$templateSlug}_{$dateStamp}.pdf", ['Content-Type' => 'application/pdf'])
+                    ->deleteFileAfterSend(true);
+                $pdfHandedOff = true;
+
+                return $response;
+            }
+
+            $downloadPath = $mergedDocxPath;
+            $mergedDocxPath = null;
+
+            return response()
+                ->download(
+                    $downloadPath,
+                    "Tanda_Terima_All_{$templateSlug}_{$dateStamp}.docx",
+                    ['Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
+                )
+                ->deleteFileAfterSend(true);
+        } catch (KwitansiTemplateException $e) {
+            Log::warning('Error bulk generating custom tanda terima: '.$e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        } catch (\Throwable $e) {
+            Log::error('Error bulk generating custom tanda terima: '.$e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat mengunduh gabungan tanda terima kustom.',
+            ], 500);
+        } finally {
+            if ($mergedDocxPath !== null && is_file($mergedDocxPath)) {
+                @unlink($mergedDocxPath);
+            }
+            if (! $pdfHandedOff && $pdfPath !== null && is_file($pdfPath)) {
+                @unlink($pdfPath);
+            }
+        }
+    }
+
+    protected function loadTandaTerimaForCustom(int|string $id)
+    {
+        return ($this->TandaTerima)::with([
+            'sekolah',
+            'penganggaran.sekolah',
+            'kodeKegiatan',
+            'rekeningBelanja',
+            'penerimaanDana',
+            'bukuKasUmum' => function ($q) {
+                $q->with(['uraianDetails']);
+            },
+        ])->findOrFail($id);
     }
 
     protected function renderVariant($component, $props = [])

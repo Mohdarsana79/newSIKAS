@@ -22,8 +22,10 @@ class EnforceModulePermissions
             return $next($request);
         }
 
-        $routeName = $request->route()?->getName();
-        $requirement = PermissionCatalog::resolveRouteRequirement($routeName, $request->method());
+        $route = $request->route();
+        $routeName = $route?->getName();
+        $spjTemplateType = is_string($route?->parameter('type')) ? $route->parameter('type') : null;
+        $requirement = PermissionCatalog::resolveRouteRequirement($routeName, $request->method(), $spjTemplateType);
 
         if ($requirement === null) {
             return $next($request);

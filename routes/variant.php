@@ -344,12 +344,18 @@ Route::get('/api/bast/search', [BastController::class, 'search'])->name('api.bas
 Route::post('/api/bast/kondisi/{id}', [BastController::class, 'updateKondisi'])->name('bast.kondisi.update');
 Route::get('/bast/{id}/preview', [BastController::class, 'previewPdf'])->name('bast.preview');
 Route::get('/bast/{id}/pdf', [BastController::class, 'generatePdf'])->name('bast.pdf');
+Route::get('/bast/{id}/custom/{template}/preview', [BastController::class, 'previewCustomPdf'])->whereNumber(['id', 'template'])->name('bast.custom.preview');
+Route::get('/bast/{id}/custom/{template}/pdf', [BastController::class, 'generateCustomPdf'])->whereNumber(['id', 'template'])->name('bast.custom.pdf');
+Route::get('/bast/{id}/custom/{template}/docx', [BastController::class, 'generateCustomDocx'])->whereNumber(['id', 'template'])->name('bast.custom.docx');
 Route::resource('bast', BastController::class);
 
 // Surat Pesanan API & Routes
 Route::get('/api/surat-pesanan/search', [SuratPesananController::class, 'search'])->name('api.surat-pesanan.search');
 Route::get('/surat-pesanan/{id}/preview', [SuratPesananController::class, 'previewPdf'])->name('surat-pesanan.preview');
 Route::get('/surat-pesanan/{id}/pdf', [SuratPesananController::class, 'generatePdf'])->name('surat-pesanan.pdf');
+Route::get('/surat-pesanan/{id}/custom/{template}/preview', [SuratPesananController::class, 'previewCustomPdf'])->whereNumber(['id', 'template'])->name('surat-pesanan.custom.preview');
+Route::get('/surat-pesanan/{id}/custom/{template}/pdf', [SuratPesananController::class, 'generateCustomPdf'])->whereNumber(['id', 'template'])->name('surat-pesanan.custom.pdf');
+Route::get('/surat-pesanan/{id}/custom/{template}/docx', [SuratPesananController::class, 'generateCustomDocx'])->whereNumber(['id', 'template'])->name('surat-pesanan.custom.docx');
 Route::get('/api/surat-pesanan/tahun', [SuratPesananController::class, 'getTahunAnggaran'])->name('api.surat-pesanan.tahun');
 Route::get('/api/surat-pesanan/bku-available', [SuratPesananController::class, 'getAvailableBku'])->name('api.surat-pesanan.bku-available');
 Route::resource('surat-pesanan', SuratPesananController::class);
@@ -366,6 +372,10 @@ Route::get('/tanda-terima/{id}/preview', [TandaTerimaController::class, 'preview
 Route::get('/tanda-terima/{id}/pdf', [TandaTerimaController::class, 'generatePdf'])->name('tanda-terima.pdf'); // Matches name used in controller/view
 // Correcting name for route consistency if accessed directly
 Route::get('/tanda-terima/download-all', [TandaTerimaController::class, 'downloadAll'])->name('tanda-terima.download-all');
+Route::get('/tanda-terima/download-all-custom/{template}', [TandaTerimaController::class, 'downloadAllCustom'])->whereNumber('template')->name('tanda-terima.custom.download-all');
+Route::get('/tanda-terima/{id}/custom/{template}/preview', [TandaTerimaController::class, 'previewCustomPdf'])->whereNumber(['id', 'template'])->name('tanda-terima.custom.preview');
+Route::get('/tanda-terima/{id}/custom/{template}/pdf', [TandaTerimaController::class, 'generateCustomPdf'])->whereNumber(['id', 'template'])->name('tanda-terima.custom.pdf');
+Route::get('/tanda-terima/{id}/custom/{template}/docx', [TandaTerimaController::class, 'generateCustomDocx'])->whereNumber(['id', 'template'])->name('tanda-terima.custom.docx');
 
 // Resource route MUST come after specific routes
 Route::resource('tanda-terima', TandaTerimaController::class);

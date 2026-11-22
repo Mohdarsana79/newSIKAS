@@ -11,12 +11,14 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PublicTransparansiController;
 use App\Http\Controllers\RoleManagementController;
 use App\Http\Controllers\SkSuratController;
+use App\Http\Controllers\SpjTemplateController;
 use App\Http\Controllers\SystemUpdateController;
 use App\Http\Controllers\UserManagementController;
 use App\Http\Middleware\CheckNpsnLicense;
 use App\Http\Middleware\EnforceModulePermissions;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\RecordUserActivity;
+use App\Models\SpjTemplate;
 use App\Models\User;
 use App\Services\WelcomeSummaryService;
 use Illuminate\Foundation\Application;
@@ -177,6 +179,18 @@ Route::middleware('auth')->group(function () {
         Route::delete('/{template}', [KwitansiTemplateController::class, 'destroy'])->whereNumber('template')->name('destroy');
         Route::get('/{template}/download', [KwitansiTemplateController::class, 'downloadSource'])->whereNumber('template')->name('download');
     });
+
+    Route::prefix('api/spj-templates/{type}')
+        ->whereIn('type', SpjTemplate::TYPES)
+        ->name('api.spj-templates.')
+        ->group(function () {
+            Route::get('/', [SpjTemplateController::class, 'index'])->name('index');
+            Route::get('/sample', [SpjTemplateController::class, 'downloadSample'])->name('sample');
+            Route::post('/', [SpjTemplateController::class, 'store'])->name('store');
+            Route::post('/{template}', [SpjTemplateController::class, 'update'])->whereNumber('template')->name('update');
+            Route::delete('/{template}', [SpjTemplateController::class, 'destroy'])->whereNumber('template')->name('destroy');
+            Route::get('/{template}/download', [SpjTemplateController::class, 'downloadSource'])->whereNumber('template')->name('download');
+        });
 
     foreach (VariantConfig::VARIANTS as $variant) {
         if ($variant === 'reguler') {
