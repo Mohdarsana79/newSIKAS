@@ -64,19 +64,29 @@ class WelcomeSummaryService
         ];
     }
 
+    private function resolveReadyModel(string $concept, string $variant): ?string
+    {
+        $modelClass = VariantConfig::getModelClass($concept, $variant);
+        if (! $modelClass || ! class_exists($modelClass)) {
+            return null;
+        }
+
+        $table = (new $modelClass)->getTable();
+        if (! Schema::hasTable($table)) {
+            return null;
+        }
+
+        return $modelClass;
+    }
+
     private function resolveLatestYear(): int
     {
         $latestYear = null;
 
         foreach (VariantConfig::VARIANTS as $variant) {
             try {
-                $modelClass = VariantConfig::getModelClass('penganggaran', $variant);
-                if (! $modelClass || ! class_exists($modelClass)) {
-                    continue;
-                }
-
-                $table = (new $modelClass)->getTable();
-                if (! Schema::hasTable($table)) {
+                $modelClass = $this->resolveReadyModel('penganggaran', $variant);
+                if (! $modelClass) {
                     continue;
                 }
 
@@ -117,13 +127,8 @@ class WelcomeSummaryService
                 return null;
             }
 
-            $namaSekolah = trim((string) ($sekolah->nama_sekolah ?? ''));
-            if ($namaSekolah === '') {
-                return null;
-            }
-
             return [
-                'nama_sekolah' => $namaSekolah,
+                'nama_sekolah' => trim((string) ($sekolah->nama_sekolah ?? '')),
                 'npsn' => trim((string) ($sekolah->npsn ?? '')),
                 'jenjang_sekolah' => trim((string) ($sekolah->jenjang_sekolah ?? '')),
                 'kabupaten_kota' => trim((string) ($sekolah->kabupaten_kota ?? '')),
@@ -160,18 +165,13 @@ class WelcomeSummaryService
         ];
 
         try {
-            $penganggaranClass = VariantConfig::getModelClass('penganggaran', $variant);
-            $bkuClass = VariantConfig::getModelClass('bku', $variant);
+            $penganggaranClass = $this->resolveReadyModel('penganggaran', $variant);
+            if (! $penganggaranClass) {
+                return $base;
+            }
+
+            $bkuClass = $this->resolveReadyModel('bku', $variant);
             $penganggaranFk = VariantConfig::penganggaranFk($variant);
-
-            if (! $penganggaranClass || ! class_exists($penganggaranClass)) {
-                return $base;
-            }
-
-            $penganggaranTable = (new $penganggaranClass)->getTable();
-            if (! Schema::hasTable($penganggaranTable)) {
-                return $base;
-            }
 
             $penganggaran = $penganggaranClass::query()
                 ->where('tahun_anggaran', $tahun)
@@ -186,29 +186,26 @@ class WelcomeSummaryService
             $totalRealisasi = 0.0;
             $jumlahTransaksi = 0;
 
-            if ($bkuClass && class_exists($bkuClass)) {
-                $bkuTable = (new $bkuClass)->getTable();
-                if (Schema::hasTable($bkuTable)) {
-                    $startDate = Carbon::create($tahun, 1, 1)->toDateString();
-                    $exclusiveEndDate = Carbon::create($tahun + 1, 1, 1)->toDateString();
+            if ($bkuClass) {
+                $startDate = Carbon::create($tahun, 1, 1)->toDateString();
+                $exclusiveEndDate = Carbon::create($tahun + 1, 1, 1)->toDateString();
 
-                    $rows = $bkuClass::query()
-                        ->where($penganggaranFk, $penganggaran->id)
-                        ->where('is_bunga_record', false)
-                        ->where('tanggal_transaksi', '>=', $startDate)
-                        ->where('tanggal_transaksi', '<', $exclusiveEndDate)
-                        ->get(['tanggal_transaksi', 'total_transaksi_kotor']);
+                $rows = $bkuClass::query()
+                    ->where($penganggaranFk, $penganggaran->id)
+                    ->where('is_bunga_record', false)
+                    ->where('tanggal_transaksi', '>=', $startDate)
+                    ->where('tanggal_transaksi', '<', $exclusiveEndDate)
+                    ->get(['tanggal_transaksi', 'total_transaksi_kotor']);
 
-                    foreach ($rows as $row) {
-                        $nominal = (float) ($row->total_transaksi_kotor ?? 0);
-                        $totalRealisasi += $nominal;
-                        $jumlahTransaksi++;
+                foreach ($rows as $row) {
+                    $nominal = (float) ($row->total_transaksi_kotor ?? 0);
+                    $totalRealisasi += $nominal;
+                    $jumlahTransaksi++;
 
-                        if ($row->tanggal_transaksi) {
-                            $monthIdx = Carbon::parse($row->tanggal_transaksi)->month - 1;
-                            if ($monthIdx >= 0 && $monthIdx < 12) {
-                                $monthlyRealisasi[$monthIdx] += $nominal;
-                            }
+                    if ($row->tanggal_transaksi) {
+                        $monthIdx = Carbon::parse($row->tanggal_transaksi)->month - 1;
+                        if ($monthIdx >= 0 && $monthIdx < 12) {
+                            $monthlyRealisasi[$monthIdx] += $nominal;
                         }
                     }
                 }

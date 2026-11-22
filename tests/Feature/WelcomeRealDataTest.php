@@ -49,7 +49,17 @@ class WelcomeRealDataTest extends TestCase
                 ->has('welcomeData.variants', 4)
                 ->where('welcomeData.variants.0.key', 'reguler')
                 ->where('welcomeData.variants.0.has_data', false)
+                ->where('welcomeData.variants.0.pagu_anggaran', 0)
                 ->where('welcomeData.variants.0.status_persetujuan', 'kosong')
+                ->where('welcomeData.variants.1.key', 'kinerja')
+                ->where('welcomeData.variants.1.has_data', false)
+                ->where('welcomeData.variants.1.pagu_anggaran', 0)
+                ->where('welcomeData.variants.2.key', 'silpa')
+                ->where('welcomeData.variants.2.has_data', false)
+                ->where('welcomeData.variants.2.pagu_anggaran', 0)
+                ->where('welcomeData.variants.3.key', 'kinerja_silpa')
+                ->where('welcomeData.variants.3.has_data', false)
+                ->where('welcomeData.variants.3.pagu_anggaran', 0)
                 ->has('welcomeData.variants.0.monthly_cumulative', 12)
             );
     }
@@ -192,10 +202,10 @@ class WelcomeRealDataTest extends TestCase
                 ->where('welcomeData.variants.0.jumlah_transaksi', 2)
                 ->where('welcomeData.variants.0.status_persetujuan', 'disetujui')
                 ->where('welcomeData.variants.0.last_active_month_index', 5) // Juni (0-based)
-                ->where('welcomeData.variants.0.monthly_cumulative.1', 0) // Feb
-                ->where('welcomeData.variants.0.monthly_cumulative.2', 10000000) // Mar
-                ->where('welcomeData.variants.0.monthly_cumulative.5', 15000000) // Jun
-                ->where('welcomeData.variants.0.monthly_cumulative.11', 15000000) // Des
+                ->where('welcomeData.variants.0.monthly_cumulative', [
+                    0, 0, 10000000, 10000000, 10000000, 15000000,
+                    15000000, 15000000, 15000000, 15000000, 15000000, 15000000,
+                ])
                 // Kinerja TA 2026
                 ->where('welcomeData.variants.1.key', 'kinerja')
                 ->where('welcomeData.variants.1.has_data', true)
@@ -204,11 +214,19 @@ class WelcomeRealDataTest extends TestCase
                 ->where('welcomeData.variants.1.jumlah_transaksi', 1)
                 ->where('welcomeData.variants.1.status_persetujuan', 'draft')
                 ->where('welcomeData.variants.1.last_active_month_index', 3) // April (0-based)
-                // SiLPA kosong pada TA 2026
+                ->where('welcomeData.variants.1.monthly_cumulative', [
+                    0, 0, 0, 10000000, 10000000, 10000000,
+                    10000000, 10000000, 10000000, 10000000, 10000000, 10000000,
+                ])
+                // SiLPA & SiLPA Kinerja kosong pada TA 2026
                 ->where('welcomeData.variants.2.key', 'silpa')
                 ->where('welcomeData.variants.2.has_data', false)
                 ->where('welcomeData.variants.2.pagu_anggaran', 0)
                 ->where('welcomeData.variants.2.status_persetujuan', 'kosong')
+                ->where('welcomeData.variants.3.key', 'kinerja_silpa')
+                ->where('welcomeData.variants.3.has_data', false)
+                ->where('welcomeData.variants.3.pagu_anggaran', 0)
+                ->where('welcomeData.variants.3.status_persetujuan', 'kosong')
             );
 
         // Pastikan tidak ada kebocoran NIP di payload halaman publik `/`

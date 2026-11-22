@@ -84,7 +84,7 @@ export function formatPercentId(value: number): string {
 export function formatCompactRupiahParts(nominal: number): CompactRupiahParts {
     const safe = Number.isFinite(nominal) ? Math.max(0, nominal) : 0;
 
-    if (safe >= 1_000_000_000) {
+    if (safe >= 999_950_000) {
         const value = Math.round((safe / 1_000_000_000) * 10) / 10;
         return {
             value,
@@ -95,7 +95,7 @@ export function formatCompactRupiahParts(nominal: number): CompactRupiahParts {
         };
     }
 
-    if (safe >= 1_000_000) {
+    if (safe >= 999_500) {
         const value = Math.round((safe / 1_000_000) * 10) / 10;
         return {
             value,
