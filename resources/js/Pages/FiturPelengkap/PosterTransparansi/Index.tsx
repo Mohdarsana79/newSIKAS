@@ -111,8 +111,7 @@ export default function PosterTransparansiIndex({
         };
     }, []);
 
-    const contentFitScale =
-        naturalPosterHeight > activePaper.designHeight ? activePaper.designHeight / naturalPosterHeight : 1;
+    const previewHeight = Math.max(activePaper.designHeight, naturalPosterHeight);
 
     const fetchPosterData = async (nextTahun: number, nextPeriode: PosterPeriode) => {
         fetchAbortRef.current?.abort();
@@ -544,7 +543,7 @@ export default function PosterTransparansiIndex({
                                         id="transparansi-poster-scale-box"
                                         style={{
                                             width: `${Math.round(activePaper.designWidth * previewScale)}px`,
-                                            height: `${Math.round(activePaper.designHeight * previewScale)}px`,
+                                            height: `${Math.round(previewHeight * previewScale)}px`,
                                             backgroundColor: activeTheme.pageBg,
                                         }}
                                         className="overflow-hidden rounded-[22px] ring-1 ring-slate-200/90 shadow-xl"
@@ -555,29 +554,20 @@ export default function PosterTransparansiIndex({
                                                 transform: previewScale < 1 ? `scale(${previewScale})` : undefined,
                                                 transformOrigin: 'top left',
                                                 width: `${activePaper.designWidth}px`,
-                                                height: `${activePaper.designHeight}px`,
+                                                height: `${previewHeight}px`,
                                                 backgroundColor: activeTheme.pageBg,
                                             }}
                                         >
-                                            <div
-                                                style={{
-                                                    width: `${activePaper.designWidth}px`,
-                                                    transform:
-                                                        contentFitScale < 1 ? `scale(${contentFitScale})` : undefined,
-                                                    transformOrigin: 'top center',
-                                                }}
-                                            >
-                                                <PosterCanvas
-                                                    ref={posterRef}
-                                                    data={posterData}
-                                                    theme={activeTheme}
-                                                    paperSize={paperSize}
-                                                    framed={false}
-                                                    showSignatures={showSignatures}
-                                                    showMonthlyTrend={showMonthlyTrend}
-                                                    transparencyNote={transparencyNote}
-                                                />
-                                            </div>
+                                            <PosterCanvas
+                                                ref={posterRef}
+                                                data={posterData}
+                                                theme={activeTheme}
+                                                paperSize={paperSize}
+                                                framed={false}
+                                                showSignatures={showSignatures}
+                                                showMonthlyTrend={showMonthlyTrend}
+                                                transparencyNote={transparencyNote}
+                                            />
                                         </div>
                                     </div>
                                 </div>

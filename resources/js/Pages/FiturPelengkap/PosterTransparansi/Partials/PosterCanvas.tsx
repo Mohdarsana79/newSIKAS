@@ -69,8 +69,8 @@ const PosterCanvas = forwardRef<HTMLDivElement, PosterCanvasProps>(function Post
         paperSpec.density === 'compact'
             ? 'gap-2.5 px-5 py-3.5'
             : paperSpec.density === 'spacious'
-              ? 'gap-5 px-6 py-6'
-              : 'gap-4 px-6 py-5';
+              ? 'gap-3.5 px-6 py-4'
+              : 'gap-3 px-6 py-4';
 
     return (
         <div
@@ -91,7 +91,7 @@ const PosterCanvas = forwardRef<HTMLDivElement, PosterCanvasProps>(function Post
             <header
                 id="transparansi-poster-header"
                 style={{ backgroundColor: theme.headerBg }}
-                className={`relative overflow-hidden text-white ${isCompact ? 'px-6 pb-4 pt-4' : 'px-7 pb-6 pt-6'}`}
+                className={`relative overflow-hidden text-white ${isCompact ? 'px-6 pb-4 pt-4' : 'px-7 pb-5 pt-5'}`}
             >
                 <div
                     aria-hidden="true"
@@ -167,8 +167,8 @@ const PosterCanvas = forwardRef<HTMLDivElement, PosterCanvasProps>(function Post
 
                 {/* Strip Periode & Status */}
                 <div
-                    className={`relative flex items-center justify-between gap-3 rounded-2xl border border-white/15 bg-white/[0.08] px-4 ${
-                        isCompact ? 'mt-3 py-2' : 'mt-4 py-2.5'
+                    className={`relative flex items-center justify-between gap-3 rounded-2xl border border-white/15 bg-white/[0.08] px-4 py-2 ${
+                        isCompact ? 'mt-3' : 'mt-3.5'
                     }`}
                 >
                     <div className="flex items-center gap-2">
@@ -193,7 +193,7 @@ const PosterCanvas = forwardRef<HTMLDivElement, PosterCanvasProps>(function Post
             </header>
 
             {/* 2. BODY INFOGRAFIS */}
-            <div className={`flex flex-1 flex-col justify-between ${bodyDensityClass}`}>
+            <div className={`flex flex-1 flex-col ${bodyDensityClass}`}>
                 {/* 4 Kartu KPI Keuangan */}
                 <div className="grid grid-cols-4 gap-3">
                     <KpiTile
@@ -230,7 +230,7 @@ const PosterCanvas = forwardRef<HTMLDivElement, PosterCanvasProps>(function Post
                 {/* Progress Bar Serapan Anggaran */}
                 <div
                     style={{ borderColor: theme.cardBorder }}
-                    className="rounded-2xl border bg-white px-4 py-3.5 shadow-sm"
+                    className="rounded-2xl border bg-white px-4 py-3 shadow-sm"
                 >
                     <div className="flex items-center justify-between gap-2">
                         <div>
@@ -275,7 +275,7 @@ const PosterCanvas = forwardRef<HTMLDivElement, PosterCanvasProps>(function Post
                 </div>
 
                 {/* 2 Kolom Tengah: Komposisi Jenis Belanja (Donut SVG) & Program SNP */}
-                <div className="grid grid-cols-12 gap-4">
+                <div className="grid flex-1 grid-cols-12 gap-4">
                     {/* Kiri: Komposisi Jenis Belanja */}
                     <div
                         style={{ borderColor: theme.cardBorder }}
@@ -290,7 +290,7 @@ const PosterCanvas = forwardRef<HTMLDivElement, PosterCanvasProps>(function Post
                             </h2>
                         </div>
 
-                        <div className="my-3 flex items-center justify-center">
+                        <div className="my-auto flex items-center justify-center py-2">
                             <DonutChartSvg
                                 items={jenis_belanja}
                                 total={ringkasan.total_realisasi}
@@ -324,7 +324,7 @@ const PosterCanvas = forwardRef<HTMLDivElement, PosterCanvasProps>(function Post
                     {/* Kanan: Realisasi per Program / Standar SNP */}
                     <div
                         style={{ borderColor: theme.cardBorder }}
-                        className="col-span-7 rounded-2xl border bg-white p-4 shadow-sm"
+                        className="col-span-7 flex flex-col rounded-2xl border bg-white p-4 shadow-sm"
                     >
                         <div className="flex items-start justify-between gap-2">
                             <div>
@@ -341,7 +341,11 @@ const PosterCanvas = forwardRef<HTMLDivElement, PosterCanvasProps>(function Post
                         </div>
 
                         {program_snp.length > 0 ? (
-                            <div className="mt-3 space-y-2.5">
+                            <div
+                                className={`mt-3 flex flex-1 flex-col ${
+                                    program_snp.length >= 4 ? 'justify-between gap-2' : 'gap-2.5'
+                                }`}
+                            >
                                 {program_snp.map((item, idx) => {
                                     const widthPct = Math.max(4, Math.round((item.nominal / maxProgramNominal) * 100));
                                     return (
@@ -380,7 +384,7 @@ const PosterCanvas = forwardRef<HTMLDivElement, PosterCanvasProps>(function Post
                                 })}
                             </div>
                         ) : (
-                            <div className="mt-8 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-[11px] font-semibold text-slate-400">
+                            <div className="my-auto rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-[11px] font-semibold text-slate-400">
                                 Belum ada transaksi realisasi belanja pada periode ini.
                             </div>
                         )}
@@ -391,9 +395,9 @@ const PosterCanvas = forwardRef<HTMLDivElement, PosterCanvasProps>(function Post
                 {showMonthlyTrend && (
                     <div
                         style={{ borderColor: theme.cardBorder }}
-                        className="rounded-2xl border bg-white p-4 shadow-sm"
+                        className="rounded-2xl border bg-white p-3.5 shadow-sm"
                     >
-                        <div className="mb-2 flex items-center justify-between gap-2">
+                        <div className="mb-1.5 flex items-center justify-between gap-2">
                             <div>
                                 <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400">
                                     Distribusi Waktu
@@ -407,7 +411,12 @@ const PosterCanvas = forwardRef<HTMLDivElement, PosterCanvasProps>(function Post
                             </span>
                         </div>
 
-                        <MonthlyBarChartSvg items={tren_bulanan} barColor={theme.barColor} accentColor={theme.secondaryAccent} />
+                        <MonthlyBarChartSvg
+                            items={tren_bulanan}
+                            barColor={theme.barColor}
+                            accentColor={theme.secondaryAccent}
+                            chartWidth={paperSpec.designWidth - 84}
+                        />
                     </div>
                 )}
 
@@ -419,7 +428,7 @@ const PosterCanvas = forwardRef<HTMLDivElement, PosterCanvasProps>(function Post
                             borderColor: theme.noticeBorder,
                             color: theme.noticeText,
                         }}
-                        className="rounded-2xl border px-4 py-3"
+                        className="rounded-2xl border px-4 py-2.5"
                     >
                         <p className="text-[9.5px] font-black uppercase tracking-[0.15em] opacity-75">
                             Informasi &amp; Keterbukaan Publik
@@ -434,9 +443,9 @@ const PosterCanvas = forwardRef<HTMLDivElement, PosterCanvasProps>(function Post
                 {showSignatures && (
                     <div
                         style={{ borderColor: theme.cardBorder }}
-                        className={`rounded-2xl border bg-white shadow-sm ${isCompact ? 'px-4 py-3' : 'px-5 py-4'}`}
+                        className={`rounded-2xl border bg-white shadow-sm ${isCompact ? 'px-4 py-2.5' : 'px-5 py-3'}`}
                     >
-                        <div className="mb-2 flex items-center justify-between text-[10px] font-semibold text-slate-500">
+                        <div className="mb-1.5 flex items-center justify-between text-[10px] font-semibold text-slate-500">
                             <span>Diterbitkan secara resmi sebagai bentuk akuntabilitas pengelolaan Dana BOSP</span>
                             <span className="font-bold text-slate-700">
                                 {sekolah.kabupaten_kota ? `${sekolah.kabupaten_kota}, ` : ''}
@@ -444,7 +453,7 @@ const PosterCanvas = forwardRef<HTMLDivElement, PosterCanvasProps>(function Post
                             </span>
                         </div>
 
-                        <div className={`grid grid-cols-3 gap-4 text-center ${isCompact ? 'pt-1' : 'pt-2'}`}>
+                        <div className={`grid grid-cols-3 gap-4 text-center ${isCompact ? 'pt-1' : 'pt-1.5'}`}>
                             <SignatureColumn
                                 role="Mengetahui, Kepala Sekolah"
                                 name={penanggung_jawab.kepala_sekolah}
@@ -500,7 +509,7 @@ function KpiTile({
                 borderColor: highlight ? accent : borderColor,
                 borderWidth: highlight ? '1.5px' : '1px',
             }}
-            className="relative overflow-hidden rounded-2xl bg-white p-3.5 shadow-sm"
+            className="relative overflow-hidden rounded-2xl bg-white p-3 shadow-sm"
         >
             <div
                 style={{ backgroundColor: accent }}
@@ -597,25 +606,27 @@ function MonthlyBarChartSvg({
     items,
     barColor,
     accentColor,
+    chartWidth,
 }: {
     items: PosterTrenBulananItem[];
     barColor: string;
     accentColor: string;
+    chartWidth: number;
 }) {
-    const width = 710;
-    const height = 118;
-    const chartTop = 20;
-    const chartBottom = 94;
+    const width = Math.max(640, chartWidth);
+    const height = 108;
+    const chartTop = 18;
+    const chartBottom = 86;
     const chartHeight = chartBottom - chartTop;
     const count = Math.max(items.length, 1);
     const maxVal = Math.max(...items.map((item) => item.nominal), 1);
     const slotWidth = width / count;
-    const barWidth = Math.min(34, Math.max(18, slotWidth * 0.52));
+    const barWidth = Math.min(36, Math.max(18, slotWidth * 0.52));
 
     return (
         <svg
             viewBox={`0 0 ${width} ${height}`}
-            className="h-[118px] w-full"
+            className="h-[108px] w-full"
             role="img"
             aria-label="Grafik batang realisasi belanja bulanan"
         >
@@ -691,7 +702,11 @@ function SignatureColumn({
     return (
         <div className="flex flex-col items-center">
             <p className="text-[10px] font-bold text-slate-600">{role}</p>
-            <div className={`w-36 border-b border-dashed border-slate-300 ${compact ? 'my-4 h-7' : 'my-6 h-8'}`} />
+            <div
+                className={`w-36 border-b border-dashed border-slate-400/80 ${
+                    compact ? 'mb-1.5 mt-5 h-5' : 'mb-2 mt-7 h-5'
+                }`}
+            />
             <p className="max-w-[200px] truncate text-[11px] font-extrabold text-slate-900" title={name}>
                 {name}
             </p>

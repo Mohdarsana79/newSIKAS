@@ -64,23 +64,37 @@ export async function exportPosterToPng({
         // Netralkan sementara aturan desktop `html { zoom: 0.8 }` agar hasil PNG 300 DPI utuh & tajam
         docEl.style.setProperty('zoom', '1');
 
-        const sourceWidth = node.offsetWidth;
-        const sourceHeight = node.offsetHeight;
-        if (sourceWidth <= 0 || sourceHeight <= 0) {
+        const measuredWidth = node.offsetWidth;
+        const measuredHeight = node.offsetHeight;
+        if (measuredWidth <= 0 || measuredHeight <= 0) {
             throw new Error('Dimensi kanvas poster tidak valid untuk diekspor.');
         }
 
-        const scaleX = spec.exportWidth / sourceWidth;
-        const scaleY = spec.exportHeight / sourceHeight;
-        const fitScale = Math.min(scaleX, scaleY);
-        const renderPixelRatio = Math.max(2, Math.min(5, Math.ceil(fitScale * 10) / 10));
+        // Pastikan rasio kanvas selalu persis sama dengan rasio kertas (full-bleed 100%, tanpa celah kiri-kanan)
+        const paperRatio = spec.exportWidth / spec.exportHeight;
+        const effectiveWidth =
+            measuredHeight > spec.designHeight
+                ? Math.ceil(measuredHeight * paperRatio)
+                : spec.designWidth;
+        const effectiveHeight =
+            measuredHeight > spec.designHeight
+                ? Math.round(effectiveWidth * (spec.exportHeight / spec.exportWidth))
+                : spec.designHeight;
+
+        const renderPixelRatio = Math.max(
+            2,
+            Math.min(5, Math.ceil((spec.exportWidth / effectiveWidth) * 10) / 10),
+        );
 
         const sourceCanvas = await toCanvas(node, {
             pixelRatio: renderPixelRatio,
-            width: sourceWidth,
-            height: sourceHeight,
+            width: effectiveWidth,
+            height: effectiveHeight,
             backgroundColor,
             style: {
+                width: `${effectiveWidth}px`,
+                minHeight: `${effectiveHeight}px`,
+                height: `${effectiveHeight}px`,
                 transform: 'none',
                 zoom: '1',
                 margin: '0',
@@ -105,12 +119,7 @@ export async function exportPosterToPng({
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
 
-        const drawWidth = Math.round(sourceWidth * fitScale);
-        const drawHeight = Math.round(sourceHeight * fitScale);
-        const offsetX = Math.round((spec.exportWidth - drawWidth) / 2);
-        const offsetY = Math.round((spec.exportHeight - drawHeight) / 2);
-
-        ctx.drawImage(sourceCanvas, offsetX, offsetY, drawWidth, drawHeight);
+        ctx.drawImage(sourceCanvas, 0, 0, spec.exportWidth, spec.exportHeight);
 
         await triggerCanvasDownload(outputCanvas, fileName);
     } finally {
