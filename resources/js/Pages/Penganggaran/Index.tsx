@@ -98,6 +98,36 @@ function formatRupiahInput(nominal: number): string {
     return 'Rp ' + new Intl.NumberFormat('id-ID').format(Math.round(nominal));
 }
 
+function normalizeDateOnly(value?: string | null): string {
+    return value ? String(value).slice(0, 10) : '';
+}
+
+function buildEffectiveOfficialHistory(
+    officialHistory: OfficialHistoryItem[],
+    anggarans: Anggaran[],
+    activeVariant: BudgetVariant,
+    activeLabel: string,
+): OfficialHistoryItem[] {
+    if (officialHistory.length > 0) {
+        return officialHistory;
+    }
+
+    return anggarans.map((item) => ({
+        tahun_anggaran: String(item.tahun_anggaran ?? ''),
+        source_variant: activeVariant,
+        source_label: activeLabel,
+        komite: String(item.komite ?? ''),
+        kepala_sekolah: String(item.kepala_sekolah ?? ''),
+        nip_kepala_sekolah: String(item.nip_kepala_sekolah ?? ''),
+        sk_kepala_sekolah: String(item.sk_kepala_sekolah ?? ''),
+        tanggal_sk_kepala_sekolah: normalizeDateOnly(item.tanggal_sk_kepala_sekolah),
+        bendahara: String(item.bendahara ?? ''),
+        nip_bendahara: String(item.nip_bendahara ?? ''),
+        sk_bendahara: String(item.sk_bendahara ?? ''),
+        tanggal_sk_bendahara: normalizeDateOnly(item.tanggal_sk_bendahara),
+    }));
+}
+
 function resolvePreviousOfficialSource(
     history: OfficialHistoryItem[],
     activeVariant: BudgetVariant,
@@ -108,10 +138,27 @@ function resolvePreviousOfficialSource(
         return null;
     }
 
+    const parseYear = (item: OfficialHistoryItem): number => Number.parseInt(String(item.tahun_anggaran), 10);
+
     const pickNearestEarlier = (sourceVariant: BudgetVariant): OfficialHistoryItem | null => {
         const candidates = history
-            .filter((item) => item.source_variant === sourceVariant && Number.parseInt(String(item.tahun_anggaran), 10) < targetYear)
-            .sort((a, b) => Number.parseInt(String(b.tahun_anggaran), 10) - Number.parseInt(String(a.tahun_anggaran), 10));
+            .filter((item) => item.source_variant === sourceVariant && parseYear(item) < targetYear)
+            .sort((a, b) => parseYear(b) - parseYear(a));
+
+        return candidates[0] ?? null;
+    };
+
+    const pickNearestOther = (sourceVariant: BudgetVariant): OfficialHistoryItem | null => {
+        const candidates = history
+            .filter((item) => {
+                const yr = parseYear(item);
+                return item.source_variant === sourceVariant && Number.isFinite(yr) && yr !== targetYear;
+            })
+            .sort((a, b) => {
+                const diffA = Math.abs(parseYear(a) - targetYear);
+                const diffB = Math.abs(parseYear(b) - targetYear);
+                return diffA !== diffB ? diffA - diffB : parseYear(b) - parseYear(a);
+            });
 
         return candidates[0] ?? null;
     };
@@ -128,11 +175,20 @@ function resolvePreviousOfficialSource(
         }
 
         const regulerSameYear = history.find(
-            (item) => item.source_variant === 'reguler' && Number.parseInt(String(item.tahun_anggaran), 10) === targetYear,
+            (item) => item.source_variant === 'reguler' && parseYear(item) === targetYear,
         );
         if (regulerSameYear) {
             return regulerSameYear;
         }
+    }
+
+    const activeOther = pickNearestOther(activeVariant);
+    if (activeOther) {
+        return activeOther;
+    }
+
+    if (activeVariant !== 'reguler') {
+        return pickNearestOther('reguler');
     }
 
     return null;
@@ -264,9 +320,14 @@ export default function Index({
         tanggal_sk_bendahara: '',
     });
 
+    const effectiveOfficialHistory = useMemo(
+        () => buildEffectiveOfficialHistory(official_history, anggarans, variant, activeTab),
+        [official_history, anggarans, variant, activeTab],
+    );
+
     const previousOfficialSource = useMemo(
-        () => resolvePreviousOfficialSource(official_history, variant, data.tahun_anggaran),
-        [official_history, variant, data.tahun_anggaran],
+        () => resolvePreviousOfficialSource(effectiveOfficialHistory, variant, data.tahun_anggaran),
+        [effectiveOfficialHistory, variant, data.tahun_anggaran],
     );
 
     useEffect(() => {
@@ -1063,7 +1124,7 @@ export default function Index({
                                         <p className="mt-0.5 text-[10.5px] font-medium text-slate-500 dark:text-slate-400">
                                             {previousOfficialSource
                                                 ? `Salin Nama, NIP, Nomor SK & Tanggal SK Kepala Sekolah, Bendahara, serta Komite dari ${previousOfficialSource.source_label} ${previousOfficialSource.tahun_anggaran}.`
-                                                : 'Belum ada riwayat data penanggung jawab dari tahun anggaran sebelumnya untuk disalin.'}
+                                                : 'Belum ada riwayat data penanggung jawab dari tahun anggaran lain untuk disalin.'}
                                         </p>
                                     </div>
                                     <button
