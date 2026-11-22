@@ -20,7 +20,7 @@ export default function PublicPosterSection({ activeData }: PublicPosterSectionP
     const [isExportingPng, setIsExportingPng] = useState(false);
     const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
     const [previewScale, setPreviewScale] = useState(0.75);
-    const [posterHeight, setPosterHeight] = useState(1120);
+    const [posterHeight, setPosterHeight] = useState(POSTER_PAPER_SIZES.a4.designHeight);
 
     const previewContainerRef = useRef<HTMLDivElement | null>(null);
     const posterRef = useRef<HTMLDivElement | null>(null);

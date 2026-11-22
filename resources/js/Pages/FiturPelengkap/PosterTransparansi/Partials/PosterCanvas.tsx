@@ -65,6 +65,12 @@ const PosterCanvas = forwardRef<HTMLDivElement, PosterCanvasProps>(function Post
     const maxProgramNominal = Math.max(...program_snp.map((p) => p.nominal), 1);
     const paperSpec = POSTER_PAPER_SIZES[paperSize];
     const isCompact = paperSpec.density === 'compact';
+    const bodyDensityClass =
+        paperSpec.density === 'compact'
+            ? 'gap-2.5 px-5 py-3.5'
+            : paperSpec.density === 'spacious'
+              ? 'gap-5 px-6 py-6'
+              : 'gap-4 px-6 py-5';
 
     return (
         <div
@@ -187,11 +193,7 @@ const PosterCanvas = forwardRef<HTMLDivElement, PosterCanvasProps>(function Post
             </header>
 
             {/* 2. BODY INFOGRAFIS */}
-            <div
-                className={`flex flex-1 flex-col justify-between ${
-                    isCompact ? 'gap-2.5 px-5 py-3.5' : 'gap-4 px-6 py-5'
-                }`}
-            >
+            <div className={`flex flex-1 flex-col justify-between ${bodyDensityClass}`}>
                 {/* 4 Kartu KPI Keuangan */}
                 <div className="grid grid-cols-4 gap-3">
                     <KpiTile

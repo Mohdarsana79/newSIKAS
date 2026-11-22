@@ -22,6 +22,14 @@ function triggerCanvasDownload(canvas: HTMLCanvasElement, fileName: string): Pro
             resolve();
         };
 
+        const fallbackToDataUrl = () => {
+            try {
+                triggerLink(canvas.toDataURL('image/png'), false);
+            } catch (err) {
+                reject(err);
+            }
+        };
+
         if (typeof canvas.toBlob === 'function') {
             canvas.toBlob((blob) => {
                 if (blob) {
@@ -29,20 +37,12 @@ function triggerCanvasDownload(canvas: HTMLCanvasElement, fileName: string): Pro
                     triggerLink(objectUrl, true);
                     return;
                 }
-                try {
-                    triggerLink(canvas.toDataURL('image/png'), false);
-                } catch (err) {
-                    reject(err);
-                }
+                fallbackToDataUrl();
             }, 'image/png');
             return;
         }
 
-        try {
-            triggerLink(canvas.toDataURL('image/png'), false);
-        } catch (err) {
-            reject(err);
-        }
+        fallbackToDataUrl();
     });
 }
 

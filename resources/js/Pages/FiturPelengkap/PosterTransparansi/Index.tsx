@@ -545,8 +545,9 @@ export default function PosterTransparansiIndex({
                                         style={{
                                             width: `${Math.round(activePaper.designWidth * previewScale)}px`,
                                             height: `${Math.round(activePaper.designHeight * previewScale)}px`,
-                                            overflow: 'hidden',
+                                            backgroundColor: activeTheme.pageBg,
                                         }}
+                                        className="overflow-hidden rounded-[22px] ring-1 ring-slate-200/90 shadow-xl"
                                     >
                                         <div
                                             id="transparansi-poster-preview-wrapper"
@@ -557,7 +558,6 @@ export default function PosterTransparansiIndex({
                                                 height: `${activePaper.designHeight}px`,
                                                 backgroundColor: activeTheme.pageBg,
                                             }}
-                                            className="overflow-hidden rounded-[22px] border border-slate-200/90 shadow-xl"
                                         >
                                             <div
                                                 style={{
