@@ -201,7 +201,7 @@ body {
                 <td class="colon-col">:</td>
                 <td>
                     <div class="uang-sebanyak-box">
-                        {{ strtoupper($jumlahUangText ?? '-') }} RUPIAH
+                        {{ strtoupper($jumlahUangText ?? '-') }}
                     </div>
                 </td>
             </tr>

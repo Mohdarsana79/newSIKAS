@@ -33,6 +33,12 @@
         $kopTeksHtml = $p->kop_teks_html;
     }
 
+    $kopJenisRaw = is_array($s) ? ($s['kop_jenis'] ?? null) : ($s->kop_jenis ?? null);
+    if (empty($kopJenisRaw) && ($p = $getProfile())) {
+        $kopJenisRaw = $p->kop_jenis;
+    }
+    $kopJenis = strtolower(trim((string) ($kopJenisRaw ?? '')));
+
     $kopBorder = is_array($s) ? ($s['kop_border'] ?? null) : ($s->kop_border ?? null);
     if (empty($kopBorder) && ($p = $getProfile())) {
         $kopBorder = $p->kop_border ?? 'double';
@@ -49,29 +55,58 @@
     $hasKop = (!empty($kopSurat) || !empty($kopTeksHtml)) && !empty($kopDokumen[$docKey ?? '']) && !($is_excel ?? false);
 
     $getDataUri = function ($path) {
-        if (empty($path)) {
+        if (!is_string($path) || trim($path) === '' || str_contains($path, "\0")) {
             return null;
         }
-        $clean = str_replace('public/', '', $path);
-        $fullPath = public_path('storage/' . $clean);
-        if (!file_exists($fullPath)) {
-            $fullPath = storage_path('app/public/' . $clean);
+        $clean = ltrim((string) preg_replace('#^public/#i', '', str_replace('\\', '/', trim($path))), '/');
+        if ($clean === '' || str_contains($clean, '..')) {
+            return null;
         }
-        if (file_exists($fullPath)) {
-            $mime = @mime_content_type($fullPath) ?: 'image/png';
-            return 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($fullPath));
+
+        $bases = [public_path('storage'), storage_path('app/public')];
+        foreach ($bases as $baseDir) {
+            $realBase = realpath($baseDir);
+            if ($realBase === false) {
+                continue;
+            }
+            $candidate = $realBase . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $clean);
+            $realCandidate = realpath($candidate);
+            if ($realCandidate === false || !is_file($realCandidate) || !is_readable($realCandidate)) {
+                continue;
+            }
+            $normalizedBase = rtrim(str_replace('\\', '/', $realBase), '/') . '/';
+            $normalizedCandidate = str_replace('\\', '/', $realCandidate);
+            if (!str_starts_with($normalizedCandidate, $normalizedBase)) {
+                continue;
+            }
+            $mime = @mime_content_type($realCandidate) ?: '';
+            if (!str_starts_with($mime, 'image/')) {
+                continue;
+            }
+            $bytes = @file_get_contents($realCandidate);
+            if ($bytes === false) {
+                continue;
+            }
+            return 'data:' . $mime . ';base64,' . base64_encode($bytes);
         }
         return null;
     };
 
-    $logoDaerahUri = $hasKop ? $getDataUri($logoDaerah) : null;
-    $logoSekolahUri = $hasKop ? $getDataUri($logoSekolah) : null;
-    $kopDataUri = ($hasKop && empty($kopTeksHtml)) ? $getDataUri($kopSurat) : null;
+    $isUploadMode = ($kopJenis === 'upload');
+    $sanitizedKopHtml = ($hasKop && !$isUploadMode && !empty($kopTeksHtml))
+        ? \App\Support\PdfHtmlSanitizer::sanitizeKopHtml((string) $kopTeksHtml)
+        : '';
+    $useHtmlKop = $sanitizedKopHtml !== '';
+
+    // Lazy-load gambar kop hanya saat mode upload atau saat tidak memakai kop HTML (hindari baca disk di loop bulk)
+    $kopDataUri = ($hasKop && !$useHtmlKop) ? $getDataUri($kopSurat) : null;
+    $logoDaerahUri = ($hasKop && $useHtmlKop) ? $getDataUri($logoDaerah) : null;
+    $logoSekolahUri = ($hasKop && $useHtmlKop) ? $getDataUri($logoSekolah) : null;
 @endphp
 
-@if ($hasKop)
+@if ($hasKop && ($useHtmlKop || !empty($kopDataUri)))
     <div style="margin-bottom: 12px; width: 100%;">
-        @if (!empty($kopTeksHtml))
+        @if ($useHtmlKop)
             @once
                 <style>
                     .doc-kop-table {
@@ -136,7 +171,7 @@
                         @endif
                     </td>
                     <td class="kop-text-cell">
-                        {!! $kopTeksHtml !!}
+                        {!! $sanitizedKopHtml !!}
                     </td>
                     <td class="kop-logo-right">
                         @if ($kopMode === '2_logo' && $logoSekolahUri)

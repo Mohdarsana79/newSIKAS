@@ -8,6 +8,7 @@ use App\Models\Kwitansi;
 use App\Models\KwitansiTemplate;
 use App\Models\SekolahProfile;
 use App\Services\KwitansiTemplateService;
+use App\Support\PdfHtmlSanitizer;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -356,8 +357,7 @@ class KwitansiController extends Controller
                 'fontSize' => $fontSize,
             ];
 
-            $pdf = Pdf::loadView('pelengkap.kwitansi_pdf', $data);
-            $pdf->setPaper($paperSize, $orientation);
+            $pdf = $this->loadSanitizedPdf('pelengkap.kwitansi_pdf', $data, $paperSize, $orientation);
 
             $filename = "Kwitansi_{$kwitansi->bukuKasUmum->uraian_opsional}.pdf";
 
@@ -466,8 +466,7 @@ class KwitansiController extends Controller
                 ],
             ];
 
-            $pdf = Pdf::loadView('pelengkap.download_all_pdf', $data);
-            $pdf->setPaper($paperSize, $orientation);
+            $pdf = $this->loadSanitizedPdf('pelengkap.download_all_pdf', $data, $paperSize, $orientation);
 
             $filename = $this->generateDownloadFilename($search, $tahun, $startDate, $endDate, $kwitansis->count());
 
@@ -623,8 +622,7 @@ class KwitansiController extends Controller
                 'fontSize' => $fontSize,
             ];
 
-            $pdf = Pdf::loadView('pelengkap.kwitansi_pdf', $data);
-            $pdf->setPaper($paperSize, $orientation);
+            $pdf = $this->loadSanitizedPdf('pelengkap.kwitansi_pdf', $data, $paperSize, $orientation);
 
             return $pdf->stream('Kwitansi_Preview_'.$kwitansi->id.'.pdf', [
                 'Content-Type' => 'application/pdf',
@@ -683,8 +681,7 @@ class KwitansiController extends Controller
                 'fontSize' => $fontSize,
             ];
 
-            $pdf = Pdf::loadView('pelengkap.kwitansi_dua_pdf', $data);
-            $pdf->setPaper($paperSize, $orientation);
+            $pdf = $this->loadSanitizedPdf('pelengkap.kwitansi_dua_pdf', $data, $paperSize, $orientation);
 
             $filename = "Kwitansi_{$kwitansi->bukuKasUmum->uraian_opsional}.pdf";
 
@@ -793,8 +790,7 @@ class KwitansiController extends Controller
                 ],
             ];
 
-            $pdf = Pdf::loadView('pelengkap.download_all_dua_pdf', $data);
-            $pdf->setPaper($paperSize, $orientation);
+            $pdf = $this->loadSanitizedPdf('pelengkap.download_all_dua_pdf', $data, $paperSize, $orientation);
 
             $filename = $this->generateDownloadFilename($search, $tahun, $startDate, $endDate, $kwitansis->count());
 
@@ -849,8 +845,7 @@ class KwitansiController extends Controller
                 'fontSize' => $fontSize,
             ];
 
-            $pdf = Pdf::loadView('pelengkap.kwitansi_dua_pdf', $data);
-            $pdf->setPaper($paperSize, $orientation);
+            $pdf = $this->loadSanitizedPdf('pelengkap.kwitansi_dua_pdf', $data, $paperSize, $orientation);
 
             return $pdf->stream('Kwitansi_Preview_'.$kwitansi->id.'.pdf', [
                 'Content-Type' => 'application/pdf',
@@ -1258,8 +1253,7 @@ class KwitansiController extends Controller
                 'fontSize' => $fontSize,
             ];
 
-            $pdf = Pdf::loadView('pelengkap.kwitansi_tiga_pdf', $data);
-            $pdf->setPaper($paperSize, $orientation);
+            $pdf = $this->loadSanitizedPdf('pelengkap.kwitansi_tiga_pdf', $data, $paperSize, $orientation);
 
             $filename = "Kwitansi_BOSP_{$kwitansi->bukuKasUmum->uraian_opsional}.pdf";
 
@@ -1361,8 +1355,7 @@ class KwitansiController extends Controller
                 'fontSize' => $fontSize,
             ];
 
-            $pdf = Pdf::loadView('pelengkap.kwitansi_tiga_pdf_all', $data);
-            $pdf->setPaper($paperSize, $orientation);
+            $pdf = $this->loadSanitizedPdf('pelengkap.kwitansi_tiga_pdf_all', $data, $paperSize, $orientation);
 
             $filename = 'Kwitansi_BOSP_All_'.date('Ymd_His').'.pdf';
 
@@ -1417,8 +1410,7 @@ class KwitansiController extends Controller
                 'fontSize' => $fontSize,
             ];
 
-            $pdf = Pdf::loadView('pelengkap.kwitansi_tiga_pdf', $data);
-            $pdf->setPaper($paperSize, $orientation);
+            $pdf = $this->loadSanitizedPdf('pelengkap.kwitansi_tiga_pdf', $data, $paperSize, $orientation);
 
             $output = $pdf->output();
 
@@ -1480,8 +1472,7 @@ class KwitansiController extends Controller
                 'fontSize' => $fontSize,
             ];
 
-            $pdf = Pdf::loadView('pelengkap.kwitansi_empat_pdf', $data);
-            $pdf->setPaper($paperSize, $orientation);
+            $pdf = $this->loadSanitizedPdf('pelengkap.kwitansi_empat_pdf', $data, $paperSize, $orientation);
 
             $filename = "Kwitansi_Format_4_{$kwitansi->bukuKasUmum->uraian_opsional}.pdf";
 
@@ -1583,8 +1574,7 @@ class KwitansiController extends Controller
                 'fontSize' => $fontSize,
             ];
 
-            $pdf = Pdf::loadView('pelengkap.kwitansi_empat_pdf_all', $data);
-            $pdf->setPaper($paperSize, $orientation);
+            $pdf = $this->loadSanitizedPdf('pelengkap.kwitansi_empat_pdf_all', $data, $paperSize, $orientation);
 
             $filename = 'Kwitansi_Format_4_All_'.date('Ymd_His').'.pdf';
 
@@ -1639,8 +1629,7 @@ class KwitansiController extends Controller
                 'fontSize' => $fontSize,
             ];
 
-            $pdf = Pdf::loadView('pelengkap.kwitansi_empat_pdf', $data);
-            $pdf->setPaper($paperSize, $orientation);
+            $pdf = $this->loadSanitizedPdf('pelengkap.kwitansi_empat_pdf', $data, $paperSize, $orientation);
 
             $output = $pdf->output();
 
@@ -1910,6 +1899,24 @@ class KwitansiController extends Controller
         ) ?: 'kwitansi_'.$kwitansi->id;
 
         return "Kwitansi_{$templateSlug}_{$uraianSlug}.{$extension}";
+    }
+
+    /**
+     * Render Blade view ke HTML bersih (tanpa BOM/karakter tak terlihat penyebab '?' di DomPDF)
+     * lalu muat ke DomPDF dengan ukuran dan orientasi kertas yang diminta.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    protected function loadSanitizedPdf(string $view, array $data, mixed $paperSize = 'Folio', mixed $orientation = 'portrait'): \Barryvdh\DomPDF\PDF
+    {
+        $resolvedPaper = is_string($paperSize) && trim($paperSize) !== '' ? trim($paperSize) : 'Folio';
+        $resolvedOrientation = is_string($orientation) && trim($orientation) !== '' ? trim($orientation) : 'portrait';
+
+        $html = PdfHtmlSanitizer::sanitizeHtml(view($view, $data)->render());
+        $pdf = Pdf::loadHTML($html, 'UTF-8');
+        $pdf->setPaper($resolvedPaper, $resolvedOrientation);
+
+        return $pdf;
     }
 
     protected function renderVariant($component, $props = [])

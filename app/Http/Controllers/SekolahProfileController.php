@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Penganggaran;
 use App\Models\SekolahProfile;
+use App\Support\PdfHtmlSanitizer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -151,12 +152,19 @@ class SekolahProfileController extends Controller
             'kop_teks_html' => 'required|string',
         ]);
 
+        $sanitizedKopHtml = PdfHtmlSanitizer::sanitizeKopHtml((string) $request->kop_teks_html);
+        if ($sanitizedKopHtml === '') {
+            return redirect()->back()->withErrors([
+                'kop_teks_html' => 'Teks kop surat tidak boleh kosong.',
+            ]);
+        }
+
         $sekolah = SekolahProfile::findOrFail($id);
 
         $updateData = [
             'kop_mode' => $request->kop_mode,
             'kop_border' => $request->kop_border,
-            'kop_teks_html' => $request->kop_teks_html,
+            'kop_teks_html' => $sanitizedKopHtml,
             'kop_jenis' => 'builder',
         ];
 
