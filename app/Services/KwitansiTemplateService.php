@@ -353,7 +353,7 @@ class KwitansiTemplateService
             $this->applyItemTableRows($processor, $rawTemplateVars, $payload['items']);
 
             // 2. Proses placeholder gambar (kop_surat, logo_sekolah, logo_daerah) dengan satuan fisik absolut (pt) & auto-fit margin
-            $this->applyImagePlaceholders($processor, $rawTemplateVars, $payload['images'], $sourceDocxPath);
+            $injectedImageKeys = $this->applyImagePlaceholders($processor, $rawTemplateVars, $payload['images'], $sourceDocxPath);
 
             // 3. Proses seluruh variabel teks (termasuk varian tag dengan spasi di XML)
             foreach ($payload['text'] as $key => $value) {
@@ -368,14 +368,33 @@ class KwitansiTemplateService
             }
 
             $processor->saveAs($outputPath);
+
+            // 4. Terapkan garis pemisah kop surat (kop_border: double / single / none) pada paragraf ${kop_surat}
+            if (
+                in_array('kop_surat', $injectedImageKeys, true)
+                && is_string($payload['images']['kop_surat'] ?? null)
+                && ($payload['kop_border'] ?? 'none') !== 'none'
+            ) {
+                $this->applyKopSuratBorderToDocx(
+                    $outputPath,
+                    $payload['images']['kop_surat'],
+                    (string) $payload['kop_border']
+                );
+            }
+
             $saved = true;
         } finally {
             PhpWordSettings::setOutputEscapingEnabled($previousEscaping);
             if ($normalizedPath !== null && is_file($normalizedPath)) {
                 @unlink($normalizedPath);
             }
-            if (! $saved && $processorTempFile !== null && is_file($processorTempFile)) {
-                @unlink($processorTempFile);
+            if (! $saved) {
+                if ($processorTempFile !== null && is_file($processorTempFile)) {
+                    @unlink($processorTempFile);
+                }
+                if (is_file($outputPath)) {
+                    @unlink($outputPath);
+                }
             }
         }
 
@@ -778,9 +797,9 @@ class KwitansiTemplateService
     }
 
     /**
-     * Petakan model Kwitansi + relasinya ke payload text, items, dan images.
+     * Petakan model Kwitansi + relasinya ke payload text, items, images, dan kop_border.
      *
-     * @return array{text: array<string, string>, items: array<int, array<string, string>>, images: array<string, ?string>}
+     * @return array{text: array<string, string>, items: array<int, array<string, string>>, images: array<string, ?string>, kop_border: string}
      */
     public function buildKwitansiVariables(Model $kwitansi, string $variant): array
     {
@@ -920,10 +939,14 @@ class KwitansiTemplateService
             'logo_daerah' => $this->resolvePublicImagePath($sekolah?->logo_daerah),
         ];
 
+        $rawKopBorder = strtolower(trim((string) ($sekolah?->kop_border ?? 'double')));
+        $kopBorder = in_array($rawKopBorder, ['double', 'single', 'none'], true) ? $rawKopBorder : 'double';
+
         return [
             'text' => $text,
             'items' => $items,
             'images' => $images,
+            'kop_border' => $kopBorder,
         ];
     }
 
@@ -998,13 +1021,16 @@ class KwitansiTemplateService
     /**
      * @param  array<int, string>  $rawTemplateVars
      * @param  array<string, ?string>  $images
+     * @return array<int, string> Daftar key gambar yang berhasil di-inject (mis. ['kop_surat', 'logo_sekolah'])
      */
     protected function applyImagePlaceholders(
         TemplateProcessor $processor,
         array $rawTemplateVars,
         array $images,
         ?string $sourceDocxPath = null
-    ): void {
+    ): array {
+        $injectedKeys = [];
+
         foreach (self::IMAGE_VARIABLES as $key => $config) {
             $matchingRawVars = [];
             foreach ($rawTemplateVars as $rawVar) {
@@ -1035,6 +1061,7 @@ class KwitansiTemplateService
                     }
                 }
 
+                $keyInjected = false;
                 foreach ($matchingRawVars as $rawVar) {
                     $dims = $this->parseInlineImageOptions($rawVar, $defaultWidth, $config['height'], $config['ratio']);
                     try {
@@ -1044,9 +1071,14 @@ class KwitansiTemplateService
                             'height' => $dims['height'],
                             'ratio' => $dims['ratio'] ? 'true' : 'false',
                         ]);
+                        $keyInjected = true;
                     } catch (\Throwable) {
                         $processor->setValue($rawVar, '');
                     }
+                }
+
+                if ($keyInjected) {
+                    $injectedKeys[] = $key;
                 }
 
                 continue;
@@ -1056,6 +1088,318 @@ class KwitansiTemplateService
                 $processor->setValue($rawVar, '');
             }
         }
+
+        return $injectedKeys;
+    }
+
+    /**
+     * Tambahkan garis pemisah kop surat (kop_border: double = garis 2 tebal-tipis, single = garis 1)
+     * sebagai border bawah paragraf native OOXML (<w:pPr><w:pBdr><w:bottom .../>) pada paragraf yang
+     * memuat gambar ${kop_surat} (baik di word/document.xml maupun word/header*.xml).
+     */
+    protected function applyKopSuratBorderToDocx(string $docxPath, string $kopImagePath, string $kopBorder): void
+    {
+        if (! in_array($kopBorder, ['double', 'single'], true) || ! is_file($docxPath) || ! is_file($kopImagePath)) {
+            return;
+        }
+
+        $kopHash = @sha1_file($kopImagePath);
+        if (! is_string($kopHash) || $kopHash === '') {
+            return;
+        }
+
+        $zip = new \ZipArchive;
+        if ($zip->open($docxPath) !== true) {
+            return;
+        }
+
+        try {
+            $xmlParts = [];
+            $mainPart = $this->resolveMainDocumentPartName($zip);
+            if ($mainPart !== null) {
+                $xmlParts[] = $mainPart;
+            }
+            for ($i = 0; $i < $zip->numFiles; $i++) {
+                $name = (string) $zip->getNameIndex($i);
+                if (preg_match('#^word/header\d+\.xml$#i', str_replace('\\', '/', $name))) {
+                    $xmlParts[] = $name;
+                }
+            }
+
+            foreach (array_unique($xmlParts) as $partName) {
+                $relsPart = $this->resolveRelsPartName($partName);
+                $relsXml = $zip->getFromName($relsPart);
+                if (! is_string($relsXml) || $relsXml === '') {
+                    continue;
+                }
+
+                $kopRelIds = $this->findRelIdsMatchingMediaHash($zip, $this->loadXml($relsXml), $kopHash);
+                if ($kopRelIds === []) {
+                    continue;
+                }
+
+                $partXml = $zip->getFromName($partName);
+                if (! is_string($partXml) || $partXml === '') {
+                    continue;
+                }
+
+                // Pastikan namespace v:/o:/r: dideklarasikan pada elemen root agar <v:imagedata r:id="..."/>
+                // yang diinjeksi PHPWord valid di template Google Docs / LibreOffice Writer & tidak memicu repair Word
+                $normalizedPartXml = $this->ensureVmlNamespacesDeclared($partXml);
+                $dom = $this->loadXml($normalizedPartXml);
+                $borderApplied = $this->applyBottomBorderToKopParagraphs($dom, $kopRelIds, $kopBorder);
+                if ($borderApplied || $normalizedPartXml !== $partXml) {
+                    $updatedXml = $dom->saveXML();
+                    if (is_string($updatedXml) && $updatedXml !== '') {
+                        $zip->addFromString($partName, $updatedXml);
+                    }
+                }
+            }
+        } finally {
+            $zip->close();
+        }
+    }
+
+    /**
+     * Pastikan elemen root part XML (<w:document> / <w:hdr>) mendeklarasikan xmlns:r, xmlns:v, dan xmlns:o
+     * jika kontennya memuat elemen/atribut VML hasil injeksi PHPWord TemplateProcessor::setImageValue().
+     */
+    protected function ensureVmlNamespacesDeclared(string $xml): string
+    {
+        if (! str_contains($xml, '<v:') && ! str_contains($xml, 'r:id=')) {
+            return $xml;
+        }
+
+        return (string) preg_replace_callback(
+            '/<w:(?:document|hdr)\b([^>]*)>/u',
+            static function (array $m): string {
+                $attrs = $m[1];
+                $additions = '';
+                if (! preg_match('/\bxmlns:r\s*=/', $attrs)) {
+                    $additions .= ' xmlns:r="'.self::R_NS.'"';
+                }
+                if (! preg_match('/\bxmlns:v\s*=/', $attrs)) {
+                    $additions .= ' xmlns:v="'.self::VML_NS.'"';
+                }
+                if (! preg_match('/\bxmlns:o\s*=/', $attrs)) {
+                    $additions .= ' xmlns:o="'.self::OFFICE_NS.'"';
+                }
+                if ($additions === '') {
+                    return $m[0];
+                }
+
+                return substr($m[0], 0, -1).$additions.'>';
+            },
+            $xml,
+            1
+        );
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    protected function findRelIdsMatchingMediaHash(\ZipArchive $zip, \DOMDocument $relsDom, string $targetSha1): array
+    {
+        $matchedIds = [];
+        foreach ($relsDom->getElementsByTagName('Relationship') as $rel) {
+            if (! $rel instanceof \DOMElement) {
+                continue;
+            }
+            $type = $rel->getAttribute('Type');
+            $target = $rel->getAttribute('Target');
+            $id = $rel->getAttribute('Id');
+            $targetMode = strtolower(trim($rel->getAttribute('TargetMode')));
+            if ($id === '' || $target === '' || $targetMode === 'external' || ! str_contains($type, '/image')) {
+                continue;
+            }
+
+            $zipMediaPath = $this->resolveWordZipTargetPath($target);
+            if ($zipMediaPath === null) {
+                continue;
+            }
+
+            $bytes = $zip->getFromName($zipMediaPath);
+            if (is_string($bytes) && $bytes !== '' && sha1($bytes) === $targetSha1) {
+                $matchedIds[] = $id;
+            }
+        }
+
+        return $matchedIds;
+    }
+
+    protected function resolveWordZipTargetPath(string $target): ?string
+    {
+        $normalized = str_replace('\\', '/', trim($target));
+        if ($normalized === '') {
+            return null;
+        }
+
+        $isRootRelative = str_starts_with($normalized, '/');
+        $rawPath = $isRootRelative ? ltrim($normalized, '/') : 'word/'.ltrim($normalized, '/');
+        $segments = explode('/', $rawPath);
+        $resolved = [];
+        foreach ($segments as $seg) {
+            if ($seg === '' || $seg === '.') {
+                continue;
+            }
+            if ($seg === '..') {
+                array_pop($resolved);
+
+                continue;
+            }
+            $resolved[] = $seg;
+        }
+
+        if ($resolved === []) {
+            return null;
+        }
+
+        return implode('/', $resolved);
+    }
+
+    /**
+     * @param  array<int, string>  $kopRelIds
+     */
+    protected function applyBottomBorderToKopParagraphs(\DOMDocument $dom, array $kopRelIds, string $kopBorder): bool
+    {
+        $xpath = new \DOMXPath($dom);
+        $xpath->registerNamespace('w', self::W_NS);
+        $xpath->registerNamespace('r', self::R_NS);
+
+        $relLookup = array_fill_keys($kopRelIds, true);
+        $imageNodes = $xpath->query('//*[local-name()="imagedata" or local-name()="blip"][@r:id or @r:embed]');
+        if ($imageNodes === false) {
+            return false;
+        }
+
+        $modified = false;
+        $processedParagraphs = [];
+
+        foreach ($imageNodes as $imgNode) {
+            if (! $imgNode instanceof \DOMElement) {
+                continue;
+            }
+
+            $relId = $imgNode->getAttributeNS(self::R_NS, 'id')
+                ?: $imgNode->getAttributeNS(self::R_NS, 'embed');
+            if ($relId === '' || ! isset($relLookup[$relId])) {
+                continue;
+            }
+
+            $paragraphList = $xpath->query('ancestor::w:p[1]', $imgNode);
+            $paragraph = $paragraphList !== false ? $paragraphList->item(0) : null;
+            if (! $paragraph instanceof \DOMElement) {
+                continue;
+            }
+
+            $objId = spl_object_id($paragraph);
+            if (isset($processedParagraphs[$objId])) {
+                continue;
+            }
+            $processedParagraphs[$objId] = true;
+
+            // Hormati border bawah manual bila pengguna sudah membuatnya sendiri di Word pada paragraf kop
+            $existingBottomList = $xpath->query('./w:pPr/w:pBdr/w:bottom', $paragraph);
+            $existingBottom = $existingBottomList !== false ? $existingBottomList->item(0) : null;
+            if ($existingBottom instanceof \DOMElement) {
+                $existingVal = strtolower($existingBottom->getAttributeNS(self::W_NS, 'val'));
+                if ($existingVal !== '' && $existingVal !== 'none' && $existingVal !== 'nil') {
+                    continue;
+                }
+            }
+
+            $pPrList = $xpath->query('./w:pPr', $paragraph);
+            $pPr = $pPrList !== false ? $pPrList->item(0) : null;
+            if (! $pPr instanceof \DOMElement) {
+                $pPr = $dom->createElementNS(self::W_NS, 'w:pPr');
+                if ($paragraph->firstChild !== null) {
+                    $paragraph->insertBefore($pPr, $paragraph->firstChild);
+                } else {
+                    $paragraph->appendChild($pPr);
+                }
+            }
+
+            $pBdrList = $xpath->query('./w:pBdr', $pPr);
+            $pBdr = $pBdrList !== false ? $pBdrList->item(0) : null;
+            if (! $pBdr instanceof \DOMElement) {
+                $pBdr = $dom->createElementNS(self::W_NS, 'w:pBdr');
+                $this->insertParagraphBorderInOrder($pPr, $pBdr);
+            }
+
+            if ($existingBottom instanceof \DOMElement && $existingBottom->parentNode === $pBdr) {
+                $pBdr->removeChild($existingBottom);
+            }
+
+            $bottom = $dom->createElementNS(self::W_NS, 'w:bottom');
+            if ($kopBorder === 'double') {
+                // Garis 2 resmi (tebal atas + tipis bawah) sesuai kop_border.blade.php
+                $bottom->setAttributeNS(self::W_NS, 'w:val', 'thickThinSmallGap');
+                $bottom->setAttributeNS(self::W_NS, 'w:sz', '18');
+                $bottom->setAttributeNS(self::W_NS, 'w:space', '4');
+                $bottom->setAttributeNS(self::W_NS, 'w:color', '000000');
+            } else {
+                // Garis 1 tunggal hitam pekat (1.5pt)
+                $bottom->setAttributeNS(self::W_NS, 'w:val', 'single');
+                $bottom->setAttributeNS(self::W_NS, 'w:sz', '12');
+                $bottom->setAttributeNS(self::W_NS, 'w:space', '4');
+                $bottom->setAttributeNS(self::W_NS, 'w:color', '000000');
+            }
+            $this->insertParagraphBorderBottomInOrder($pBdr, $bottom);
+
+            $modified = true;
+        }
+
+        return $modified;
+    }
+
+    /**
+     * Sisipkan <w:bottom> sesuai urutan skema ECMA-376 CT_PBdr (top, left, bottom, right, between, bar).
+     */
+    protected function insertParagraphBorderBottomInOrder(\DOMElement $pBdr, \DOMElement $bottom): void
+    {
+        $afterBottom = ['right' => true, 'between' => true, 'bar' => true];
+        foreach ($pBdr->childNodes as $child) {
+            if (
+                $child instanceof \DOMElement
+                && $child->namespaceURI === self::W_NS
+                && isset($afterBottom[$child->localName])
+            ) {
+                $pBdr->insertBefore($bottom, $child);
+
+                return;
+            }
+        }
+        $pBdr->appendChild($bottom);
+    }
+
+    /**
+     * Sisipkan <w:pBdr> pada posisi yang valid sesuai urutan skema ECMA-376 CT_PPr.
+     */
+    protected function insertParagraphBorderInOrder(\DOMElement $pPr, \DOMElement $pBdr): void
+    {
+        $precedingElements = [
+            'pStyle' => true,
+            'keepNext' => true,
+            'keepLines' => true,
+            'pageBreakBefore' => true,
+            'framePr' => true,
+            'widowControl' => true,
+            'numPr' => true,
+            'suppressLineNumbers' => true,
+        ];
+
+        foreach ($pPr->childNodes as $child) {
+            if (! $child instanceof \DOMElement || $child->namespaceURI !== self::W_NS) {
+                continue;
+            }
+            if (! isset($precedingElements[$child->localName])) {
+                $pPr->insertBefore($pBdr, $child);
+
+                return;
+            }
+        }
+
+        $pPr->appendChild($pBdr);
     }
 
     /**

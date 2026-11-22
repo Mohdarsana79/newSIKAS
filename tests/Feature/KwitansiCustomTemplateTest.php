@@ -1029,6 +1029,8 @@ XML;
         $hdrZip->close();
         preg_match('/<v:shape[^>]*style="([^"]+)"/', $hdrXml, $hdrStyleMatch);
         $this->assertSame('width:460.00pt;height:92pt', $hdrStyleMatch[1] ?? '');
+        // Header kop surat juga otomatis mendapat garis pemisah kop_border bawaan ('double' = thickThinSmallGap)
+        $this->assertStringContainsString('w:val="thickThinSmallGap"', $hdrXml);
 
         // 4. Jika file kop_surat kosong di profil sekolah, tag berargumen (${kop_surat:15cm}) tetap dibersihkan jadi ''
         $this->sekolah->update(['kop_surat' => null]);
@@ -1038,6 +1040,176 @@ XML;
         $this->assertStringNotContainsString('${kop_surat}', $emptyKopXml);
         $this->assertStringNotContainsString('${kop_surat:15cm}', $emptyKopXml);
         $this->assertStringNotContainsString('${kop_surat:height=3cm}', $emptyKopXml);
+        $this->assertStringNotContainsString('<w:pBdr', $emptyKopXml);
+    }
+
+    public function test_kop_surat_applies_kop_border_double_single_none_and_respects_manual_border(): void
+    {
+        $kopRel = 'test_kop_border_'.uniqid().'.png';
+        $kopFull = storage_path('app/public/'.$kopRel);
+        File::ensureDirectoryExists(dirname($kopFull));
+        $this->tempFilesToClean[] = $kopFull;
+        file_put_contents($kopFull, $this->buildMinimalPngBytes(500, 100));
+
+        $this->sekolah->update([
+            'kop_surat' => $kopRel,
+            'kop_border' => 'double',
+        ]);
+
+        $kw1 = $this->createRegulerKwitansi(
+            idTransaksi: 'BDR-001',
+            uraian: 'Uji Garis Kop 1',
+            tanggal: '2026-04-01',
+            penerima: 'Toko Border 1',
+            items: [
+                ['uraian' => 'Kertas', 'volume' => 1, 'satuan' => 'Rim', 'harga_satuan' => 50000, 'subtotal' => 50000],
+            ]
+        );
+        $kw2 = $this->createRegulerKwitansi(
+            idTransaksi: 'BDR-002',
+            uraian: 'Uji Garis Kop 2',
+            tanggal: '2026-04-02',
+            penerima: 'Toko Border 2',
+            items: [
+                ['uraian' => 'Tinta', 'volume' => 1, 'satuan' => 'Botol', 'harga_satuan' => 75000, 'subtotal' => 75000],
+            ]
+        );
+
+        $service = app(KwitansiTemplateService::class);
+        $template = $this->storeTemplateRecord(['${kop_surat}', 'Bukti: ${no_bukti}']);
+
+        // 1. kop_border = 'double' -> <w:pBdr><w:bottom w:val="thickThinSmallGap" w:sz="18" .../> dalam urutan CT_PPr valid
+        $doublePath = $service->compileSingleDocx($template, $kw1, 'reguler');
+        $this->tempFilesToClean[] = $doublePath;
+        $doubleDom = new \DOMDocument;
+        $this->assertTrue($doubleDom->loadXML($this->readDocumentXml($doublePath)));
+        $doubleXp = new \DOMXPath($doubleDom);
+        $doubleXp->registerNamespace('w', 'http://schemas.openxmlformats.org/wordprocessingml/2006/main');
+
+        $doubleBottom = $doubleXp->query('//w:pPr/w:pBdr/w:bottom')->item(0);
+        $this->assertInstanceOf(\DOMElement::class, $doubleBottom);
+        $this->assertSame('thickThinSmallGap', $doubleBottom->getAttributeNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'val'));
+        $this->assertSame('18', $doubleBottom->getAttributeNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'sz'));
+        $this->assertSame('000000', $doubleBottom->getAttributeNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'color'));
+
+        // 2. Bulk merge 2 kwitansi dengan kop_border = 'double' -> keduanya mempertahankan garis 2 kop surat
+        $bulkPath = $service->compileBulkDocx($template, collect([$kw1, $kw2]), 'reguler');
+        $this->tempFilesToClean[] = $bulkPath;
+        $bulkDom = new \DOMDocument;
+        $this->assertTrue($bulkDom->loadXML($this->readDocumentXml($bulkPath)));
+        $bulkXp = new \DOMXPath($bulkDom);
+        $bulkXp->registerNamespace('w', 'http://schemas.openxmlformats.org/wordprocessingml/2006/main');
+        $bulkBorders = $bulkXp->query('//w:pPr/w:pBdr/w:bottom[@w:val="thickThinSmallGap"]');
+        $this->assertSame(2, $bulkBorders ? $bulkBorders->length : 0);
+
+        // 3. kop_border = 'single' -> <w:pBdr><w:bottom w:val="single" w:sz="12" .../>
+        $this->sekolah->update(['kop_border' => 'single']);
+        $singlePath = $service->compileSingleDocx($template, $kw1->fresh(), 'reguler');
+        $this->tempFilesToClean[] = $singlePath;
+        $singleDom = new \DOMDocument;
+        $this->assertTrue($singleDom->loadXML($this->readDocumentXml($singlePath)));
+        $singleXp = new \DOMXPath($singleDom);
+        $singleXp->registerNamespace('w', 'http://schemas.openxmlformats.org/wordprocessingml/2006/main');
+        $singleBottom = $singleXp->query('//w:pPr/w:pBdr/w:bottom')->item(0);
+        $this->assertInstanceOf(\DOMElement::class, $singleBottom);
+        $this->assertSame('single', $singleBottom->getAttributeNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'val'));
+        $this->assertSame('12', $singleBottom->getAttributeNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'sz'));
+
+        // 4. kop_border = 'none' -> tidak ada <w:pBdr><w:bottom>
+        $this->sekolah->update(['kop_border' => 'none']);
+        $nonePath = $service->compileSingleDocx($template, $kw1->fresh(), 'reguler');
+        $this->tempFilesToClean[] = $nonePath;
+        $noneDom = new \DOMDocument;
+        $this->assertTrue($noneDom->loadXML($this->readDocumentXml($nonePath)));
+        $noneXp = new \DOMXPath($noneDom);
+        $noneXp->registerNamespace('w', 'http://schemas.openxmlformats.org/wordprocessingml/2006/main');
+        $noneBorders = $noneXp->query('//w:pPr/w:pBdr/w:bottom');
+        $this->assertSame(0, $noneBorders ? $noneBorders->length : 0);
+
+        // 5. Uji template minimal TANPA deklarasi xmlns:v/xmlns:o/xmlns:r (gaya Google Docs / LibreOffice Writer):
+        //    - Paragraf 1: manual border bawah dotted -> TIDAK ditimpa
+        //    - Paragraf 2: border kanan existing + bottom val="none" -> bottom diganti & tetap SEBELUM right (CT_PBdr)
+        //    - Paragraf 3: tanpa pBdr namun punya pStyle + spacing + jc -> pBdr disisipkan setelah pStyle & sebelum spacing (CT_PPr)
+        $this->sekolah->update(['kop_border' => 'double']);
+        $customBorderXml = <<<'XML'
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    <w:p>
+      <w:pPr>
+        <w:pBdr><w:bottom w:val="dotted" w:sz="6" w:space="2" w:color="FF0000"/></w:pBdr>
+        <w:jc w:val="center"/>
+      </w:pPr>
+      <w:r><w:t>${kop_surat:10cm}</w:t></w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pBdr><w:bottom w:val="none"/><w:right w:val="single" w:sz="4" w:space="1" w:color="000000"/></w:pBdr>
+        <w:spacing w:after="120"/>
+      </w:pPr>
+      <w:r><w:t>${kop_surat:12cm}</w:t></w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Normal"/>
+        <w:spacing w:after="120"/>
+        <w:jc w:val="center"/>
+      </w:pPr>
+      <w:r><w:t>${kop_surat}</w:t></w:r>
+    </w:p>
+    <w:sectPr><w:pgSz w:w="11905" w:h="16838"/><w:pgMar w:left="900" w:right="900"/></w:sectPr>
+  </w:body>
+</w:document>
+XML;
+        $customSrc = $this->createMinimalDocxFromXml($customBorderXml);
+        $customRel = 'kwitansi_templates/'.uniqid('kop_bdr_').'.docx';
+        Storage::disk('local')->put($customRel, file_get_contents($customSrc));
+        $customTpl = KwitansiTemplate::create([
+            'nama' => 'Template Kop Border Order',
+            'file_path' => $customRel,
+            'original_filename' => 'kop_bdr.docx',
+            'file_size' => filesize($customSrc) ?: 0,
+            'detected_variables' => $service->analyzeTemplateFile($customSrc),
+            'has_item_table' => false,
+            'created_by' => $this->bendahara->id,
+        ]);
+
+        $customCompiled = $service->compileSingleDocx($customTpl, $kw1->fresh(), 'reguler');
+        $this->tempFilesToClean[] = $customCompiled;
+        $customDom = new \DOMDocument;
+        $this->assertTrue($customDom->loadXML($this->readDocumentXml($customCompiled)));
+        $customXp = new \DOMXPath($customDom);
+        $customXp->registerNamespace('w', 'http://schemas.openxmlformats.org/wordprocessingml/2006/main');
+
+        // Paragraf 1 tetap dotted (manual border tidak ditimpa)
+        $pBdrs = $customXp->query('//w:pPr/w:pBdr');
+        $this->assertSame(3, $pBdrs ? $pBdrs->length : 0);
+        $firstBottom = $customXp->query('./w:bottom', $pBdrs->item(0))->item(0);
+        $this->assertInstanceOf(\DOMElement::class, $firstBottom);
+        $this->assertSame('dotted', $firstBottom->getAttributeNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'val'));
+
+        // Paragraf 2 mengganti val="none" jadi thickThinSmallGap & tetap SEBELUM right (urutan CT_PBdr)
+        $secondBottom = $customXp->query('./w:bottom', $pBdrs->item(1))->item(0);
+        $this->assertInstanceOf(\DOMElement::class, $secondBottom);
+        $this->assertSame('thickThinSmallGap', $secondBottom->getAttributeNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'val'));
+        $secondBdrChildren = [];
+        foreach ($pBdrs->item(1)->childNodes as $child) {
+            if ($child instanceof \DOMElement) {
+                $secondBdrChildren[] = $child->localName;
+            }
+        }
+        $this->assertSame(['bottom', 'right'], $secondBdrChildren);
+
+        // Paragraf 3 menyisipkan w:pBdr tepat setelah w:pStyle dan sebelum w:spacing & w:jc (urutan CT_PPr)
+        $thirdPPr = $pBdrs->item(2)->parentNode;
+        $this->assertInstanceOf(\DOMElement::class, $thirdPPr);
+        $thirdPPrChildren = [];
+        foreach ($thirdPPr->childNodes as $child) {
+            if ($child instanceof \DOMElement) {
+                $thirdPPrChildren[] = $child->localName;
+            }
+        }
+        $this->assertSame(['pStyle', 'pBdr', 'spacing', 'jc'], $thirdPPrChildren);
     }
 
     public function test_custom_template_works_on_kinerja_variant_with_dynamic_sumber_dana(): void
@@ -1324,7 +1496,7 @@ XML;
         $this->assertTrue($zip->open($path, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true);
         $zip->addFromString('[Content_Types].xml', '<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/></Types>');
         $zip->addFromString('word/document.xml', $documentXml);
-        $zip->addFromString('word/_rels/document.xml.rels', '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"/>');
+        $zip->addFromString('word/_rels/document.xml.rels', '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"></Relationships>');
         $zip->close();
 
         $this->tempFilesToClean[] = $path;
