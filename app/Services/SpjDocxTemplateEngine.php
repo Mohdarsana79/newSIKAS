@@ -131,10 +131,13 @@ abstract class SpjDocxTemplateEngine
             // 1. Proses tabel rincian barang dinamis (cloneRow) terlebih dahulu
             $this->applyItemTableRows($processor, $rawTemplateVars, $payload['items'], $itemTableKeys);
 
-            // 2. Proses placeholder gambar (kop_surat, logo_sekolah, logo_daerah) dengan satuan fisik absolut (pt) & auto-fit margin
-            $injectedImageKeys = $this->applyImagePlaceholders($processor, $rawTemplateVars, $payload['images'], $sourceDocxPath);
+            // 2. Proses placeholder gambar (kop_surat, logo_sekolah, logo_daerah) dengan satuan fisik absolut (pt) & auto-fit margin/landscape
+            $imageResult = $this->applyImagePlaceholders($processor, $rawTemplateVars, $payload['images'], $sourceDocxPath);
+            $injectedImageKeys = $imageResult['injected_keys'];
+            $centerKopParagraph = $imageResult['kop_landscape_capped'];
 
-            // 3. Proses seluruh variabel teks (termasuk varian tag dengan spasi di XML)
+            // 3. Proses seluruh variabel teks (termasuk varian berspasi & tag non-item_* yang ikut digandakan cloneRow menjadi tag#1, tag#2, dst.)
+            $postCloneVars = $processor->getVariables();
             foreach ($payload['text'] as $key => $value) {
                 $replacement = $this->formatReplacementValue((string) $value);
                 $processor->setValue($key, $replacement);
@@ -145,19 +148,22 @@ abstract class SpjDocxTemplateEngine
                     }
                 }
             }
+            $this->applyClonedRowTextFallbacks($processor, $postCloneVars, $payload['text'], $payload['items']);
 
             $processor->saveAs($outputPath);
 
-            // 4. Pastikan deklarasi namespace VML valid bila ada gambar yang diinjeksi, serta terapkan garis kop_border
+            // 4. Pastikan deklarasi namespace VML valid bila ada gambar yang diinjeksi, ratakan tengah kop landscape, serta terapkan garis kop_border
             if ($injectedImageKeys !== []) {
-                $applyKopBorder = in_array('kop_surat', $injectedImageKeys, true)
-                    && is_string($payload['images']['kop_surat'] ?? null)
+                $hasKopImage = in_array('kop_surat', $injectedImageKeys, true)
+                    && is_string($payload['images']['kop_surat'] ?? null);
+                $applyKopBorder = $hasKopImage
                     && in_array(($payload['kop_border'] ?? 'none'), ['double', 'single'], true);
 
                 $this->postProcessInjectedImagesInDocx(
                     $outputPath,
-                    $applyKopBorder ? $payload['images']['kop_surat'] : null,
-                    $applyKopBorder ? (string) $payload['kop_border'] : 'none'
+                    $hasKopImage ? $payload['images']['kop_surat'] : null,
+                    $applyKopBorder ? (string) $payload['kop_border'] : 'none',
+                    $centerKopParagraph
                 );
             }
 
@@ -566,9 +572,65 @@ abstract class SpjDocxTemplateEngine
     }
 
     /**
+     * Isi tag teks non-item_* yang ikut digandakan PHPWord cloneRow() menjadi ${tag#1}, ${tag#2}, dst.
+     * (mis. pengguna meletakkan ${satuan}, ${harga_satuan_rupiah}, ${jumlah_diterima_rupiah} di baris tabel bersama ${item_no}).
+     *
+     * @param  array<int, string>  $postCloneVars
+     * @param  array<string, string>  $text
+     * @param  array<int, array<string, string>>  $items
+     */
+    protected function applyClonedRowTextFallbacks(
+        TemplateProcessor $processor,
+        array $postCloneVars,
+        array $text,
+        array $items
+    ): void {
+        $rowAliasMap = [
+            'penerima' => 'item_penerima',
+            'uraian' => 'item_nama',
+            'uraian_bku' => 'item_nama',
+            'volume' => 'item_volume',
+            'satuan' => 'item_satuan',
+            'harga_satuan' => 'item_harga',
+            'harga_satuan_rupiah' => 'item_harga_rupiah',
+            'jumlah_angka' => 'item_subtotal',
+            'jumlah_rupiah' => 'item_subtotal_rupiah',
+            'potongan_pajak' => 'item_pajak_rupiah',
+            'potongan_pajak_angka' => 'item_pajak',
+            'total_pajak' => 'item_pajak_rupiah',
+            'total_pajak_angka' => 'item_pajak',
+            'jumlah_bersih' => 'item_bersih',
+            'jumlah_bersih_rupiah' => 'item_bersih_rupiah',
+            'jumlah_diterima' => 'item_bersih',
+            'jumlah_diterima_rupiah' => 'item_bersih_rupiah',
+        ];
+
+        foreach (array_unique($postCloneVars) as $rawVar) {
+            if (! preg_match('/^\s*([A-Za-z0-9_]+)#(\d+)\s*$/', $rawVar, $m)) {
+                continue;
+            }
+
+            $baseKey = $m[1];
+            $rowIndex = ((int) $m[2]) - 1;
+            if ($rowIndex < 0 || ! array_key_exists($baseKey, $text)) {
+                continue;
+            }
+
+            $aliasItemKey = $rowAliasMap[$baseKey] ?? null;
+            if ($aliasItemKey !== null && isset($items[$rowIndex][$aliasItemKey])) {
+                $val = $items[$rowIndex][$aliasItemKey];
+            } else {
+                $val = $text[$baseKey];
+            }
+
+            $processor->setValue($rawVar, $this->formatReplacementValue((string) $val));
+        }
+    }
+
+    /**
      * @param  array<int, string>  $rawTemplateVars
      * @param  array<string, ?string>  $images
-     * @return array<int, string> Daftar key gambar yang berhasil di-inject (mis. ['kop_surat', 'logo_sekolah'])
+     * @return array{injected_keys: array<int, string>, kop_landscape_capped: bool}
      */
     protected function applyImagePlaceholders(
         TemplateProcessor $processor,
@@ -577,6 +639,7 @@ abstract class SpjDocxTemplateEngine
         ?string $sourceDocxPath = null
     ): array {
         $injectedKeys = [];
+        $kopLandscapeCapped = false;
 
         foreach (self::IMAGE_VARIABLES as $key => $config) {
             $matchingRawVars = [];
@@ -602,9 +665,12 @@ abstract class SpjDocxTemplateEngine
 
                 $defaultWidth = $config['width'];
                 if ($needsAutoFitWidth) {
-                    $resolvedPt = $this->resolveTemplateContentWidthPt($sourceDocxPath, $key);
-                    if ($resolvedPt !== null) {
-                        $defaultWidth = number_format($resolvedPt, 2, '.', '').'pt';
+                    $fitInfo = $this->resolveTemplateContentWidthInfo($sourceDocxPath, $key, $imagePath);
+                    if ($fitInfo !== null) {
+                        $defaultWidth = number_format($fitInfo['width_pt'], 2, '.', '').'pt';
+                        if ($key === 'kop_surat' && $fitInfo['landscape_capped']) {
+                            $kopLandscapeCapped = true;
+                        }
                     }
                 }
 
@@ -636,7 +702,10 @@ abstract class SpjDocxTemplateEngine
             }
         }
 
-        return $injectedKeys;
+        return [
+            'injected_keys' => $injectedKeys,
+            'kop_landscape_capped' => $kopLandscapeCapped,
+        ];
     }
 
     /**
@@ -644,8 +713,12 @@ abstract class SpjDocxTemplateEngine
      * 1. Pastikan deklarasi namespace xmlns:v/xmlns:o/xmlns:r ada pada root XML (document/header/footer) agar aman di Google Docs / LibreOffice.
      * 2. Tambahkan garis pemisah kop surat (kop_border: double = thickThinSmallGap, single = single) bila aktif.
      */
-    protected function postProcessInjectedImagesInDocx(string $docxPath, ?string $kopImagePath, string $kopBorder): void
-    {
+    protected function postProcessInjectedImagesInDocx(
+        string $docxPath,
+        ?string $kopImagePath,
+        string $kopBorder,
+        bool $centerKopParagraph = false
+    ): void {
         if (! is_file($docxPath)) {
             return;
         }
@@ -653,9 +726,13 @@ abstract class SpjDocxTemplateEngine
         $wantsKopBorder = in_array($kopBorder, ['double', 'single'], true)
             && is_string($kopImagePath)
             && is_file($kopImagePath);
-        $kopHash = $wantsKopBorder ? @sha1_file($kopImagePath) : null;
+        $wantsKopParagraphTouch = ($wantsKopBorder || $centerKopParagraph)
+            && is_string($kopImagePath)
+            && is_file($kopImagePath);
+        $kopHash = $wantsKopParagraphTouch ? @sha1_file($kopImagePath) : null;
         if (! is_string($kopHash) || $kopHash === '') {
             $wantsKopBorder = false;
+            $wantsKopParagraphTouch = false;
             $kopHash = null;
         }
 
@@ -689,7 +766,7 @@ abstract class SpjDocxTemplateEngine
                 $nsChanged = $normalizedPartXml !== $partXml;
 
                 $kopRelIds = [];
-                if ($wantsKopBorder && $kopHash !== null && ! preg_match('#^word/footer\d+\.xml$#i', str_replace('\\', '/', $partName))) {
+                if ($wantsKopParagraphTouch && $kopHash !== null && ! preg_match('#^word/footer\d+\.xml$#i', str_replace('\\', '/', $partName))) {
                     $relsPart = $this->resolveRelsPartName($partName);
                     $relsXml = $zip->getFromName($relsPart);
                     if (is_string($relsXml) && $relsXml !== '') {
@@ -702,8 +779,13 @@ abstract class SpjDocxTemplateEngine
                 }
 
                 $dom = $this->loadXml($normalizedPartXml);
-                $borderApplied = $kopRelIds !== [] && $this->applyBottomBorderToKopParagraphs($dom, $kopRelIds, $kopBorder);
-                if ($borderApplied || $nsChanged) {
+                $kopModified = $kopRelIds !== [] && $this->applyKopParagraphStyling(
+                    $dom,
+                    $kopRelIds,
+                    $wantsKopBorder ? $kopBorder : 'none',
+                    $centerKopParagraph
+                );
+                if ($kopModified || $nsChanged) {
                     $updatedXml = $dom->saveXML();
                     if (is_string($updatedXml) && $updatedXml !== '') {
                         $zip->addFromString($partName, $updatedXml);
@@ -815,8 +897,12 @@ abstract class SpjDocxTemplateEngine
     /**
      * @param  array<int, string>  $kopRelIds
      */
-    protected function applyBottomBorderToKopParagraphs(\DOMDocument $dom, array $kopRelIds, string $kopBorder): bool
-    {
+    protected function applyKopParagraphStyling(
+        \DOMDocument $dom,
+        array $kopRelIds,
+        string $kopBorder,
+        bool $centerParagraph = false
+    ): bool {
         $xpath = new \DOMXPath($dom);
         $xpath->registerNamespace('w', self::W_NS);
         $xpath->registerNamespace('r', self::R_NS);
@@ -853,6 +939,38 @@ abstract class SpjDocxTemplateEngine
             }
             $processedParagraphs[$objId] = true;
 
+            $pPrList = $xpath->query('./w:pPr', $paragraph);
+            $pPr = $pPrList !== false ? $pPrList->item(0) : null;
+            $ensurePPr = function () use ($dom, $paragraph, &$pPr): \DOMElement {
+                if (! $pPr instanceof \DOMElement) {
+                    $pPr = $dom->createElementNS(self::W_NS, 'w:pPr');
+                    if ($paragraph->firstChild !== null) {
+                        $paragraph->insertBefore($pPr, $paragraph->firstChild);
+                    } else {
+                        $paragraph->appendChild($pPr);
+                    }
+                }
+
+                return $pPr;
+            };
+
+            // Pada mode Landscape yang gambar kop-nya dibatasi proporsional, pastikan rata tengah di atas garis kop penuh
+            if ($centerParagraph) {
+                $existingJcList = $pPr instanceof \DOMElement ? $xpath->query('./w:jc', $pPr) : false;
+                $existingJc = $existingJcList !== false ? $existingJcList->item(0) : null;
+                if (! $existingJc instanceof \DOMElement) {
+                    $targetPPr = $ensurePPr();
+                    $jc = $dom->createElementNS(self::W_NS, 'w:jc');
+                    $jc->setAttributeNS(self::W_NS, 'w:val', 'center');
+                    $this->insertParagraphJcInOrder($targetPPr, $jc);
+                    $modified = true;
+                }
+            }
+
+            if (! in_array($kopBorder, ['double', 'single'], true)) {
+                continue;
+            }
+
             // Hormati border bawah manual bila pengguna sudah membuatnya sendiri di Word pada paragraf kop
             $existingBottomList = $xpath->query('./w:pPr/w:pBdr/w:bottom', $paragraph);
             $existingBottom = $existingBottomList !== false ? $existingBottomList->item(0) : null;
@@ -863,22 +981,12 @@ abstract class SpjDocxTemplateEngine
                 }
             }
 
-            $pPrList = $xpath->query('./w:pPr', $paragraph);
-            $pPr = $pPrList !== false ? $pPrList->item(0) : null;
-            if (! $pPr instanceof \DOMElement) {
-                $pPr = $dom->createElementNS(self::W_NS, 'w:pPr');
-                if ($paragraph->firstChild !== null) {
-                    $paragraph->insertBefore($pPr, $paragraph->firstChild);
-                } else {
-                    $paragraph->appendChild($pPr);
-                }
-            }
-
-            $pBdrList = $xpath->query('./w:pBdr', $pPr);
+            $targetPPr = $ensurePPr();
+            $pBdrList = $xpath->query('./w:pBdr', $targetPPr);
             $pBdr = $pBdrList !== false ? $pBdrList->item(0) : null;
             if (! $pBdr instanceof \DOMElement) {
                 $pBdr = $dom->createElementNS(self::W_NS, 'w:pBdr');
-                $this->insertParagraphBorderInOrder($pPr, $pBdr);
+                $this->insertParagraphBorderInOrder($targetPPr, $pBdr);
             }
 
             if ($existingBottom instanceof \DOMElement && $existingBottom->parentNode === $pBdr) {
@@ -905,6 +1013,38 @@ abstract class SpjDocxTemplateEngine
         }
 
         return $modified;
+    }
+
+    /**
+     * Sisipkan <w:jc> sesuai urutan skema ECMA-376 CT_PPr (sebelum textDirection/textAlignment/rPr/sectPr/pPrChange).
+     */
+    protected function insertParagraphJcInOrder(\DOMElement $pPr, \DOMElement $jc): void
+    {
+        $afterJc = [
+            'textDirection' => true,
+            'textAlignment' => true,
+            'textboxTightWrap' => true,
+            'outlineLvl' => true,
+            'divId' => true,
+            'cnfStyle' => true,
+            'rPr' => true,
+            'sectPr' => true,
+            'pPrChange' => true,
+        ];
+
+        foreach ($pPr->childNodes as $child) {
+            if (
+                $child instanceof \DOMElement
+                && $child->namespaceURI === self::W_NS
+                && isset($afterJc[$child->localName])
+            ) {
+                $pPr->insertBefore($jc, $child);
+
+                return;
+            }
+        }
+
+        $pPr->appendChild($jc);
     }
 
     /**
@@ -1182,10 +1322,16 @@ abstract class SpjDocxTemplateEngine
 
     /**
      * Hitung lebar area cetak (dalam satuan fisik pt) langsung dari <w:pgSz> & <w:pgMar> template .docx,
-     * serta otomatis menyempit mengikuti lebar sel tabel / indentasi paragraf bila placeholder berada di dalamnya.
+     * otomatis menyempit mengikuti lebar sel tabel / indentasi paragraf bila placeholder berada di dalamnya,
+     * serta menjaga proporsi wajar (~60% / maks ~18 cm & tinggi maks ~3,5 cm) saat halaman berorientasi Landscape.
+     *
+     * @return array{width_pt: float, landscape_capped: bool}|null
      */
-    protected function resolveTemplateContentWidthPt(string $docxPath, string $placeholderKey): ?float
-    {
+    protected function resolveTemplateContentWidthInfo(
+        string $docxPath,
+        string $placeholderKey,
+        ?string $imagePath = null
+    ): ?array {
         if (! is_file($docxPath)) {
             return null;
         }
@@ -1206,10 +1352,11 @@ abstract class SpjDocxTemplateEngine
             }
 
             $mainDom = $this->loadXml($mainXml);
-            $pageUsableTwips = $this->resolvePageUsableTwips($mainDom);
-            if ($pageUsableTwips === null) {
+            $geometry = $this->resolvePageGeometry($mainDom);
+            if ($geometry === null) {
                 return null;
             }
+            $pageUsableTwips = $geometry['usable_twips'];
 
             // Periksa apakah placeholder polos (${kop_surat}) ditaruh di dalam sel tabel atau paragraf ber-indentasi (body maupun header)
             $containerTwips = $this->resolveContainerUsableTwips($mainDom, $placeholderKey, $pageUsableTwips);
@@ -1233,16 +1380,54 @@ abstract class SpjDocxTemplateEngine
                 ? min($pageUsableTwips, $containerTwips)
                 : $pageUsableTwips;
 
-            return round($targetTwips / 20.0, 2);
+            $targetPt = round($targetTwips / 20.0, 2);
+            $landscapeCapped = false;
+
+            // Pada halaman Landscape (lebar > tinggi, mis. Folio/A4 Landscape ~750-860pt), batasi gambar kop
+            // agar tetap proporsional (~60% lebar area cetak, maks 510pt / 18cm, tinggi maks 99.21pt / 3.5cm)
+            // sementara garis pemisah kop_border tetap penuh 100% margin.
+            if ($geometry['is_landscape'] && $targetPt > 510.0) {
+                $cappedPt = min(round($targetPt * 0.60, 2), 510.0);
+
+                if (is_string($imagePath) && is_file($imagePath)) {
+                    $imgInfo = @getimagesize($imagePath);
+                    if (is_array($imgInfo) && ($imgInfo[0] ?? 0) > 0 && ($imgInfo[1] ?? 0) > 0) {
+                        $ratio = (float) $imgInfo[0] / (float) $imgInfo[1];
+                        $maxHeightPt = 99.21; // ~3.5 cm
+                        $widthAtMaxHeight = round($maxHeightPt * $ratio, 2);
+                        if ($widthAtMaxHeight > 120.0) {
+                            $cappedPt = min($cappedPt, $widthAtMaxHeight);
+                        }
+                    }
+                }
+
+                if ($cappedPt < $targetPt) {
+                    $targetPt = $cappedPt;
+                    $landscapeCapped = true;
+                }
+            }
+
+            return [
+                'width_pt' => $targetPt,
+                'landscape_capped' => $landscapeCapped,
+            ];
         } finally {
             $zip->close();
         }
     }
 
+    protected function resolveTemplateContentWidthPt(string $docxPath, string $placeholderKey, ?string $imagePath = null): ?float
+    {
+        return $this->resolveTemplateContentWidthInfo($docxPath, $placeholderKey, $imagePath)['width_pt'] ?? null;
+    }
+
     /**
-     * Hitung lebar area cetak halaman (pgSz/@w - pgMar/@left - pgMar/@right - pgMar/@gutter) dalam twips.
+     * Hitung lebar area cetak halaman (pgSz/@w - pgMar/@left - pgMar/@right - pgMar/@gutter) dalam twips
+     * beserta deteksi orientasi Landscape (orient="landscape" atau w > h).
+     *
+     * @return array{usable_twips: int, is_landscape: bool}|null
      */
-    protected function resolvePageUsableTwips(\DOMDocument $dom): ?int
+    protected function resolvePageGeometry(\DOMDocument $dom): ?array
     {
         $xpath = new \DOMXPath($dom);
         $xpath->registerNamespace('w', self::W_NS);
@@ -1263,6 +1448,8 @@ abstract class SpjDocxTemplateEngine
         }
 
         $pageW = null;
+        $pageH = null;
+        $orient = '';
         $pgMarNode = null;
 
         foreach ($sectNodes as $sectPr) {
@@ -1272,6 +1459,14 @@ abstract class SpjDocxTemplateEngine
                     $rawW = $pgSz->getAttributeNS(self::W_NS, 'w');
                     if ($rawW !== '' && is_numeric($rawW) && (int) $rawW > 0) {
                         $pageW = (int) $rawW;
+                    }
+                    $rawH = $pgSz->getAttributeNS(self::W_NS, 'h');
+                    if ($rawH !== '' && is_numeric($rawH) && (int) $rawH > 0) {
+                        $pageH = (int) $rawH;
+                    }
+                    $rawOrient = strtolower(trim($pgSz->getAttributeNS(self::W_NS, 'orient')));
+                    if ($rawOrient !== '') {
+                        $orient = $rawOrient;
                     }
                 }
             }
@@ -1285,6 +1480,7 @@ abstract class SpjDocxTemplateEngine
         }
 
         $pageW ??= 11906; // A4 default (210mm)
+        $pageH ??= 16838; // A4 height default (297mm)
         $marginLeft = 1440; // 1 inch default
         $marginRight = 1440;
         $gutter = 0;
@@ -1306,8 +1502,24 @@ abstract class SpjDocxTemplateEngine
         }
 
         $usable = $pageW - $marginLeft - $marginRight - $gutter;
+        if ($usable < 2000) {
+            return null;
+        }
 
-        return $usable >= 2000 ? $usable : null;
+        $isLandscape = $orient === 'landscape' || $pageW > $pageH;
+
+        return [
+            'usable_twips' => $usable,
+            'is_landscape' => $isLandscape,
+        ];
+    }
+
+    /**
+     * Hitung lebar area cetak halaman (pgSz/@w - pgMar/@left - pgMar/@right - pgMar/@gutter) dalam twips.
+     */
+    protected function resolvePageUsableTwips(\DOMDocument $dom): ?int
+    {
+        return $this->resolvePageGeometry($dom)['usable_twips'] ?? null;
     }
 
     /**

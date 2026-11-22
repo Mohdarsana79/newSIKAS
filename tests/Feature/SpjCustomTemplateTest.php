@@ -694,6 +694,124 @@ class SpjCustomTemplateTest extends TestCase
             ->assertJsonPath('success', false);
     }
 
+    public function test_cloned_row_non_item_tags_and_landscape_kop_surat_cap(): void
+    {
+        $kopRel = 'test_tt_land_kop_'.uniqid().'.png';
+        $kopFull = storage_path('app/public/'.$kopRel);
+        File::ensureDirectoryExists(dirname($kopFull));
+        $this->tempFilesToClean[] = $kopFull;
+        // Rasio 5:1 -> pada Landscape Folio (857.6pt), cap 60%/510pt dan max height 99.21pt -> 496.05pt x 99.21pt
+        file_put_contents($kopFull, $this->buildMinimalPngBytes(500, 100));
+        $this->sekolah->update(['kop_surat' => $kopRel, 'kop_border' => 'double']);
+
+        // Template Folio Landscape (18710 x 12250 twips, margin 779 twips -> usable 857.6pt)
+        // Paragraf kop tanpa <w:jc> eksplisit -> wajib otomatis diratakan tengah
+        // Tabel mencampur ${item_no}/${item_penerima}/${item_volume} dengan tag non-item_* (${satuan}, ${harga_satuan_rupiah}, ${jumlah_rupiah}, ${potongan_pajak}, ${jumlah_diterima_rupiah}, ${no_bukti})
+        $phpWord = new PhpWord;
+        $section = $phpWord->addSection([
+            'orientation' => 'landscape',
+            'pageSizeW' => 18710,
+            'pageSizeH' => 12250,
+            'marginLeft' => 779,
+            'marginRight' => 779,
+        ]);
+        $section->addText('${kop_surat}');
+        $section->addText('${kop_surat:24cm}');
+
+        $table = $section->addTable();
+        $table->addRow();
+        foreach (['No', 'Nama', 'Vol', 'Satuan', 'Harga', 'Jumlah', 'Pajak', 'Bersih', 'Bukti'] as $hdr) {
+            $table->addCell(1500)->addText($hdr);
+        }
+        $table->addRow();
+        foreach ([
+            '${item_no}',
+            '${item_penerima}',
+            '${item_volume}',
+            '${satuan}',
+            '${harga_satuan_rupiah}',
+            '${jumlah_rupiah}',
+            '${potongan_pajak}',
+            '${jumlah_diterima_rupiah}',
+            '${no_bukti}',
+        ] as $tag) {
+            $table->addCell(1500)->addText($tag);
+        }
+
+        $baseTmp = tempnam(sys_get_temp_dir(), 'spj_land_');
+        if ($baseTmp !== false && is_file($baseTmp)) {
+            @unlink($baseTmp);
+        }
+        $srcPath = ($baseTmp ?: sys_get_temp_dir().DIRECTORY_SEPARATOR.'spj_land_'.uniqid('', true)).'.docx';
+        $phpWord->save($srcPath, 'Word2007');
+        $this->tempFilesToClean[] = $srcPath;
+
+        $storedRel = SpjTemplate::storageDirectoryForType('tanda_terima').'/'.uniqid('land_').'.docx';
+        Storage::disk('local')->put($storedRel, file_get_contents($srcPath));
+        $template = SpjTemplate::create([
+            'document_type' => SpjTemplate::TYPE_TANDA_TERIMA,
+            'nama' => 'Tanda Terima Landscape Mixed Tags',
+            'file_path' => $storedRel,
+            'original_filename' => 'tt_landscape.docx',
+            'file_size' => filesize($srcPath) ?: 0,
+            'detected_variables' => [],
+            'has_item_table' => true,
+            'created_by' => $this->bendahara->id,
+        ]);
+
+        $tt = $this->createRegulerTandaTerima(
+            idTransaksi: 'TT-MIX-01',
+            uraian: 'Insentif Operator',
+            tanggal: '2026-06-30',
+            penerima: 'Selpianti',
+            pajak: 'PPh 21',
+            totalPajak: 50000,
+            items: [
+                ['uraian' => 'Insentif Bulan Mei', 'volume' => 1, 'satuan' => 'orang / kegiatan', 'harga_satuan' => 600000, 'subtotal' => 600000],
+                ['uraian' => 'Insentif Bulan Juni', 'volume' => 1, 'satuan' => 'OB', 'harga_satuan' => 400000, 'subtotal' => 400000],
+            ]
+        );
+
+        $resp = $this->actingAs($this->bendahara)
+            ->get(route('tanda-terima.custom.docx', [$tt->id, $template->id]));
+        $resp->assertOk();
+        $outPath = $resp->getFile()->getPathname();
+        $this->tempFilesToClean[] = $outPath;
+
+        $xml = $this->readDocumentXml($outPath);
+
+        // 1. Tidak ada satupun tag mentah ${...#1} / ${...#2} yang tersisa
+        $this->assertDoesNotMatchRegularExpression('/\$\{[^}]+\}/', strip_tags($xml));
+        $this->assertStringContainsString('Selpianti', $xml);
+        $this->assertStringContainsString('orang / kegiatan', $xml);
+        $this->assertStringContainsString('OB', $xml);
+        $this->assertStringContainsString('Rp 600.000', $xml);
+        $this->assertStringContainsString('Rp 400.000', $xml);
+        $this->assertStringContainsString('Rp 30.000', $xml);
+        $this->assertStringContainsString('Rp 20.000', $xml);
+        $this->assertStringContainsString('Rp 570.000', $xml);
+        $this->assertStringContainsString('Rp 380.000', $xml);
+        $this->assertStringContainsString('TT-MIX-01', $xml);
+
+        // 2. Pada Landscape, ${kop_surat} polos dibatasi proporsional (496.05pt x 99.21pt, bukan 857.6pt),
+        //    sedangkan override manual ${kop_surat:24cm} tetap 24cm x 4.8cm
+        preg_match_all('/<v:shape[^>]*style="([^"]+)"/', $xml, $styleMatches);
+        $styles = $styleMatches[1] ?? [];
+        $this->assertCount(2, $styles);
+        $this->assertSame('width:496.05pt;height:99.21pt', $styles[0]);
+        $this->assertSame('width:24cm;height:4.8cm', $styles[1]);
+
+        // 3. Paragraf kop landscape otomatis diratakan tengah (<w:jc w:val="center"/>) dan tetap punya garis 2
+        $dom = new \DOMDocument;
+        $this->assertTrue($dom->loadXML($xml));
+        $xp = new \DOMXPath($dom);
+        $xp->registerNamespace('w', 'http://schemas.openxmlformats.org/wordprocessingml/2006/main');
+        $kopPPr = $xp->query('//w:p[descendant::*[local-name()="imagedata"]][1]/w:pPr')->item(0);
+        $this->assertInstanceOf(\DOMElement::class, $kopPPr);
+        $this->assertSame(1, $xp->query('./w:jc[@w:val="center"]', $kopPPr)?->length);
+        $this->assertSame(1, $xp->query('./w:pBdr/w:bottom[@w:val="thickThinSmallGap"]', $kopPPr)?->length);
+    }
+
     // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
