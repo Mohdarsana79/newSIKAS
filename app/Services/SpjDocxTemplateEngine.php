@@ -104,7 +104,8 @@ abstract class SpjDocxTemplateEngine
         array $payload,
         array $itemTableKeys,
         string $outputPrefix = 'spj_custom_',
-        string $missingMessage = 'File template tidak ditemukan di penyimpanan.'
+        string $missingMessage = 'File template tidak ditemukan di penyimpanan.',
+        bool $clearUnmatchedTextVars = false
     ): string {
         $localDisk = Storage::disk('local');
         if (! $storedFilePath || ! $localDisk->exists($storedFilePath)) {
@@ -150,6 +151,15 @@ abstract class SpjDocxTemplateEngine
             }
             $this->applyClonedRowTextFallbacks($processor, $postCloneVars, $payload['text'], $payload['items']);
             $this->applyRemainingItemTagFallbacks($processor, $rawTemplateVars, $payload['text'], $payload['items'], $itemTableKeys);
+
+            if ($clearUnmatchedTextVars) {
+                foreach (array_unique($processor->getVariables()) as $leftoverVar) {
+                    if ($this->resolveImageVariableBaseKey($leftoverVar) !== null) {
+                        continue;
+                    }
+                    $processor->setValue($leftoverVar, '');
+                }
+            }
 
             $processor->saveAs($outputPath);
 

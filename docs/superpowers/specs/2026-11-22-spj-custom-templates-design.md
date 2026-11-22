@@ -127,3 +127,27 @@ Integrasi halaman:
 
 - `tests/Feature/SpjCustomTemplateTest.php`: CRUD & isolasi `document_type`, validasi keamanan `.docx`/macro, RBAC Kepala Sekolah, starter `.docx` untuk 3 modul, kompilasi single Tanda Terima / BAST / Surat Pesanan (termasuk `kop_surat` + `kop_border`, `cloneRow`, tanggal terbilang BAST, syarat ketentuan SP), Download All Tanda Terima + filter, lintas varian Kinerja, dan fallback 422 LibreOffice.
 - Regresi penuh `KwitansiCustomTemplateTest`, `KwitansiPdfKopSanitizationTest`, `KopSuratDokumenTest`, `vendor/bin/pint`, dan `npm run build`.
+
+---
+
+## 7. Variabel Input Form Manual (Tag di Luar Katalog Sistem) pada BAST & Surat Pesanan
+
+Apabila pengguna menuliskan tag `${nama_tag}` di dalam template Word (`.docx`) **BAST** atau **Surat Pesanan** yang tidak terdapat pada katalog variabel sistem (`detected_variables.unrecognized`), sistem memperlakukan tag tersebut sebagai **variabel isian form manual**:
+
+1. **Penyimpanan Database (`custom_variables`):**
+   - Kolom `custom_variables` (`json`, nullable) ditambahkan ke 8 tabel varian:
+     - `basts`, `kinerja_basts`, `silpa_basts`, `kinerja_silpa_basts`
+     - `surat_pesanans`, `kinerja_surat_pesanans`, `silpa_surat_pesanans`, `kinerja_silpa_surat_pesanans`
+   - Seluruh 8 model Eloquent memiliki cast `'custom_variables' => 'array'`.
+2. **Backend (`BastController`, `SuratPesananController`, `SpjTemplateService`):**
+   - `store()` dan `update()` pada `BastController` & `SuratPesananController` menerima `custom_variables` (`nullable|array`), menormalisasi setiap nilai menjadi string, dan menyimpannya ke database.
+   - `search()` mengembalikan `custom_variables` (`array<string, string>`) pada setiap item BAST dan Surat Pesanan agar form Edit menampilkan nilai yang sudah tersimpan.
+   - `SpjTemplateService::buildBastVariables()` dan `buildSuratPesananVariables()` menggabungkan `custom_variables` ke dalam `$payload['text']` (variabel katalog sistem tetap diutamakan untuk key sistem, sedangkan key kustom diisi dari `custom_variables`).
+   - Pada `compileSingleDocx()`, setiap tag di `template->detected_variables['unrecognized']` yang belum diisi oleh pengguna pada dokumen tersebut otomatis diberi default string kosong `''` di `$payload['text']` agar tidak ada placeholder mentah `${...}` yang tercetak di hasil Word/PDF.
+3. **Frontend (`ModalFormBast.tsx`, `ModalFormSuratPesanan.tsx`, `SpjTemplateModal.tsx`):**
+   - `ModalFormBast` dan `ModalFormSuratPesanan` menerima `customTemplates` dan `activeCustomTemplate`:
+     - Jika di toolbar sedang memilih template kustom tertentu, form menampilkan input untuk seluruh tag di `activeCustomTemplate.detected_variables.unrecognized`.
+     - Jika di toolbar sedang memilih *Format Standar (Bawaan)*, form menggabungkan seluruh tag kustom unik dari semua template kustom BAST / Surat Pesanan yang tersedia (lengkap dengan informasi nama template yang memakai tag tersebut).
+   - Pada `ModalFormBast`, ditampilkan seksi **"Variabel Tambahan (Template Kustom)"**.
+   - Pada `ModalFormSuratPesanan`, ditampilkan tab/seksi **"Variabel Kustom"** ketika terdapat minimal 1 tag kustom.
+   - Pada `SpjTemplateModal` (untuk `bast` dan `surat_pesanan`), tag di luar katalog sistem ditampilkan dengan badge biru **`{N} tag input form`** dan keterangan bahwa tag tersebut dapat diisi melalui form Tambah/Edit dokumen.

@@ -111,6 +111,7 @@ class SuratPesananController extends Controller
                     'kondisi_barang' => $sp->kondisi_barang,
                     'ketentuan_pembayaran' => $sp->ketentuan_pembayaran,
                     'sumber_dana' => $sp->sumber_dana,
+                    'custom_variables' => is_array($sp->custom_variables) ? $sp->custom_variables : [],
                     'buku_kas_umum_id' => $sp->buku_kas_umum_id,
                     'kinerja_buku_kas_umum_id' => $sp->kinerja_buku_kas_umum_id ?? null,
                     'silpa_buku_kas_umum_id' => $sp->silpa_buku_kas_umum_id ?? null,
@@ -168,6 +169,8 @@ class SuratPesananController extends Controller
                 'kondisi_barang' => 'nullable|string',
                 'ketentuan_pembayaran' => 'nullable|string',
                 'sumber_dana' => 'nullable|string',
+                'custom_variables' => 'nullable|array',
+                'custom_variables.*' => 'nullable|string|max:5000',
             ]);
 
             $bukuKasUmum = ($this->BukuKasUmum)::with('penganggaran.sekolah')->find($validated[$bkuFk]);
@@ -213,6 +216,7 @@ class SuratPesananController extends Controller
             $sp->kondisi_barang = $validated['kondisi_barang'] ?? 'Barang yang dikirim harus dalam keadaan baru, tidak cacat, dan sesuai dengan spesifikasi yang tertera. PIHAK KESATU berhak menolak barang yang tidak sesuai.';
             $sp->ketentuan_pembayaran = $validated['ketentuan_pembayaran'] ?? 'Pembayaran akan ditransfer ke rekening PIHAK KEDUA setelah seluruh barang diterima dengan baik yang dibuktikan dengan penandatanganan Berita Acara Serah Terima (BAST).';
             $sp->sumber_dana = $validated['sumber_dana'] ?? 'Pembiayaan pengadaan barang ini dibebankan pada dana Bantuan Operasional Satuan Pendidikan (BOSP) Tahun Anggaran '.($bukuKasUmum->penganggaran->tahun_anggaran ?? date('Y')).'.';
+            $sp->custom_variables = $this->sanitizeCustomVariables($validated['custom_variables'] ?? null);
 
             $sp->save();
 
@@ -245,7 +249,13 @@ class SuratPesananController extends Controller
                 'kondisi_barang' => 'nullable|string',
                 'ketentuan_pembayaran' => 'nullable|string',
                 'sumber_dana' => 'nullable|string',
+                'custom_variables' => 'nullable|array',
+                'custom_variables.*' => 'nullable|string|max:5000',
             ]);
+
+            if (array_key_exists('custom_variables', $validated)) {
+                $validated['custom_variables'] = $this->sanitizeCustomVariables($validated['custom_variables']);
+            }
 
             $sp->update($validated);
 

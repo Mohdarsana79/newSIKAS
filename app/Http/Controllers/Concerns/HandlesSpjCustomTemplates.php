@@ -174,4 +174,32 @@ trait HandlesSpjCustomTemplates
 
         return "{$prefix}_{$slug}.{$ext}";
     }
+
+    /**
+     * Normalisasi pasangan key => value dari input custom_variables form BAST / Surat Pesanan.
+     *
+     * @return array<string, string>
+     */
+    protected function sanitizeCustomVariables(mixed $raw): array
+    {
+        if (! is_array($raw)) {
+            return [];
+        }
+
+        $cleaned = [];
+        foreach ($raw as $key => $val) {
+            if (! is_string($key)) {
+                continue;
+            }
+            $normalizedKey = trim((string) preg_replace('/^\$\{?|\}?$/', '', $key));
+            if ($normalizedKey === '' || strlen($normalizedKey) > 120) {
+                continue;
+            }
+            if (is_scalar($val) || $val === null) {
+                $cleaned[$normalizedKey] = trim((string) ($val ?? ''));
+            }
+        }
+
+        return $cleaned;
+    }
 }

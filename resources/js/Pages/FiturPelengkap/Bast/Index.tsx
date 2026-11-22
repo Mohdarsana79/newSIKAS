@@ -431,6 +431,8 @@ export default function BastIndex({ auth }: { auth: any }) {
                 tahun={selectedYear}
                 years={years}
                 editData={editData}
+                customTemplates={customTemplates}
+                activeCustomTemplate={activeCustomTemplate}
             />
 
             <ModalDetailBast

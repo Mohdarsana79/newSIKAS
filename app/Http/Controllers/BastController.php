@@ -111,6 +111,7 @@ class BastController extends Controller
                     'pihak_kedua_jabatan' => $bast->pihak_kedua_jabatan,
                     'pihak_kedua_instansi' => $bast->pihak_kedua_instansi,
                     'pihak_kedua_alamat' => $bast->pihak_kedua_alamat,
+                    'custom_variables' => is_array($bast->custom_variables) ? $bast->custom_variables : [],
                     'buku_kas_umum_id' => $bast->buku_kas_umum_id,
                     'kinerja_buku_kas_umum_id' => $bast->kinerja_buku_kas_umum_id ?? null,
                     'silpa_buku_kas_umum_id' => $bast->silpa_buku_kas_umum_id ?? null,
@@ -162,6 +163,8 @@ class BastController extends Controller
                 'pihak_kedua_jabatan' => 'nullable|string',
                 'pihak_kedua_instansi' => 'nullable|string',
                 'pihak_kedua_alamat' => 'nullable|string',
+                'custom_variables' => 'nullable|array',
+                'custom_variables.*' => 'nullable|string|max:5000',
             ]);
 
             $bukuKasUmum = ($this->BukuKasUmum)::with('penganggaran.sekolah')->find($validated[$bkuFk]);
@@ -198,6 +201,7 @@ class BastController extends Controller
             $bast->pihak_kedua_jabatan = array_key_exists('pihak_kedua_jabatan', $validated) ? $validated['pihak_kedua_jabatan'] : 'Kepala Sekolah';
             $bast->pihak_kedua_instansi = array_key_exists('pihak_kedua_instansi', $validated) ? $validated['pihak_kedua_instansi'] : ($bukuKasUmum->penganggaran->sekolah->nama_sekolah ?? 'Sekolah');
             $bast->pihak_kedua_alamat = array_key_exists('pihak_kedua_alamat', $validated) ? $validated['pihak_kedua_alamat'] : ($bukuKasUmum->penganggaran->sekolah->alamat ?? '-');
+            $bast->custom_variables = $this->sanitizeCustomVariables($validated['custom_variables'] ?? null);
 
             $bast->save();
 
@@ -224,7 +228,13 @@ class BastController extends Controller
                 'pihak_kedua_jabatan' => 'nullable|string',
                 'pihak_kedua_instansi' => 'nullable|string',
                 'pihak_kedua_alamat' => 'nullable|string',
+                'custom_variables' => 'nullable|array',
+                'custom_variables.*' => 'nullable|string|max:5000',
             ]);
+
+            if (array_key_exists('custom_variables', $validated)) {
+                $validated['custom_variables'] = $this->sanitizeCustomVariables($validated['custom_variables']);
+            }
 
             $bast->update($validated);
 

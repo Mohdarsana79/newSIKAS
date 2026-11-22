@@ -469,6 +469,8 @@ export default function SpjTemplateModal({
                                         const recognizedCount = tpl.detected_variables?.recognized?.length ?? 0;
                                         const unrecognized = tpl.detected_variables?.unrecognized ?? [];
                                         const unclosed = tpl.detected_variables?.unclosed ?? [];
+                                        const supportsCustomFormInputs =
+                                            docType === 'bast' || docType === 'surat_pesanan';
 
                                         return (
                                             <div
@@ -490,8 +492,13 @@ export default function SpjTemplateModal({
                                                                 </StatusBadge>
                                                             )}
                                                             {unrecognized.length > 0 && (
-                                                                <StatusBadge tone="warning" dot={false}>
-                                                                    {unrecognized.length} tak dikenal
+                                                                <StatusBadge
+                                                                    tone={supportsCustomFormInputs ? 'info' : 'warning'}
+                                                                    dot={false}
+                                                                >
+                                                                    {supportsCustomFormInputs
+                                                                        ? `${unrecognized.length} tag input form`
+                                                                        : `${unrecognized.length} tak dikenal`}
                                                                 </StatusBadge>
                                                             )}
                                                             {unclosed.length > 0 && (
@@ -510,8 +517,17 @@ export default function SpjTemplateModal({
                                                             {tpl.creator_name ? ` · oleh ${tpl.creator_name}` : ''}
                                                         </p>
                                                         {unrecognized.length > 0 && (
-                                                            <p className="mt-1 text-[10px] font-medium text-amber-600 dark:text-amber-400">
-                                                                Tag tidak dikenali: {unrecognized.map((u) => `\${${u}}`).join(', ')}
+                                                            <p
+                                                                className={`mt-1 text-[10px] font-medium ${
+                                                                    supportsCustomFormInputs
+                                                                        ? 'text-sky-600 dark:text-sky-400'
+                                                                        : 'text-amber-600 dark:text-amber-400'
+                                                                }`}
+                                                            >
+                                                                {supportsCustomFormInputs
+                                                                    ? `Tag input form manual (diisi saat Tambah/Edit ${docLabel}): `
+                                                                    : 'Tag tidak dikenali: '}
+                                                                {unrecognized.map((u) => `\${${u}}`).join(', ')}
                                                             </p>
                                                         )}
                                                         {unclosed.length > 0 && (

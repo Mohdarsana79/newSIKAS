@@ -904,6 +904,123 @@ class SpjCustomTemplateTest extends TestCase
         $this->assertStringContainsString('sebesar Rp 230.100 (Dua Ratus Tiga Puluh Ribu Seratus Rupiah)', $plainText);
     }
 
+    public function test_bast_and_surat_pesanan_custom_variables_from_form_are_persisted_and_compiled(): void
+    {
+        $bku = $this->createBkuWithDetails(
+            idTransaksi: 'BKU-CUSTOM-VAR-01',
+            uraian: 'Pengadaan Alat Laboratorium',
+            tanggal: '2026-08-10',
+            penerima: 'CV. Sains Mandiri',
+            items: [
+                ['uraian' => 'Mikroskop Binokuler', 'volume' => 2, 'satuan' => 'Unit', 'harga_satuan' => 2500000, 'subtotal' => 5000000],
+            ]
+        );
+
+        // 1. Store BAST via controller endpoint dengan custom_variables
+        $storeBastResp = $this->actingAs($this->bendahara)
+            ->postJson(route('bast.store'), [
+                'buku_kas_umum_id' => $bku->id,
+                'nomor_bast' => '020/BAST/2026',
+                'tanggal_bast' => '2026-08-12',
+                'pihak_pertama_nama' => 'Drs. Rahmat',
+                'pihak_pertama_jabatan' => 'Direktur',
+                'pihak_pertama_instansi' => 'CV. Sains Mandiri',
+                'pihak_pertama_alamat' => 'Jl. Merdeka 10',
+                'pihak_kedua_nama' => 'Dra. Siti Aminah',
+                'pihak_kedua_jabatan' => 'Kepala Sekolah',
+                'pihak_kedua_instansi' => 'SDN 1 Nusantara',
+                'pihak_kedua_alamat' => 'Jl. Pendidikan No. 10',
+                'custom_variables' => [
+                    'nomor_spk_daerah' => 'SPK-88/DISDIK/2026',
+                    'nama_tim_pemeriksa' => 'H. Burhanuddin, S.Pd',
+                ],
+            ]);
+        $storeBastResp->assertOk()->assertJsonPath('success', true);
+        $bastId = (int) $storeBastResp->json('data.id');
+
+        // Update BAST custom_variables & pastikan search mengembalikannya
+        $this->actingAs($this->bendahara)
+            ->putJson(route('bast.update', $bastId), [
+                'nomor_bast' => '020/BAST-REV/2026',
+                'custom_variables' => [
+                    'nomor_spk_daerah' => 'SPK-99/DISDIK/2026',
+                    'nama_tim_pemeriksa' => 'H. Burhanuddin, M.Pd',
+                ],
+            ])
+            ->assertOk();
+
+        $this->actingAs($this->bendahara)
+            ->getJson(route('api.bast.search'))
+            ->assertOk()
+            ->assertJsonPath('data.0.custom_variables.nomor_spk_daerah', 'SPK-99/DISDIK/2026')
+            ->assertJsonPath('data.0.custom_variables.nama_tim_pemeriksa', 'H. Burhanuddin, M.Pd');
+
+        // 2. Store Surat Pesanan via controller endpoint dengan custom_variables
+        $storeSpResp = $this->actingAs($this->bendahara)
+            ->postJson(route('surat-pesanan.store'), [
+                'buku_kas_umum_id' => $bku->id,
+                'nomor_sp' => '020/SP/2026',
+                'tanggal_sp' => '2026-08-10',
+                'pihak_kesatu_nama' => 'Dra. Siti Aminah',
+                'pihak_kedua_nama_perusahaan' => 'CV. Sains Mandiri',
+                'custom_variables' => [
+                    'no_wa_penyedia' => '0812-3456-7890',
+                    'catatan_pengiriman_khusus' => 'Harap dikemas peti kayu anti guncangan',
+                ],
+            ]);
+        $storeSpResp->assertOk()->assertJsonPath('success', true);
+        $spId = (int) $storeSpResp->json('data.id');
+
+        $this->actingAs($this->bendahara)
+            ->getJson(route('api.surat-pesanan.search'))
+            ->assertOk()
+            ->assertJsonPath('data.0.custom_variables.no_wa_penyedia', '0812-3456-7890')
+            ->assertJsonPath('data.0.custom_variables.catatan_pengiriman_khusus', 'Harap dikemas peti kayu anti guncangan');
+
+        // 3. Buat template BAST & Surat Pesanan dengan tag kustom (termasuk 1 tag kustom yang belum diisi)
+        $bastTpl = $this->storeTemplateRecord('bast', [
+            'No BAST: ${nomor_bast}',
+            'No SPK Daerah: ${nomor_spk_daerah}',
+            'Pemeriksa Barang: ${nama_tim_pemeriksa}',
+            'Tag Kosong: [${saksi_tambahan_belum_diisi}]',
+        ], itemColumns: ['${item_no}', '${item_nama}', '${item_subtotal}']);
+
+        $spTpl = $this->storeTemplateRecord('surat_pesanan', [
+            'No SP: ${nomor_sp}',
+            'Kontak WA: ${no_wa_penyedia}',
+            'Catatan Khusus: ${catatan_pengiriman_khusus}',
+            'Kode Kurir Opsional: [${kode_kurir_kosong}]',
+        ], itemColumns: ['${item_no}', '${item_nama}', '${item_subtotal_rupiah}']);
+
+        // 4. Kompilasi BAST & pastikan seluruh tag kustom terganti (yang belum diisi menjadi string kosong)
+        $bastDocxResp = $this->actingAs($this->bendahara)
+            ->get(route('bast.custom.docx', [$bastId, $bastTpl->id]));
+        $bastDocxResp->assertOk();
+        $bastOutPath = $bastDocxResp->getFile()->getPathname();
+        $this->tempFilesToClean[] = $bastOutPath;
+        $bastPlain = strip_tags($this->readDocumentXml($bastOutPath));
+
+        $this->assertDoesNotMatchRegularExpression('/\$\{[^}]+\}/', $bastPlain);
+        $this->assertStringContainsString('020/BAST-REV/2026', $bastPlain);
+        $this->assertStringContainsString('SPK-99/DISDIK/2026', $bastPlain);
+        $this->assertStringContainsString('H. Burhanuddin, M.Pd', $bastPlain);
+        $this->assertStringContainsString('Tag Kosong: []', $bastPlain);
+
+        // 5. Kompilasi Surat Pesanan & pastikan seluruh tag kustom terganti
+        $spDocxResp = $this->actingAs($this->bendahara)
+            ->get(route('surat-pesanan.custom.docx', [$spId, $spTpl->id]));
+        $spDocxResp->assertOk();
+        $spOutPath = $spDocxResp->getFile()->getPathname();
+        $this->tempFilesToClean[] = $spOutPath;
+        $spPlain = strip_tags($this->readDocumentXml($spOutPath));
+
+        $this->assertDoesNotMatchRegularExpression('/\$\{[^}]+\}/', $spPlain);
+        $this->assertStringContainsString('020/SP/2026', $spPlain);
+        $this->assertStringContainsString('0812-3456-7890', $spPlain);
+        $this->assertStringContainsString('Harap dikemas peti kayu anti guncangan', $spPlain);
+        $this->assertStringContainsString('Kode Kurir Opsional: []', $spPlain);
+    }
+
     // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------

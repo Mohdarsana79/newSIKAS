@@ -129,13 +129,18 @@ class SpjTemplateService extends SpjDocxTemplateEngine
         $this->assertValidType($type);
 
         $payload = $this->buildDocumentVariables($type, $record, $variant);
+        $supportsCustomFormVars = in_array($type, [SpjTemplate::TYPE_BAST, SpjTemplate::TYPE_SURAT_PESANAN], true);
+        if ($supportsCustomFormVars) {
+            $payload['text'] = $this->mergeTemplateUnrecognizedDefaults($template, $payload['text']);
+        }
 
         return $this->compileDocxFromPayload(
             $template->file_path,
             $payload,
             $this->itemTableKeysForType($type),
             $type.'_custom_',
-            'File template '.SpjTemplate::labelForType($type).' tidak ditemukan di penyimpanan.'
+            'File template '.SpjTemplate::labelForType($type).' tidak ditemukan di penyimpanan.',
+            $supportsCustomFormVars
         );
     }
 
@@ -734,7 +739,7 @@ class SpjTemplateService extends SpjDocxTemplateEngine
             ? (string) $bku->uraian_opsional
             : (string) ($bku?->uraian ?? '-');
 
-        $text = array_merge($this->baseSchoolText($sekolah), [
+        $text = array_merge($this->extractRecordCustomVariables($bast), $this->baseSchoolText($sekolah), [
             'nomor_bast' => (string) ($bast->nomor_bast ?: '-'),
             'tanggal_bast' => $tanggalBast,
             'hari_bast' => $hariIndo,
@@ -840,7 +845,7 @@ class SpjTemplateService extends SpjDocxTemplateEngine
 
         $sumberDanaVariant = VariantConfig::title($variant);
 
-        $text = array_merge($this->baseSchoolText($sekolah), [
+        $text = array_merge($this->extractRecordCustomVariables($sp), $this->baseSchoolText($sekolah), [
             'nomor_sp' => (string) ($sp->nomor_sp ?: '-'),
             'tanggal_sp' => $tanggalSp,
             'hari_sp' => $hariIndo,
@@ -920,6 +925,64 @@ class SpjTemplateService extends SpjDocxTemplateEngine
             'images' => $this->baseSchoolImages($sekolah),
             'kop_border' => $this->resolveKopBorder($sekolah),
         ];
+    }
+
+    /**
+     * Ekstrak variabel kustom yang diinput pengguna melalui form BAST / Surat Pesanan.
+     *
+     * @return array<string, string>
+     */
+    protected function extractRecordCustomVariables(Model $record): array
+    {
+        $raw = $record->custom_variables ?? null;
+        if (is_string($raw) && $raw !== '') {
+            $decoded = json_decode($raw, true);
+            $raw = is_array($decoded) ? $decoded : null;
+        }
+        if (! is_array($raw)) {
+            return [];
+        }
+
+        $result = [];
+        foreach ($raw as $key => $val) {
+            if (! is_string($key)) {
+                continue;
+            }
+            $normalizedKey = trim((string) preg_replace('/^\$\{?|\}?$/', '', $key));
+            if ($normalizedKey === '') {
+                continue;
+            }
+            if (is_scalar($val) || $val === null) {
+                $result[$normalizedKey] = (string) ($val ?? '');
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Pastikan setiap tag kustom di luar katalog sistem (detected_variables.unrecognized)
+     * memiliki nilai default '' jika pengguna belum mengisinya di form.
+     *
+     * @param  array<string, string>  $text
+     * @return array<string, string>
+     */
+    protected function mergeTemplateUnrecognizedDefaults(SpjTemplate $template, array $text): array
+    {
+        $detected = is_array($template->detected_variables) ? $template->detected_variables : [];
+        $unrecognized = is_array($detected['unrecognized'] ?? null) ? $detected['unrecognized'] : [];
+
+        foreach ($unrecognized as $rawKey) {
+            if (! is_string($rawKey)) {
+                continue;
+            }
+            $key = trim((string) preg_replace('/^\$\{?|\}?$/', '', $rawKey));
+            if ($key !== '' && ! array_key_exists($key, $text)) {
+                $text[$key] = '';
+            }
+        }
+
+        return $text;
     }
 
     // -------------------------------------------------------------------------

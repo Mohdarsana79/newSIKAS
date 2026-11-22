@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { format } from 'date-fns';
+import { Sparkles } from 'lucide-react';
 import Modal from '@/Components/Modal';
 import DatePicker from '@/Components/DatePicker';
 import SearchableSelect from '@/Components/SearchableSelect';
@@ -10,6 +11,11 @@ import SecondaryButton from '@/Components/SecondaryButton';
 import TextInput from '@/Components/TextInput';
 import InputLabel from '@/Components/InputLabel';
 import IconTile from '@/Components/ui/IconTile';
+import StatusBadge from '@/Components/ui/StatusBadge';
+import {
+    resolveSpjCustomFormVariables,
+    SpjCustomTemplate,
+} from '@/Components/SpjCustomTemplate/types';
 
 interface ModalFormSuratPesananProps {
     show: boolean;
@@ -18,6 +24,8 @@ interface ModalFormSuratPesananProps {
     tahun: string;
     years: {tahun_anggaran: string, id: number}[];
     editData: any | null;
+    customTemplates?: SpjCustomTemplate[];
+    activeCustomTemplate?: SpjCustomTemplate | null;
 }
 
 const SELECT_CLASS =
@@ -49,14 +57,29 @@ function normalizeInitialDate(editData: { tanggal_sp_raw?: string; tanggal?: str
     return '';
 }
 
-export default function ModalFormSuratPesanan({ show, onClose, onSuccess, tahun, years, editData }: ModalFormSuratPesananProps) {
+export default function ModalFormSuratPesanan({
+    show,
+    onClose,
+    onSuccess,
+    tahun,
+    years,
+    editData,
+    customTemplates = [],
+    activeCustomTemplate = null,
+}: ModalFormSuratPesananProps) {
     const vroute = useVariantRoute();
     const [bkuOptions, setBkuOptions] = useState<any[]>([]);
     const [loadingBku, setLoadingBku] = useState(false);
     const [processing, setProcessing] = useState(false);
     const [modalTahun, setModalTahun] = useState('');
     const [modalTahap, setModalTahap] = useState('');
-    const [activeTab, setActiveTab] = useState('umum'); // 'umum', 'kesatu', 'kedua', 'ketentuan'
+    const [activeTab, setActiveTab] = useState('umum'); // 'umum', 'kesatu', 'kedua', 'ketentuan', 'kustom'
+    const [customVariables, setCustomVariables] = useState<Record<string, string>>({});
+
+    const customFormVariables = useMemo(
+        () => resolveSpjCustomFormVariables(customTemplates, activeCustomTemplate),
+        [customTemplates, activeCustomTemplate],
+    );
 
     const [data, setData] = useState({
         bku_id: '',
@@ -103,6 +126,13 @@ export default function ModalFormSuratPesanan({ show, onClose, onSuccess, tahun,
                     ketentuan_pembayaran: editData.ketentuan_pembayaran || '',
                     sumber_dana: editData.sumber_dana || ''
                 });
+                const initialCustom: Record<string, string> = {};
+                if (editData.custom_variables && typeof editData.custom_variables === 'object') {
+                    Object.entries(editData.custom_variables).forEach(([k, v]) => {
+                        initialCustom[k] = v != null ? String(v) : '';
+                    });
+                }
+                setCustomVariables(initialCustom);
             } else {
                 setData({
                     bku_id: '',
@@ -123,6 +153,7 @@ export default function ModalFormSuratPesanan({ show, onClose, onSuccess, tahun,
                     ketentuan_pembayaran: 'Pembayaran akan ditransfer ke rekening PIHAK KEDUA setelah seluruh barang diterima dengan baik yang dibuktikan dengan penandatanganan Berita Acara Serah Terima (BAST).',
                     sumber_dana: 'Pembiayaan pengadaan barang ini dibebankan pada dana Bantuan Operasional Satuan Pendidikan (BOSP) Tahun Anggaran ' + (tahun || new Date().getFullYear()) + '.'
                 });
+                setCustomVariables({});
                 if (tahun && !modalTahun) setModalTahun(tahun);
             }
         }
@@ -177,7 +208,8 @@ export default function ModalFormSuratPesanan({ show, onClose, onSuccess, tahun,
             
             const payload = {
                 ...data,
-                [bkuFk]: data.bku_id
+                [bkuFk]: data.bku_id,
+                custom_variables: customVariables,
             };
 
             let res;
@@ -232,7 +264,10 @@ export default function ModalFormSuratPesanan({ show, onClose, onSuccess, tahun,
                             { id: 'umum', label: 'Info Umum' },
                             { id: 'kesatu', label: 'Pihak Kesatu (Sekolah)' },
                             { id: 'kedua', label: 'Pihak Kedua (Toko)' },
-                            { id: 'ketentuan', label: 'Ketentuan' }
+                            { id: 'ketentuan', label: 'Ketentuan' },
+                            ...(customFormVariables.length > 0
+                                ? [{ id: 'kustom', label: `Variabel Kustom (${customFormVariables.length})` }]
+                                : []),
                         ].map(tab => (
                             <button
                                 key={tab.id}
@@ -527,6 +562,81 @@ export default function ModalFormSuratPesanan({ show, onClose, onSuccess, tahun,
                                             onChange={e => setData({...data, sumber_dana: e.target.value})}
                                         ></textarea>
                                     </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {(activeTab === 'umum' || activeTab === 'kustom') && customFormVariables.length > 0 && (
+                            <div className={SECTION_CLASS}>
+                                <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2">
+                                    <div className="flex items-center gap-2.5">
+                                        <IconTile tone="violet" size="sm">
+                                            <Sparkles className="h-3.5 w-3.5" />
+                                        </IconTile>
+                                        <div>
+                                            <p className={SECTION_TITLE_CLASS}>
+                                                Variabel Tambahan (Template Kustom)
+                                            </p>
+                                            <p className="mt-0.5 text-[10.5px] font-medium text-slate-400 dark:text-slate-500">
+                                                {activeCustomTemplate
+                                                    ? `Kolom otomatis dari tag kustom pada template "${activeCustomTemplate.nama}".`
+                                                    : 'Kolom otomatis dari tag kustom yang terdeteksi pada template Surat Pesanan Anda.'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <StatusBadge tone="info" dot={false}>
+                                        {customFormVariables.length} tag kustom
+                                    </StatusBadge>
+                                </div>
+
+                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                    {customFormVariables.map((field) => (
+                                        <div
+                                            key={field.key}
+                                            className={field.isLongText ? 'md:col-span-2' : ''}
+                                        >
+                                            <div className="mb-1.5 flex flex-wrap items-center justify-between gap-1.5">
+                                                <InputLabel value={field.label} />
+                                                <div className="flex items-center gap-1.5">
+                                                    {!activeCustomTemplate && field.templateNames.length > 0 && (
+                                                        <span className="truncate text-[9.5px] font-semibold text-slate-400 dark:text-slate-500">
+                                                            {field.templateNames.join(', ')}
+                                                        </span>
+                                                    )}
+                                                    <code className="rounded-md border border-brand-200/70 bg-brand-50/70 px-1.5 py-0.5 font-mono text-[10px] font-bold text-brand-700 dark:border-brand-400/20 dark:bg-brand-500/10 dark:text-brand-300">
+                                                        {field.tag}
+                                                    </code>
+                                                </div>
+                                            </div>
+
+                                            {field.isLongText ? (
+                                                <textarea
+                                                    className={TEXTAREA_CLASS}
+                                                    rows={2}
+                                                    placeholder={`Masukkan ${field.label.toLowerCase()}...`}
+                                                    value={customVariables[field.key] ?? ''}
+                                                    onChange={(e) =>
+                                                        setCustomVariables((prev) => ({
+                                                            ...prev,
+                                                            [field.key]: e.target.value,
+                                                        }))
+                                                    }
+                                                />
+                                            ) : (
+                                                <TextInput
+                                                    type="text"
+                                                    placeholder={`Masukkan ${field.label.toLowerCase()}...`}
+                                                    value={customVariables[field.key] ?? ''}
+                                                    onChange={(e) =>
+                                                        setCustomVariables((prev) => ({
+                                                            ...prev,
+                                                            [field.key]: e.target.value,
+                                                        }))
+                                                    }
+                                                />
+                                            )}
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         )}

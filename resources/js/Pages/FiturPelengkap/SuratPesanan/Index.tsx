@@ -431,6 +431,8 @@ export default function SuratPesananIndex({ auth }: { auth: any }) {
                 tahun={selectedYear}
                 years={years}
                 editData={editData}
+                customTemplates={customTemplates}
+                activeCustomTemplate={activeCustomTemplate}
             />
 
             <ModalDetailSuratPesanan
