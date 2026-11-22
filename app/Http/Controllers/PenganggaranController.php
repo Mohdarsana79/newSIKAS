@@ -7,8 +7,11 @@ use App\Models\KodeKegiatan;
 use App\Models\Penganggaran;
 use App\Models\RekeningBelanja;
 use App\Models\SekolahProfile;
+use App\Services\ArkasEngineService;
 use Illuminate\Database\QueryException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Inertia\Inertia;
 
 class PenganggaranController extends Controller
@@ -119,8 +122,140 @@ class PenganggaranController extends Controller
         return $this->renderVariant('Penganggaran/Index', [
             'items' => $items,
             'anggarans' => $anggarans, // passing raw data too if needed
+            'official_history' => $this->buildOfficialHistory($anggarans),
             'can_create' => $canCreate,
         ]);
+    }
+
+    /**
+     * Memeriksa data pagu anggaran & penanggung jawab (KS, Bendahara, Komite) di database ARKAS
+     * untuk tahun anggaran dan varian BOSP aktif.
+     */
+    public function checkArkas(Request $request, ArkasEngineService $arkasEngine): JsonResponse
+    {
+        $validated = $request->validate([
+            'tahun' => 'required|digits:4|integer|min:2000|max:'.(date('Y') + 5),
+        ]);
+
+        $tahun = (int) $validated['tahun'];
+        $sumberDanaId = VariantConfig::arkasSumberDanaId($this->variant);
+
+        $result = $arkasEngine->runScriptRaw(
+            'check_anggaran.py',
+            [(string) $tahun, (string) $sumberDanaId],
+            30
+        );
+
+        if (($result['status'] ?? null) === 'error' || isset($result['error'])) {
+            return response()->json([
+                'status' => 'error',
+                'error_type' => (string) ($result['error_type'] ?? 'ARKAS_ERROR'),
+                'message' => (string) ($result['message'] ?? $result['error'] ?? 'Gagal mengecek data anggaran di ARKAS.'),
+            ], 422);
+        }
+
+        $availableYears = array_values(array_map(
+            static fn ($y) => (int) $y,
+            is_array($result['available_years'] ?? null) ? $result['available_years'] : []
+        ));
+
+        $exists = (bool) ($result['exists'] ?? false);
+        if (! $exists) {
+            return response()->json([
+                'status' => 'success',
+                'exists' => false,
+                'tahun' => $tahun,
+                'sumber_dana_id' => $sumberDanaId,
+                'sumber_dana' => (string) ($result['sumber_dana'] ?? VariantConfig::title($this->variant)),
+                'available_years' => $availableYears,
+                'message' => (string) ($result['message'] ?? "Tidak ditemukan data anggaran di ARKAS untuk Tahun {$tahun}."),
+            ]);
+        }
+
+        $penjab = is_array($result['penanggung_jawab'] ?? null) ? $result['penanggung_jawab'] : [];
+
+        return response()->json([
+            'status' => 'success',
+            'exists' => true,
+            'id_anggaran' => (string) ($result['id_anggaran'] ?? ''),
+            'tahun' => (int) ($result['tahun'] ?? $tahun),
+            'sumber_dana_id' => (int) ($result['sumber_dana_id'] ?? $sumberDanaId),
+            'sumber_dana' => (string) ($result['sumber_dana'] ?? VariantConfig::title($this->variant)),
+            'pagu' => (float) ($result['pagu'] ?? 0),
+            'is_approve' => (int) ($result['is_approve'] ?? 0),
+            'is_revisi' => (int) ($result['is_revisi'] ?? 0),
+            'penanggung_jawab' => [
+                'kepala_sekolah' => trim((string) ($penjab['kepala_sekolah'] ?? '')),
+                'nip_kepala_sekolah' => trim((string) ($penjab['nip_kepala_sekolah'] ?? '')),
+                'bendahara' => trim((string) ($penjab['bendahara'] ?? '')),
+                'nip_bendahara' => trim((string) ($penjab['nip_bendahara'] ?? '')),
+                'komite' => trim((string) ($penjab['komite'] ?? '')),
+            ],
+            'available_years' => $availableYears,
+        ]);
+    }
+
+    /**
+     * Menyusun riwayat penanggung jawab (KS, Bendahara, Komite beserta SK) dari varian aktif
+     * dan fallback BOSP Reguler untuk fitur salin dari tahun sebelumnya.
+     *
+     * @param  Collection<int, mixed>  $activeAnggarans
+     * @return array<int, array<string, string>>
+     */
+    private function buildOfficialHistory(Collection $activeAnggarans): array
+    {
+        $mapRecord = static function ($record, string $sourceVariant): array {
+            $formatDate = static function ($value): string {
+                if ($value instanceof \DateTimeInterface) {
+                    return $value->format('Y-m-d');
+                }
+
+                return $value ? substr((string) $value, 0, 10) : '';
+            };
+
+            return [
+                'tahun_anggaran' => (string) ($record->tahun_anggaran ?? ''),
+                'source_variant' => $sourceVariant,
+                'source_label' => VariantConfig::title($sourceVariant),
+                'komite' => (string) ($record->komite ?? ''),
+                'kepala_sekolah' => (string) ($record->kepala_sekolah ?? ''),
+                'nip_kepala_sekolah' => (string) ($record->nip_kepala_sekolah ?? ''),
+                'sk_kepala_sekolah' => (string) ($record->sk_kepala_sekolah ?? ''),
+                'tanggal_sk_kepala_sekolah' => $formatDate($record->tanggal_sk_kepala_sekolah ?? null),
+                'bendahara' => (string) ($record->bendahara ?? ''),
+                'nip_bendahara' => (string) ($record->nip_bendahara ?? ''),
+                'sk_bendahara' => (string) ($record->sk_bendahara ?? ''),
+                'tanggal_sk_bendahara' => $formatDate($record->tanggal_sk_bendahara ?? null),
+            ];
+        };
+
+        $history = $activeAnggarans
+            ->map(fn ($record) => $mapRecord($record, $this->variant))
+            ->values()
+            ->all();
+
+        if ($this->variant !== VariantConfig::REGULER) {
+            $regulerRecords = Penganggaran::query()
+                ->orderBy('tahun_anggaran', 'desc')
+                ->get([
+                    'tahun_anggaran',
+                    'komite',
+                    'kepala_sekolah',
+                    'nip_kepala_sekolah',
+                    'sk_kepala_sekolah',
+                    'tanggal_sk_kepala_sekolah',
+                    'bendahara',
+                    'nip_bendahara',
+                    'sk_bendahara',
+                    'tanggal_sk_bendahara',
+                ]);
+
+            foreach ($regulerRecords as $record) {
+                $history[] = $mapRecord($record, VariantConfig::REGULER);
+            }
+        }
+
+        return $history;
     }
 
     /**

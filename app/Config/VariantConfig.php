@@ -203,6 +203,21 @@ class VariantConfig
         };
     }
 
+    /**
+     * Memetakan varian newSIKAS ke id_ref_sumber_dana pada database ARKAS.
+     */
+    public static function arkasSumberDanaId(string $variant): int
+    {
+        self::validateVariant($variant);
+
+        return match ($variant) {
+            self::KINERJA => 12,
+            self::SILPA => 33,
+            self::KINERJA_SILPA => 35,
+            default => 1,
+        };
+    }
+
     // ─── Penerimaan Dana (sumber_dana) ─────────────────────────────
 
     /**

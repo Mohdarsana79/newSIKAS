@@ -47,6 +47,7 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 // Penganggaran
+Route::get('/penganggaran/check-arkas', [PenganggaranController::class, 'checkArkas'])->name('penganggaran.check-arkas');
 Route::resource('penganggaran', PenganggaranController::class);
 Route::patch('/penganggaran/{id}/update-tanggal-perubahan', [PenganggaranController::class, 'updateTanggalPerubahan'])->name('penganggaran.update-tanggal-perubahan');
 Route::patch('/penganggaran/{id}/update-tanggal-cetak', [PenganggaranController::class, 'updateTanggalCetak'])->name('penganggaran.update-tanggal-cetak');

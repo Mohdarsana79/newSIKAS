@@ -2775,12 +2775,7 @@ class RkasController extends Controller
      */
     private function getArkasSumberDanaId(): int
     {
-        return match ($this->variant) {
-            'kinerja' => 12,
-            'silpa' => 33,
-            'kinerja_silpa' => 35,
-            default => 1, // reguler (BOS Reguler)
-        };
+        return VariantConfig::arkasSumberDanaId($this->variant);
     }
 
     /**

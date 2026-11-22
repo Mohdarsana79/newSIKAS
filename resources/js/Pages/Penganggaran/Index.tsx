@@ -2,7 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import PrimaryButton from '@/Components/PrimaryButton';
 import { PageProps } from '@/types';
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { usePage } from '@inertiajs/react';
 import useVariantRoute from '@/Hooks/useVariantRoute';
 import Modal from '@/Components/Modal';
@@ -51,12 +51,105 @@ interface Anggaran {
     updated_at: string;
 }
 
+interface OfficialHistoryItem {
+    tahun_anggaran: string;
+    source_variant: string;
+    source_label: string;
+    komite: string;
+    kepala_sekolah: string;
+    nip_kepala_sekolah: string;
+    sk_kepala_sekolah: string;
+    tanggal_sk_kepala_sekolah: string;
+    bendahara: string;
+    nip_bendahara: string;
+    sk_bendahara: string;
+    tanggal_sk_bendahara: string;
+}
+
+interface ArkasBudgetCheckResponse {
+    status: 'success' | 'error';
+    exists?: boolean;
+    tahun?: number;
+    sumber_dana?: string;
+    pagu?: number;
+    is_approve?: number;
+    is_revisi?: number;
+    penanggung_jawab?: {
+        kepala_sekolah: string;
+        nip_kepala_sekolah: string;
+        bendahara: string;
+        nip_bendahara: string;
+        komite: string;
+    };
+    available_years?: number[];
+    message?: string;
+}
+
+interface ModalFeedback {
+    type: 'success' | 'warning' | 'error';
+    title: string;
+    detail?: string;
+    availableYears?: number[];
+}
+
+function formatRupiahInput(nominal: number): string {
+    return 'Rp ' + new Intl.NumberFormat('id-ID').format(Math.round(nominal));
+}
+
+function resolvePreviousOfficialSource(
+    history: OfficialHistoryItem[],
+    activeVariant: string,
+    targetYearRaw: string,
+): OfficialHistoryItem | null {
+    const targetYear = Number.parseInt(targetYearRaw, 10);
+    if (!Number.isFinite(targetYear) || history.length === 0) {
+        return null;
+    }
+
+    const pickNearestEarlier = (sourceVariant: string): OfficialHistoryItem | null => {
+        const candidates = history
+            .filter((item) => item.source_variant === sourceVariant && Number.parseInt(item.tahun_anggaran, 10) < targetYear)
+            .sort((a, b) => Number.parseInt(b.tahun_anggaran, 10) - Number.parseInt(a.tahun_anggaran, 10));
+
+        return candidates[0] ?? null;
+    };
+
+    const activeEarlier = pickNearestEarlier(activeVariant);
+    if (activeEarlier) {
+        return activeEarlier;
+    }
+
+    if (activeVariant !== 'reguler') {
+        const regulerEarlier = pickNearestEarlier('reguler');
+        if (regulerEarlier) {
+            return regulerEarlier;
+        }
+
+        const regulerSameYear = history.find(
+            (item) => item.source_variant === 'reguler' && Number.parseInt(item.tahun_anggaran, 10) === targetYear,
+        );
+        if (regulerSameYear) {
+            return regulerSameYear;
+        }
+    }
+
+    return null;
+}
+
 export default function Index({ 
     auth, 
     items = [], 
     anggarans = [], 
+    official_history = [],
+    variant = 'reguler',
     can_create = false
-}: PageProps<{ items: PenganggaranItem[], anggarans: Anggaran[], can_create: boolean }>) {
+}: PageProps<{
+    items: PenganggaranItem[];
+    anggarans: Anggaran[];
+    official_history?: OfficialHistoryItem[];
+    variant?: string;
+    can_create: boolean;
+}>) {
     const isKepalaSekolah = Boolean(auth?.user?.is_kepala_sekolah || auth?.user?.role === 'kepala_sekolah');
     const vroute = useVariantRoute();
     const routePrefix = usePage<any>().props.routePrefix || '';
@@ -150,6 +243,11 @@ export default function Index({
         });
     };
 
+    const [isCheckingArkasBudget, setIsCheckingArkasBudget] = useState(false);
+    const [arkasBudgetFeedback, setArkasBudgetFeedback] = useState<ModalFeedback | null>(null);
+    const [copyOfficialFeedback, setCopyOfficialFeedback] = useState<string | null>(null);
+    const arkasBudgetAbortRef = useRef<AbortController | null>(null);
+
     const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({
         pagu_anggaran: '',
         tahun_anggaran: new Date().getFullYear().toString(),
@@ -164,12 +262,139 @@ export default function Index({
         tanggal_sk_bendahara: '',
     });
 
+    const previousOfficialSource = useMemo(
+        () => resolvePreviousOfficialSource(official_history, variant, data.tahun_anggaran),
+        [official_history, variant, data.tahun_anggaran],
+    );
+
+    useEffect(() => {
+        return () => {
+            arkasBudgetAbortRef.current?.abort();
+        };
+    }, []);
+
+    const resetModalHelpers = () => {
+        arkasBudgetAbortRef.current?.abort();
+        setIsCheckingArkasBudget(false);
+        setArkasBudgetFeedback(null);
+        setCopyOfficialFeedback(null);
+    };
+
+    const handleCheckArkasBudget = async (overrideYear?: string) => {
+        const yearToCheck = (overrideYear ?? data.tahun_anggaran).trim();
+        if (!/^\d{4}$/.test(yearToCheck)) {
+            setArkasBudgetFeedback({
+                type: 'warning',
+                title: 'Masukkan Tahun Anggaran 4 digit terlebih dahulu (contoh: 2026) sebelum mengecek ARKAS.',
+            });
+            return;
+        }
+
+        arkasBudgetAbortRef.current?.abort();
+        const controller = new AbortController();
+        arkasBudgetAbortRef.current = controller;
+
+        setIsCheckingArkasBudget(true);
+        setArkasBudgetFeedback(null);
+        setCopyOfficialFeedback(null);
+
+        try {
+            const response = await axios.get<ArkasBudgetCheckResponse>(vroute('penganggaran.check-arkas'), {
+                params: { tahun: yearToCheck },
+                signal: controller.signal,
+            });
+
+            if (controller.signal.aborted) return;
+
+            const payload = response.data;
+            if (payload.status === 'success' && payload.exists) {
+                const paguNominal = Number(payload.pagu || 0);
+                const penjab = payload.penanggung_jawab;
+                const lockedPagu = editMode && isPerubahanLocked;
+
+                setData((prev) => ({
+                    ...prev,
+                    tahun_anggaran: lockedPagu ? prev.tahun_anggaran : yearToCheck,
+                    pagu_anggaran: lockedPagu ? prev.pagu_anggaran : formatRupiahInput(paguNominal),
+                    komite: penjab?.komite ? penjab.komite : prev.komite,
+                    kepala_sekolah: penjab?.kepala_sekolah ? penjab.kepala_sekolah : prev.kepala_sekolah,
+                    nip_kepala_sekolah: penjab?.nip_kepala_sekolah
+                        ? penjab.nip_kepala_sekolah
+                        : prev.nip_kepala_sekolah,
+                    bendahara: penjab?.bendahara ? penjab.bendahara : prev.bendahara,
+                    nip_bendahara: penjab?.nip_bendahara ? penjab.nip_bendahara : prev.nip_bendahara,
+                }));
+
+                const statusLabel = payload.is_approve ? 'Disahkan' : 'Draf';
+                const paguInfo = lockedPagu
+                    ? 'Pagu & tahun tetap dikunci karena sudah memiliki RKAS Perubahan.'
+                    : `Pagu ${formatRupiahInput(paguNominal)} & data penanggung jawab diisi otomatis.`;
+
+                setArkasBudgetFeedback({
+                    type: 'success',
+                    title: `Anggaran ARKAS ${payload.sumber_dana || activeTab} Tahun ${payload.tahun ?? yearToCheck} (${statusLabel}) ditemukan.`,
+                    detail: `${paguInfo} Nomor & Tanggal SK tidak tersedia di ARKAS — lengkapi manual atau klik tombol salin tahun sebelumnya di bawah.`,
+                });
+            } else {
+                setArkasBudgetFeedback({
+                    type: 'warning',
+                    title:
+                        payload.message ||
+                        `Tidak ditemukan data anggaran ${activeTab} di ARKAS untuk Tahun ${yearToCheck}.`,
+                    detail:
+                        payload.available_years && payload.available_years.length > 0
+                            ? 'Pilih salah satu tahun yang tersedia di ARKAS di bawah ini untuk langsung menarik data:'
+                            : 'Pastikan data anggaran untuk sumber dana ini sudah dibuat di aplikasi ARKAS.',
+                    availableYears: payload.available_years ?? [],
+                });
+            }
+        } catch (error: any) {
+            if (axios.isCancel(error)) return;
+            const serverMsg =
+                error?.response?.data?.message ||
+                error?.response?.data?.errors?.tahun?.[0] ||
+                error?.message ||
+                'Gagal menghubungi engine ARKAS.';
+            setArkasBudgetFeedback({
+                type: 'error',
+                title: 'Gagal mengecek anggaran ARKAS.',
+                detail: serverMsg,
+            });
+        } finally {
+            if (!controller.signal.aborted) {
+                setIsCheckingArkasBudget(false);
+            }
+        }
+    };
+
+    const handleCopyPreviousOfficials = () => {
+        if (!previousOfficialSource) return;
+
+        setData((prev) => ({
+            ...prev,
+            komite: previousOfficialSource.komite,
+            kepala_sekolah: previousOfficialSource.kepala_sekolah,
+            nip_kepala_sekolah: previousOfficialSource.nip_kepala_sekolah,
+            sk_kepala_sekolah: previousOfficialSource.sk_kepala_sekolah,
+            tanggal_sk_kepala_sekolah: previousOfficialSource.tanggal_sk_kepala_sekolah,
+            bendahara: previousOfficialSource.bendahara,
+            nip_bendahara: previousOfficialSource.nip_bendahara,
+            sk_bendahara: previousOfficialSource.sk_bendahara,
+            tanggal_sk_bendahara: previousOfficialSource.tanggal_sk_bendahara,
+        }));
+
+        setCopyOfficialFeedback(
+            `Data Kepala Sekolah, Bendahara & Komite (termasuk Nomor & Tanggal SK) berhasil disalin dari ${previousOfficialSource.source_label} ${previousOfficialSource.tahun_anggaran}.`,
+        );
+    };
+
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
 
         if (editMode && editId) {
             put(vroute('penganggaran.update', editId), {
                 onSuccess: () => {
+                    resetModalHelpers();
                     setIsModalOpen(false);
                     reset();
                     setEditMode(false);
@@ -180,6 +405,7 @@ export default function Index({
         } else {
             post(vroute('penganggaran.store'), {
                 onSuccess: () => {
+                    resetModalHelpers();
                     setIsModalOpen(false);
                     reset();
                     setIsPerubahanLocked(false);
@@ -189,6 +415,7 @@ export default function Index({
     };
 
     const handleCloseModal = () => {
+        resetModalHelpers();
         setIsModalOpen(false);
         setIsPerubahanLocked(false);
     };
@@ -198,6 +425,7 @@ export default function Index({
             setIsRestrictionModalOpen(true);
             return;
         }
+        resetModalHelpers();
         setEditMode(false);
         setEditId(null);
         setIsPerubahanLocked(false);
@@ -209,12 +437,13 @@ export default function Index({
     const handleEdit = (id: number) => {
         const item = anggarans.find(a => a.id === id);
         if (item) {
+            resetModalHelpers();
             const regularItem = items.find(i => i.id === id && i.status === 'regular');
             setIsPerubahanLocked(Boolean(regularItem?.has_perubahan));
             setEditMode(true);
             setEditId(id);
             setData({
-                pagu_anggaran: 'Rp ' + new Intl.NumberFormat('id-ID').format(item.pagu_anggaran),
+                pagu_anggaran: formatRupiahInput(item.pagu_anggaran),
                 tahun_anggaran: item.tahun_anggaran,
                 komite: item.komite,
                 kepala_sekolah: item.kepala_sekolah,
@@ -692,36 +921,56 @@ export default function Index({
                                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                     <div className="md:col-span-2">
                                         <InputLabel value="Pagu Anggaran (Rp)" />
-                                        <div className="relative">
-                                            <div className="pointer-events-none absolute inset-y-0 left-0 z-10 flex items-center pl-3">
-                                                <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500">Rp</span>
-                                            </div>
-                                            <TextInput
-                                                value={data.pagu_anggaran.replace('Rp ', '')}
-                                                disabled={editMode && isPerubahanLocked}
-                                                onChange={(e) => {
-                                                    let value = e.target.value.replace(/[^,\d]/g, '');
-                                                    if (value) {
-                                                        const split = value.split(',');
-                                                        const sisa = split[0].length % 3;
-                                                        let rupiah = split[0].substr(0, sisa);
-                                                        const ribuan = split[0].substr(sisa).match(/\d{3}/gi);
+                                        <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
+                                            <div className="relative flex-1">
+                                                <div className="pointer-events-none absolute inset-y-0 left-0 z-10 flex items-center pl-3">
+                                                    <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500">Rp</span>
+                                                </div>
+                                                <TextInput
+                                                    value={data.pagu_anggaran.replace('Rp ', '')}
+                                                    disabled={editMode && isPerubahanLocked}
+                                                    onChange={(e) => {
+                                                        let value = e.target.value.replace(/[^,\d]/g, '');
+                                                        if (value) {
+                                                            const split = value.split(',');
+                                                            const sisa = split[0].length % 3;
+                                                            let rupiah = split[0].substr(0, sisa);
+                                                            const ribuan = split[0].substr(sisa).match(/\d{3}/gi);
 
-                                                        if (ribuan) {
-                                                            const separator = sisa ? '.' : '';
-                                                            rupiah += separator + ribuan.join('.');
+                                                            if (ribuan) {
+                                                                const separator = sisa ? '.' : '';
+                                                                rupiah += separator + ribuan.join('.');
+                                                            }
+
+                                                            rupiah = split[1] !== undefined ? rupiah + ',' + split[1] : rupiah;
+                                                            setData('pagu_anggaran', 'Rp ' + rupiah);
+                                                        } else {
+                                                            setData('pagu_anggaran', '');
                                                         }
-
-                                                        rupiah = split[1] !== undefined ? rupiah + ',' + split[1] : rupiah;
-                                                        setData('pagu_anggaran', 'Rp ' + rupiah);
-                                                    } else {
-                                                        setData('pagu_anggaran', '');
-                                                    }
-                                                }}
-                                                placeholder="50.000.000"
-                                                className="pl-10 text-sikas-num disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 dark:disabled:bg-white/5 dark:disabled:text-slate-400"
-                                                required
-                                            />
+                                                    }}
+                                                    placeholder="50.000.000"
+                                                    className="pl-10 text-sikas-num disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 dark:disabled:bg-white/5 dark:disabled:text-slate-400"
+                                                    required
+                                                />
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => void handleCheckArkasBudget()}
+                                                disabled={isCheckingArkasBudget}
+                                                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-brand-500/25 bg-brand-600 px-3.5 py-2.5 text-[11.5px] font-extrabold text-white shadow-sm transition hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400/60 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-brand-500 dark:hover:bg-brand-400"
+                                            >
+                                                {isCheckingArkasBudget ? (
+                                                    <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                                    </svg>
+                                                ) : (
+                                                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.2-5.2M10.5 18a7.5 7.5 0 100-15 7.5 7.5 0 000 15z" />
+                                                    </svg>
+                                                )}
+                                                {isCheckingArkasBudget ? 'Mengecek ARKAS...' : 'Cek Anggaran'}
+                                            </button>
                                         </div>
                                         {editMode && isPerubahanLocked && (
                                             <p className="mt-1 text-[10px] font-semibold text-amber-600 dark:text-amber-400">
@@ -729,6 +978,44 @@ export default function Index({
                                             </p>
                                         )}
                                         <InputError message={errors.pagu_anggaran} className="mt-2" />
+
+                                        {arkasBudgetFeedback && (
+                                            <div
+                                                role={arkasBudgetFeedback.type === 'error' ? 'alert' : 'status'}
+                                                className={`mt-3 rounded-xl border px-3.5 py-2.5 text-[11px] ${
+                                                    arkasBudgetFeedback.type === 'success'
+                                                        ? 'border-emerald-200 bg-emerald-50/90 text-emerald-900 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200'
+                                                        : arkasBudgetFeedback.type === 'warning'
+                                                          ? 'border-amber-200 bg-amber-50/90 text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200'
+                                                          : 'border-rose-200 bg-rose-50/90 text-rose-900 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200'
+                                                }`}
+                                            >
+                                                <p className="font-extrabold">{arkasBudgetFeedback.title}</p>
+                                                {arkasBudgetFeedback.detail && (
+                                                    <p className="mt-0.5 font-medium opacity-90">{arkasBudgetFeedback.detail}</p>
+                                                )}
+                                                {arkasBudgetFeedback.availableYears &&
+                                                    arkasBudgetFeedback.availableYears.length > 0 &&
+                                                    !(editMode && isPerubahanLocked) && (
+                                                        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                                                            {arkasBudgetFeedback.availableYears.map((yr) => (
+                                                                <button
+                                                                    key={yr}
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        const yrStr = String(yr);
+                                                                        setData('tahun_anggaran', yrStr);
+                                                                        void handleCheckArkasBudget(yrStr);
+                                                                    }}
+                                                                    className="rounded-lg border border-amber-300 bg-white px-2.5 py-1 text-[10.5px] font-extrabold text-amber-900 shadow-sm transition hover:bg-amber-100 dark:border-amber-400/40 dark:bg-white/10 dark:text-amber-200 dark:hover:bg-amber-400/20"
+                                                                >
+                                                                    Tarik Tahun {yr}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div>
@@ -759,6 +1046,43 @@ export default function Index({
                                         <InputError message={errors.komite} className="mt-2" />
                                     </div>
                                 </div>
+                            </div>
+
+                            {/* Aksi Bantu: Salin Data Penanggung Jawab Tahun Sebelumnya */}
+                            <div className="rounded-2xl border border-slate-200/80 bg-white px-4 py-3 shadow-sm dark:border-white/10 dark:bg-white/[0.03]">
+                                <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+                                    <div className="min-w-0">
+                                        <p className="text-[11px] font-extrabold text-slate-800 dark:text-slate-100">
+                                            Penanggung Jawab Tidak Sesuai dengan ARKAS?
+                                        </p>
+                                        <p className="mt-0.5 text-[10.5px] font-medium text-slate-500 dark:text-slate-400">
+                                            {previousOfficialSource
+                                                ? `Salin Nama, NIP, Nomor SK & Tanggal SK Kepala Sekolah, Bendahara, serta Komite dari ${previousOfficialSource.source_label} ${previousOfficialSource.tahun_anggaran}.`
+                                                : 'Belum ada riwayat data penanggung jawab dari tahun anggaran sebelumnya untuk disalin.'}
+                                        </p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={handleCopyPreviousOfficials}
+                                        disabled={!previousOfficialSource}
+                                        className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-slate-900 px-3.5 py-2 text-[11px] font-extrabold text-lime-300 shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400 dark:border-lime-400/30 dark:bg-lime-400 dark:text-slate-950 dark:hover:bg-lime-300 dark:disabled:border-white/10 dark:disabled:bg-white/5 dark:disabled:text-slate-500"
+                                    >
+                                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                        </svg>
+                                        {previousOfficialSource
+                                            ? `Salin Tahun ${previousOfficialSource.tahun_anggaran}`
+                                            : 'Salin Tahun Sebelumnya'}
+                                    </button>
+                                </div>
+                                {copyOfficialFeedback && (
+                                    <div
+                                        role="status"
+                                        className="mt-2.5 rounded-xl border border-emerald-200 bg-emerald-50/90 px-3 py-2 text-[10.5px] font-bold text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200"
+                                    >
+                                        {copyOfficialFeedback}
+                                    </div>
+                                )}
                             </div>
 
                             {/* Section 2: Kepala Sekolah */}
