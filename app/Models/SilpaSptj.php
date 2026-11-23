@@ -8,6 +8,10 @@ class SilpaSptj extends Model
 {
     protected $guarded = ['id'];
 
+    protected $casts = [
+        'custom_variables' => 'array',
+    ];
+
     public function silpaPenganggaran()
     {
         return $this->belongsTo(SilpaPenganggaran::class);

@@ -8,6 +8,10 @@ class KinerjaSptj extends Model
 {
     protected $guarded = ['id'];
 
+    protected $casts = [
+        'custom_variables' => 'array',
+    ];
+
     public function kinerjaPenganggaran()
     {
         return $this->belongsTo(KinerjaPenganggaran::class);

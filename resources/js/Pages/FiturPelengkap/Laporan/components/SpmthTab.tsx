@@ -13,6 +13,14 @@ import IconTile from '@/Components/ui/IconTile';
 import StatusBadge from '@/Components/ui/StatusBadge';
 import EmptyState from '@/Components/ui/EmptyState';
 import { SkeletonRows } from '@/Components/ui/Skeleton';
+import SpjTemplateSelector from '@/Components/SpjCustomTemplate/SpjTemplateSelector';
+import SpjTemplateModal from '@/Components/SpjCustomTemplate/SpjTemplateModal';
+import {
+    resolveCanManageSpjTemplates,
+    resolveSpjCustomFormVariables,
+    useSpjCustomTemplates,
+} from '@/Components/SpjCustomTemplate/types';
+import LaporanCustomVariablesSection from './LaporanCustomVariablesSection';
 import {
     LaporanCalculateButton,
     LaporanDeleteModal,
@@ -35,6 +43,7 @@ interface SpmthData {
     realisasi_ini: number;
     sisa: number;
     tanggal_spmth: string | null;
+    custom_variables?: Record<string, string> | null;
     created_at: string;
     penganggaran_id: number;
     penganggaran: {
@@ -46,7 +55,26 @@ interface SpmthData {
 
 export default function SpmthTab() {
     const vroute = useVariantRoute();
-    const penganggaranFk = usePage<any>().props.penganggaranFk || 'penganggaran_id';
+    const pageProps = usePage<any>().props;
+    const penganggaranFk = pageProps.penganggaranFk || 'penganggaran_id';
+    const canManageTemplates = resolveCanManageSpjTemplates(pageProps, 'spmth');
+    const {
+        templates: customTemplates,
+        variableCatalog,
+        libreOfficeAvailable,
+        selectedFormat,
+        setSelectedFormat,
+        activeCustomTemplateId,
+        activeCustomTemplate,
+        fetchTemplates: fetchCustomTemplates,
+    } = useSpjCustomTemplates('spmth');
+    const [showTemplateModal, setShowTemplateModal] = useState(false);
+    const [customVariables, setCustomVariables] = useState<Record<string, string>>({});
+    const [previewCustomDownloadUrl, setPreviewCustomDownloadUrl] = useState<string | null>(null);
+    const [previewCustomDocxUrl, setPreviewCustomDocxUrl] = useState<string | null>(null);
+    const [previewTitle, setPreviewTitle] = useState('Preview SPMTH');
+    const hasCustomFormVars =
+        resolveSpjCustomFormVariables(customTemplates, activeCustomTemplate).length > 0;
     const [data, setData] = useState<SpmthData[]>([]);
     const [search, setSearch] = useState('');
     const [page, setPage] = useState(1);
@@ -178,7 +206,8 @@ export default function SpmthTab() {
         try {
             const payload = {
                 ...formData,
-                [penganggaranFk]: formData.penganggaran_id
+                [penganggaranFk]: formData.penganggaran_id,
+                custom_variables: customVariables,
             };
             if (formData.id) {
                 await axios.put(vroute('api.spmth.update', formData.id), payload);
@@ -236,6 +265,13 @@ export default function SpmthTab() {
             tahun_anggaran: item.penganggaran?.tahun_anggaran || new Date().getFullYear().toString(),
             pagu: 0 // Will need calculation if we want to show it, or we rely on 'Hitung' being clicked again or just display 0
         });
+        const initialCustom: Record<string, string> = {};
+        if (item.custom_variables && typeof item.custom_variables === 'object') {
+            Object.entries(item.custom_variables).forEach(([k, v]) => {
+                initialCustom[k] = v != null ? String(v) : '';
+            });
+        }
+        setCustomVariables(initialCustom);
         setIsAddModalOpen(true);
     };
 
@@ -252,6 +288,7 @@ export default function SpmthTab() {
             realisasi_ini: 0,
             sisa: 0
         });
+        setCustomVariables({});
     };
 
     const formatCurrency = (val: number) => {
@@ -276,7 +313,7 @@ export default function SpmthTab() {
                             </div>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
-                            <div className="w-full sm:w-64">
+                            <div className="w-full sm:w-56">
                                 <TextInput
                                     type="text"
                                     placeholder="Cari Nomor Surat..."
@@ -284,6 +321,15 @@ export default function SpmthTab() {
                                     onChange={(e) => setSearch(e.target.value)}
                                 />
                             </div>
+                            <SpjTemplateSelector
+                                docType="spmth"
+                                templates={customTemplates}
+                                selectedFormat={selectedFormat}
+                                onChangeFormat={setSelectedFormat}
+                                onOpenModal={() => setShowTemplateModal(true)}
+                                canManage={canManageTemplates}
+                                libreOfficeAvailable={libreOfficeAvailable}
+                            />
                             <PrimaryButton onClick={() => { resetForm(); setIsAddModalOpen(true); }}>
                                 Tambah
                             </PrimaryButton>
@@ -376,12 +422,46 @@ export default function SpmthTab() {
                                         <td className="whitespace-nowrap">
                                             <div className="flex items-center justify-center gap-1">
                                                 <button
-                                                    onClick={() => { setSelectedPdfUrl(vroute('laporan.spmth.pdf', item.id)); setIsPreviewModalOpen(true); }}
+                                                    onClick={() => {
+                                                        if (activeCustomTemplateId !== null) {
+                                                            if (!libreOfficeAvailable) {
+                                                                showToast('Preview PDF kustom memerlukan LibreOffice. Gunakan tombol DOCX.', 'error');
+                                                                return;
+                                                            }
+                                                            setPreviewTitle(`Preview SPMTH (${activeCustomTemplate?.nama ?? 'Template Kustom'})`);
+                                                            setSelectedPdfUrl(vroute('laporan.spmth.custom.preview', { id: item.id, template: activeCustomTemplateId }));
+                                                            setPreviewCustomDownloadUrl(vroute('laporan.spmth.custom.pdf', { id: item.id, template: activeCustomTemplateId }));
+                                                            setPreviewCustomDocxUrl(vroute('laporan.spmth.custom.docx', { id: item.id, template: activeCustomTemplateId }));
+                                                            setIsPreviewModalOpen(true);
+                                                            return;
+                                                        }
+                                                        setPreviewTitle('Preview SPMTH');
+                                                        setPreviewCustomDownloadUrl(null);
+                                                        setPreviewCustomDocxUrl(null);
+                                                        setSelectedPdfUrl(vroute('laporan.spmth.pdf', item.id));
+                                                        setIsPreviewModalOpen(true);
+                                                    }}
                                                     className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-slate-100 bg-white text-sky-600 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 hover:text-sky-700 dark:border-white/10 dark:bg-white/5 dark:text-sky-400 dark:hover:bg-white/10"
-                                                    title="Preview PDF"
+                                                    title={activeCustomTemplate ? `Preview PDF (${activeCustomTemplate.nama})` : 'Preview PDF'}
                                                 >
                                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
                                                 </button>
+                                                {activeCustomTemplateId !== null && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            window.open(
+                                                                vroute('laporan.spmth.custom.docx', { id: item.id, template: activeCustomTemplateId }),
+                                                                '_blank',
+                                                                'noopener,noreferrer',
+                                                            );
+                                                        }}
+                                                        className="inline-flex h-8 items-center justify-center rounded-xl border border-brand-200/80 bg-brand-50/70 px-2 text-[10px] font-extrabold text-brand-700 transition hover:bg-brand-100 dark:border-brand-400/25 dark:bg-brand-500/10 dark:text-brand-300"
+                                                        title={`Unduh Word (.docx) — ${activeCustomTemplate?.nama ?? 'Template Kustom'}`}
+                                                    >
+                                                        DOCX
+                                                    </button>
+                                                )}
                                                 <button
                                                     onClick={() => openEdit(item)}
                                                     className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-slate-100 bg-white text-brand-600 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 hover:text-brand-700 dark:border-white/10 dark:bg-white/5 dark:text-brand-300 dark:hover:bg-white/10"
@@ -411,6 +491,7 @@ export default function SpmthTab() {
                 show={isAddModalOpen}
                 onClose={() => setIsAddModalOpen(false)}
                 maxWidth="3xl"
+                tall={hasCustomFormVars}
                 title={formData.id ? 'Edit SPMTH' : 'Tambah SPMTH'}
                 subtitle="Kelola Surat Pernyataan Tanggung Jawab Mutlak (Hibah)"
                 isSaving={isSaving}
@@ -511,6 +592,14 @@ export default function SpmthTab() {
                         />
                     </div>
                 </LaporanSectionCard>
+
+                <LaporanCustomVariablesSection
+                    docLabel="SPMTH"
+                    templates={customTemplates}
+                    activeTemplate={activeCustomTemplate}
+                    values={customVariables}
+                    onChange={setCustomVariables}
+                />
             </LaporanFormModal>
 
             {/* Delete Confirmation Modal */}
@@ -527,9 +616,22 @@ export default function SpmthTab() {
                 show={isPreviewModalOpen}
                 onClose={() => setIsPreviewModalOpen(false)}
                 previewId="spmth-pdf-preview"
-                title="Preview SPMTH"
+                title={previewTitle}
                 pdfUrl={selectedPdfUrl}
                 onOpenPrintSettings={() => setIsPrintSettingsModalOpen(true)}
+                customDownloadUrl={previewCustomDownloadUrl}
+                customDocxUrl={previewCustomDocxUrl}
+            />
+
+            <SpjTemplateModal
+                show={showTemplateModal}
+                onClose={() => setShowTemplateModal(false)}
+                docType="spmth"
+                templates={customTemplates}
+                variableCatalog={variableCatalog}
+                libreOfficeAvailable={libreOfficeAvailable}
+                canManage={canManageTemplates}
+                onTemplatesChanged={fetchCustomTemplates}
             />
 
             {/* Print Settings Modal */}

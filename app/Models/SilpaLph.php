@@ -27,6 +27,11 @@ class SilpaLph extends Model
         'belanja_modal_aset_anggaran',
         'belanja_modal_aset_realisasi',
         'belanja_modal_aset_selisih',
+        'custom_variables',
+    ];
+
+    protected $casts = [
+        'custom_variables' => 'array',
     ];
 
     public function sekolah()

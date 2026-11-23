@@ -3,17 +3,22 @@
 namespace App\Http\Controllers;
 
 use App\Config\VariantConfig;
+use App\Http\Controllers\Concerns\HandlesSpjCustomTemplates;
 use App\Models\SekolahProfile;
 use App\Models\Sp2b;
+use App\Models\SpjTemplate;
 use App\Services\BukuKasService;
+use App\Services\SpjTemplateService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class Sp2bController extends Controller
 {
+    use HandlesSpjCustomTemplates;
     protected string $variant;
 
     protected string $Penganggaran;
@@ -82,9 +87,13 @@ class Sp2bController extends Controller
             'belanja_modal_aset_tetap_lainnya' => 'required|numeric',
             'belanja_modal_tanah_bangunan' => 'required|numeric',
             'saldo_akhir' => 'required|numeric',
+            'custom_variables' => 'nullable|array',
+            'custom_variables.*' => 'nullable|string|max:5000',
         ], [
             'nomor_sp2b.unique' => 'SP2B Tahap Tersebut Sudah Ada',
         ]);
+
+        $validated['custom_variables'] = $this->sanitizeCustomVariables($validated['custom_variables'] ?? null);
 
         ($this->Sp2b)::create($validated);
 
@@ -124,9 +133,15 @@ class Sp2bController extends Controller
             'belanja_modal_aset_tetap_lainnya' => 'required|numeric',
             'belanja_modal_tanah_bangunan' => 'required|numeric',
             'saldo_akhir' => 'required|numeric',
+            'custom_variables' => 'nullable|array',
+            'custom_variables.*' => 'nullable|string|max:5000',
         ], [
             'nomor_sp2b.unique' => 'SP2B Tahap Tersebut Sudah Ada',
         ]);
+
+        if (array_key_exists('custom_variables', $validated)) {
+            $validated['custom_variables'] = $this->sanitizeCustomVariables($validated['custom_variables']);
+        }
 
         $sp2b->update($validated);
 
@@ -350,6 +365,58 @@ class Sp2bController extends Controller
         }
 
         return $pdf->stream('sp2b.pdf');
+    }
+
+    public function previewCustomPdf($id, SpjTemplate $template, SpjTemplateService $templateService)
+    {
+        return $this->respondSpjCustomPdf(
+            SpjTemplate::TYPE_SP2B,
+            $template,
+            $templateService,
+            fn () => $this->loadSp2bForCustom($id),
+            fn (SpjTemplate $tpl, $record, string $ext) => $this->sanitizeCustomFilename(
+                'SP2B_'.(Str::slug($tpl->nama, '_') ?: 'Custom'),
+                (string) ($record->nomor_sp2b ?: $record->getKey()),
+                $ext
+            ),
+            true
+        );
+    }
+
+    public function generateCustomPdf($id, SpjTemplate $template, SpjTemplateService $templateService)
+    {
+        return $this->respondSpjCustomPdf(
+            SpjTemplate::TYPE_SP2B,
+            $template,
+            $templateService,
+            fn () => $this->loadSp2bForCustom($id),
+            fn (SpjTemplate $tpl, $record, string $ext) => $this->sanitizeCustomFilename(
+                'SP2B_'.(Str::slug($tpl->nama, '_') ?: 'Custom'),
+                (string) ($record->nomor_sp2b ?: $record->getKey()),
+                $ext
+            ),
+            false
+        );
+    }
+
+    public function generateCustomDocx($id, SpjTemplate $template, SpjTemplateService $templateService)
+    {
+        return $this->respondSpjCustomDocx(
+            SpjTemplate::TYPE_SP2B,
+            $template,
+            $templateService,
+            fn () => $this->loadSp2bForCustom($id),
+            fn (SpjTemplate $tpl, $record, string $ext) => $this->sanitizeCustomFilename(
+                'SP2B_'.(Str::slug($tpl->nama, '_') ?: 'Custom'),
+                (string) ($record->nomor_sp2b ?: $record->getKey()),
+                $ext
+            )
+        );
+    }
+
+    protected function loadSp2bForCustom($id)
+    {
+        return ($this->Sp2b)::with(['penganggaran'])->findOrFail($id);
     }
 
     protected function renderVariant($component, $props = [])

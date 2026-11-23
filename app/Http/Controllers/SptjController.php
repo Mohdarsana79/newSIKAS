@@ -3,17 +3,22 @@
 namespace App\Http\Controllers;
 
 use App\Config\VariantConfig;
+use App\Http\Controllers\Concerns\HandlesSpjCustomTemplates;
 use App\Models\Penganggaran;
 use App\Models\SekolahProfile;
+use App\Models\SpjTemplate;
 use App\Services\BukuKasService;
+use App\Services\SpjTemplateService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class SptjController extends Controller
 {
+    use HandlesSpjCustomTemplates;
     protected string $variant;
 
     protected string $Penganggaran;
@@ -71,9 +76,13 @@ class SptjController extends Controller
             'jenis_belanja_modal' => 'required|numeric',
             'sisa_kas_tunai' => 'required|numeric',
             'sisa_dana_di_bank' => 'required|numeric',
+            'custom_variables' => 'nullable|array',
+            'custom_variables.*' => 'nullable|string|max:5000',
         ], [
             'nomor_sptj.unique' => 'Nomor SPTJ tersebut sudah digunakan.',
         ]);
+
+        $validated['custom_variables'] = $this->sanitizeCustomVariables($validated['custom_variables'] ?? null);
 
         ($this->Sptj)::create($validated);
 
@@ -102,9 +111,15 @@ class SptjController extends Controller
             'jenis_belanja_modal' => 'required|numeric',
             'sisa_kas_tunai' => 'required|numeric',
             'sisa_dana_di_bank' => 'required|numeric',
+            'custom_variables' => 'nullable|array',
+            'custom_variables.*' => 'nullable|string|max:5000',
         ], [
             'nomor_sptj.unique' => 'Nomor SPTJ tersebut sudah digunakan.',
         ]);
+
+        if (array_key_exists('custom_variables', $validated)) {
+            $validated['custom_variables'] = $this->sanitizeCustomVariables($validated['custom_variables']);
+        }
 
         $sptj->update($validated);
 
@@ -289,6 +304,58 @@ class SptjController extends Controller
         }
 
         return $pdf->stream('sptj.pdf');
+    }
+
+    public function previewCustomPdf($id, SpjTemplate $template, SpjTemplateService $templateService)
+    {
+        return $this->respondSpjCustomPdf(
+            SpjTemplate::TYPE_SPTJ,
+            $template,
+            $templateService,
+            fn () => $this->loadSptjForCustom($id),
+            fn (SpjTemplate $tpl, $record, string $ext) => $this->sanitizeCustomFilename(
+                'SPTJ_'.(Str::slug($tpl->nama, '_') ?: 'Custom'),
+                (string) ($record->nomor_sptj ?: $record->getKey()),
+                $ext
+            ),
+            true
+        );
+    }
+
+    public function generateCustomPdf($id, SpjTemplate $template, SpjTemplateService $templateService)
+    {
+        return $this->respondSpjCustomPdf(
+            SpjTemplate::TYPE_SPTJ,
+            $template,
+            $templateService,
+            fn () => $this->loadSptjForCustom($id),
+            fn (SpjTemplate $tpl, $record, string $ext) => $this->sanitizeCustomFilename(
+                'SPTJ_'.(Str::slug($tpl->nama, '_') ?: 'Custom'),
+                (string) ($record->nomor_sptj ?: $record->getKey()),
+                $ext
+            ),
+            false
+        );
+    }
+
+    public function generateCustomDocx($id, SpjTemplate $template, SpjTemplateService $templateService)
+    {
+        return $this->respondSpjCustomDocx(
+            SpjTemplate::TYPE_SPTJ,
+            $template,
+            $templateService,
+            fn () => $this->loadSptjForCustom($id),
+            fn (SpjTemplate $tpl, $record, string $ext) => $this->sanitizeCustomFilename(
+                'SPTJ_'.(Str::slug($tpl->nama, '_') ?: 'Custom'),
+                (string) ($record->nomor_sptj ?: $record->getKey()),
+                $ext
+            )
+        );
+    }
+
+    protected function loadSptjForCustom($id)
+    {
+        return ($this->Sptj)::with(['penganggaran'])->findOrFail($id);
     }
 
     protected function renderVariant($component, $props = [])

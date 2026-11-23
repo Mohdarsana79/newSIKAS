@@ -8,6 +8,10 @@ class SilpaSpmth extends Model
 {
     protected $guarded = [];
 
+    protected $casts = [
+        'custom_variables' => 'array',
+    ];
+
     public function sekolah()
     {
         return $this->belongsTo(SekolahProfile::class, 'sekolah_id');

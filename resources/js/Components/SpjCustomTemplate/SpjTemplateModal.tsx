@@ -8,6 +8,7 @@ import SecondaryButton from '@/Components/SecondaryButton';
 import IconTile from '@/Components/ui/IconTile';
 import StatusBadge from '@/Components/ui/StatusBadge';
 import {
+    SPJ_CUSTOM_FORM_DOC_TYPES,
     SPJ_DOCUMENT_LABELS,
     SpjCustomTemplate,
     SpjDocumentType,
@@ -470,7 +471,7 @@ export default function SpjTemplateModal({
                                         const unrecognized = tpl.detected_variables?.unrecognized ?? [];
                                         const unclosed = tpl.detected_variables?.unclosed ?? [];
                                         const supportsCustomFormInputs =
-                                            docType === 'bast' || docType === 'surat_pesanan';
+                                            SPJ_CUSTOM_FORM_DOC_TYPES.includes(docType);
 
                                         return (
                                             <div

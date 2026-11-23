@@ -6,6 +6,7 @@ use App\Config\VariantConfig;
 use App\Exceptions\KwitansiTemplateException;
 use App\Models\SekolahProfile;
 use App\Models\SpjTemplate;
+use App\Services\Concerns\BuildsLaporanTemplatePayloads;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
@@ -14,6 +15,8 @@ use PhpOffice\PhpWord\SimpleType\Jc;
 
 class SpjTemplateService extends SpjDocxTemplateEngine
 {
+    use BuildsLaporanTemplatePayloads;
+
     /** @var array<string, array<int, string>> */
     public const ITEM_TABLE_VARIABLES_BY_TYPE = [
         SpjTemplate::TYPE_TANDA_TERIMA => [
@@ -52,6 +55,17 @@ class SpjTemplateService extends SpjDocxTemplateEngine
             'item_subtotal',
             'item_subtotal_rupiah',
         ],
+        SpjTemplate::TYPE_SPMTH => [],
+        SpjTemplate::TYPE_SPTJ => [],
+        SpjTemplate::TYPE_SP2B => [],
+        SpjTemplate::TYPE_LPH => [
+            'item_no',
+            'item_kode_rekening',
+            'item_nama_rekening',
+            'item_uraian',
+            'item_realisasi',
+            'item_realisasi_rupiah',
+        ],
     ];
 
     public function assertValidType(string $type): void
@@ -74,6 +88,10 @@ class SpjTemplateService extends SpjDocxTemplateEngine
             SpjTemplate::TYPE_TANDA_TERIMA => $this->tandaTerimaCatalog(),
             SpjTemplate::TYPE_BAST => $this->bastCatalog(),
             SpjTemplate::TYPE_SURAT_PESANAN => $this->suratPesananCatalog(),
+            SpjTemplate::TYPE_SPMTH => $this->spmthCatalog(),
+            SpjTemplate::TYPE_SPTJ => $this->sptjCatalog(),
+            SpjTemplate::TYPE_SP2B => $this->sp2bCatalog(),
+            SpjTemplate::TYPE_LPH => $this->lphCatalog(),
         };
     }
 
@@ -129,7 +147,7 @@ class SpjTemplateService extends SpjDocxTemplateEngine
         $this->assertValidType($type);
 
         $payload = $this->buildDocumentVariables($type, $record, $variant);
-        $supportsCustomFormVars = in_array($type, [SpjTemplate::TYPE_BAST, SpjTemplate::TYPE_SURAT_PESANAN], true);
+        $supportsCustomFormVars = in_array($type, SpjTemplate::CUSTOM_FORM_TYPES, true);
         if ($supportsCustomFormVars) {
             $payload['text'] = $this->mergeTemplateUnrecognizedDefaults($template, $payload['text']);
         }
@@ -193,6 +211,10 @@ class SpjTemplateService extends SpjDocxTemplateEngine
             SpjTemplate::TYPE_TANDA_TERIMA => $this->buildTandaTerimaVariables($record, $variant),
             SpjTemplate::TYPE_BAST => $this->buildBastVariables($record, $variant),
             SpjTemplate::TYPE_SURAT_PESANAN => $this->buildSuratPesananVariables($record, $variant),
+            SpjTemplate::TYPE_SPMTH => $this->buildSpmthVariables($record, $variant),
+            SpjTemplate::TYPE_SPTJ => $this->buildSptjVariables($record, $variant),
+            SpjTemplate::TYPE_SP2B => $this->buildSp2bVariables($record, $variant),
+            SpjTemplate::TYPE_LPH => $this->buildLphVariables($record, $variant),
         };
     }
 
@@ -207,6 +229,10 @@ class SpjTemplateService extends SpjDocxTemplateEngine
             SpjTemplate::TYPE_TANDA_TERIMA => $this->generateTandaTerimaSampleDocx(),
             SpjTemplate::TYPE_BAST => $this->generateBastSampleDocx(),
             SpjTemplate::TYPE_SURAT_PESANAN => $this->generateSuratPesananSampleDocx(),
+            SpjTemplate::TYPE_SPMTH => $this->generateSpmthSampleDocx(),
+            SpjTemplate::TYPE_SPTJ => $this->generateSptjSampleDocx(),
+            SpjTemplate::TYPE_SP2B => $this->generateSp2bSampleDocx(),
+            SpjTemplate::TYPE_LPH => $this->generateLphSampleDocx(),
         };
     }
 

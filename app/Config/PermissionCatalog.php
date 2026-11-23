@@ -321,9 +321,13 @@ class PermissionCatalog
         $isMutation = in_array(strtoupper($method), ['POST', 'PUT', 'PATCH', 'DELETE'], true);
 
         if (str_starts_with($normalizedName, 'api.spj-templates.')) {
-            $module = in_array($spjTemplateType, SpjTemplate::TYPES, true)
-                ? $spjTemplateType
-                : '__invalid_spj_template_type__';
+            if (in_array($spjTemplateType, SpjTemplate::LAPORAN_TYPES, true)) {
+                $module = 'laporan';
+            } elseif (in_array($spjTemplateType, SpjTemplate::TYPES, true)) {
+                $module = $spjTemplateType;
+            } else {
+                $module = '__invalid_spj_template_type__';
+            }
 
             return [
                 'module' => $module,

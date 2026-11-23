@@ -339,6 +339,10 @@ class SpjTemplateController extends Controller
             SpjTemplate::TYPE_TANDA_TERIMA => 'Contoh_Template_Tanda_Terima_SIKAS.docx',
             SpjTemplate::TYPE_BAST => 'Contoh_Template_BAST_SIKAS.docx',
             SpjTemplate::TYPE_SURAT_PESANAN => 'Contoh_Template_Surat_Pesanan_SIKAS.docx',
+            SpjTemplate::TYPE_SPMTH => 'Contoh_Template_SPMTH_SIKAS.docx',
+            SpjTemplate::TYPE_SPTJ => 'Contoh_Template_SPTJ_SIKAS.docx',
+            SpjTemplate::TYPE_SP2B => 'Contoh_Template_SP2B_SIKAS.docx',
+            SpjTemplate::TYPE_LPH => 'Contoh_Template_LPH_SIKAS.docx',
         ];
 
         return response()

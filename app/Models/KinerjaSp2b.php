@@ -11,7 +11,11 @@ class KinerjaSp2b extends Model
         'saldo_awal', 'pendapatan', 'belanja', 'belanja_pegawai',
         'belanja_barang_jasa', 'belanja_modal',
         'belanja_modal_peralatan_mesin', 'belanja_modal_aset_tetap_lainnya',
-        'belanja_modal_tanah_bangunan', 'saldo_akhir',
+        'belanja_modal_tanah_bangunan', 'saldo_akhir', 'custom_variables',
+    ];
+
+    protected $casts = [
+        'custom_variables' => 'array',
     ];
 
     public function kinerjaPenganggaran()

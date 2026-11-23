@@ -14,6 +14,13 @@ import IconTile from '@/Components/ui/IconTile';
 import StatusBadge from '@/Components/ui/StatusBadge';
 import EmptyState from '@/Components/ui/EmptyState';
 import { SkeletonRows } from '@/Components/ui/Skeleton';
+import SpjTemplateSelector from '@/Components/SpjCustomTemplate/SpjTemplateSelector';
+import SpjTemplateModal from '@/Components/SpjCustomTemplate/SpjTemplateModal';
+import {
+    resolveCanManageSpjTemplates,
+    useSpjCustomTemplates,
+} from '@/Components/SpjCustomTemplate/types';
+import LaporanCustomVariablesSection from './LaporanCustomVariablesSection';
 import {
     LaporanCalculateButton,
     LaporanDeleteModal,
@@ -38,6 +45,7 @@ interface SptjData {
     jenis_belanja_modal: number;
     sisa_kas_tunai: number;
     sisa_dana_di_bank: number;
+    custom_variables?: Record<string, string> | null;
     created_at: string;
     penganggaran_id: number;
     penganggaran: {
@@ -50,7 +58,24 @@ interface SptjData {
 
 export default function SptjTab() {
     const vroute = useVariantRoute();
-    const penganggaranFk = usePage<any>().props.penganggaranFk || 'penganggaran_id';
+    const pageProps = usePage<any>().props;
+    const penganggaranFk = pageProps.penganggaranFk || 'penganggaran_id';
+    const canManageTemplates = resolveCanManageSpjTemplates(pageProps, 'sptj');
+    const {
+        templates: customTemplates,
+        variableCatalog,
+        libreOfficeAvailable,
+        selectedFormat,
+        setSelectedFormat,
+        activeCustomTemplateId,
+        activeCustomTemplate,
+        fetchTemplates: fetchCustomTemplates,
+    } = useSpjCustomTemplates('sptj');
+    const [showTemplateModal, setShowTemplateModal] = useState(false);
+    const [customVariables, setCustomVariables] = useState<Record<string, string>>({});
+    const [previewCustomDownloadUrl, setPreviewCustomDownloadUrl] = useState<string | null>(null);
+    const [previewCustomDocxUrl, setPreviewCustomDocxUrl] = useState<string | null>(null);
+    const [previewTitle, setPreviewTitle] = useState('Preview SPTJ');
     const [data, setData] = useState<SptjData[]>([]);
     const [search, setSearch] = useState('');
     const [page, setPage] = useState(1);
@@ -193,7 +218,8 @@ export default function SptjTab() {
                 ...formData,
                 jenis_belanja_pegawai: 0,
                 jenis_belanja_barang_jasa: formData.jenis_belanja_operasi,
-                [penganggaranFk]: formData.penganggaran_id
+                [penganggaranFk]: formData.penganggaran_id,
+                custom_variables: customVariables,
             };
 
             if (formData.id) {
@@ -263,6 +289,13 @@ export default function SptjTab() {
             sisa_kas_tunai: Number(item.sisa_kas_tunai),
             sisa_dana_di_bank: Number(item.sisa_dana_di_bank),
         });
+        const initialCustom: Record<string, string> = {};
+        if (item.custom_variables && typeof item.custom_variables === 'object') {
+            Object.entries(item.custom_variables).forEach(([k, v]) => {
+                initialCustom[k] = v != null ? String(v) : '';
+            });
+        }
+        setCustomVariables(initialCustom);
         setIsAddModalOpen(true);
     };
 
@@ -285,6 +318,7 @@ export default function SptjTab() {
             penerimaan_dana_id: null,
             buku_kas_umum_id: null,
         });
+        setCustomVariables({});
     };
 
     const formatCurrency = (val: number) => {
@@ -309,7 +343,7 @@ export default function SptjTab() {
                             </div>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
-                            <div className="w-full sm:w-64">
+                            <div className="w-full sm:w-56">
                                 <TextInput
                                     type="text"
                                     placeholder="Cari Nomor SPTJ..."
@@ -317,6 +351,15 @@ export default function SptjTab() {
                                     onChange={(e) => setSearch(e.target.value)}
                                 />
                             </div>
+                            <SpjTemplateSelector
+                                docType="sptj"
+                                templates={customTemplates}
+                                selectedFormat={selectedFormat}
+                                onChangeFormat={setSelectedFormat}
+                                onOpenModal={() => setShowTemplateModal(true)}
+                                canManage={canManageTemplates}
+                                libreOfficeAvailable={libreOfficeAvailable}
+                            />
                             <PrimaryButton onClick={() => { resetForm(); setIsAddModalOpen(true); }}>
                                 Tambah
                             </PrimaryButton>
@@ -416,12 +459,46 @@ export default function SptjTab() {
                                             <td className="whitespace-nowrap">
                                                 <div className="flex items-center justify-center gap-1">
                                                     <button
-                                                        onClick={() => { setSelectedPdfUrl(vroute('laporan.sptj.pdf', item.id)); setIsPreviewModalOpen(true); }}
+                                                        onClick={() => {
+                                                            if (activeCustomTemplateId !== null) {
+                                                                if (!libreOfficeAvailable) {
+                                                                    showToast('Preview PDF kustom memerlukan LibreOffice. Gunakan tombol DOCX.', 'error');
+                                                                    return;
+                                                                }
+                                                                setPreviewTitle(`Preview SPTJ (${activeCustomTemplate?.nama ?? 'Template Kustom'})`);
+                                                                setSelectedPdfUrl(vroute('laporan.sptj.custom.preview', { id: item.id, template: activeCustomTemplateId }));
+                                                                setPreviewCustomDownloadUrl(vroute('laporan.sptj.custom.pdf', { id: item.id, template: activeCustomTemplateId }));
+                                                                setPreviewCustomDocxUrl(vroute('laporan.sptj.custom.docx', { id: item.id, template: activeCustomTemplateId }));
+                                                                setIsPreviewModalOpen(true);
+                                                                return;
+                                                            }
+                                                            setPreviewTitle('Preview SPTJ');
+                                                            setPreviewCustomDownloadUrl(null);
+                                                            setPreviewCustomDocxUrl(null);
+                                                            setSelectedPdfUrl(vroute('laporan.sptj.pdf', item.id));
+                                                            setIsPreviewModalOpen(true);
+                                                        }}
                                                         className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-slate-100 bg-white text-sky-600 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 hover:text-sky-700 dark:border-white/10 dark:bg-white/5 dark:text-sky-400 dark:hover:bg-white/10"
-                                                        title="Preview PDF"
+                                                        title={activeCustomTemplate ? `Preview PDF (${activeCustomTemplate.nama})` : 'Preview PDF'}
                                                     >
                                                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
                                                     </button>
+                                                    {activeCustomTemplateId !== null && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                window.open(
+                                                                    vroute('laporan.sptj.custom.docx', { id: item.id, template: activeCustomTemplateId }),
+                                                                    '_blank',
+                                                                    'noopener,noreferrer',
+                                                                );
+                                                            }}
+                                                            className="inline-flex h-8 items-center justify-center rounded-xl border border-brand-200/80 bg-brand-50/70 px-2 text-[10px] font-extrabold text-brand-700 transition hover:bg-brand-100 dark:border-brand-400/25 dark:bg-brand-500/10 dark:text-brand-300"
+                                                            title={`Unduh Word (.docx) — ${activeCustomTemplate?.nama ?? 'Template Kustom'}`}
+                                                        >
+                                                            DOCX
+                                                        </button>
+                                                    )}
                                                     <button
                                                         onClick={() => openEdit(item)}
                                                         className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-slate-100 bg-white text-brand-600 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 hover:text-brand-700 dark:border-white/10 dark:bg-white/5 dark:text-brand-300 dark:hover:bg-white/10"
@@ -596,6 +673,14 @@ export default function SptjTab() {
                         />
                     </div>
                 </LaporanSectionCard>
+
+                <LaporanCustomVariablesSection
+                    docLabel="SPTJ"
+                    templates={customTemplates}
+                    activeTemplate={activeCustomTemplate}
+                    values={customVariables}
+                    onChange={setCustomVariables}
+                />
             </LaporanFormModal>
 
             {/* Delete Confirmation Modal */}
@@ -612,9 +697,22 @@ export default function SptjTab() {
                 show={isPreviewModalOpen}
                 onClose={() => setIsPreviewModalOpen(false)}
                 previewId="sptj-pdf-preview"
-                title="Preview SPTJ"
+                title={previewTitle}
                 pdfUrl={selectedPdfUrl}
                 onOpenPrintSettings={() => setIsPrintSettingsModalOpen(true)}
+                customDownloadUrl={previewCustomDownloadUrl}
+                customDocxUrl={previewCustomDocxUrl}
+            />
+
+            <SpjTemplateModal
+                show={showTemplateModal}
+                onClose={() => setShowTemplateModal(false)}
+                docType="sptj"
+                templates={customTemplates}
+                variableCatalog={variableCatalog}
+                libreOfficeAvailable={libreOfficeAvailable}
+                canManage={canManageTemplates}
+                onTemplatesChanged={fetchCustomTemplates}
             />
 
             {/* Print Settings Modal */}

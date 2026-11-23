@@ -607,6 +607,8 @@ export function LaporanPdfPreviewModal({
     title,
     pdfUrl,
     onOpenPrintSettings,
+    customDownloadUrl = null,
+    customDocxUrl = null,
 }: {
     show: boolean;
     onClose: () => void;
@@ -614,6 +616,8 @@ export function LaporanPdfPreviewModal({
     title: string;
     pdfUrl: string;
     onOpenPrintSettings: () => void;
+    customDownloadUrl?: string | null;
+    customDocxUrl?: string | null;
 }) {
     const toggleFullscreen = () => {
         const elem = document.getElementById(previewId);
@@ -673,9 +677,25 @@ export function LaporanPdfPreviewModal({
                     >
                         Tutup
                     </button>
+                    {customDocxUrl && (
+                        <button
+                            type="button"
+                            onClick={() => window.open(customDocxUrl, '_blank', 'noopener,noreferrer')}
+                            className="inline-flex items-center gap-2 rounded-2xl border border-brand-400/30 bg-brand-500/15 px-4 py-2.5 text-[11.5px] font-extrabold text-brand-200 transition hover:-translate-y-0.5 hover:bg-brand-500/25"
+                        >
+                            <Download className="h-4 w-4" />
+                            Unduh Word (.docx)
+                        </button>
+                    )}
                     <button
                         type="button"
-                        onClick={onOpenPrintSettings}
+                        onClick={() => {
+                            if (customDownloadUrl) {
+                                window.open(customDownloadUrl, '_blank', 'noopener,noreferrer');
+                                return;
+                            }
+                            onOpenPrintSettings();
+                        }}
                         className="inline-flex items-center gap-2 rounded-2xl bg-lime-400 px-5 py-2.5 text-[11.5px] font-extrabold text-slate-950 shadow-lime transition hover:-translate-y-0.5 hover:bg-lime-300"
                     >
                         <Download className="h-4 w-4" />

@@ -8,6 +8,10 @@ class Sptj extends Model
 {
     protected $guarded = ['id'];
 
+    protected $casts = [
+        'custom_variables' => 'array',
+    ];
+
     public function penganggaran()
     {
         return $this->belongsTo(Penganggaran::class);

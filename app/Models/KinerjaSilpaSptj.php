@@ -8,6 +8,10 @@ class KinerjaSilpaSptj extends Model
 {
     protected $guarded = ['id'];
 
+    protected $casts = [
+        'custom_variables' => 'array',
+    ];
+
     public function silpaPenganggaran()
     {
         return $this->belongsTo(KinerjaSilpaPenganggaran::class, 'kinerja_silpa_penganggaran_id');

@@ -386,11 +386,26 @@ Route::get('/api/dokumen/data', [DokumenController::class, 'getData'])->name('ap
 Route::post('/dokumen', [DokumenController::class, 'store'])->name('dokumen.store');
 Route::delete('/dokumen/{id}', [DokumenController::class, 'destroy'])->name('dokumen.destroy');
 
-// Laporan PDF Routes
+// Laporan PDF & Custom Template Routes
 Route::get('/laporan/spmth/{id}/pdf', [SpmthController::class, 'generatePdf'])->name('laporan.spmth.pdf');
+Route::get('/laporan/spmth/{id}/custom/{template}/preview', [SpmthController::class, 'previewCustomPdf'])->whereNumber(['id', 'template'])->name('laporan.spmth.custom.preview');
+Route::get('/laporan/spmth/{id}/custom/{template}/pdf', [SpmthController::class, 'generateCustomPdf'])->whereNumber(['id', 'template'])->name('laporan.spmth.custom.pdf');
+Route::get('/laporan/spmth/{id}/custom/{template}/docx', [SpmthController::class, 'generateCustomDocx'])->whereNumber(['id', 'template'])->name('laporan.spmth.custom.docx');
+
 Route::get('/laporan/sptj/{id}/pdf', [SptjController::class, 'generatePdf'])->name('laporan.sptj.pdf');
+Route::get('/laporan/sptj/{id}/custom/{template}/preview', [SptjController::class, 'previewCustomPdf'])->whereNumber(['id', 'template'])->name('laporan.sptj.custom.preview');
+Route::get('/laporan/sptj/{id}/custom/{template}/pdf', [SptjController::class, 'generateCustomPdf'])->whereNumber(['id', 'template'])->name('laporan.sptj.custom.pdf');
+Route::get('/laporan/sptj/{id}/custom/{template}/docx', [SptjController::class, 'generateCustomDocx'])->whereNumber(['id', 'template'])->name('laporan.sptj.custom.docx');
+
 Route::get('/laporan/sp2b/{id}/pdf', [Sp2bController::class, 'generatePdf'])->name('laporan.sp2b.pdf');
+Route::get('/laporan/sp2b/{id}/custom/{template}/preview', [Sp2bController::class, 'previewCustomPdf'])->whereNumber(['id', 'template'])->name('laporan.sp2b.custom.preview');
+Route::get('/laporan/sp2b/{id}/custom/{template}/pdf', [Sp2bController::class, 'generateCustomPdf'])->whereNumber(['id', 'template'])->name('laporan.sp2b.custom.pdf');
+Route::get('/laporan/sp2b/{id}/custom/{template}/docx', [Sp2bController::class, 'generateCustomDocx'])->whereNumber(['id', 'template'])->name('laporan.sp2b.custom.docx');
+
 Route::get('/laporan/lph/{id}/pdf', [LphController::class, 'generatePdf'])->name('laporan.lph.pdf');
+Route::get('/laporan/lph/{id}/custom/{template}/preview', [LphController::class, 'previewCustomPdf'])->whereNumber(['id', 'template'])->name('laporan.lph.custom.preview');
+Route::get('/laporan/lph/{id}/custom/{template}/pdf', [LphController::class, 'generateCustomPdf'])->whereNumber(['id', 'template'])->name('laporan.lph.custom.pdf');
+Route::get('/laporan/lph/{id}/custom/{template}/docx', [LphController::class, 'generateCustomDocx'])->whereNumber(['id', 'template'])->name('laporan.lph.custom.docx');
 
 // Tanda Terima PDF (Previously defined, now consolidated above. Removing duplicate)
 // Route::get('/tanda-terima/pdf', [TandaTerimaController::class, 'generatePdf'])->name('tanda_terima.pdf'); // Replaced by {id}/pdf above to be more standard

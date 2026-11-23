@@ -3,7 +3,23 @@ import axios from 'axios';
 
 declare const route: (name: string, params?: any, absolute?: boolean) => string;
 
-export type SpjDocumentType = 'tanda_terima' | 'bast' | 'surat_pesanan';
+export type SpjDocumentType =
+    | 'tanda_terima'
+    | 'bast'
+    | 'surat_pesanan'
+    | 'spmth'
+    | 'sptj'
+    | 'sp2b'
+    | 'lph';
+
+export const SPJ_CUSTOM_FORM_DOC_TYPES: SpjDocumentType[] = [
+    'bast',
+    'surat_pesanan',
+    'spmth',
+    'sptj',
+    'sp2b',
+    'lph',
+];
 
 export interface SpjCustomTemplate {
     id: number;
@@ -54,6 +70,10 @@ export const SPJ_DOCUMENT_LABELS: Record<SpjDocumentType, string> = {
     tanda_terima: 'Tanda Terima',
     bast: 'BAST',
     surat_pesanan: 'Surat Pesanan',
+    spmth: 'SPMTH',
+    sptj: 'SPTJ',
+    sp2b: 'SP2B',
+    lph: 'LPH',
 };
 
 export interface SpjCustomFormVariable {
@@ -172,8 +192,9 @@ export function resolveSpjCustomFormVariables(
 
 export function resolveCanManageSpjTemplates(pageProps: any, docType: SpjDocumentType): boolean {
     const auth = pageProps?.auth;
+    const permissionModule = ['spmth', 'sptj', 'sp2b', 'lph'].includes(docType) ? 'laporan' : docType;
     if (auth?.permissions?.modules && typeof auth.permissions.modules === 'object') {
-        return auth.permissions.modules[docType] === 'write';
+        return auth.permissions.modules[permissionModule] === 'write';
     }
 
     return !Boolean(auth?.user?.is_kepala_sekolah);

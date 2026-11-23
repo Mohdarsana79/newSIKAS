@@ -14,6 +14,13 @@ import IconTile from '@/Components/ui/IconTile';
 import StatusBadge from '@/Components/ui/StatusBadge';
 import EmptyState from '@/Components/ui/EmptyState';
 import { SkeletonRows } from '@/Components/ui/Skeleton';
+import SpjTemplateSelector from '@/Components/SpjCustomTemplate/SpjTemplateSelector';
+import SpjTemplateModal from '@/Components/SpjCustomTemplate/SpjTemplateModal';
+import {
+    resolveCanManageSpjTemplates,
+    useSpjCustomTemplates,
+} from '@/Components/SpjCustomTemplate/types';
+import LaporanCustomVariablesSection from './LaporanCustomVariablesSection';
 import {
     LaporanCalculateButton,
     LaporanDeleteModal,
@@ -58,6 +65,7 @@ interface Sp2bData {
     belanja_modal_aset_tetap_lainnya: number;
     belanja_modal_tanah_bangunan: number;
     saldo_akhir: number;
+    custom_variables?: Record<string, string> | null;
     created_at: string;
     penganggaran_id: number;
     penganggaran: {
@@ -68,7 +76,24 @@ interface Sp2bData {
 
 export default function Sp2bTab() {
     const vroute = useVariantRoute();
-    const penganggaranFk = usePage<any>().props.penganggaranFk || 'penganggaran_id';
+    const pageProps = usePage<any>().props;
+    const penganggaranFk = pageProps.penganggaranFk || 'penganggaran_id';
+    const canManageTemplates = resolveCanManageSpjTemplates(pageProps, 'sp2b');
+    const {
+        templates: customTemplates,
+        variableCatalog,
+        libreOfficeAvailable,
+        selectedFormat,
+        setSelectedFormat,
+        activeCustomTemplateId,
+        activeCustomTemplate,
+        fetchTemplates: fetchCustomTemplates,
+    } = useSpjCustomTemplates('sp2b');
+    const [showTemplateModal, setShowTemplateModal] = useState(false);
+    const [customVariables, setCustomVariables] = useState<Record<string, string>>({});
+    const [previewCustomDownloadUrl, setPreviewCustomDownloadUrl] = useState<string | null>(null);
+    const [previewCustomDocxUrl, setPreviewCustomDocxUrl] = useState<string | null>(null);
+    const [previewTitle, setPreviewTitle] = useState('Pratinjau SP2B');
     const [data, setData] = useState<Sp2bData[]>([]);
     const [search, setSearch] = useState('');
     const [page, setPage] = useState(1);
@@ -209,7 +234,8 @@ export default function Sp2bTab() {
         try {
             const payload = {
                 ...formData,
-                [penganggaranFk]: formData.penganggaran_id
+                [penganggaranFk]: formData.penganggaran_id,
+                custom_variables: customVariables,
             };
             if (formData.id) {
                 await axios.put(vroute('api.sp2b.update', formData.id), payload);
@@ -273,6 +299,13 @@ export default function Sp2bTab() {
             belanja_modal_tanah_bangunan: Number(item.belanja_modal_tanah_bangunan),
             saldo_akhir: Number(item.saldo_akhir),
         });
+        const initialCustom: Record<string, string> = {};
+        if (item.custom_variables && typeof item.custom_variables === 'object') {
+            Object.entries(item.custom_variables).forEach(([k, v]) => {
+                initialCustom[k] = v != null ? String(v) : '';
+            });
+        }
+        setCustomVariables(initialCustom);
         setIsAddModalOpen(true);
     };
 
@@ -297,6 +330,7 @@ export default function Sp2bTab() {
             belanja_modal_tanah_bangunan: 0,
             saldo_akhir: 0,
         });
+        setCustomVariables({});
     };
 
     const formatCurrency = (val: number) => {
@@ -308,7 +342,7 @@ export default function Sp2bTab() {
             {/* Filter & aksi */}
             <div className="animate-rise" style={{ animationDelay: '60ms' }}>
                 <Surface padding="sm">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                         <div className="min-w-0 flex-1 sm:max-w-xs">
                             <TextInput
                                 type="text"
@@ -317,9 +351,20 @@ export default function Sp2bTab() {
                                 onChange={(e) => setSearch(e.target.value)}
                             />
                         </div>
-                        <PrimaryButton onClick={() => { resetForm(); setIsAddModalOpen(true); }}>
-                            Tambah SP2B
-                        </PrimaryButton>
+                        <div className="flex flex-wrap items-center justify-end gap-2">
+                            <SpjTemplateSelector
+                                docType="sp2b"
+                                templates={customTemplates}
+                                selectedFormat={selectedFormat}
+                                onChangeFormat={setSelectedFormat}
+                                onOpenModal={() => setShowTemplateModal(true)}
+                                canManage={canManageTemplates}
+                                libreOfficeAvailable={libreOfficeAvailable}
+                            />
+                            <PrimaryButton onClick={() => { resetForm(); setIsAddModalOpen(true); }}>
+                                Tambah SP2B
+                            </PrimaryButton>
+                        </div>
                     </div>
                 </Surface>
             </div>
@@ -411,12 +456,48 @@ export default function Sp2bTab() {
                                             <td className="whitespace-nowrap">
                                                 <div className="flex items-center justify-end gap-1.5">
                                                     <button
-                                                        onClick={() => { setSelectedPdfUrl(vroute('laporan.sp2b.pdf', item.id)); setIsPreviewModalOpen(true); }}
+                                                        onClick={() => {
+                                                            if (activeCustomTemplateId !== null) {
+                                                                if (!libreOfficeAvailable) {
+                                                                    window.dispatchEvent(new CustomEvent('toast-notification', {
+                                                                        detail: { message: 'Preview PDF kustom memerlukan LibreOffice. Gunakan tombol DOCX.', type: 'error' },
+                                                                    }));
+                                                                    return;
+                                                                }
+                                                                setPreviewTitle(`Pratinjau SP2B (${activeCustomTemplate?.nama ?? 'Template Kustom'})`);
+                                                                setSelectedPdfUrl(vroute('laporan.sp2b.custom.preview', { id: item.id, template: activeCustomTemplateId }));
+                                                                setPreviewCustomDownloadUrl(vroute('laporan.sp2b.custom.pdf', { id: item.id, template: activeCustomTemplateId }));
+                                                                setPreviewCustomDocxUrl(vroute('laporan.sp2b.custom.docx', { id: item.id, template: activeCustomTemplateId }));
+                                                                setIsPreviewModalOpen(true);
+                                                                return;
+                                                            }
+                                                            setPreviewTitle('Pratinjau SP2B');
+                                                            setPreviewCustomDownloadUrl(null);
+                                                            setPreviewCustomDocxUrl(null);
+                                                            setSelectedPdfUrl(vroute('laporan.sp2b.pdf', item.id));
+                                                            setIsPreviewModalOpen(true);
+                                                        }}
                                                         className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-slate-100 bg-white text-sky-600 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 hover:text-sky-700 dark:border-white/10 dark:bg-white/5 dark:text-sky-400 dark:hover:bg-white/10"
-                                                        title="Preview PDF"
+                                                        title={activeCustomTemplate ? `Preview PDF (${activeCustomTemplate.nama})` : 'Preview PDF'}
                                                     >
                                                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
                                                     </button>
+                                                    {activeCustomTemplateId !== null && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                window.open(
+                                                                    vroute('laporan.sp2b.custom.docx', { id: item.id, template: activeCustomTemplateId }),
+                                                                    '_blank',
+                                                                    'noopener,noreferrer',
+                                                                );
+                                                            }}
+                                                            className="inline-flex h-8 items-center justify-center rounded-xl border border-brand-200/80 bg-brand-50/70 px-2 text-[10px] font-extrabold text-brand-700 transition hover:bg-brand-100 dark:border-brand-400/25 dark:bg-brand-500/10 dark:text-brand-300"
+                                                            title={`Unduh Word (.docx) — ${activeCustomTemplate?.nama ?? 'Template Kustom'}`}
+                                                        >
+                                                            DOCX
+                                                        </button>
+                                                    )}
                                                     <button
                                                         onClick={() => openEdit(item)}
                                                         className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-slate-100 bg-white text-brand-600 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 hover:text-brand-700 dark:border-white/10 dark:bg-white/5 dark:text-brand-300 dark:hover:bg-white/10"
@@ -643,6 +724,14 @@ export default function Sp2bTab() {
                     tone={formData.saldo_akhir < 0 ? 'rose' : 'mint'}
                     sublabel="Akumulasi saldo akhir kas periode terpilih"
                 />
+
+                <LaporanCustomVariablesSection
+                    docLabel="SP2B"
+                    templates={customTemplates}
+                    activeTemplate={activeCustomTemplate}
+                    values={customVariables}
+                    onChange={setCustomVariables}
+                />
             </LaporanFormModal>
 
             {/* Delete Confirmation Modal */}
@@ -659,12 +748,29 @@ export default function Sp2bTab() {
                 show={isPreviewModalOpen}
                 onClose={() => setIsPreviewModalOpen(false)}
                 previewId="sp2b-pdf-preview"
-                title="Pratinjau SP2B"
-                pdfUrl={`${selectedPdfUrl}?font_size=${printSettings.fontSize}&paper_size=${printSettings.paperSize}`}
+                title={previewTitle}
+                pdfUrl={
+                    previewCustomDownloadUrl
+                        ? selectedPdfUrl
+                        : `${selectedPdfUrl}?font_size=${printSettings.fontSize}&paper_size=${printSettings.paperSize}`
+                }
                 onOpenPrintSettings={() => {
                     setIsPreviewModalOpen(false);
                     setIsPrintSettingsModalOpen(true);
                 }}
+                customDownloadUrl={previewCustomDownloadUrl}
+                customDocxUrl={previewCustomDocxUrl}
+            />
+
+            <SpjTemplateModal
+                show={showTemplateModal}
+                onClose={() => setShowTemplateModal(false)}
+                docType="sp2b"
+                templates={customTemplates}
+                variableCatalog={variableCatalog}
+                libreOfficeAvailable={libreOfficeAvailable}
+                canManage={canManageTemplates}
+                onTemplatesChanged={fetchCustomTemplates}
             />
 
             {/* Print Settings Modal */}

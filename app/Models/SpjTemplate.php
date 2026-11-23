@@ -17,11 +17,41 @@ class SpjTemplate extends Model
 
     public const TYPE_SURAT_PESANAN = 'surat_pesanan';
 
+    public const TYPE_SPMTH = 'spmth';
+
+    public const TYPE_SPTJ = 'sptj';
+
+    public const TYPE_SP2B = 'sp2b';
+
+    public const TYPE_LPH = 'lph';
+
+    /** @var array<int, string> */
+    public const LAPORAN_TYPES = [
+        self::TYPE_SPMTH,
+        self::TYPE_SPTJ,
+        self::TYPE_SP2B,
+        self::TYPE_LPH,
+    ];
+
+    /** @var array<int, string> */
+    public const CUSTOM_FORM_TYPES = [
+        self::TYPE_BAST,
+        self::TYPE_SURAT_PESANAN,
+        self::TYPE_SPMTH,
+        self::TYPE_SPTJ,
+        self::TYPE_SP2B,
+        self::TYPE_LPH,
+    ];
+
     /** @var array<int, string> */
     public const TYPES = [
         self::TYPE_TANDA_TERIMA,
         self::TYPE_BAST,
         self::TYPE_SURAT_PESANAN,
+        self::TYPE_SPMTH,
+        self::TYPE_SPTJ,
+        self::TYPE_SP2B,
+        self::TYPE_LPH,
     ];
 
     protected $table = 'spj_templates';
@@ -64,6 +94,10 @@ class SpjTemplate extends Model
             self::TYPE_TANDA_TERIMA => 'Tanda Terima',
             self::TYPE_BAST => 'BAST',
             self::TYPE_SURAT_PESANAN => 'Surat Pesanan',
+            self::TYPE_SPMTH => 'SPMTH',
+            self::TYPE_SPTJ => 'SPTJ',
+            self::TYPE_SP2B => 'SP2B',
+            self::TYPE_LPH => 'LPH',
             default => strtoupper($type),
         };
     }
