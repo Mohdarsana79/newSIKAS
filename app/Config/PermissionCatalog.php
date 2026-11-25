@@ -87,6 +87,13 @@ class PermissionCatalog
                 'description' => 'Master data rekening belanja beserta impor/ekspor Excel.',
                 'supports_write' => true,
             ],
+            [
+                'key' => 'data_ptk',
+                'label' => 'Data PTK (Guru & Tendik)',
+                'group' => 'Data Master',
+                'description' => 'Master data Guru & Tenaga Kependidikan per tahun dari ARKAS maupun input manual.',
+                'supports_write' => true,
+            ],
 
             // Fitur Pelengkap
             [
@@ -144,6 +151,13 @@ class PermissionCatalog
                 'group' => 'Fitur Pelengkap',
                 'description' => 'Membuat, menyesuaikan tema, mencetak, dan mengekspor poster infografis transparansi BOSP.',
                 'supports_write' => false,
+            ],
+            [
+                'key' => 'cetak_spj',
+                'label' => 'Cetak SPJ Terpadu',
+                'group' => 'Fitur Pelengkap',
+                'description' => 'Menyusun bendel SPJ, mendesain cover LPJ modern, melampirkan PDF pendukung, dan mencetak/mengunduh SPJ terpadu.',
+                'supports_write' => true,
             ],
 
             // Integrasi & Sistem
@@ -366,7 +380,18 @@ class PermissionCatalog
         }
 
         // Route Path ARKAS khusus (dibedakan dari menu Arkas Tools biasa)
-        if (in_array($normalizedName, ['arkas-tools.save-path', 'arkas-tools.upload-db', 'arkas-tools.remove-uploaded-db'], true)) {
+        if (in_array($normalizedName, [
+            'arkas-tools.save-path',
+            'arkas-tools.set-mode',
+            'arkas-tools.upload-db',
+            'arkas-tools.upload-init',
+            'arkas-tools.upload-chunk',
+            'arkas-tools.upload-finalize',
+            'arkas-tools.remove-uploaded-db',
+            'arkas-tools.agent-pin',
+            'arkas-tools.agent-download',
+            'arkas-tools.agent-revoke',
+        ], true)) {
             return ['module' => 'path_arkas', 'level' => self::LEVEL_WRITE];
         }
         if ($normalizedName === 'arkas-tools.get-path') {
@@ -376,6 +401,11 @@ class PermissionCatalog
         // Diagnostic & AI helper pada Arkas Tools / BKU
         if (in_array($normalizedName, ['arkas-tools.ai-diagnose', 'arkas-tools.ai-diagnose-context'], true)) {
             return ['module' => 'arkas_tools', 'level' => self::LEVEL_READ];
+        }
+
+        // Endpoint preview/resolusi tag SK & Surat bersifat read-only meski memakai POST
+        if ($normalizedName === 'sk-surat.data-sources.resolve') {
+            return ['module' => 'sk_surat', 'level' => self::LEVEL_READ];
         }
 
         $prefixMap = [
@@ -414,6 +444,7 @@ class PermissionCatalog
             'sekolah-profile' => 'sekolah_profile',
             'kode-kegiatan' => 'kode_kegiatan',
             'rekening-belanja' => 'rekening_belanja',
+            'data-ptk' => 'data_ptk',
             'kwitansi' => 'kwitansi',
             'api.kwitansi' => 'kwitansi',
             'tanda-terima' => 'tanda_terima',
@@ -428,6 +459,8 @@ class PermissionCatalog
             'laporan' => 'laporan',
             'poster-transparansi' => 'poster_transparansi',
             'api.poster-transparansi' => 'poster_transparansi',
+            'cetak-spj' => 'cetak_spj',
+            'api.cetak-spj' => 'cetak_spj',
             'api.spmth' => 'laporan',
             'api.sptj' => 'laporan',
             'api.sp2b' => 'laporan',

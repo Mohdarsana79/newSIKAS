@@ -24,6 +24,7 @@ class SekolahProfile extends Model
         'kop_surat',
         'logo_daerah',
         'logo_sekolah',
+        'foto_sekolah',
         'kop_mode',
         'kop_border',
         'kop_dokumen',

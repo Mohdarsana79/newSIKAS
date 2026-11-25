@@ -9,6 +9,7 @@ use App\Models\Sp2b;
 use App\Models\SpjTemplate;
 use App\Services\BukuKasService;
 use App\Services\SpjTemplateService;
+use App\Support\PdfPaperHelper;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -19,6 +20,7 @@ use Inertia\Inertia;
 class Sp2bController extends Controller
 {
     use HandlesSpjCustomTemplates;
+
     protected string $variant;
 
     protected string $Penganggaran;
@@ -328,7 +330,8 @@ class Sp2bController extends Controller
         $sekolah = SekolahProfile::find($penganggaran->sekolah_id);
 
         $paperSize = request()->input('paper_size', 'A4');
-        $fontSize = request()->input('font_size', '12pt');
+        $orientation = PdfPaperHelper::resolveOrientation(request()->input('orientation'), 'portrait');
+        $fontSize = PdfPaperHelper::resolveFontSize(request()->input('font_size'), '12pt');
 
         $periode_text = '';
         if ($sp2b->jenis_periode === 'bulan' && $sp2b->bulan) {
@@ -357,12 +360,7 @@ class Sp2bController extends Controller
         ];
 
         $pdf = Pdf::loadView('laporan.sp2b_pdf', $data);
-
-        if (strtolower($paperSize) === 'folio') {
-            $pdf->setPaper([0, 0, 595.28, 935.43], 'portrait');
-        } else {
-            $pdf->setPaper($paperSize, 'portrait');
-        }
+        $pdf->setPaper(PdfPaperHelper::resolvePaper($paperSize, 'A4'), $orientation);
 
         return $pdf->stream('sp2b.pdf');
     }

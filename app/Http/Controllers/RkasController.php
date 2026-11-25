@@ -6,15 +6,19 @@ use App\Config\VariantConfig;
 use App\Models\KodeKegiatan;
 use App\Models\Penganggaran;
 use App\Models\RefBarang;
+use App\Models\RefSatuan;
 use App\Models\RekeningBelanja;
 use App\Models\Rkas;
 use App\Models\RkasPerubahan;
 use App\Services\ArkasEngineService;
 use App\Services\ArkasRkasSyncService;
+use App\Services\ReferensiKodeService;
+use App\Support\PdfPaperHelper;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Symfony\Component\Process\Process;
@@ -59,12 +63,19 @@ class RkasController extends Controller
         $penganggaran = ($this->Penganggaran)::with('persetujuanUser:id,name,role')->findOrFail($id);
         $penganggaran->setAttribute('sumber_dana', VariantConfig::title($this->variant));
 
-        $kodeKegiatans = KodeKegiatan::all();
-        $rekeningBelanjas = RekeningBelanja::all();
+        $tahunAnggaran = (int) $penganggaran->tahun_anggaran;
+        $rekeningBelanjas = RekeningBelanja::forYear($tahunAnggaran)->orderBy('kode_rekening')->get();
+        $referensiPrevYear = app(ReferensiKodeService::class)->findPreviousYearWithReference($tahunAnggaran);
 
         // Get all RKAS items
         $itemsRaw = ($this->Rkas)::with(['kodeKegiatan', 'rekeningBelanja', 'review.user:id,name,role'])
             ->where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
+            ->get();
+
+        $usedKodeIds = $itemsRaw->pluck('kode_id')->filter()->unique()->map(fn ($v) => (int) $v)->values()->all();
+        $kodeKegiatans = KodeKegiatan::forYear($tahunAnggaran)
+            ->forVariant($this->variant, $usedKodeIds)
+            ->orderBy('kode')
             ->get();
 
         // Calculate Totals
@@ -181,6 +192,9 @@ class RkasController extends Controller
                 'has_perubahan' => $hasPerubahan,
                 'juni_bku_closed' => $juniBkuClosed,
                 'is_arkas_year_synced' => $isArkasYearSynced,
+                'has_referensi_kegiatan' => $kodeKegiatans->isNotEmpty(),
+                'has_referensi_rekening' => $rekeningBelanjas->isNotEmpty(),
+                'referensi_prev_year' => $referensiPrevYear,
                 'tahun' => (string) $penganggaran->tahun_anggaran,
                 'pagu_total' => number_format($paguAnggaran, 0, ',', '.'),
                 'sumber_dana' => VariantConfig::title($this->variant),
@@ -218,6 +232,7 @@ class RkasController extends Controller
                 'rincian_objek' => $r->rincian_objek,
                 'kategori' => $r->kategori,
             ]),
+            'satuanOptions' => RefSatuan::activeOptions(),
         ]);
     }
 
@@ -629,9 +644,17 @@ class RkasController extends Controller
         $penganggaran = ($this->Penganggaran)::findOrFail($id);
         $penganggaran->setAttribute('sumber_dana', VariantConfig::title($this->variant));
 
+        $tahunAnggaran = (int) $penganggaran->tahun_anggaran;
+
         $request->validate([
-            'kegiatan_id' => 'required|exists:kode_kegiatans,id',
-            'rekening_id' => 'required|exists:rekening_belanjas,id',
+            'kegiatan_id' => [
+                'required',
+                Rule::exists('kode_kegiatans', 'id')->where(fn ($q) => $q->where('tahun', $tahunAnggaran)),
+            ],
+            'rekening_id' => [
+                'required',
+                Rule::exists('rekening_belanjas', 'id')->where(fn ($q) => $q->where('tahun', $tahunAnggaran)),
+            ],
             'uraian' => 'required|string',
             'uraian_arkas' => 'nullable|string',
             'id_barang_arkas' => 'nullable|string|max:100',
@@ -759,8 +782,20 @@ class RkasController extends Controller
         // We will accept an 'original_id' to find the original group.
         $request->validate([
             'original_id' => 'required|exists:'.(new ($this->Rkas))->getTable().',id',
-            'kegiatan_id' => 'required|exists:kode_kegiatans,id',
-            'rekening_id' => 'required|exists:rekening_belanjas,id',
+        ]);
+
+        $originalForValidation = ($this->Rkas)::with('penganggaran')->findOrFail($request->original_id);
+        $tahunAnggaran = (int) ($originalForValidation->penganggaran->tahun_anggaran ?? date('Y'));
+
+        $request->validate([
+            'kegiatan_id' => [
+                'required',
+                Rule::exists('kode_kegiatans', 'id')->where(fn ($q) => $q->where('tahun', $tahunAnggaran)),
+            ],
+            'rekening_id' => [
+                'required',
+                Rule::exists('rekening_belanjas', 'id')->where(fn ($q) => $q->where('tahun', $tahunAnggaran)),
+            ],
             'uraian' => 'required|string',
             'uraian_arkas' => 'nullable|string',
             'id_barang_arkas' => 'nullable|string|max:100',
@@ -770,9 +805,6 @@ class RkasController extends Controller
             'alokasi.*.quantity' => 'required|numeric|min:1',
             'alokasi.*.unit' => 'required|string',
         ]);
-
-        $originalForValidation = ($this->Rkas)::with('penganggaran')->findOrFail($request->original_id);
-        $tahunAnggaran = (int) ($originalForValidation->penganggaran->tahun_anggaran ?? date('Y'));
         $this->validateArkasBatasAtas(
             $tahunAnggaran,
             (int) $request->rekening_id,
@@ -919,15 +951,19 @@ class RkasController extends Controller
         $totalTahap1 = $this->calculateTotalTahap1($id);
         $totalTahap2 = $this->calculateTotalTahap2($id);
 
+        $cssPaper = PdfPaperHelper::resolveCssPaperSize($request->paper_size, 'A4');
+        $resolvedOrientation = PdfPaperHelper::resolveOrientation($request->orientation, 'portrait');
+        $resolvedFont = PdfPaperHelper::resolveFontSize($request->font_size, '10pt');
+
         $pdf = Pdf::loadView('rka_tahapan_pdf', [
             'anggaran' => $penganggaran->toArray(),
             'tahapanData' => $tahapanData, // Note: structure changed, view must be updated
             'totalTahap1' => $totalTahap1,
             'totalTahap2' => $totalTahap2,
-            'paper_size' => $request->paper_size,
-            'orientation' => $request->orientation,
-            'font_size' => $request->font_size,
-        ]);
+            'paper_size' => $cssPaper,
+            'orientation' => $resolvedOrientation,
+            'font_size' => $resolvedFont,
+        ])->setPaper(PdfPaperHelper::resolvePaper($request->paper_size, 'A4'), $resolvedOrientation);
 
         return $pdf->stream('rka_tahapan.pdf');
     }
@@ -952,15 +988,19 @@ class RkasController extends Controller
         $totalTahap1 = $this->calculateTotalTahap1($id);
         $totalTahap2 = $this->calculateTotalTahap2($id);
 
+        $cssPaper = PdfPaperHelper::resolveCssPaperSize($request->paper_size, 'A4');
+        $resolvedOrientation = PdfPaperHelper::resolveOrientation($request->orientation, 'landscape');
+        $resolvedFont = PdfPaperHelper::resolveFontSize($request->font_size, '10pt');
+
         $pdf = Pdf::loadView('laporan.rka_tahapan_v_1_pdf', [
             'anggaran' => $penganggaran->toArray(),
             'tahapanData' => $tahapanData,
             'totalTahap1' => $totalTahap1,
             'totalTahap2' => $totalTahap2,
-            'paper_size' => $request->paper_size,
-            'orientation' => $request->orientation,
-            'font_size' => $request->font_size,
-        ]);
+            'paper_size' => $cssPaper,
+            'orientation' => $resolvedOrientation,
+            'font_size' => $resolvedFont,
+        ])->setPaper(PdfPaperHelper::resolvePaper($request->paper_size, 'A4'), $resolvedOrientation);
 
         return $pdf->stream('rka_tahapan_v1.pdf');
     }
@@ -997,14 +1037,18 @@ class RkasController extends Controller
             ['no' => '2.2', 'uraian' => 'Belanja Modal', 'tahap1' => $modalTahap1, 'tahap2' => $modalTahap2, 'total' => $modalTotal],
         ];
 
+        $cssPaper = PdfPaperHelper::resolveCssPaperSize($request->paper_size, 'A4');
+        $resolvedOrientation = PdfPaperHelper::resolveOrientation($request->orientation, 'portrait');
+        $resolvedFont = PdfPaperHelper::resolveFontSize($request->font_size, '11pt');
+
         $pdf = Pdf::loadView('rka_rekap_pdf', [
             'anggaran' => $penganggaran->toArray(),
             'rekapData' => $rekapData,
             'perTahapData' => $perTahapData,
-            'paper_size' => $request->paper_size,
-            'orientation' => $request->orientation,
-            'font_size' => $request->font_size,
-        ]);
+            'paper_size' => $cssPaper,
+            'orientation' => $resolvedOrientation,
+            'font_size' => $resolvedFont,
+        ])->setPaper(PdfPaperHelper::resolvePaper($request->paper_size, 'A4'), $resolvedOrientation);
 
         return $pdf->stream('rka_rekap.pdf');
     }
@@ -1037,13 +1081,17 @@ class RkasController extends Controller
                 $allData[$m] = $this->kelolaDataRkas($monthRkas, $useArkas);
             }
 
+            $cssPaper = PdfPaperHelper::resolveCssPaperSize($request->paper_size, 'A4');
+            $resolvedOrientation = PdfPaperHelper::resolveOrientation($request->orientation, 'landscape');
+            $resolvedFont = PdfPaperHelper::resolveFontSize($request->font_size, '10pt');
+
             $pdf = Pdf::loadView('rka_bulanan_all_pdf', [
                 'anggaran' => $penganggaran->toArray(),
                 'allData' => $allData,
-                'paper_size' => $request->paper_size,
-                'orientation' => $request->orientation,
-                'font_size' => $request->font_size,
-            ]);
+                'paper_size' => $cssPaper,
+                'orientation' => $resolvedOrientation,
+                'font_size' => $resolvedFont,
+            ])->setPaper(PdfPaperHelper::resolvePaper($request->paper_size, 'A4'), $resolvedOrientation);
 
             return $pdf->stream('rka_bulanan_all.pdf');
 
@@ -1060,14 +1108,18 @@ class RkasController extends Controller
 
             $rkaBulananData = $this->kelolaDataRkas($rkasData, $useArkas);
 
+            $cssPaper = PdfPaperHelper::resolveCssPaperSize($request->paper_size, 'A4');
+            $resolvedOrientation = PdfPaperHelper::resolveOrientation($request->orientation, 'landscape');
+            $resolvedFont = PdfPaperHelper::resolveFontSize($request->font_size, '10pt');
+
             $pdf = Pdf::loadView('rka_bulanan_pdf', [
                 'anggaran' => $penganggaran->toArray(),
                 'rkaBulananData' => $rkaBulananData,
                 'month' => $month,
-                'paper_size' => $request->paper_size,
-                'orientation' => $request->orientation,
-                'font_size' => $request->font_size,
-            ]);
+                'paper_size' => $cssPaper,
+                'orientation' => $resolvedOrientation,
+                'font_size' => $resolvedFont,
+            ])->setPaper(PdfPaperHelper::resolvePaper($request->paper_size, 'A4'), $resolvedOrientation);
 
             return $pdf->stream('rka_bulanan.pdf');
         }
@@ -1114,13 +1166,17 @@ class RkasController extends Controller
             }
         }
 
+        $cssPaper = PdfPaperHelper::resolveCssPaperSize($request->paper_size, 'A4');
+        $resolvedOrientation = PdfPaperHelper::resolveOrientation($request->orientation, 'portrait');
+        $resolvedFont = PdfPaperHelper::resolveFontSize($request->font_size, '10pt');
+
         $pdf = Pdf::loadView('rka_lembar_kerja_pdf', [
             'anggaran' => $penganggaran->toArray(),
             'lembarData' => $lembarData,
-            'paper_size' => $request->paper_size,
-            'orientation' => $request->orientation,
-            'font_size' => $request->font_size,
-        ]);
+            'paper_size' => $cssPaper,
+            'orientation' => $resolvedOrientation,
+            'font_size' => $resolvedFont,
+        ])->setPaper(PdfPaperHelper::resolvePaper($request->paper_size, 'A4'), $resolvedOrientation);
 
         return $pdf->stream('rka_lembar_kerja.pdf');
     }
@@ -1189,8 +1245,7 @@ class RkasController extends Controller
             return null;
         }
 
-        $baseQuery = RefBarang::where('tahun', $tahun)
-            ->where('kode_rekening', $rekening->kode_rekening);
+        $baseQuery = RefBarang::forRekeningCatalog($tahun, $rekening->kode_rekening, onlyActive: false);
 
         if (! (clone $baseQuery)->exists()) {
             return null;
@@ -2335,14 +2390,15 @@ class RkasController extends Controller
 
         $rincianData = $this->kelolaDataRincian($rkasData, $this->isArkasUraianMode($request));
 
+        $resolvedOrientation = PdfPaperHelper::resolveOrientation($request->orientation, 'portrait');
         $pdf = Pdf::loadView('laporan.rka_rincian_pdf', [
             'anggaran' => $penganggaran->toArray(),
             'rincianData' => $rincianData,
             'tahap' => $tahap,
-            'paper_size' => $request->paper_size ?? 'A4',
-            'orientation' => $request->orientation ?? 'portrait',
-            'font_size' => $request->font_size ?? '12pt',
-        ]);
+            'paper_size' => PdfPaperHelper::resolveCssPaperSize($request->paper_size, 'A4'),
+            'orientation' => $resolvedOrientation,
+            'font_size' => PdfPaperHelper::resolveFontSize($request->font_size, '12pt'),
+        ])->setPaper(PdfPaperHelper::resolvePaper($request->paper_size, 'A4'), $resolvedOrientation);
 
         return $pdf->stream('rka_rincian.pdf');
     }
@@ -2397,16 +2453,20 @@ class RkasController extends Controller
 
         $tahapanData = $this->kelolaDataRkas($rkasData);
 
+        $resolvedOrientation = PdfPaperHelper::resolveOrientation($request->orientation, 'landscape');
         $pdf = Pdf::loadView('laporan.alur_kas', [
             'anggaran' => $penganggaran->toArray(),
             'tahapanData' => $tahapanData,
-            'paper_size' => $request->paper_size ?? 'A4',
-            'orientation' => $request->orientation ?? 'landscape',
-            'font_size' => $request->font_size ?? '10pt',
+            'paper_size' => PdfPaperHelper::resolveCssPaperSize($request->paper_size, 'A4'),
+            'orientation' => $resolvedOrientation,
+            'font_size' => PdfPaperHelper::resolveFontSize($request->font_size, '10pt'),
             'is_excel' => false,
         ]);
 
-        return $pdf->setPaper($request->paper_size ?? 'A4', $request->orientation ?? 'landscape')
+        return $pdf->setPaper(
+            PdfPaperHelper::resolvePaper($request->paper_size, 'A4'),
+            $resolvedOrientation,
+        )
             ->stream('alur_kas.pdf');
     }
 
@@ -2460,17 +2520,21 @@ class RkasController extends Controller
         $bulan = $request->bulan ?? 'Semua';
         $kwitansiMap = $this->getKwitansiMap($id);
 
+        $resolvedOrientation = PdfPaperHelper::resolveOrientation($request->orientation, 'landscape');
         $pdf = Pdf::loadView('laporan.rincian_pencairan', [
             'anggaran' => $penganggaran->toArray(),
             'tahapanData' => $tahapanData,
             'tahap' => $tahap,
             'bulan' => $bulan,
             'kwitansiMap' => $kwitansiMap,
-            'paper_size' => $request->paper_size ?? 'A4',
-            'orientation' => $request->orientation ?? 'landscape',
-            'font_size' => $request->font_size ?? '10pt',
+            'paper_size' => PdfPaperHelper::resolveCssPaperSize($request->paper_size, 'A4'),
+            'orientation' => $resolvedOrientation,
+            'font_size' => PdfPaperHelper::resolveFontSize($request->font_size, '10pt'),
             'is_excel' => false,
-        ])->setPaper($request->paper_size ?? 'A4', $request->orientation ?? 'landscape');
+        ])->setPaper(
+            PdfPaperHelper::resolvePaper($request->paper_size, 'A4'),
+            $resolvedOrientation,
+        );
 
         $filename_bulan = $bulan !== 'Semua' ? '_'.strtolower($bulan) : '';
 
@@ -2852,7 +2916,7 @@ class RkasController extends Controller
                 ]);
             }
 
-            ['kegiatanMap' => $kegiatanMap, 'rekenings' => $rekenings] = $syncService->loadMasterMaps();
+            ['kegiatanMap' => $kegiatanMap, 'rekenings' => $rekenings] = $syncService->loadMasterMaps($tahun);
             $spentVolumeByRowId = $syncService->loadSpentVolumeByRkasId(
                 $this->variant,
                 $this->Rkas,
@@ -2943,12 +3007,12 @@ class RkasController extends Controller
                 ]);
             }
 
-            ['kegiatanMap' => $kegiatanMap, 'rekenings' => $rekenings] = $syncService->loadMasterMaps();
+            ['kegiatanMap' => $kegiatanMap, 'rekenings' => $rekenings] = $syncService->loadMasterMaps($tahun);
             $hasExistingRows = ($this->Rkas)::where($penganggaranFk, $penganggaran->id)->exists();
 
             // Validasi referensi master wajib saat Mode A (RKAS SIKAS masih kosong / initial import)
             if (! $hasExistingRows) {
-                $missingError = $syncService->validateMasterReferences($items, $kegiatanMap, $rekenings);
+                $missingError = $syncService->validateMasterReferences($items, $kegiatanMap, $rekenings, $tahun);
                 if ($missingError !== null) {
                     return redirect()->back()->withErrors(['message' => $missingError]);
                 }

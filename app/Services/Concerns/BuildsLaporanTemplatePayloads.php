@@ -6,6 +6,7 @@ use App\Config\VariantConfig;
 use App\Models\SekolahProfile;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
+use PhpOffice\PhpWord\Element\Section;
 use PhpOffice\PhpWord\PhpWord;
 use PhpOffice\PhpWord\SimpleType\Jc;
 
@@ -925,7 +926,7 @@ trait BuildsLaporanTemplatePayloads
     /**
      * Helper blok tanda tangan Kepala Sekolah di kanan bawah starter template Laporan.
      *
-     * @param  \PhpOffice\PhpWord\Element\Section  $section
+     * @param  Section  $section
      */
     protected function appendSinglePrincipalSignature($section, string $dateLine, string $roleTitle): void
     {

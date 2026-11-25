@@ -18,6 +18,7 @@ use App\Services\ArkasBkuSyncService;
 use App\Services\ArkasEngineService;
 use App\Services\BkuArkasDisplayService;
 use App\Services\BukuKasService;
+use App\Support\PdfPaperHelper;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -2266,8 +2267,8 @@ class BukuKasUmumController extends Controller
         try {
             // Get Settings
             $paperSize = $request->input('paperSize', 'F4');
-            $orientation = $request->input('orientation', 'landscape');
-            $fontSize = $request->input('fontSize', '10pt');
+            $orientation = PdfPaperHelper::resolveOrientation($request->input('orientation'), 'landscape');
+            $fontSize = PdfPaperHelper::resolveFontSize($request->input('fontSize'), '10pt');
 
             Carbon::setLocale('id');
 
@@ -2328,7 +2329,10 @@ class BukuKasUmumController extends Controller
                 'fontSize' => $fontSize,
             ]);
 
-            $pdf->setPaper($paperSize, $orientation);
+            $pdf->setPaper(
+                PdfPaperHelper::resolvePaper($paperSize, 'F4'),
+                PdfPaperHelper::resolveOrientation($orientation, 'landscape'),
+            );
 
             return $pdf->stream("BKP_Umum_{$bulan}_{$tahun}.pdf");
 

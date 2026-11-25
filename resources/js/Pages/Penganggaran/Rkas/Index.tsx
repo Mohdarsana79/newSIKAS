@@ -18,9 +18,10 @@ import PageHeader from '@/Components/ui/PageHeader';
 import StatusBadge from '@/Components/ui/StatusBadge';
 import Surface from '@/Components/ui/Surface';
 import RkasApprovalBanner from '@/Components/Rkas/RkasApprovalBanner';
+import ReferensiYearWarningBanner from '@/Components/Rkas/ReferensiYearWarningBanner';
 import RkasItemReviewModal, { RkasItemReviewData } from '@/Components/Rkas/RkasItemReviewModal';
 import RkasAiReviewModal from '@/Components/Rkas/RkasAiReviewModal';
-import ArkasUraianSelect, { ArkasCatalogItem } from '@/Components/Rkas/ArkasUraianSelect';
+import ArkasUraianSelect, { ArkasCatalogItem, ArkasPtkItem } from '@/Components/Rkas/ArkasUraianSelect';
 import ArkasAwalPreviewModal from '@/Components/Rkas/ArkasAwalPreviewModal';
 import ArkasSyncReportModal, { ArkasSyncReport } from '@/Components/Rkas/ArkasSyncReportModal';
 import { useArkasSyncState } from '@/Hooks/useArkasSyncState';
@@ -69,6 +70,9 @@ interface Props extends Record<string, unknown> {
         has_perubahan: boolean;
         juni_bku_closed: boolean;
         is_arkas_year_synced?: boolean;
+        has_referensi_kegiatan?: boolean;
+        has_referensi_rekening?: boolean;
+        referensi_prev_year?: number | null;
         tahun: string;
         pagu_total: string;
         sumber_dana: string;
@@ -84,6 +88,7 @@ interface Props extends Record<string, unknown> {
     months: MonthFilter[];
     kegiatanOptions: Option[];
     rekeningOptions: Option[];
+    satuanOptions?: string[];
     variant?: string;
     routePrefix?: string;
     flash?: {
@@ -94,7 +99,7 @@ interface Props extends Record<string, unknown> {
     };
 }
 
-export default function Index({ auth, anggaran, items, months, kegiatanOptions, rekeningOptions, variant, routePrefix, flash }: PageProps<Props>) {
+export default function Index({ auth, anggaran, items, months, kegiatanOptions, rekeningOptions, satuanOptions = [], variant, routePrefix, flash }: PageProps<Props>) {
     const isKepalaSekolah = Boolean(auth?.user?.is_kepala_sekolah || auth?.user?.role === 'kepala_sekolah');
     const [localItems, setLocalItems] = useState<RkasItem[]>(items);
     const [reviewItem, setReviewItem] = useState<RkasItem | null>(null);
@@ -332,12 +337,24 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
     const [batasAtasArkas, setBatasAtasArkas] = useState<number | null>(null);
     const [selectedArkasUnit, setSelectedArkasUnit] = useState<string>('');
 
+    const selectedKegiatanOption = kegiatanOptions.find((opt) => String(opt.id) === String(data.kegiatan_id));
+    const selectedKodeKegiatan = String(selectedKegiatanOption?.kode || selectedKegiatanOption?.code || '');
     const selectedRekeningOption = rekeningOptions.find((opt) => String(opt.id) === String(data.rekening_id));
     const selectedKodeRekening = String(selectedRekeningOption?.kode_rekening || selectedRekeningOption?.code || '');
     const isExceedingBatasAtas =
         batasAtasArkas !== null &&
         batasAtasArkas > 0 &&
         Number(data.harga_satuan || 0) > batasAtasArkas;
+
+    const handleSelectArkasPtkItem = (ptk: ArkasPtkItem) => {
+        setBatasAtasArkas(null);
+        setData((prev) => ({
+            ...prev,
+            uraian_arkas: ptk.formatted_uraian,
+            id_barang_arkas: '',
+            uraian: prev.uraian.trim() === '' ? ptk.formatted_uraian : prev.uraian,
+        }));
+    };
 
     const handleSelectArkasCatalogItem = (item: ArkasCatalogItem) => {
         setBatasAtasArkas(item.batas_atas > 0 ? item.batas_atas : null);
@@ -754,6 +771,15 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                             </Link>
                         </>
                     }
+                />
+
+                {/* Banner Peringatan Soft-Guard Referensi Kode Tahun Anggaran */}
+                <ReferensiYearWarningBanner
+                    tahun={anggaran.tahun}
+                    hasKegiatan={anggaran.has_referensi_kegiatan ?? kegiatanOptions.length > 0}
+                    hasRekening={anggaran.has_referensi_rekening ?? rekeningOptions.length > 0}
+                    prevYear={anggaran.referensi_prev_year ?? null}
+                    routePrefix={routePrefix || ''}
                 />
 
                 {/* Banner Persetujuan Kepala Sekolah */}
@@ -1247,7 +1273,28 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                                 <InputLabel value="Kegiatan" required />
                                 <SearchableSelect
                                     value={data.kegiatan_id}
-                                    onChange={(val) => setData('kegiatan_id', String(val))}
+                                    onChange={(val) => {
+                                        const newVal = String(val);
+                                        const getHonorMode = (code: string) => {
+                                            const norm = code.trim().endsWith('.') ? code.trim() : `${code.trim()}.`;
+                                            if (norm === '07.12.01.') return 'ptk';
+                                            if (['07.12.02.', '07.12.03.', '07.12.04.'].includes(norm)) return 'manual';
+                                            return 'ssh';
+                                        };
+                                        const nextOpt = kegiatanOptions.find((opt) => String(opt.id) === newVal);
+                                        const nextCode = String(nextOpt?.kode || nextOpt?.code || '');
+                                        if (getHonorMode(selectedKodeKegiatan) !== getHonorMode(nextCode)) {
+                                            setBatasAtasArkas(null);
+                                            setData((prev) => ({
+                                                ...prev,
+                                                kegiatan_id: newVal,
+                                                uraian_arkas: '',
+                                                id_barang_arkas: '',
+                                            }));
+                                        } else {
+                                            setData('kegiatan_id', newVal);
+                                        }
+                                    }}
                                     options={kegiatanOptions}
                                     searchFields={['kode', 'program', 'sub_program', 'uraian', 'name']}
                                     displayColumns={[
@@ -1309,6 +1356,7 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                                 <ArkasUraianSelect
                                     year={anggaran.tahun}
                                     isYearSynced={Boolean(anggaran.is_arkas_year_synced)}
+                                    kodeKegiatan={selectedKodeKegiatan}
                                     kodeRekening={selectedKodeRekening}
                                     uraianArkas={data.uraian_arkas}
                                     idBarangArkas={data.id_barang_arkas}
@@ -1316,6 +1364,7 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                                     routePrefix={routePrefix || ''}
                                     error={(errors as any).uraian_arkas}
                                     onSelectCatalogItem={handleSelectArkasCatalogItem}
+                                    onSelectPtkItem={handleSelectArkasPtkItem}
                                     onManualChange={(val) => {
                                         setBatasAtasArkas(null);
                                         setData((prev) => ({
@@ -1450,6 +1499,7 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                                                     </div>
                                                     <input
                                                         type="text"
+                                                        list="arkas-ref-satuans"
                                                         className={`h-9 w-full rounded-xl border bg-white px-3 text-[11.5px] font-semibold text-slate-800 shadow-sm transition placeholder:text-slate-400 focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:bg-white/5 dark:text-white dark:placeholder:text-slate-500 dark:focus:border-lime-400/70 dark:focus:ring-lime-400/10 
                                                             ${(index > 0 || isLunas) ? 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 dark:border-white/10 dark:bg-white/5 dark:text-slate-500' :
                                                                 (showValidationErrors && !alloc.unit
@@ -1482,6 +1532,13 @@ export default function Index({ auth, anggaran, items, months, kegiatanOptions, 
                                         </button>
                                     )}
                                 </div>
+                                {satuanOptions.length > 0 && (
+                                    <datalist id="arkas-ref-satuans">
+                                        {satuanOptions.map((sat) => (
+                                            <option key={sat} value={sat} />
+                                        ))}
+                                    </datalist>
+                                )}
                             </div>
 
                             <div className="flex justify-end gap-3 border-t border-slate-100 pt-4 dark:border-white/5">

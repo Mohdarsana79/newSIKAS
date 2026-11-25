@@ -9,6 +9,7 @@ use App\Models\Sekolah;
 use App\Models\SekolahProfile;
 use App\Services\BkuArkasDisplayService;
 use App\Services\BukuKasService;
+use App\Support\PdfPaperHelper;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -209,8 +210,8 @@ class BukuPajakController extends Controller
 
             // Get Settings
             $paperSize = $request->input('paperSize', 'F4');
-            $orientation = $request->input('orientation', 'landscape');
-            $fontSize = $request->input('fontSize', '10pt');
+            $orientation = PdfPaperHelper::resolveOrientation($request->input('orientation'), 'landscape');
+            $fontSize = PdfPaperHelper::resolveFontSize($request->input('fontSize'), '10pt');
 
             Carbon::setLocale('id');
 
@@ -319,7 +320,10 @@ class BukuPajakController extends Controller
                 'orientation' => $orientation,
                 'fontSize' => $fontSize,
             ]);
-            $pdf->setPaper($paperSize, $orientation);
+            $pdf->setPaper(
+                PdfPaperHelper::resolvePaper($paperSize, 'F4'),
+                PdfPaperHelper::resolveOrientation($orientation, 'landscape'),
+            );
 
             return $pdf->stream("BKP_Pajak_{$bulan}_{$tahun}.pdf");
 

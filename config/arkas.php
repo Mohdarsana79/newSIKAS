@@ -16,7 +16,15 @@ return [
 
     'upload_path' => storage_path('app/arkas_uploads/arkas.db'),
 
+    'state_path' => storage_path('app/arkas_uploads/state.json'),
+
+    'chunk_temp_dir' => storage_path('app/temp/arkas_chunks'),
+
     'engine_dir' => storage_path('app/arkas_engine'),
 
-    'max_upload_mb' => (int) env('ARKAS_MAX_UPLOAD_MB', 100),
+    'max_upload_mb' => (int) env('ARKAS_MAX_UPLOAD_MB', 500),
+
+    'chunk_size_mb' => (int) env('ARKAS_CHUNK_SIZE_MB', 2),
+
+    'chunk_ttl_seconds' => (int) env('ARKAS_CHUNK_TTL_SECONDS', 7200),
 ];

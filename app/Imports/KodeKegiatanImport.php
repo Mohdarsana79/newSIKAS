@@ -19,6 +19,13 @@ class KodeKegiatanImport implements SkipsEmptyRows, SkipsOnFailure, ToModel, Wit
 
     private $duplicates = [];
 
+    private int $tahun;
+
+    public function __construct(?int $tahun = null)
+    {
+        $this->tahun = $tahun ?: (int) date('Y');
+    }
+
     public function startRow(): int
     {
         return 3;
@@ -35,7 +42,7 @@ class KodeKegiatanImport implements SkipsEmptyRows, SkipsOnFailure, ToModel, Wit
         $subProgram = Str::trim($row[2]);
         $uraian = Str::trim($row[3]);
 
-        if (KodeKegiatan::where('kode', $kode)->exists()) {
+        if (KodeKegiatan::forYear($this->tahun)->where('kode', $kode)->exists()) {
             $this->duplicates[] = [
                 'row' => $this->rowCount + $this->startRow(),
                 'kode' => $kode,
@@ -50,6 +57,7 @@ class KodeKegiatanImport implements SkipsEmptyRows, SkipsOnFailure, ToModel, Wit
         $this->rowCount++;
 
         return new KodeKegiatan([
+            'tahun' => $this->tahun,
             'kode' => $kode,
             'program' => $program,
             'sub_program' => $subProgram,

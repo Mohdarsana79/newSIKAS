@@ -6438,8 +6438,13 @@ PROMPT;
             }
         }
 
-        // 1. Query Rekening Belanja
-        $rekQuery = RekeningBelanja::query();
+        $targetMasterYear = $tahun;
+        if ($targetMasterYear === null || ! KodeKegiatan::forYear($targetMasterYear)->exists()) {
+            $targetMasterYear = (int) (KodeKegiatan::max('tahun') ?? RekeningBelanja::max('tahun') ?? date('Y'));
+        }
+
+        // 1. Query Rekening Belanja (scoped per tahun agar tidak duplikat lintas tahun)
+        $rekQuery = RekeningBelanja::query()->forYear($targetMasterYear);
         $rekQuery->where(function ($q) use ($searchWords) {
             foreach ($searchWords as $w) {
                 $q->orWhere('rincian_objek', 'ILIKE', "%{$w}%")
@@ -6454,8 +6459,8 @@ PROMPT;
         $pemeliharaanRekening = $operasiRekening->filter(fn ($r) => str_contains(strtolower($r->rincian_objek), 'pemeliharaan'))->values();
         $barangPakaiHabisRekening = $operasiRekening->filter(fn ($r) => ! str_contains(strtolower($r->rincian_objek), 'pemeliharaan'))->values();
 
-        // 2. Query Kode Kegiatan
-        $kegQuery = KodeKegiatan::query();
+        // 2. Query Kode Kegiatan (scoped per tahun agar tidak duplikat lintas tahun)
+        $kegQuery = KodeKegiatan::query()->forYear($targetMasterYear);
         $kegQuery->where(function ($q) use ($searchWords) {
             foreach ($searchWords as $w) {
                 $q->orWhere('uraian', 'ILIKE', "%{$w}%")

@@ -6,6 +6,7 @@ use App\Config\VariantConfig;
 use App\Http\Controllers\Concerns\HandlesSpjCustomTemplates;
 use App\Models\SpjTemplate;
 use App\Services\SpjTemplateService;
+use App\Support\PdfPaperHelper;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -17,6 +18,7 @@ use Inertia\Inertia;
 class LphController extends Controller
 {
     use HandlesSpjCustomTemplates;
+
     protected ?string $variant;
 
     protected ?string $Penganggaran;
@@ -361,7 +363,8 @@ class LphController extends Controller
         }
 
         $paperSize = request()->input('paper_size', 'A4');
-        $fontSize = request()->input('font_size', '11pt');
+        $orientation = PdfPaperHelper::resolveOrientation(request()->input('orientation'), 'portrait');
+        $fontSize = PdfPaperHelper::resolveFontSize(request()->input('font_size'), '11pt');
 
         $data = [
             'sumberDana' => VariantConfig::title($this->variant),
@@ -379,12 +382,7 @@ class LphController extends Controller
         ];
 
         $pdf = Pdf::loadView('laporan.lph_pdf', $data);
-
-        if (strtolower($paperSize) === 'folio') {
-            $pdf->setPaper([0, 0, 595.28, 935.43], 'portrait');
-        } else {
-            $pdf->setPaper($paperSize, 'portrait');
-        }
+        $pdf->setPaper(PdfPaperHelper::resolvePaper($paperSize, 'A4'), $orientation);
 
         return $pdf->stream('lph.pdf');
     }

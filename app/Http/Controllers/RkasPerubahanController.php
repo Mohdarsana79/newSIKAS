@@ -5,15 +5,19 @@ namespace App\Http\Controllers;
 use App\Config\VariantConfig;
 use App\Models\KodeKegiatan;
 use App\Models\RefBarang;
+use App\Models\RefSatuan;
 use App\Models\RekeningBelanja;
 use App\Models\Rkas;
 use App\Models\RkasPerubahan;
 use App\Services\ArkasEngineService;
 use App\Services\ArkasRkasSyncService;
+use App\Services\ReferensiKodeService;
+use App\Support\PdfPaperHelper; // Added Log
 use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Http\Request; // Added Log
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Symfony\Component\Process\Process;
@@ -61,12 +65,19 @@ class RkasPerubahanController extends Controller
         $penganggaran = ($this->Penganggaran)::with('persetujuanUser:id,name,role')->findOrFail($id);
         $penganggaran->setAttribute('sumber_dana', VariantConfig::title($this->variant));
 
-        $kodeKegiatans = KodeKegiatan::all();
-        $rekeningBelanjas = RekeningBelanja::all();
+        $tahunAnggaran = (int) $penganggaran->tahun_anggaran;
+        $rekeningBelanjas = RekeningBelanja::forYear($tahunAnggaran)->orderBy('kode_rekening')->get();
+        $referensiPrevYear = app(ReferensiKodeService::class)->findPreviousYearWithReference($tahunAnggaran);
 
         // Get all RKAS Perubahan items
         $itemsRaw = ($this->RkasPerubahan)::with(['kodeKegiatan', 'rekeningBelanja', 'review.user:id,name,role'])
             ->where(VariantConfig::penganggaranFk($this->variant), $penganggaran->id)
+            ->get();
+
+        $usedKodeIds = $itemsRaw->pluck('kode_id')->filter()->unique()->map(fn ($v) => (int) $v)->values()->all();
+        $kodeKegiatans = KodeKegiatan::forYear($tahunAnggaran)
+            ->forVariant($this->variant, $usedKodeIds)
+            ->orderBy('kode')
             ->get();
 
         // Calculate Totals for Perubahan
@@ -175,6 +186,9 @@ class RkasPerubahanController extends Controller
             'anggaran' => [
                 'id' => $penganggaran->id,
                 'is_arkas_year_synced' => $isArkasYearSynced,
+                'has_referensi_kegiatan' => $kodeKegiatans->isNotEmpty(),
+                'has_referensi_rekening' => $rekeningBelanjas->isNotEmpty(),
+                'referensi_prev_year' => $referensiPrevYear,
                 'tahun' => (string) $penganggaran->tahun_anggaran,
                 'pagu_total' => number_format($paguAnggaran, 0, ',', '.'),
                 'sumber_dana' => VariantConfig::title($this->variant).' (Perubahan)',
@@ -212,6 +226,7 @@ class RkasPerubahanController extends Controller
                 'rincian_objek' => $r->rincian_objek,
                 'kategori' => $r->kategori,
             ]),
+            'satuanOptions' => RefSatuan::activeOptions(),
         ]);
     }
 
@@ -269,9 +284,23 @@ class RkasPerubahanController extends Controller
 
     public function store(Request $request)
     {
+        $request->validate([
+            'tahun_anggaran' => 'required',
+        ]);
+
+        // We need `penganggaran_id`. Let's find it using tahun_anggaran
+        $penganggaran = ($this->Penganggaran)::where('tahun_anggaran', $request->tahun_anggaran)->firstOrFail();
+        $tahunAnggaran = (int) $penganggaran->tahun_anggaran;
+
         $validated = $request->validate([
-            'kode_id' => 'required|exists:kode_kegiatans,id',
-            'kode_rekening_id' => 'required|exists:rekening_belanjas,id',
+            'kode_id' => [
+                'required',
+                Rule::exists('kode_kegiatans', 'id')->where(fn ($q) => $q->where('tahun', $tahunAnggaran)),
+            ],
+            'kode_rekening_id' => [
+                'required',
+                Rule::exists('rekening_belanjas', 'id')->where(fn ($q) => $q->where('tahun', $tahunAnggaran)),
+            ],
             'uraian' => 'required|string',
             'uraian_arkas' => 'nullable|string',
             'id_barang_arkas' => 'nullable|string|max:100',
@@ -281,9 +310,6 @@ class RkasPerubahanController extends Controller
             'satuan' => 'required|array',
             'tahun_anggaran' => 'required', // Passed from frontend usually
         ]);
-
-        // We need `penganggaran_id`. Let's find it using tahun_anggaran
-        $penganggaran = ($this->Penganggaran)::where('tahun_anggaran', $request->tahun_anggaran)->firstOrFail();
 
         $this->validateArkasBatasAtas(
             (int) $penganggaran->tahun_anggaran,
@@ -429,20 +455,25 @@ class RkasPerubahanController extends Controller
         // Index.tsx uses 'update' with an ID.
         $target = ($this->RkasPerubahan)::findOrFail($id);
 
+        $penganggaranFk = VariantConfig::penganggaranFk($this->variant);
+        $penganggaran = ($this->Penganggaran)::find($target->{$penganggaranFk});
+        $tahunAnggaran = (int) ($penganggaran->tahun_anggaran ?? $request->input('tahun_anggaran', date('Y')));
+
         $request->validate([
-            // Validation same as store
-            'kode_id' => 'required',
-            'kode_rekening_id' => 'required',
+            'kode_id' => [
+                'required',
+                Rule::exists('kode_kegiatans', 'id')->where(fn ($q) => $q->where('tahun', $tahunAnggaran)),
+            ],
+            'kode_rekening_id' => [
+                'required',
+                Rule::exists('rekening_belanjas', 'id')->where(fn ($q) => $q->where('tahun', $tahunAnggaran)),
+            ],
             'uraian' => 'required',
             'uraian_arkas' => 'nullable|string',
             'id_barang_arkas' => 'nullable|string|max:100',
             'harga_satuan' => 'required',
             'bulan' => 'required|array',
         ]);
-
-        $penganggaranFk = VariantConfig::penganggaranFk($this->variant);
-        $penganggaran = ($this->Penganggaran)::find($target->{$penganggaranFk});
-        $tahunAnggaran = (int) ($penganggaran->tahun_anggaran ?? $request->input('tahun_anggaran', date('Y')));
 
         $this->validateArkasBatasAtas(
             $tahunAnggaran,
@@ -655,8 +686,7 @@ class RkasPerubahanController extends Controller
             return null;
         }
 
-        $baseQuery = RefBarang::where('tahun', $tahun)
-            ->where('kode_rekening', $rekening->kode_rekening);
+        $baseQuery = RefBarang::forRekeningCatalog($tahun, $rekening->kode_rekening, onlyActive: false);
 
         if (! (clone $baseQuery)->exists()) {
             return null;
@@ -1219,10 +1249,6 @@ class RkasPerubahanController extends Controller
             ->where(VariantConfig::penganggaranFk($this->variant), $id)
             ->get();
 
-        $rkasMurniData = ($this->Rkas)::with(['kodeKegiatan', 'rekeningBelanja'])
-            ->where(VariantConfig::penganggaranFk($this->variant), $id)
-            ->get();
-
         $groupedRkas = $rkasData->groupBy(function ($item) {
             return optional($item->kodeKegiatan)->kode;
         })->filter(fn ($group, $key) => ! is_null($key));
@@ -1232,15 +1258,19 @@ class RkasPerubahanController extends Controller
         $totalTahap1 = ($this->RkasPerubahan)::getTotalTahap1($id);
         $totalTahap2 = ($this->RkasPerubahan)::getTotalTahap2($id);
 
+        $cssPaper = PdfPaperHelper::resolveCssPaperSize($request->paper_size, 'A4');
+        $resolvedOrientation = PdfPaperHelper::resolveOrientation($request->orientation, 'landscape');
+        $resolvedFont = PdfPaperHelper::resolveFontSize($request->font_size, '10pt');
+
         $pdf = Pdf::loadView('laporan.rka_tahapan_perubahan_v_1_pdf', [
             'anggaran' => $penganggaran->toArray(),
             'tahapanData' => $tahapanData,
             'totalTahap1' => $totalTahap1,
             'totalTahap2' => $totalTahap2,
-            'paper_size' => $request->paper_size,
-            'orientation' => $request->orientation,
-            'font_size' => $request->font_size,
-        ]);
+            'paper_size' => $cssPaper,
+            'orientation' => $resolvedOrientation,
+            'font_size' => $resolvedFont,
+        ])->setPaper(PdfPaperHelper::resolvePaper($request->paper_size, 'A4'), $resolvedOrientation);
 
         return $pdf->stream('rka_perubahan_tahapan_v1.pdf');
     }
@@ -1251,10 +1281,6 @@ class RkasPerubahanController extends Controller
         $penganggaran->setAttribute('sumber_dana', VariantConfig::title($this->variant));
 
         $rkasData = ($this->RkasPerubahan)::with(['kodeKegiatan', 'rekeningBelanja'])
-            ->where(VariantConfig::penganggaranFk($this->variant), $id)
-            ->get();
-
-        $rkasMurniData = ($this->Rkas)::with(['kodeKegiatan', 'rekeningBelanja'])
             ->where(VariantConfig::penganggaranFk($this->variant), $id)
             ->get();
 
@@ -1304,15 +1330,19 @@ class RkasPerubahanController extends Controller
         $totalTahap1 = ($this->RkasPerubahan)::getTotalTahap1($id);
         $totalTahap2 = ($this->RkasPerubahan)::getTotalTahap2($id);
 
+        $cssPaper = PdfPaperHelper::resolveCssPaperSize($request->paper_size, 'A4');
+        $resolvedOrientation = PdfPaperHelper::resolveOrientation($request->orientation, 'landscape');
+        $resolvedFont = PdfPaperHelper::resolveFontSize($request->font_size, '10pt');
+
         $pdf = Pdf::loadView('laporan.rka_tahapan_perubahan_v_2_pdf', [
             'anggaran' => $penganggaran->toArray(),
             'tahapanData' => $tahapanData,
             'totalTahap1' => $totalTahap1,
             'totalTahap2' => $totalTahap2,
-            'paper_size' => $request->paper_size,
-            'orientation' => $request->orientation,
-            'font_size' => $request->font_size,
-        ]);
+            'paper_size' => $cssPaper,
+            'orientation' => $resolvedOrientation,
+            'font_size' => $resolvedFont,
+        ])->setPaper(PdfPaperHelper::resolvePaper($request->paper_size, 'A4'), $resolvedOrientation);
 
         return $pdf->stream('rka_perubahan_tahapan_v2.pdf');
     }
@@ -1971,20 +2001,23 @@ class RkasPerubahanController extends Controller
 
         // Get Print Settings
         $paperSize = $request->input('paper_size', 'A4');
-        $orientation = $request->input('orientation', 'portrait');
-        $fontSize = $request->input('font_size', '12pt');
+        $orientation = PdfPaperHelper::resolveOrientation($request->input('orientation'), 'portrait');
+        $fontSize = PdfPaperHelper::resolveFontSize($request->input('font_size'), '12pt');
 
         $pdf = Pdf::loadView('rkas_perubahan_tahapan_pdf', [
             'anggaran' => $penganggaran,
             'tahapanData' => $tahapanData,
             'totalTahap1' => $totalTahap1,
             'totalTahap2' => $totalTahap2,
-            'paper_size' => $paperSize,
+            'paper_size' => PdfPaperHelper::resolveCssPaperSize($paperSize, 'A4'),
             'orientation' => $orientation,
             'font_size' => $fontSize,
         ]);
 
-        return $pdf->setPaper($paperSize, $orientation)->stream('rkas_perubahan_tahapan.pdf');
+        return $pdf->setPaper(
+            PdfPaperHelper::resolvePaper($paperSize, 'A4'),
+            PdfPaperHelper::resolveOrientation($orientation, 'portrait'),
+        )->stream('rkas_perubahan_tahapan.pdf');
     }
 
     public function generateTahapanExcel($id, Request $request)
@@ -2063,7 +2096,10 @@ class RkasPerubahanController extends Controller
             'orientation' => $request->input('orientation', 'landscape'),
             'font_size' => $request->input('font_size', '11pt'),
             'is_excel' => false,
-        ])->setPaper($request->input('paper_size', 'F4'), $request->input('orientation', 'landscape'));
+        ])->setPaper(
+            PdfPaperHelper::resolvePaper($request->input('paper_size', 'F4'), 'F4'),
+            PdfPaperHelper::resolveOrientation($request->input('orientation', 'landscape'), 'landscape'),
+        );
 
         return $pdf->stream('alur_kas_perubahan_'.($penganggaran->sekolah->nama_sekolah ?? 'sekolah').'.pdf');
     }
@@ -2145,7 +2181,10 @@ class RkasPerubahanController extends Controller
             'orientation' => $request->orientation ?? 'landscape',
             'font_size' => $request->font_size ?? '10pt',
             'is_excel' => false,
-        ])->setPaper($request->paper_size ?? 'A4', $request->orientation ?? 'landscape');
+        ])->setPaper(
+            PdfPaperHelper::resolvePaper($request->paper_size, 'A4'),
+            PdfPaperHelper::resolveOrientation($request->orientation, 'landscape'),
+        );
 
         $filename_bulan = $bulan !== 'Semua' ? '_'.strtolower($bulan) : '';
 
@@ -2261,19 +2300,22 @@ class RkasPerubahanController extends Controller
 
         // Get Print Settings
         $paperSize = $request->input('paper_size', 'A4');
-        $orientation = $request->input('orientation', 'portrait');
-        $fontSize = $request->input('font_size', '12pt');
+        $orientation = PdfPaperHelper::resolveOrientation($request->input('orientation'), 'portrait');
+        $fontSize = PdfPaperHelper::resolveFontSize($request->input('font_size'), '12pt');
 
         $pdf = Pdf::loadView('rkas_perubahan_rekap_pdf', [
             'anggaran' => $penganggaran,
             'rekapData' => $rekapData,
             'perTahapData' => $perTahapData,
-            'paper_size' => $paperSize,
+            'paper_size' => PdfPaperHelper::resolveCssPaperSize($paperSize, 'A4'),
             'orientation' => $orientation,
             'font_size' => $fontSize,
         ]);
 
-        return $pdf->setPaper($paperSize, $orientation)->stream('rkas_perubahan_rekap.pdf');
+        return $pdf->setPaper(
+            PdfPaperHelper::resolvePaper($paperSize, 'A4'),
+            PdfPaperHelper::resolveOrientation($orientation, 'portrait'),
+        )->stream('rkas_perubahan_rekap.pdf');
     }
 
     public function generateRkaDuaSatuPdf($id, Request $request)
@@ -2348,18 +2390,21 @@ class RkasPerubahanController extends Controller
 
         // Get Print Settings
         $paperSize = $request->input('paper_size', 'A4');
-        $orientation = $request->input('orientation', 'portrait');
-        $fontSize = $request->input('font_size', '12pt');
+        $orientation = PdfPaperHelper::resolveOrientation($request->input('orientation'), 'portrait');
+        $fontSize = PdfPaperHelper::resolveFontSize($request->input('font_size'), '12pt');
 
         $pdf = Pdf::loadView('rkas_perubahan_lembar_kerja_pdf', [
             'anggaran' => $penganggaran,
             'lembarData' => $lembarData,
-            'paper_size' => $paperSize,
+            'paper_size' => PdfPaperHelper::resolveCssPaperSize($paperSize, 'A4'),
             'orientation' => $orientation,
             'font_size' => $fontSize,
         ]);
 
-        return $pdf->setPaper($paperSize, $orientation)->stream('rkas_perubahan_lembar_kerja.pdf');
+        return $pdf->setPaper(
+            PdfPaperHelper::resolvePaper($paperSize, 'A4'),
+            PdfPaperHelper::resolveOrientation($orientation, 'portrait'),
+        )->stream('rkas_perubahan_lembar_kerja.pdf');
     }
 
     public function generatePdfBulanan($id, Request $request)
@@ -2418,19 +2463,22 @@ class RkasPerubahanController extends Controller
 
         // Get Print Settings
         $paperSize = $request->input('paper_size', 'A4');
-        $orientation = $request->input('orientation', 'portrait');
-        $fontSize = $request->input('font_size', '12pt');
+        $orientation = PdfPaperHelper::resolveOrientation($request->input('orientation'), 'portrait');
+        $fontSize = PdfPaperHelper::resolveFontSize($request->input('font_size'), '12pt');
 
         $pdf = Pdf::loadView('rkas_perubahan_bulanan_pdf', [
             'anggaran' => $penganggaran,
             'rkaBulananData' => $dataByMonth, // Now an array of ['Month' => data]
             'month' => $monthLabel,
-            'paper_size' => $paperSize,
+            'paper_size' => PdfPaperHelper::resolveCssPaperSize($paperSize, 'A4'),
             'orientation' => $orientation,
             'font_size' => $fontSize,
         ]);
 
-        return $pdf->setPaper($paperSize, $orientation)->stream('rkas_perubahan_bulanan.pdf');
+        return $pdf->setPaper(
+            PdfPaperHelper::resolvePaper($paperSize, 'A4'),
+            PdfPaperHelper::resolveOrientation($orientation, 'portrait'),
+        )->stream('rkas_perubahan_bulanan.pdf');
     }
 
     public function exportRincianPdf(Request $request, $id)
@@ -2464,15 +2512,16 @@ class RkasPerubahanController extends Controller
 
         $rincianData = $this->kelolaDataRincian($rincianGabungan, $this->isArkasUraianMode($request));
 
+        $resolvedOrientation = PdfPaperHelper::resolveOrientation($request->orientation, 'portrait');
         $pdf = Pdf::loadView('laporan.rka_rincian_pdf', [
             'anggaran' => $penganggaran->toArray(),
             'rincianData' => $rincianData,
             'tahap' => $tahap,
             'is_perubahan' => true,
-            'paper_size' => $request->paper_size ?? 'A4',
-            'orientation' => $request->orientation ?? 'portrait',
-            'font_size' => $request->font_size ?? '12pt',
-        ]);
+            'paper_size' => PdfPaperHelper::resolveCssPaperSize($request->paper_size, 'A4'),
+            'orientation' => $resolvedOrientation,
+            'font_size' => PdfPaperHelper::resolveFontSize($request->font_size, '12pt'),
+        ])->setPaper(PdfPaperHelper::resolvePaper($request->paper_size, 'A4'), $resolvedOrientation);
 
         return $pdf->stream('rka_rincian_perubahan.pdf');
     }
@@ -2955,7 +3004,7 @@ class RkasPerubahanController extends Controller
                 ]);
             }
 
-            ['kegiatanMap' => $kegiatanMap, 'rekenings' => $rekenings] = $syncService->loadMasterMaps();
+            ['kegiatanMap' => $kegiatanMap, 'rekenings' => $rekenings] = $syncService->loadMasterMaps($tahun);
             $bkuDetailClass = $this->BukuKasUmumUraianDetail ?: VariantConfig::getModelClass('bku_uraian_detail', $this->variant);
             $spentVolumeByRowId = $syncService->loadSpentVolumeByRkasId(
                 $this->variant,
@@ -3043,12 +3092,12 @@ class RkasPerubahanController extends Controller
                 ]);
             }
 
-            ['kegiatanMap' => $kegiatanMap, 'rekenings' => $rekenings] = $syncService->loadMasterMaps();
+            ['kegiatanMap' => $kegiatanMap, 'rekenings' => $rekenings] = $syncService->loadMasterMaps($tahun);
             $hasExistingRows = ($this->RkasPerubahan)::where($penganggaranFk, $penganggaran->id)->exists();
 
             // Validasi referensi master wajib saat Mode A (RKAS Perubahan masih kosong / initial import)
             if (! $hasExistingRows) {
-                $missingError = $syncService->validateMasterReferences($items, $kegiatanMap, $rekenings);
+                $missingError = $syncService->validateMasterReferences($items, $kegiatanMap, $rekenings, $tahun);
                 if ($missingError !== null) {
                     return redirect()->back()->withErrors(['message' => $missingError]);
                 }

@@ -11,7 +11,7 @@ return [
     | Pastikan nilai ini sama dengan #define MyAppVersion di install_beta.iss / install_patch.iss.
     |
     */
-    'version' => '2026.30',
+    'version' => '2026.33',
 
     /*
     |--------------------------------------------------------------------------
@@ -36,9 +36,10 @@ return [
     | Interval Cache Pengecekan Otomatis (Detik)
     |--------------------------------------------------------------------------
     |
-    | 86400 detik = 24 jam. Pengecekan otomatis di background hanya dilakukan
-    | maksimal 1x sehari agar tidak memperlambat navigasi aplikasi.
+    | 3600 detik = 1 jam. Pengecekan otomatis di background hanya menghubungi
+    | GitHub Releases maksimal 1x per jam agar rilis patch cepat terdeteksi
+    | namun tetap aman dari batas rate-limit GitHub dan tidak memperlambat UI.
     |
     */
-    'cache_ttl' => 86400,
+    'cache_ttl' => (int) env('UPDATER_CACHE_TTL', 3600),
 ];

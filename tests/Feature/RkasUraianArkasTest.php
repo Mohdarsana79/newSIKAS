@@ -61,6 +61,7 @@ class RkasUraianArkasTest extends TestCase
         ]);
 
         $this->kegiatan = KodeKegiatan::create([
+            'tahun' => 2027,
             'kode' => '03.03.06.',
             'program' => 'Pengembangan Standar Proses',
             'sub_program' => 'Pelaksanaan Kegiatan Pembelajaran',
@@ -68,12 +69,14 @@ class RkasUraianArkasTest extends TestCase
         ]);
 
         $this->rekeningCatalog = RekeningBelanja::create([
+            'tahun' => 2027,
             'kode_rekening' => '5.2.02.05.02.0005',
             'rincian_objek' => 'Belanja Modal Alat Dapur',
             'kategori' => 'Modal Peralatan dan Mesin',
         ]);
 
         $this->rekeningManual = RekeningBelanja::create([
+            'tahun' => 2027,
             'kode_rekening' => '5.1.02.02.01.0013',
             'rincian_objek' => 'Belanja Jasa Tenaga Pendidikan',
             'kategori' => 'Belanja Jasa',
@@ -1079,12 +1082,14 @@ class RkasUraianArkasTest extends TestCase
     {
         // Duplicate kode_kegiatans: one WITHOUT trailing dot (used by SIKAS) and one WITH trailing dot
         $kegNoDot = KodeKegiatan::create([
+            'tahun' => 2027,
             'kode' => '08.04.13',
             'program' => 'Pengembangan Standar Penilaian',
             'sub_program' => 'Pelaksanaan Asesmen',
             'uraian' => 'Pelaksanaan TKA',
         ]);
         KodeKegiatan::create([
+            'tahun' => 2027,
             'kode' => '08.04.13.',
             'program' => 'Pengembangan Standar Penilaian',
             'sub_program' => 'Pelaksanaan Asesmen',
@@ -1092,16 +1097,19 @@ class RkasUraianArkasTest extends TestCase
         ]);
 
         $rekAtk = RekeningBelanja::create([
+            'tahun' => 2027,
             'kode_rekening' => '5.1.02.01.01.0024',
             'rincian_objek' => 'Belanja ATK',
             'kategori' => 'Belanja Bahan',
         ]);
         $rekCetak = RekeningBelanja::create([
+            'tahun' => 2027,
             'kode_rekening' => '5.1.02.01.01.0026',
             'rincian_objek' => 'Belanja Bahan Cetak',
             'kategori' => 'Belanja Bahan',
         ]);
         $rekInternet = RekeningBelanja::create([
+            'tahun' => 2027,
             'kode_rekening' => '5.1.02.02.01.0063',
             'rincian_objek' => 'Belanja Kawat/Internet',
             'kategori' => 'Belanja Jasa',
@@ -3108,6 +3116,7 @@ class RkasUraianArkasTest extends TestCase
         $this->penganggaran->update(['sekolah_id' => $sekolah->id]);
 
         $rekeningBhp = RekeningBelanja::create([
+            'tahun' => 2027,
             'kode_rekening' => '5.1.02.01.01.0024',
             'rincian_objek' => 'Belanja Alat/Bahan untuk Kegiatan Kantor-Alat Tulis Kantor',
             'kategori' => 'Operasi',

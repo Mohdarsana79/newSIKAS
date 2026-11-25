@@ -70,6 +70,8 @@ export default {
                     600: '#B98A2E',
                 },
                 brand: {
+                    50: '#F6F3FF',
+                    100: '#EFEAFF',
                     200: '#E4DCFF',
                     300: '#C9BCFF',
                     400: '#A38CFF',

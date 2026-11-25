@@ -7,6 +7,7 @@ use App\Exports\BkpPembantuTunaiExport;
 use App\Models\Penganggaran;
 use App\Services\BkuArkasDisplayService;
 use App\Services\BukuKasService;
+use App\Support\PdfPaperHelper;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -138,8 +139,8 @@ class BukuKasPembantuTunaiController extends Controller
 
             // Get Settings
             $paperSize = $request->input('paperSize', 'F4');
-            $orientation = $request->input('orientation', 'landscape'); // Default landscape for this wide table
-            $fontSize = $request->input('fontSize', '10pt');
+            $orientation = PdfPaperHelper::resolveOrientation($request->input('orientation'), 'landscape');
+            $fontSize = PdfPaperHelper::resolveFontSize($request->input('fontSize'), '10pt');
 
             Carbon::setLocale('id');
 
@@ -199,7 +200,10 @@ class BukuKasPembantuTunaiController extends Controller
                 'fontSize' => $fontSize,
             ]);
 
-            $pdf->setPaper($paperSize, $orientation);
+            $pdf->setPaper(
+                PdfPaperHelper::resolvePaper($paperSize, 'F4'),
+                PdfPaperHelper::resolveOrientation($orientation, 'landscape'),
+            );
 
             return $pdf->stream("BKP_Pembantu_Tunai_{$bulan}_{$tahun}.pdf");
         } catch (\Exception $e) {

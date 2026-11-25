@@ -15,7 +15,9 @@ use App\Http\Controllers\BukuKasPembantuTunaiController;
 use App\Http\Controllers\BukuKasUmumController;
 use App\Http\Controllers\BukuPajakController;
 use App\Http\Controllers\BukuRobController;
+use App\Http\Controllers\CetakSpjController;
 use App\Http\Controllers\DatabaseController;
+use App\Http\Controllers\DataPtkController;
 use App\Http\Controllers\DokumenController;
 use App\Http\Controllers\IntegrasiController;
 use App\Http\Controllers\KodeKegiatanController;
@@ -163,10 +165,15 @@ Route::delete('sekolah-profile/{id}/delete-kop', [SekolahProfileController::clas
 Route::resource('sekolah-profile', SekolahProfileController::class);
 Route::get('kode-kegiatan/download-template', [KodeKegiatanController::class, 'downloadTemplate'])->name('kode-kegiatan.download-template');
 Route::post('kode-kegiatan/import', [KodeKegiatanController::class, 'import'])->name('kode-kegiatan.import');
+Route::post('kode-kegiatan/copy-year', [KodeKegiatanController::class, 'copyYear'])->name('kode-kegiatan.copy-year');
 Route::resource('kode-kegiatan', KodeKegiatanController::class);
 Route::get('rekening-belanja/download-template', [RekeningBelanjaController::class, 'downloadTemplate'])->name('rekening-belanja.download-template');
 Route::post('rekening-belanja/import', [RekeningBelanjaController::class, 'import'])->name('rekening-belanja.import');
+Route::post('rekening-belanja/copy-year', [RekeningBelanjaController::class, 'copyYear'])->name('rekening-belanja.copy-year');
 Route::resource('rekening-belanja', RekeningBelanjaController::class);
+Route::post('data-ptk/sync-arkas', [DataPtkController::class, 'syncArkas'])->name('data-ptk.sync-arkas');
+Route::post('data-ptk/copy-year', [DataPtkController::class, 'copyYear'])->name('data-ptk.copy-year');
+Route::resource('data-ptk', DataPtkController::class)->only(['index', 'store', 'update', 'destroy']);
 
 // Fitur Pelengkap (Root level resources for Kwitansi/TandaTerima to match Sidebar names)
 // Route::resource('kwitansi', KwitansiController::class); // Moved below to avoid conflict
@@ -179,11 +186,16 @@ Route::get('/arkas-tools/by-rekening', [ArkasToolController::class, 'byRekening'
 Route::get('/arkas-tools/fetch-arkas', [ArkasToolController::class, 'fetchArkas'])->name('arkas-tools.fetch-arkas');
 Route::post('/arkas-tools/sync', [ArkasToolController::class, 'sync'])->name('arkas-tools.sync');
 Route::get('/arkas-tools/path', [ArkasSettingController::class, 'getPath'])->name('arkas-tools.get-path');
-Route::middleware(['role:bendahara'])->group(function () {
-    Route::post('/arkas-tools/path', [ArkasSettingController::class, 'savePath'])->name('arkas-tools.save-path');
-    Route::post('/arkas-tools/upload-db', [ArkasSettingController::class, 'uploadDb'])->name('arkas-tools.upload-db');
-    Route::delete('/arkas-tools/upload-db', [ArkasSettingController::class, 'removeUploadedDb'])->name('arkas-tools.remove-uploaded-db');
-});
+Route::post('/arkas-tools/path', [ArkasSettingController::class, 'savePath'])->name('arkas-tools.save-path');
+Route::post('/arkas-tools/mode', [ArkasSettingController::class, 'setMode'])->name('arkas-tools.set-mode');
+Route::post('/arkas-tools/upload-db', [ArkasSettingController::class, 'uploadDb'])->name('arkas-tools.upload-db');
+Route::post('/arkas-tools/upload/init', [ArkasSettingController::class, 'uploadInit'])->name('arkas-tools.upload-init');
+Route::post('/arkas-tools/upload/chunk', [ArkasSettingController::class, 'uploadChunk'])->name('arkas-tools.upload-chunk');
+Route::post('/arkas-tools/upload/finalize', [ArkasSettingController::class, 'uploadFinalize'])->name('arkas-tools.upload-finalize');
+Route::delete('/arkas-tools/upload-db', [ArkasSettingController::class, 'removeUploadedDb'])->name('arkas-tools.remove-uploaded-db');
+Route::post('/arkas-tools/agent/pin', [ArkasSettingController::class, 'saveAgentPin'])->name('arkas-tools.agent-pin');
+Route::post('/arkas-tools/agent/download', [ArkasSettingController::class, 'downloadAgentScript'])->name('arkas-tools.agent-download');
+Route::delete('/arkas-tools/agent/token', [ArkasSettingController::class, 'revokeAgentToken'])->name('arkas-tools.agent-revoke');
 Route::post('/arkas-tools/ai-diagnose', [ArkasAiDiagnosticController::class, 'diagnoseSystem'])->name('arkas-tools.ai-diagnose');
 Route::post('/arkas-tools/ai-diagnose-context', [ArkasAiDiagnosticController::class, 'diagnoseContext'])->name('arkas-tools.ai-diagnose-context');
 
@@ -191,6 +203,8 @@ Route::post('/arkas-tools/ai-diagnose-context', [ArkasAiDiagnosticController::cl
 Route::get('/referensi-kode', [ReferensiKodeController::class, 'index'])->name('referensi-kode.index');
 Route::get('/referensi-kode/fetch', [ReferensiKodeController::class, 'fetch'])->name('referensi-kode.fetch');
 Route::post('/referensi-kode/sync', [ReferensiKodeController::class, 'sync'])->name('referensi-kode.sync');
+Route::post('/referensi-kode/sync-all', [ReferensiKodeController::class, 'syncAll'])->name('referensi-kode.sync-all');
+Route::post('/referensi-kode/copy-year', [ReferensiKodeController::class, 'copyYear'])->name('referensi-kode.copy-year');
 
 // Laporan (Root level to match Sidebar 'laporan.index')
 Route::get('/laporan', function () {
@@ -206,6 +220,17 @@ Route::get('/laporan', function () {
 // Poster Infografis Transparansi BOSP
 Route::get('/poster-transparansi', [PosterTransparansiController::class, 'index'])->name('poster-transparansi.index');
 Route::get('/api/poster-transparansi/data', [PosterTransparansiController::class, 'data'])->name('api.poster-transparansi.data');
+
+// Cetak SPJ Terpadu & Studio Cover LPJ Modern
+Route::get('/cetak-spj', [CetakSpjController::class, 'index'])->name('cetak-spj.index');
+Route::get('/api/cetak-spj/manifest', [CetakSpjController::class, 'manifest'])->name('api.cetak-spj.manifest');
+Route::post('/api/cetak-spj/preset', [CetakSpjController::class, 'savePreset'])->name('api.cetak-spj.preset.save');
+Route::post('/api/cetak-spj/cover-photo', [CetakSpjController::class, 'uploadCoverPhoto'])->name('api.cetak-spj.cover-photo.upload');
+Route::delete('/api/cetak-spj/cover-photo', [CetakSpjController::class, 'deleteCoverPhoto'])->name('api.cetak-spj.cover-photo.delete');
+Route::post('/api/cetak-spj/attachments', [CetakSpjController::class, 'storeAttachment'])->name('api.cetak-spj.attachments.store');
+Route::patch('/api/cetak-spj/attachments/{attachment}', [CetakSpjController::class, 'updateAttachment'])->whereNumber('attachment')->name('api.cetak-spj.attachments.update');
+Route::delete('/api/cetak-spj/attachments/{attachment}', [CetakSpjController::class, 'destroyAttachment'])->whereNumber('attachment')->name('api.cetak-spj.attachments.destroy');
+Route::get('/api/cetak-spj/attachments/{attachment}/stream', [CetakSpjController::class, 'streamAttachment'])->whereNumber('attachment')->name('api.cetak-spj.attachments.stream');
 
 // Backup
 Route::middleware(['role:bendahara'])->prefix('backup')->name('backup.')->group(function () {

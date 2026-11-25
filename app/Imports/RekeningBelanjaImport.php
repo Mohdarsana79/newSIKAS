@@ -20,6 +20,13 @@ class RekeningBelanjaImport implements SkipsEmptyRows, SkipsOnFailure, ToModel, 
 
     private array $duplicates = [];
 
+    private int $tahun;
+
+    public function __construct(?int $tahun = null)
+    {
+        $this->tahun = $tahun ?: (int) date('Y');
+    }
+
     public function startRow(): int
     {
         return 2; // Mulai dari baris ke-2 (abaikan judul dan header)
@@ -48,8 +55,8 @@ class RekeningBelanjaImport implements SkipsEmptyRows, SkipsOnFailure, ToModel, 
         $is_pph23 = isset($row[6]) ? $parseTax($row[6]) : false;
         $is_pph4 = isset($row[7]) ? $parseTax($row[7]) : false;
 
-        // Cek duplikasi kode
-        if (RekeningBelanja::query()->where('kode_rekening', $kode)->exists()) {
+        // Cek duplikasi kode pada tahun yang sama
+        if (RekeningBelanja::forYear($this->tahun)->where('kode_rekening', $kode)->exists()) {
             $this->duplicates[] = [
                 'row' => $this->rowCount + $this->startRow(),
                 'kode_rekening' => $kode,
@@ -63,6 +70,7 @@ class RekeningBelanjaImport implements SkipsEmptyRows, SkipsOnFailure, ToModel, 
         $this->rowCount++;
 
         return new RekeningBelanja([
+            'tahun' => $this->tahun,
             'kode_rekening' => $kode,
             'rincian_objek' => $rincianObjek,
             'kategori' => $kategori,
@@ -77,7 +85,12 @@ class RekeningBelanjaImport implements SkipsEmptyRows, SkipsOnFailure, ToModel, 
     public function rules(): array
     {
         return [
-            '0' => 'required|string|max:20|unique:rekening_belanjas,kode_rekening',
+            '0' => [
+                'required',
+                'string',
+                'max:20',
+                Rule::unique('rekening_belanjas', 'kode_rekening')->where(fn ($q) => $q->where('tahun', $this->tahun)),
+            ],
             '1' => 'required|string|max:255',
             '2' => ['required', 'string', Rule::in(['Operasi', 'Modal Peralatan dan Mesin', 'Modal Jalan, Jaringan, dan Irigasi', 'Modal Aset Tetap Lainnya'])],
         ];

@@ -31,6 +31,19 @@ export interface SharedSekolah {
     logo_sekolah?: string;
 }
 
+export interface SharedArkasStatus {
+    active_mode: 'local' | 'online';
+    source: 'manual' | 'uploaded' | 'auto' | 'manual_missing' | 'uploaded_missing' | 'none';
+    exists: boolean;
+}
+
+export interface SharedSystemUpdate {
+    currentVersion: string;
+    latestVersion: string;
+    hasUpdate: boolean;
+    checkedAt: string | null;
+}
+
 export type PageProps<
     T extends Record<string, unknown> = Record<string, unknown>,
 > = T & {
@@ -41,6 +54,8 @@ export type PageProps<
         };
     };
     sekolah?: SharedSekolah | null;
+    arkasStatus?: SharedArkasStatus;
+    systemUpdate?: SharedSystemUpdate;
     flash?: {
         success?: string | null;
         warning?: string | null;

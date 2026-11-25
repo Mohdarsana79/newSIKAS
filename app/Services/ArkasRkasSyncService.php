@@ -52,14 +52,23 @@ class ArkasRkasSyncService
     ];
 
     /**
-     * Memuat peta master KodeKegiatan dan RekeningBelanja secara ringkas (O(1) lookup).
+     * Memuat peta master KodeKegiatan dan RekeningBelanja secara ringkas (O(1) lookup)
+     * terisolasi pada tahun anggaran tertentu.
      *
      * @return array{kegiatanMap: array<string, int>, rekenings: Collection<string, RekeningBelanja>}
      */
-    public function loadMasterMaps(): array
+    public function loadMasterMaps(?int $tahun = null): array
     {
+        $kegiatanQuery = KodeKegiatan::query()->select(['id', 'kode']);
+        $rekeningQuery = RekeningBelanja::query()->select(['id', 'kode_rekening']);
+
+        if ($tahun !== null) {
+            $kegiatanQuery->forYear($tahun);
+            $rekeningQuery->forYear($tahun);
+        }
+
         $kegiatanMap = [];
-        foreach (KodeKegiatan::query()->select(['id', 'kode'])->get() as $k) {
+        foreach ($kegiatanQuery->get() as $k) {
             $kodeNorm = $this->normalizeKodeKegiatan((string) $k->kode);
             if ($kodeNorm === '') {
                 continue;
@@ -68,8 +77,7 @@ class ArkasRkasSyncService
             $kegiatanMap[$kodeNorm] = (int) $k->id;
         }
 
-        $rekenings = RekeningBelanja::query()
-            ->select(['id', 'kode_rekening'])
+        $rekenings = $rekeningQuery
             ->get()
             ->keyBy(fn (RekeningBelanja $r) => trim((string) $r->kode_rekening));
 
@@ -260,7 +268,7 @@ class ArkasRkasSyncService
      * @param  array<string, int>  $kegiatanMap
      * @param  Collection<string, RekeningBelanja>  $rekenings
      */
-    public function validateMasterReferences(array $arkasItems, array $kegiatanMap, Collection $rekenings): ?string
+    public function validateMasterReferences(array $arkasItems, array $kegiatanMap, Collection $rekenings, ?int $tahun = null): ?string
     {
         $missingKegiatan = [];
         $missingRekening = [];
@@ -282,7 +290,8 @@ class ArkasRkasSyncService
             return null;
         }
 
-        $errMsg = 'Terdapat referensi ARKAS yang belum terdaftar di newSIKAS: ';
+        $tahunLabel = $tahun ? " Tahun {$tahun}" : '';
+        $errMsg = "Terdapat referensi ARKAS{$tahunLabel} yang belum terdaftar di newSIKAS: ";
         if (! empty($missingKegiatan)) {
             $errMsg .= 'Kode Kegiatan: '.implode(', ', array_keys($missingKegiatan)).'. ';
         }
@@ -290,7 +299,7 @@ class ArkasRkasSyncService
             $errMsg .= 'Kode Rekening: '.implode(', ', array_keys($missingRekening)).'. ';
         }
 
-        return $errMsg.'Silakan sinkronkan Referensi Kode terlebih dahulu di menu Referensi.';
+        return $errMsg."Silakan sinkronkan Referensi Kode{$tahunLabel} terlebih dahulu di menu Referensi Kode.";
     }
 
     /**

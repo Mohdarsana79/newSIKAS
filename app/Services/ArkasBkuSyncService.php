@@ -98,11 +98,11 @@ class ArkasBkuSyncService
             throw new \Exception('Data RKAS belum ada di newSIKAS. Harap tarik atau isi data RKAS terlebih dahulu sebelum menarik BKU.');
         }
 
-        // 2. Preload master data kegiatan & rekening dengan normalisasi kode
+        // 2. Preload master data kegiatan & rekening khusus tahun anggaran ini dengan normalisasi kode
         $kegiatanByExact = [];
         $kegiatanByNorm = [];
         $kegiatanNormById = [];
-        foreach (KodeKegiatan::all() as $keg) {
+        foreach (KodeKegiatan::forYear($tahun)->get() as $keg) {
             $exact = trim((string) $keg->kode);
             $norm = $this->normalizeKodeKegiatan($exact);
             $kegiatanByExact[$exact] = $keg->id;
@@ -114,7 +114,7 @@ class ArkasBkuSyncService
 
         $rekeningByKode = [];
         $rekeningObjById = [];
-        foreach (RekeningBelanja::all() as $rek) {
+        foreach (RekeningBelanja::forYear($tahun)->get() as $rek) {
             $kodeRek = trim((string) $rek->kode_rekening);
             $rekeningByKode[$kodeRek] = $rek->id;
             $rekeningObjById[$rek->id] = $rek;

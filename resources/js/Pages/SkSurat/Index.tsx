@@ -12,11 +12,14 @@ import {
     Trash2,
     FolderPlus,
     Sparkles,
+    BookOpen,
 } from 'lucide-react';
 import FolderModal from './Partials/FolderModal';
 import ConfirmModal from './Partials/ConfirmModal';
 import FolderIconTile from './Partials/FolderIconTile';
+import TagReferenceModal from './Partials/TagReferenceModal';
 import { resolveFolderTheme } from './Partials/folderColors';
+import { canWriteSkSurat, SkTagGroup } from './Partials/types';
 import IconTile from '@/Components/ui/IconTile';
 import PageHeader from '@/Components/ui/PageHeader';
 import StatusBadge from '@/Components/ui/StatusBadge';
@@ -47,6 +50,7 @@ interface Props {
     totalDokumens: number;
     totalGenerated: number;
     totalUploaded: number;
+    tagCatalog?: SkTagGroup[];
 }
 
 export default function Index({
@@ -56,12 +60,14 @@ export default function Index({
     totalDokumens = 0,
     totalGenerated = 0,
     totalUploaded = 0,
+    tagCatalog = [],
 }: Props) {
     const { auth } = usePage<any>().props;
-    const isKepalaSekolah = auth?.user?.is_kepala_sekolah ?? false;
+    const isKepalaSekolah = !canWriteSkSurat(auth);
 
     const [search, setSearch] = useState(filters.search || '');
     const [showFolderModal, setShowFolderModal] = useState(false);
+    const [showTagReference, setShowTagReference] = useState(false);
     const [selectedFolder, setSelectedFolder] = useState<SkFolderItem | null>(null);
     const [activeDropdown, setActiveDropdown] = useState<number | null>(null);
 
@@ -117,15 +123,24 @@ export default function Index({
                     badge={<StatusBadge tone="violet">SK &amp; Surat</StatusBadge>}
                     subtitle="Kelola folder SK, buat surat dinamis dengan generator PHPWord, dan arsipkan dokumen fisik sekolah."
                     actions={
-                        !isKepalaSekolah ? (
+                        <>
                             <button
-                                onClick={handleOpenCreateModal}
-                                className="inline-flex items-center gap-1.5 rounded-2xl bg-lime-400 px-4 py-2.5 text-[11.5px] font-extrabold text-slate-950 shadow-lime transition hover:-translate-y-0.5 hover:bg-lime-300"
+                                onClick={() => setShowTagReference(true)}
+                                className="inline-flex items-center gap-1.5 rounded-2xl border border-brand-200 bg-brand-50 px-3.5 py-2.5 text-[11px] font-extrabold text-brand-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-brand-100 dark:border-brand-400/20 dark:bg-brand-500/15 dark:text-brand-300 dark:hover:bg-brand-500/20"
                             >
-                                <Plus className="w-4 h-4" />
-                                Buat Folder Baru
+                                <BookOpen className="w-4 h-4" />
+                                Referensi Tag
                             </button>
-                        ) : undefined
+                            {!isKepalaSekolah && (
+                                <button
+                                    onClick={handleOpenCreateModal}
+                                    className="inline-flex items-center gap-1.5 rounded-2xl bg-lime-400 px-4 py-2.5 text-[11.5px] font-extrabold text-slate-950 shadow-lime transition hover:-translate-y-0.5 hover:bg-lime-300"
+                                >
+                                    <Plus className="w-4 h-4" />
+                                    Buat Folder Baru
+                                </button>
+                            )}
+                        </>
                     }
                 />
 
@@ -300,6 +315,13 @@ export default function Index({
                     </div>
                 )}
             </div>
+
+            {/* Modal Referensi Tag SIKAS */}
+            <TagReferenceModal
+                show={showTagReference}
+                onClose={() => setShowTagReference(false)}
+                catalog={tagCatalog}
+            />
 
             {/* Modal Tambah/Edit Folder */}
             <FolderModal

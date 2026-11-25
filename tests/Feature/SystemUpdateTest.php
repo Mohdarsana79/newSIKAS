@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Config\PermissionCatalog;
+use App\Models\Role;
 use App\Models\User;
 use App\Services\SystemUpdaterService;
 use GuzzleHttp\Psr7\Response as Psr7Response;
@@ -54,6 +56,86 @@ class SystemUpdateTest extends TestCase
         $this->actingAs($kepalaSekolah)
             ->postJson(route('system-update.check'))
             ->assertStatus(403);
+
+        $this->actingAs($kepalaSekolah)
+            ->getJson(route('system-update.background-check'))
+            ->assertStatus(403);
+    }
+
+    public function test_background_check_respects_one_hour_cache_ttl_and_returns_update_summary(): void
+    {
+        $githubHits = 0;
+
+        Http::fake([
+            'api.github.com/*' => function () use (&$githubHits) {
+                $githubHits++;
+
+                return Http::response([
+                    'tag_name' => 'v2099.20',
+                    'name' => 'newSIKAS 2099.20',
+                    'body' => 'Patch baru tersedia.',
+                    'published_at' => '2026-11-23T12:00:00Z',
+                    'assets' => [],
+                ], 200);
+            },
+        ]);
+
+        $bendahara = User::factory()->create(['role' => 'bendahara']);
+
+        try {
+            $this->actingAs($bendahara)
+                ->getJson(route('system-update.background-check'))
+                ->assertOk()
+                ->assertJsonPath('success', true)
+                ->assertJsonPath('systemUpdate.hasUpdate', true)
+                ->assertJsonPath('systemUpdate.latestVersion', '2099.20');
+
+            // Panggilan kedua dalam jendela cache 1 jam tidak boleh memukul GitHub API lagi
+            $this->actingAs($bendahara)
+                ->getJson(route('system-update.background-check'))
+                ->assertOk()
+                ->assertJsonPath('systemUpdate.hasUpdate', true)
+                ->assertJsonPath('systemUpdate.latestVersion', '2099.20');
+
+            $this->assertSame(1, $githubHits);
+        } finally {
+            @unlink(storage_path('app/temp/update_check_cache.json'));
+        }
+    }
+
+    public function test_background_check_is_failsafe_offline_and_allows_custom_role_with_system_update_permission(): void
+    {
+        Http::fake([
+            'api.github.com/*' => fn () => throw new ConnectionException('Offline'),
+        ]);
+
+        $operatorRole = Role::create([
+            'slug' => 'operator_update',
+            'name' => 'Operator Update',
+            'description' => 'Dapat memantau & menjalankan pembaruan sistem',
+            'is_system' => false,
+            'permissions' => [
+                'modules' => [
+                    'dashboard' => PermissionCatalog::LEVEL_READ,
+                    'system_update' => PermissionCatalog::LEVEL_WRITE,
+                ],
+                'abilities' => [
+                    'rkas_review' => false,
+                    'rkas_approve' => false,
+                ],
+            ],
+        ]);
+
+        $operator = User::factory()->create([
+            'username' => 'op_update',
+            'role' => $operatorRole->slug,
+        ]);
+
+        $this->actingAs($operator)
+            ->getJson(route('system-update.background-check'))
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('systemUpdate.hasUpdate', false);
     }
 
     public function test_check_update_detects_newer_github_release_and_updates_shared_cache(): void

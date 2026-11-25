@@ -8,6 +8,7 @@ use App\Exports\BkpBankExport;
 use App\Models\Sts;
 use App\Services\BkuArkasDisplayService;
 use App\Services\BukuKasService;
+use App\Support\PdfPaperHelper;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -90,8 +91,8 @@ class BukuBankController extends Controller
 
             // Get Settings
             $paperSize = $request->input('paperSize', 'F4');
-            $orientation = $request->input('orientation', 'portrait');
-            $fontSize = $request->input('fontSize', '11pt');
+            $orientation = PdfPaperHelper::resolveOrientation($request->input('orientation'), 'portrait');
+            $fontSize = PdfPaperHelper::resolveFontSize($request->input('fontSize'), '11pt');
 
             Carbon::setLocale('id');
 
@@ -152,7 +153,10 @@ class BukuBankController extends Controller
                 'fontSize' => $fontSize,
             ]);
 
-            $pdf->setPaper($paperSize, $orientation);
+            $pdf->setPaper(
+                PdfPaperHelper::resolvePaper($paperSize, 'F4'),
+                PdfPaperHelper::resolveOrientation($orientation, 'portrait'),
+            );
 
             return $pdf->stream('BKP_Bank_'.$bulan.'_'.$tahun.'.pdf');
 

@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\SekolahProfile;
+use App\Services\ArkasEngineService;
 use App\Services\SystemUpdaterService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
@@ -66,6 +67,7 @@ class HandleInertiaRequests extends Middleware
                 },
             ],
             'systemUpdate' => fn () => app(SystemUpdaterService::class)->getSharedUpdateSummary(),
+            'arkasStatus' => fn () => app(ArkasEngineService::class)->getSharedStatusSummary(),
             'sekolah' => function () {
                 try {
                     if (! Schema::hasTable('sekolahs')) {

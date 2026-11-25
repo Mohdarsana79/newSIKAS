@@ -27,14 +27,16 @@ class ReferensiKodeSeeder extends Seeder
             return;
         }
 
+        $tahun = 2026;
         $items = json_decode(File::get($jsonPath), true) ?? [];
-        $existing = KodeKegiatan::pluck('id', 'kode')->toArray();
+        $existing = KodeKegiatan::forYear($tahun)->pluck('id', 'kode')->toArray();
         $inserts = [];
 
         foreach ($items as $item) {
             $kode = $item['id_kode'];
             if (! isset($existing[$kode])) {
                 $inserts[] = [
+                    'tahun' => $tahun,
                     'kode' => $kode,
                     'program' => $item['program'] ?? '',
                     'sub_program' => $item['sub_program'] ?? '',
@@ -43,7 +45,7 @@ class ReferensiKodeSeeder extends Seeder
                     'updated_at' => now(),
                 ];
             } else {
-                KodeKegiatan::where('kode', $kode)->update([
+                KodeKegiatan::forYear($tahun)->where('kode', $kode)->update([
                     'program' => $item['program'] ?? '',
                     'sub_program' => $item['sub_program'] ?? '',
                     'uraian' => $item['uraian_kode'] ?? '',
@@ -58,8 +60,8 @@ class ReferensiKodeSeeder extends Seeder
             }
         }
 
-        $total = KodeKegiatan::count();
-        $this->command?->info("Kode Kegiatan ARKAS selesai di-seed. Total: {$total} data.");
+        $total = KodeKegiatan::forYear($tahun)->count();
+        $this->command?->info("Kode Kegiatan ARKAS ({$tahun}) selesai di-seed. Total: {$total} data.");
     }
 
     protected function seedRekening(): void
@@ -71,8 +73,9 @@ class ReferensiKodeSeeder extends Seeder
             return;
         }
 
+        $tahun = 2026;
         $items = json_decode(File::get($jsonPath), true) ?? [];
-        $existing = RekeningBelanja::pluck('id', 'kode_rekening')->toArray();
+        $existing = RekeningBelanja::forYear($tahun)->pluck('id', 'kode_rekening')->toArray();
         $inserts = [];
 
         foreach ($items as $item) {
@@ -89,6 +92,7 @@ class ReferensiKodeSeeder extends Seeder
             }
 
             $payload = [
+                'tahun' => $tahun,
                 'kode_rekening' => $kode,
                 'rincian_objek' => $item['rekening'] ?? '',
                 'kategori' => $kategori,
@@ -105,7 +109,7 @@ class ReferensiKodeSeeder extends Seeder
                 $inserts[] = $payload;
             } else {
                 $payload['updated_at'] = now();
-                RekeningBelanja::where('kode_rekening', $kode)->update($payload);
+                RekeningBelanja::forYear($tahun)->where('kode_rekening', $kode)->update($payload);
             }
         }
 
@@ -115,7 +119,7 @@ class ReferensiKodeSeeder extends Seeder
             }
         }
 
-        $total = RekeningBelanja::count();
-        $this->command?->info("Rekening Belanja ARKAS selesai di-seed. Total: {$total} data.");
+        $total = RekeningBelanja::forYear($tahun)->count();
+        $this->command?->info("Rekening Belanja ARKAS ({$tahun}) selesai di-seed. Total: {$total} data.");
     }
 }

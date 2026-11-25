@@ -3,7 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\RefBarang;
+use App\Models\RefPtk;
 use App\Services\ArkasEngineService;
+use App\Services\RefPtkService;
+use App\Services\RefSatuanService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -59,7 +62,7 @@ class ArkasToolController extends Controller
             ->paginate($perPage)
             ->withQueryString();
 
-        // Transform item agar menyertakan status 'Sudah Ada'
+        // Transform item agar menyertakan status 'Sudah Ada' & flag kedaluwarsa
         $paginated->getCollection()->transform(function ($item) {
             return [
                 'id_barang' => $item->id_barang,
@@ -67,6 +70,9 @@ class ArkasToolController extends Controller
                 'kode_rekening' => $item->kode_rekening,
                 'rekening' => $item->rekening,
                 'satuan' => $item->satuan,
+                'blok_id' => $item->blok_id,
+                'kode_belanja' => $item->kode_belanja,
+                'is_expired' => (bool) $item->is_expired,
                 'batas_atas' => (float) $item->batas_atas,
                 'tahun' => (int) $item->tahun,
                 'status' => 'Sudah Ada',
@@ -123,6 +129,9 @@ class ArkasToolController extends Controller
                     'kode_rekening' => $item->kode_rekening,
                     'rekening' => $item->rekening,
                     'satuan' => $item->satuan,
+                    'blok_id' => $item->blok_id,
+                    'kode_belanja' => $item->kode_belanja,
+                    'is_expired' => (bool) $item->is_expired,
                     'batas_atas' => (float) $item->batas_atas,
                     'tahun' => (int) $item->tahun,
                     'status' => 'Sudah Ada',
@@ -148,6 +157,9 @@ class ArkasToolController extends Controller
                 'kode_rekening' => $item->kode_rekening,
                 'rekening' => $item->rekening,
                 'satuan' => $item->satuan,
+                'blok_id' => $item->blok_id,
+                'kode_belanja' => $item->kode_belanja,
+                'is_expired' => (bool) $item->is_expired,
                 'batas_atas' => (float) $item->batas_atas,
                 'tahun' => (int) $item->tahun,
                 'status' => 'Sudah Ada',
@@ -170,51 +182,214 @@ class ArkasToolController extends Controller
     }
 
     /**
-     * Pencarian katalog Uraian Arkas berdasarkan tahun anggaran & kode rekening untuk form RKAS / RKAS Perubahan.
+     * Pencarian katalog Uraian Arkas berdasarkan tahun anggaran, kode kegiatan, & kode rekening untuk form RKAS / RKAS Perubahan.
+     * Otomatis beralih ke daftar PTK (Guru/Tendik) untuk kombinasi kegiatan 07.12.* + rekening honor PTK, dengan switch cepat ke Katalog SSH.
      */
     public function byRekening(Request $request)
     {
         $year = (int) $request->input('year', date('Y'));
+        $kodeKegiatan = trim((string) $request->input('kode_kegiatan', ''));
         $kodeRekening = trim((string) $request->input('kode_rekening', ''));
         $keyword = trim((string) $request->input('keyword', ''));
         $idBarang = trim((string) $request->input('id_barang', ''));
         $uraianArkas = trim((string) $request->input('uraian_arkas', ''));
+        $source = strtolower(trim((string) $request->input('source', 'auto')));
+        $includeAllPtk = $request->boolean('include_all_ptk', false);
+
+        if (! in_array($source, ['auto', 'ptk', 'ssh'], true)) {
+            $source = 'auto';
+        }
 
         $yearSynced = RefBarang::where('tahun', $year)->exists();
+        $ptkService = app(RefPtkService::class);
+        $ptkContext = $ptkService->detectPtkContext($kodeKegiatan, $kodeRekening);
+        $supportsPtk = $ptkContext['is_ptk'];
+        $isHonorManual = $ptkContext['is_honor_manual'];
 
-        if (! $yearSynced || $kodeRekening === '') {
+        if ($kodeRekening === '') {
             return response()->json([
                 'status' => 'success',
                 'year' => $year,
+                'kode_kegiatan' => $kodeKegiatan,
                 'kode_rekening' => $kodeRekening,
                 'year_synced' => $yearSynced,
+                'catalog_mode' => 'ssh',
+                'is_honor_manual' => $isHonorManual,
+                'supports_ptk' => false,
+                'ptk_role_filter' => null,
+                'ptk_synced_year' => false,
+                'ptk_count' => 0,
+                'ptk_total_honorer' => 0,
+                'ssh_count' => 0,
+                'has_ssh_fallback' => false,
                 'has_rekening_catalog' => false,
                 'total_rekening_items' => 0,
                 'data' => [],
+                'ptk_items' => [],
                 'selected_item' => null,
+                'selected_ptk' => null,
             ]);
         }
 
-        $baseQuery = RefBarang::where('tahun', $year)
-            ->where('kode_rekening', $kodeRekening);
+        // Kegiatan 07.12.02. - 07.12.04. di ARKAS Desktop menggunakan ketik manual bebas (tanpa dropdown PTK / SSH)
+        if ($isHonorManual) {
+            return response()->json([
+                'status' => 'success',
+                'year' => $year,
+                'kode_kegiatan' => $kodeKegiatan,
+                'kode_rekening' => $kodeRekening,
+                'year_synced' => $yearSynced,
+                'catalog_mode' => 'manual',
+                'is_honor_manual' => true,
+                'is_buku_catalog' => false,
+                'supports_ptk' => false,
+                'ptk_role_filter' => null,
+                'ptk_synced_year' => false,
+                'ptk_count' => 0,
+                'ptk_total_honorer' => 0,
+                'ssh_count' => 0,
+                'has_ssh_fallback' => false,
+                'has_rekening_catalog' => false,
+                'total_rekening_items' => 0,
+                'data' => [],
+                'ptk_items' => [],
+                'selected_item' => null,
+                'selected_ptk' => null,
+            ]);
+        }
 
-        $totalRekeningItems = (clone $baseQuery)->count();
+        $isBukuCatalog = RefBarang::isBukuRekening($kodeRekening);
+        $sshBaseQuery = RefBarang::forRekeningCatalog($year, $kodeRekening, onlyActive: true);
+        $sshCount = $yearSynced ? (clone $sshBaseQuery)->count() : 0;
+
+        $ptkYearExists = RefPtk::forYear($year)->exists();
+        $ptkHonorerBase = RefPtk::forYear($year)->honorEligible();
+        $ptkTotalHonorer = (clone $ptkHonorerBase)->count();
+        $preferredJenis = $ptkContext['preferred_jenis'];
+
+        $ptkFilteredBase = clone $ptkHonorerBase;
+        if ($supportsPtk && ! $includeAllPtk && $preferredJenis !== null) {
+            $ptkFilteredBase->where('jenis_ptk_arkas', $preferredJenis);
+        }
+        $ptkCount = $supportsPtk ? (clone $ptkFilteredBase)->count() : 0;
+
+        // Untuk 07.12.01. + 5.1.02.02.01.0013, ARKAS Desktop HANYA menampilkan daftar PTK Guru (tanpa switch SSH)
+        if ($supportsPtk) {
+            $ptkQuery = clone $ptkFilteredBase;
+            if ($keyword !== '') {
+                $operator = DB::connection()->getDriverName() === 'pgsql' ? 'ILIKE' : 'LIKE';
+                $ptkQuery->where(function ($q) use ($operator, $keyword) {
+                    $q->where('nama', $operator, "%{$keyword}%")
+                        ->orWhere('nuptk', $operator, "%{$keyword}%");
+                });
+            }
+
+            $ptkItems = $ptkQuery
+                ->orderBy('nama')
+                ->orderBy('nuptk')
+                ->limit(150)
+                ->get()
+                ->map(static fn (RefPtk $ptk) => [
+                    'id' => $ptk->id,
+                    'ptk_id' => $ptk->ptk_id,
+                    'nuptk' => $ptk->nuptk,
+                    'nama' => $ptk->nama,
+                    'jenis_ptk_arkas' => $ptk->jenis_ptk_arkas,
+                    'jenis_label' => $ptk->jenis_label,
+                    'formatted_uraian' => $ptk->formatted_uraian_arkas,
+                    'sumber' => $ptk->sumber,
+                ])
+                ->values();
+
+            $selectedPtk = null;
+            if ($uraianArkas !== '') {
+                $needle = mb_strtolower($uraianArkas);
+                $matched = $ptkItems->first(function (array $row) use ($needle) {
+                    return mb_strtolower($row['formatted_uraian']) === $needle
+                        || mb_strtolower($row['nama']) === $needle;
+                });
+                $selectedPtk = $matched ?: null;
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'year' => $year,
+                'kode_kegiatan' => $kodeKegiatan,
+                'kode_rekening' => $kodeRekening,
+                'year_synced' => $yearSynced,
+                'catalog_mode' => 'ptk',
+                'is_honor_manual' => false,
+                'is_buku_catalog' => false,
+                'supports_ptk' => true,
+                'ptk_role_filter' => 'guru',
+                'ptk_synced_year' => $ptkYearExists,
+                'ptk_count' => $ptkCount,
+                'ptk_total_honorer' => $ptkTotalHonorer,
+                'ssh_count' => 0,
+                'has_ssh_fallback' => false,
+                'has_rekening_catalog' => true,
+                'total_rekening_items' => $ptkCount,
+                'data' => [],
+                'ptk_items' => $ptkItems,
+                'selected_item' => null,
+                'selected_ptk' => $selectedPtk,
+            ]);
+        }
+
+        if (! $yearSynced) {
+            return response()->json([
+                'status' => 'success',
+                'year' => $year,
+                'kode_kegiatan' => $kodeKegiatan,
+                'kode_rekening' => $kodeRekening,
+                'year_synced' => false,
+                'catalog_mode' => 'ssh',
+                'is_buku_catalog' => $isBukuCatalog,
+                'supports_ptk' => $supportsPtk,
+                'ptk_role_filter' => $ptkContext['role_filter'],
+                'ptk_synced_year' => $ptkYearExists,
+                'ptk_count' => $ptkCount,
+                'ptk_total_honorer' => $ptkTotalHonorer,
+                'ssh_count' => 0,
+                'has_ssh_fallback' => false,
+                'has_rekening_catalog' => false,
+                'total_rekening_items' => 0,
+                'data' => [],
+                'ptk_items' => [],
+                'selected_item' => null,
+                'selected_ptk' => null,
+            ]);
+        }
+
+        $totalRekeningItems = $sshCount;
         $hasRekeningCatalog = $totalRekeningItems > 0;
 
         if (! $hasRekeningCatalog) {
             return response()->json([
                 'status' => 'success',
                 'year' => $year,
+                'kode_kegiatan' => $kodeKegiatan,
                 'kode_rekening' => $kodeRekening,
                 'year_synced' => true,
+                'catalog_mode' => 'ssh',
+                'is_buku_catalog' => $isBukuCatalog,
+                'supports_ptk' => $supportsPtk,
+                'ptk_role_filter' => $ptkContext['role_filter'],
+                'ptk_synced_year' => $ptkYearExists,
+                'ptk_count' => $ptkCount,
+                'ptk_total_honorer' => $ptkTotalHonorer,
+                'ssh_count' => 0,
+                'has_ssh_fallback' => false,
                 'has_rekening_catalog' => false,
                 'total_rekening_items' => 0,
                 'data' => [],
+                'ptk_items' => [],
                 'selected_item' => null,
+                'selected_ptk' => null,
             ]);
         }
 
-        $itemsQuery = clone $baseQuery;
+        $itemsQuery = clone $sshBaseQuery;
         if ($keyword !== '') {
             $operator = DB::connection()->getDriverName() === 'pgsql' ? 'ILIKE' : 'LIKE';
             $itemsQuery->where(function ($q) use ($operator, $keyword) {
@@ -233,6 +408,8 @@ class ArkasToolController extends Controller
                 'kode_rekening' => $item->kode_rekening,
                 'rekening' => $item->rekening,
                 'satuan' => $item->satuan,
+                'blok_id' => $item->blok_id,
+                'kode_belanja' => $item->kode_belanja,
                 'batas_atas' => (float) $item->batas_atas,
                 'tahun' => (int) $item->tahun,
             ])
@@ -240,10 +417,10 @@ class ArkasToolController extends Controller
 
         $selectedModel = null;
         if ($idBarang !== '') {
-            $selectedModel = (clone $baseQuery)->where('id_barang', $idBarang)->first();
+            $selectedModel = (clone $sshBaseQuery)->where('id_barang', $idBarang)->first();
         }
         if (! $selectedModel && $uraianArkas !== '') {
-            $selectedModel = (clone $baseQuery)
+            $selectedModel = (clone $sshBaseQuery)
                 ->whereRaw('LOWER(TRIM(nama_barang)) = LOWER(TRIM(?))', [$uraianArkas])
                 ->first();
         }
@@ -254,6 +431,8 @@ class ArkasToolController extends Controller
             'kode_rekening' => $selectedModel->kode_rekening,
             'rekening' => $selectedModel->rekening,
             'satuan' => $selectedModel->satuan,
+            'blok_id' => $selectedModel->blok_id,
+            'kode_belanja' => $selectedModel->kode_belanja,
             'batas_atas' => (float) $selectedModel->batas_atas,
             'tahun' => (int) $selectedModel->tahun,
         ] : null;
@@ -261,12 +440,24 @@ class ArkasToolController extends Controller
         return response()->json([
             'status' => 'success',
             'year' => $year,
+            'kode_kegiatan' => $kodeKegiatan,
             'kode_rekening' => $kodeRekening,
             'year_synced' => true,
+            'catalog_mode' => 'ssh',
+            'is_buku_catalog' => $isBukuCatalog,
+            'supports_ptk' => $supportsPtk,
+            'ptk_role_filter' => $ptkContext['role_filter'],
+            'ptk_synced_year' => $ptkYearExists,
+            'ptk_count' => $ptkCount,
+            'ptk_total_honorer' => $ptkTotalHonorer,
+            'ssh_count' => $sshCount,
+            'has_ssh_fallback' => $sshCount > 0,
             'has_rekening_catalog' => true,
             'total_rekening_items' => $totalRekeningItems,
             'data' => $items,
+            'ptk_items' => [],
             'selected_item' => $selectedItem,
+            'selected_ptk' => null,
         ]);
     }
 
@@ -298,7 +489,7 @@ class ArkasToolController extends Controller
 
         // Ambil data referensi yang diperlukan saja untuk efisiensi memori
         $existingMap = [];
-        $localQuery->select(['id_barang', 'tahun', 'nama_barang', 'kode_rekening', 'rekening', 'satuan', 'batas_atas'])
+        $localQuery->select(['id_barang', 'tahun', 'nama_barang', 'kode_rekening', 'rekening', 'satuan', 'blok_id', 'kode_belanja', 'is_expired', 'batas_atas'])
             ->chunk(5000, function ($chunk) use (&$existingMap) {
                 foreach ($chunk as $row) {
                     $key = $row->id_barang.'_'.$row->tahun;
@@ -307,6 +498,9 @@ class ArkasToolController extends Controller
                         'kode_rekening' => $row->kode_rekening ?? '',
                         'rekening' => $row->rekening ?? '',
                         'satuan' => $row->satuan ?? '',
+                        'blok_id' => $row->blok_id ?? '',
+                        'kode_belanja' => $row->kode_belanja ?? '',
+                        'is_expired' => (bool) $row->is_expired,
                         'batas_atas' => (float) $row->batas_atas,
                     ];
                 }
@@ -328,6 +522,9 @@ class ArkasToolController extends Controller
             $arkasKode = ($item['kode_rekening'] !== null && $item['kode_rekening'] !== '') ? trim((string) $item['kode_rekening']) : '';
             $arkasRek = ($item['rekening'] !== null && $item['rekening'] !== '') ? trim((string) $item['rekening']) : '';
             $arkasSat = ($item['satuan'] !== null && $item['satuan'] !== '') ? trim((string) $item['satuan']) : '';
+            $arkasBlok = trim((string) ($item['blok_id'] ?? ''));
+            $arkasKodeBelanja = trim((string) ($item['kode_belanja'] ?? ''));
+            $arkasExpired = (bool) ($item['is_expired'] ?? false);
 
             if (! isset($existingMap[$key])) {
                 $item['status'] = 'Data Baru';
@@ -339,6 +536,9 @@ class ArkasToolController extends Controller
                 $lokalKode = trim((string) ($ex['kode_rekening'] ?? ''));
                 $lokalRek = trim((string) ($ex['rekening'] ?? ''));
                 $lokalSat = trim((string) ($ex['satuan'] ?? ''));
+                $lokalBlok = trim((string) ($ex['blok_id'] ?? ''));
+                $lokalKodeBelanja = trim((string) ($ex['kode_belanja'] ?? ''));
+                $lokalExpired = (bool) ($ex['is_expired'] ?? false);
                 $lokalBatas = (float) ($ex['batas_atas'] ?? 0);
 
                 $isChanged = (
@@ -346,6 +546,9 @@ class ArkasToolController extends Controller
                     $lokalKode !== $arkasKode ||
                     $lokalRek !== $arkasRek ||
                     $lokalSat !== $arkasSat ||
+                    $lokalBlok !== $arkasBlok ||
+                    $lokalKodeBelanja !== $arkasKodeBelanja ||
+                    $lokalExpired !== $arkasExpired ||
                     abs($lokalBatas - $itemBatasAtas) > 0.01
                 );
 
@@ -410,7 +613,7 @@ class ArkasToolController extends Controller
             $localQuery->where('tahun', (int) $year);
         }
 
-        $localQuery->select(['id_barang', 'tahun', 'nama_barang', 'kode_rekening', 'rekening', 'satuan', 'batas_atas'])
+        $localQuery->select(['id_barang', 'tahun', 'nama_barang', 'kode_rekening', 'rekening', 'satuan', 'blok_id', 'kode_belanja', 'is_expired', 'batas_atas'])
             ->chunk(5000, function ($chunk) use (&$existingMap) {
                 foreach ($chunk as $row) {
                     $key = $row->id_barang.'_'.$row->tahun;
@@ -419,6 +622,9 @@ class ArkasToolController extends Controller
                         'kode_rekening' => $row->kode_rekening ?? '',
                         'rekening' => $row->rekening ?? '',
                         'satuan' => $row->satuan ?? '',
+                        'blok_id' => $row->blok_id ?? '',
+                        'kode_belanja' => $row->kode_belanja ?? '',
+                        'is_expired' => (bool) $row->is_expired,
                         'batas_atas' => (float) $row->batas_atas,
                     ];
                 }
@@ -437,11 +643,16 @@ class ArkasToolController extends Controller
             $satuanVal = ($item['satuan'] !== null && $item['satuan'] !== '') ? (string) $item['satuan'] : null;
             $kodeRekVal = ($item['kode_rekening'] !== null && $item['kode_rekening'] !== '') ? (string) $item['kode_rekening'] : null;
             $rekeningVal = ($item['rekening'] !== null && $item['rekening'] !== '') ? (string) $item['rekening'] : null;
+            $blokIdVal = (isset($item['blok_id']) && trim((string) $item['blok_id']) !== '') ? trim((string) $item['blok_id']) : null;
+            $kodeBelanjaVal = (isset($item['kode_belanja']) && trim((string) $item['kode_belanja']) !== '') ? trim((string) $item['kode_belanja']) : null;
+            $isExpiredVal = (bool) ($item['is_expired'] ?? false);
 
             $arkasNama = trim((string) ($item['nama_barang'] ?? ''));
             $arkasKode = ($kodeRekVal !== null) ? trim($kodeRekVal) : '';
             $arkasRek = ($rekeningVal !== null) ? trim($rekeningVal) : '';
             $arkasSat = ($satuanVal !== null) ? trim($satuanVal) : '';
+            $arkasBlok = $blokIdVal ?? '';
+            $arkasKodeBelanja = $kodeBelanjaVal ?? '';
 
             if (! isset($existingMap[$key])) {
                 // Data Baru
@@ -451,6 +662,9 @@ class ArkasToolController extends Controller
                     'kode_rekening' => $kodeRekVal,
                     'rekening' => $rekeningVal,
                     'satuan' => $satuanVal,
+                    'blok_id' => $blokIdVal,
+                    'kode_belanja' => $kodeBelanjaVal,
+                    'is_expired' => $isExpiredVal,
                     'batas_atas' => $itemBatasAtas,
                     'tahun' => (int) $item['tahun'],
                     'created_at' => $now,
@@ -464,6 +678,9 @@ class ArkasToolController extends Controller
                 $lokalKode = trim((string) ($ex['kode_rekening'] ?? ''));
                 $lokalRek = trim((string) ($ex['rekening'] ?? ''));
                 $lokalSat = trim((string) ($ex['satuan'] ?? ''));
+                $lokalBlok = trim((string) ($ex['blok_id'] ?? ''));
+                $lokalKodeBelanja = trim((string) ($ex['kode_belanja'] ?? ''));
+                $lokalExpired = (bool) ($ex['is_expired'] ?? false);
                 $lokalBatas = (float) ($ex['batas_atas'] ?? 0);
 
                 $isChanged = (
@@ -471,6 +688,9 @@ class ArkasToolController extends Controller
                     $lokalKode !== $arkasKode ||
                     $lokalRek !== $arkasRek ||
                     $lokalSat !== $arkasSat ||
+                    $lokalBlok !== $arkasBlok ||
+                    $lokalKodeBelanja !== $arkasKodeBelanja ||
+                    $lokalExpired !== $isExpiredVal ||
                     abs($lokalBatas - $itemBatasAtas) > 0.01
                 );
 
@@ -481,6 +701,9 @@ class ArkasToolController extends Controller
                         'kode_rekening' => $kodeRekVal,
                         'rekening' => $rekeningVal,
                         'satuan' => $satuanVal,
+                        'blok_id' => $blokIdVal,
+                        'kode_belanja' => $kodeBelanjaVal,
+                        'is_expired' => $isExpiredVal,
                         'batas_atas' => $itemBatasAtas,
                         'tahun' => (int) $item['tahun'],
                         'created_at' => $now,
@@ -499,7 +722,7 @@ class ArkasToolController extends Controller
                     DB::table('ref_barangs')->upsert(
                         $chunk,
                         ['id_barang', 'tahun'], // Unique constraint
-                        ['nama_barang', 'kode_rekening', 'rekening', 'satuan', 'batas_atas', 'updated_at'] // Kolom yang diupdate
+                        ['nama_barang', 'kode_rekening', 'rekening', 'satuan', 'blok_id', 'kode_belanja', 'is_expired', 'batas_atas', 'updated_at'] // Kolom yang diupdate
                     );
                 }
                 DB::commit();
@@ -514,17 +737,25 @@ class ArkasToolController extends Controller
             }
         }
 
+        // Ikut sinkronkan data PTK (Guru & Tendik) serta satuan baku ARKAS secara aman
+        $ptkSync = app(RefPtkService::class)->syncFromArkasSilently($year);
+        app(RefSatuanService::class)->syncFromArkasSilently();
+
         $msg = "Berhasil menyinkronkan $syncedNewCount data baru";
         if ($syncedUpdatedCount > 0) {
             $msg .= " dan memperbarui $syncedUpdatedCount data yang berubah";
         }
         $msg .= ' ke database lokal.';
+        if (($ptkSync['status'] ?? null) === 'success' && ((int) ($ptkSync['inserted'] ?? 0) + (int) ($ptkSync['updated'] ?? 0)) > 0) {
+            $msg .= " (PTK: {$ptkSync['inserted']} baru, {$ptkSync['updated']} diperbarui)";
+        }
 
         return response()->json([
             'status' => 'success',
             'message' => $msg,
             'synced' => $syncedNewCount,
             'updated' => $syncedUpdatedCount,
+            'ptk_sync' => $ptkSync,
         ]);
     }
 

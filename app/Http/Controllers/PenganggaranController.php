@@ -3,11 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Config\VariantConfig;
-use App\Models\KodeKegiatan;
 use App\Models\Penganggaran;
-use App\Models\RekeningBelanja;
 use App\Models\SekolahProfile;
 use App\Services\ArkasEngineService;
+use App\Services\ReferensiKodeService;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -117,13 +116,15 @@ class PenganggaranController extends Controller
             }
         }
 
-        $canCreate = SekolahProfile::exists() && KodeKegiatan::exists() && RekeningBelanja::exists();
+        $canCreate = SekolahProfile::exists();
+        $referensiStatsPerYear = app(ReferensiKodeService::class)->getStatsPerYear();
 
         return $this->renderVariant('Penganggaran/Index', [
             'items' => $items,
             'anggarans' => $anggarans, // passing raw data too if needed
             'official_history' => $this->buildOfficialHistory($anggarans),
             'can_create' => $canCreate,
+            'referensi_stats_per_year' => $referensiStatsPerYear,
         ]);
     }
 

@@ -6,6 +6,7 @@ import { PageProps } from '@/types';
 import useVariantRoute from '@/Hooks/useVariantRoute';
 import ChangelogModal from '@/Components/ChangelogModal';
 import Toast from '@/Components/Toast';
+import UpdateAvailableToast from '@/Components/UpdateAvailableToast';
 import CopilotDrawer from '@/Components/Ai/CopilotDrawer';
 
 export type CopilotWindowState = 'closed' | 'normal' | 'minimized' | 'maximized';
@@ -86,6 +87,7 @@ export default function Authenticated({
     return (
         <div className="sikas-canvas min-h-screen font-sans text-slate-900 antialiased selection:bg-lime-200 selection:text-slate-950 dark:text-slate-100 dark:selection:bg-lime-400/30 dark:selection:text-white">
             <Toast />
+            <UpdateAvailableToast sidebarOpen={sidebarOpen} />
             <ChangelogModal />
             <CopilotDrawer
                 copilotState={copilotState}
@@ -110,7 +112,7 @@ export default function Authenticated({
                     setCopilotState={setCopilotState}
                 />
 
-                <main className="flex-1 overflow-x-hidden">
+                <main className="flex-1 overflow-x-clip">
                     <div className="px-3 pb-6 pt-5 sm:px-4 sm:pt-6 lg:px-5">{children}</div>
                 </main>
             </div>

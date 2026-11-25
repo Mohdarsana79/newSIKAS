@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Config\VariantConfig;
 use App\Models\SkDokumen;
 use App\Models\SkFolder;
 use App\Models\SkTemplate;
 use App\Services\SkSuratService;
+use App\Services\SkSuratTagService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -26,9 +29,12 @@ class SkSuratController extends Controller
 
     protected SkSuratService $skSuratService;
 
-    public function __construct(SkSuratService $skSuratService)
+    protected SkSuratTagService $skSuratTagService;
+
+    public function __construct(SkSuratService $skSuratService, SkSuratTagService $skSuratTagService)
     {
         $this->skSuratService = $skSuratService;
+        $this->skSuratTagService = $skSuratTagService;
     }
 
     /**
@@ -58,6 +64,7 @@ class SkSuratController extends Controller
             'totalDokumens' => SkDokumen::count(),
             'totalGenerated' => SkDokumen::where('tipe', 'generated')->count(),
             'totalUploaded' => SkDokumen::where('tipe', 'uploaded')->count(),
+            'tagCatalog' => $this->skSuratTagService->variableCatalog(true),
         ]);
     }
 
@@ -205,12 +212,90 @@ class SkSuratController extends Controller
             },
         ])->findOrFail($id);
 
+        $folder->templates->each(function (SkTemplate $tpl): void {
+            $tpl->setAttribute(
+                'variable_classification',
+                $this->skSuratTagService->classifyTemplateVariables($tpl->detected_variables ?? [])
+            );
+        });
+
         $schoolData = $this->skSuratService->getSchoolAutoFillData();
 
         return Inertia::render('SkSurat/Show', [
             'folder' => $folder,
             'schoolData' => $schoolData,
+            'tagCatalog' => $this->skSuratTagService->variableCatalog(true),
             'filters' => $request->only('search', 'tipe'),
+        ]);
+    }
+
+    /**
+     * Katalog lengkap referensi tag SK & Surat (JSON).
+     */
+    public function tagCatalog(): JsonResponse
+    {
+        abort_unless(auth()->user()?->canAccessModule('sk_surat', 'read'), 403);
+
+        return response()->json([
+            'catalog' => $this->skSuratTagService->variableCatalog(true),
+        ]);
+    }
+
+    /**
+     * Opsi sumber data dinamis (Penganggaran 4 varian, Belanja BKU, Penerimaan Dana, Data PTK).
+     */
+    public function dataSourceOptions(Request $request): JsonResponse
+    {
+        abort_unless(auth()->user()?->canAccessModule('sk_surat', 'read'), 403);
+
+        $options = $this->skSuratTagService->getSourceOptions($request->only([
+            'variant',
+            'penganggaran_id',
+            'tahun',
+            'bulan',
+            'search',
+            'ptk_tahun',
+        ]));
+
+        return response()->json($options);
+    }
+
+    /**
+     * Resolusi nilai otomatis tag teks & preview tabel dinamis berdasarkan konteks sumber data terpilih.
+     */
+    public function resolveDataSourceTags(Request $request): JsonResponse
+    {
+        abort_unless(auth()->user()?->canAccessModule('sk_surat', 'read'), 403);
+
+        $validated = $request->validate([
+            'variant' => 'nullable|string|in:'.implode(',', VariantConfig::VARIANTS),
+            'penganggaran_id' => 'nullable|integer',
+            'bku_id' => 'nullable|integer',
+            'bku_ids' => 'nullable|array',
+            'bku_ids.*' => 'integer',
+            'penerimaan_id' => 'nullable|integer',
+            'ptk_id' => 'nullable|integer',
+            'ptk_ids' => 'nullable|array',
+            'ptk_ids.*' => 'integer',
+            'tanggal_surat' => 'nullable|string|max:50',
+            'nomor_surat' => 'nullable|string|max:255',
+            'perihal' => 'nullable|string|max:255',
+            'auto_default' => 'nullable|boolean',
+            'required_sources' => 'nullable|array',
+            'required_sources.*' => 'string|max:40',
+        ]);
+
+        $resolved = $this->skSuratTagService->resolveTagValues($validated);
+
+        return response()->json([
+            'text' => $resolved['text'],
+            'table_rows' => $resolved['table_rows'],
+            'resolved_context' => $resolved['resolved_context'],
+            'has_images' => [
+                'kop_surat' => $resolved['images']['kop_surat'] !== null,
+                'logo_sekolah' => $resolved['images']['logo_sekolah'] !== null,
+                'logo_daerah' => $resolved['images']['logo_daerah'] !== null,
+            ],
         ]);
     }
 
@@ -234,7 +319,9 @@ class SkSuratController extends Controller
         $storedPath = $file->store('sk_surat/templates', 'local');
 
         try {
-            $report = $this->skSuratService->extractVariableReport($localDisk->path($storedPath));
+            $fullPath = $localDisk->path($storedPath);
+            $this->skSuratTagService->assertSafeDocxArchive($fullPath);
+            $report = $this->skSuratService->extractVariableReport($fullPath);
         } catch (\Throwable $e) {
             if ($storedPath && $localDisk->exists($storedPath)) {
                 $localDisk->delete($storedPath);
@@ -341,6 +428,39 @@ class SkSuratController extends Controller
     }
 
     /**
+     * Simpan pemetaan referensi tag yang dipilih pengguna pada master template.
+     */
+    public function updateTemplateTagMapping(Request $request, $id): JsonResponse
+    {
+        abort_unless(auth()->user()?->canAccessModule('sk_surat', 'write'), 403, 'Akses ditolak. Akun Anda tidak memiliki izin kelola SK & Surat.');
+
+        $template = SkTemplate::findOrFail($id);
+
+        $validated = $request->validate([
+            'text_map' => 'nullable|array',
+            'text_map.*' => 'nullable|string|max:120',
+            'enabled_tags' => 'nullable|array',
+            'enabled_tags.*' => 'string|max:120',
+            'enabled_tables' => 'nullable|array',
+            'enabled_tables.*' => 'string|in:item,ptk,belanja',
+            'enabled_images' => 'nullable|array',
+            'enabled_images.*' => 'string|in:kop_surat,logo_sekolah,logo_daerah',
+        ]);
+
+        $cleanMapping = $this->sanitizeTagMappingPayload($validated);
+
+        $template->update([
+            'tag_mappings' => $cleanMapping,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Pemetaan referensi tag berhasil disimpan pada master template.',
+            'tag_mappings' => $cleanMapping,
+        ]);
+    }
+
+    /**
      * Store dynamic document generated from template.
      */
     public function storeDokumen(Request $request, $folderId)
@@ -355,6 +475,7 @@ class SkSuratController extends Controller
             'nomor_surat' => 'nullable|string|max:255',
             'tanggal_surat' => 'nullable|date',
             'data_isian' => 'nullable|array',
+            'sumber_data' => 'nullable|array',
             'keterangan' => 'nullable|string|max:1000',
         ]);
 
@@ -370,11 +491,21 @@ class SkSuratController extends Controller
             }
         }
 
+        $validated['sumber_data'] = $this->sanitizeAndSnapshotSumberData($request->input('sumber_data'));
         $validated['folder_id'] = $folder->id;
         $validated['tipe'] = 'generated';
         $validated['created_by'] = auth()->id();
 
         SkDokumen::create($validated);
+
+        if ($request->boolean('save_template_mapping') && is_array($request->input('sumber_data.tag_mappings'))) {
+            $tpl = SkTemplate::find($validated['template_id']);
+            if ($tpl) {
+                $tpl->update([
+                    'tag_mappings' => $this->sanitizeTagMappingPayload($request->input('sumber_data.tag_mappings')),
+                ]);
+            }
+        }
 
         return back()->with('success', 'Dokumen surat berhasil dibuat.');
     }
@@ -393,6 +524,7 @@ class SkSuratController extends Controller
             'nomor_surat' => 'nullable|string|max:255',
             'tanggal_surat' => 'nullable|date',
             'data_isian' => 'nullable|array',
+            'sumber_data' => 'nullable|array',
             'keterangan' => 'nullable|string|max:1000',
         ]);
 
@@ -407,9 +539,149 @@ class SkSuratController extends Controller
             }
         }
 
+        if ($request->has('sumber_data')) {
+            $validated['sumber_data'] = $this->sanitizeAndSnapshotSumberData($request->input('sumber_data'));
+        }
+
         $dokumen->update($validated);
 
+        if ($request->boolean('save_template_mapping') && $dokumen->template_id && is_array($request->input('sumber_data.tag_mappings'))) {
+            $tpl = SkTemplate::find($dokumen->template_id);
+            if ($tpl) {
+                $tpl->update([
+                    'tag_mappings' => $this->sanitizeTagMappingPayload($request->input('sumber_data.tag_mappings')),
+                ]);
+            }
+        }
+
         return back()->with('success', 'Data dokumen berhasil diperbarui.');
+    }
+
+    /**
+     * Sanitasi struktur pemetaan referensi tag yang dipilih pengguna.
+     *
+     * @param  array<string, mixed>  $raw
+     * @return array{
+     *   text_map: array<string, string>,
+     *   enabled_tags: array<int, string>,
+     *   enabled_tables: array<int, string>,
+     *   enabled_images: array<int, string>
+     * }
+     */
+    protected function sanitizeTagMappingPayload(array $raw): array
+    {
+        $textMap = [];
+        foreach (is_array($raw['text_map'] ?? null) ? $raw['text_map'] : [] as $tplTag => $refKey) {
+            $k = trim((string) $tplTag);
+            $v = trim((string) ($refKey ?? ''));
+            if ($k !== '' && $v !== '') {
+                $textMap[$k] = $v;
+            }
+        }
+
+        $enabledTags = array_values(array_unique(array_filter(
+            array_map(fn ($v) => trim((string) $v), is_array($raw['enabled_tags'] ?? null) ? $raw['enabled_tags'] : []),
+            fn ($v) => $v !== ''
+        )));
+
+        $allowedTables = ['item', 'ptk', 'belanja'];
+        $enabledTables = array_values(array_unique(array_filter(
+            array_map(fn ($v) => trim((string) $v), is_array($raw['enabled_tables'] ?? null) ? $raw['enabled_tables'] : []),
+            fn ($v) => in_array($v, $allowedTables, true)
+        )));
+
+        $allowedImages = ['kop_surat', 'logo_sekolah', 'logo_daerah'];
+        $enabledImages = array_values(array_unique(array_filter(
+            array_map(fn ($v) => trim((string) $v), is_array($raw['enabled_images'] ?? null) ? $raw['enabled_images'] : []),
+            fn ($v) => in_array($v, $allowedImages, true)
+        )));
+
+        return [
+            'text_map' => $textMap,
+            'enabled_tags' => $enabledTags,
+            'enabled_tables' => $enabledTables,
+            'enabled_images' => $enabledImages,
+        ];
+    }
+
+    /**
+     * Sanitasi konteks sumber data & buat snapshot baris tabel dinamis di sisi server.
+     *
+     * @return array<string, mixed>|null
+     */
+    protected function sanitizeAndSnapshotSumberData(mixed $rawSumberData): ?array
+    {
+        if (! is_array($rawSumberData) || $rawSumberData === []) {
+            return null;
+        }
+
+        $rawVariant = (string) ($rawSumberData['variant'] ?? '');
+        $variant = in_array($rawVariant, VariantConfig::VARIANTS, true)
+            ? $rawVariant
+            : VariantConfig::REGULER;
+
+        $clean = [
+            'variant' => $variant,
+            'penganggaran_id' => ! empty($rawSumberData['penganggaran_id']) && is_numeric($rawSumberData['penganggaran_id'])
+                ? (int) $rawSumberData['penganggaran_id']
+                : null,
+            'bku_id' => ! empty($rawSumberData['bku_id']) && is_numeric($rawSumberData['bku_id'])
+                ? (int) $rawSumberData['bku_id']
+                : null,
+            'bku_ids' => is_array($rawSumberData['bku_ids'] ?? null)
+                ? array_values(array_unique(array_filter(array_map('intval', $rawSumberData['bku_ids']), fn ($id) => $id > 0)))
+                : [],
+            'penerimaan_id' => ! empty($rawSumberData['penerimaan_id']) && is_numeric($rawSumberData['penerimaan_id'])
+                ? (int) $rawSumberData['penerimaan_id']
+                : null,
+            'ptk_id' => ! empty($rawSumberData['ptk_id']) && is_numeric($rawSumberData['ptk_id'])
+                ? (int) $rawSumberData['ptk_id']
+                : null,
+            'ptk_ids' => is_array($rawSumberData['ptk_ids'] ?? null)
+                ? array_values(array_unique(array_filter(array_map('intval', $rawSumberData['ptk_ids']), fn ($id) => $id > 0)))
+                : [],
+        ];
+
+        $hasTagMappings = is_array($rawSumberData['tag_mappings'] ?? null);
+        if ($hasTagMappings) {
+            $mapping = $this->sanitizeTagMappingPayload($rawSumberData['tag_mappings']);
+            $clean['tag_mappings'] = $mapping;
+            $clean['enabled_tables'] = $mapping['enabled_tables'];
+            $clean['enabled_images'] = $mapping['enabled_images'];
+        } else {
+            if (array_key_exists('enabled_tables', $rawSumberData) && is_array($rawSumberData['enabled_tables'])) {
+                $clean['enabled_tables'] = array_values(array_intersect(['item', 'ptk', 'belanja'], array_map('strval', $rawSumberData['enabled_tables'])));
+            }
+            if (array_key_exists('enabled_images', $rawSumberData) && is_array($rawSumberData['enabled_images'])) {
+                $clean['enabled_images'] = array_values(array_intersect(['kop_surat', 'logo_sekolah', 'logo_daerah'], array_map('strval', $rawSumberData['enabled_images'])));
+            }
+        }
+
+        $hasAnyBinding = $clean['penganggaran_id'] !== null
+            || $clean['bku_id'] !== null
+            || $clean['bku_ids'] !== []
+            || $clean['penerimaan_id'] !== null
+            || $clean['ptk_id'] !== null
+            || $clean['ptk_ids'] !== []
+            || $hasTagMappings;
+
+        if (! $hasAnyBinding) {
+            return null;
+        }
+
+        $resolved = $this->skSuratTagService->resolveTagValues($clean);
+        $tableRows = $resolved['table_rows'];
+        if (array_key_exists('enabled_tables', $clean)) {
+            $allowed = array_flip($clean['enabled_tables']);
+            foreach (array_keys($tableRows) as $groupKey) {
+                if (! isset($allowed[$groupKey])) {
+                    $tableRows[$groupKey] = [];
+                }
+            }
+        }
+        $clean['table_rows'] = $tableRows;
+
+        return $clean;
     }
 
     /**

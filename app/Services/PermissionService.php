@@ -105,9 +105,19 @@ class PermissionService
         $slug = $user->role ?: 'bendahara';
         $roleModel = $this->getRoleBySlug($slug);
 
-        $basePermissions = $roleModel && is_array($roleModel->permissions)
-            ? $roleModel->permissions
-            : PermissionCatalog::defaultPermissionsForRole($slug);
+        $defaultPermissions = PermissionCatalog::defaultPermissionsForRole($slug);
+
+        if ($roleModel && is_array($roleModel->permissions)) {
+            $basePermissions = $roleModel->permissions;
+
+            // Pastikan modul baru yang belum ada pada JSON role sistem lama mewarisi default role sistemnya
+            if ($roleModel->is_system) {
+                $storedModules = is_array($basePermissions['modules'] ?? null) ? $basePermissions['modules'] : [];
+                $basePermissions['modules'] = array_merge($defaultPermissions['modules'], $storedModules);
+            }
+        } else {
+            $basePermissions = $defaultPermissions;
+        }
 
         $normalized = PermissionCatalog::normalizePermissions(
             $basePermissions,

@@ -20,6 +20,7 @@ class SkDokumen extends Model
         'perihal',
         'tanggal_surat',
         'data_isian',
+        'sumber_data',
         'file_path',
         'file_name_original',
         'keterangan',
@@ -28,6 +29,7 @@ class SkDokumen extends Model
 
     protected $casts = [
         'data_isian' => 'array',
+        'sumber_data' => 'array',
         'tanggal_surat' => 'date',
     ];
 

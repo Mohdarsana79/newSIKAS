@@ -9,12 +9,20 @@ def find_arkas_db(manual_path=None):
     """
     Mencari file arkas.db secara dinamis.
     Jika manual_path diberikan, gunakan itu dulu.
+    Bila ARKAS_STRICT_PATH=1, jangan pernah fallback ke folder lokal server jika manual_path tidak ditemukan.
     """
+    strict_mode = os.environ.get('ARKAS_STRICT_PATH', '') == '1'
+
     if manual_path:
         # Bersihkan tanda petik dan spasi liar
         manual_path = manual_path.strip().strip('"').strip("'")
         if os.path.exists(manual_path):
             return manual_path
+        if strict_mode:
+            return None
+
+    if strict_mode:
+        return None
 
     # Strategi 1: Dari APPDATA environment variable
     appdata = os.environ.get('APPDATA', '')
@@ -82,6 +90,32 @@ def main():
 
         has_year_filter = (year and year.upper() != 'ALL')
 
+        if keyword == '__VERIFY__':
+            cursor.execute("SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('anggaran', 'ref_acuan_barang', 'kas_umum')")
+            tables = {row[0] for row in cursor.fetchall()}
+            if not tables:
+                conn.close()
+                print(json.dumps({
+                    'status': 'error',
+                    'error': 'File SQLite terbaca, tetapi tidak memiliki tabel inti database ARKAS (anggaran/ref_acuan_barang).'
+                }))
+                sys.exit(1)
+
+            years = []
+            try:
+                if 'anggaran' in tables:
+                    cursor.execute("SELECT DISTINCT tahun_anggaran FROM anggaran WHERE tahun_anggaran IS NOT NULL AND soft_delete = 0 ORDER BY tahun_anggaran DESC")
+                    years = [str(row[0]) for row in cursor.fetchall() if row[0] is not None]
+                if not years and 'ref_acuan_barang' in tables:
+                    cursor.execute("SELECT DISTINCT tahun FROM ref_acuan_barang WHERE tahun IS NOT NULL ORDER BY tahun DESC")
+                    years = [str(row[0]) for row in cursor.fetchall() if row[0] is not None]
+            except Exception:
+                years = []
+
+            conn.close()
+            print(json.dumps({'status': 'success', 'years': years, 'tables': sorted(list(tables)), 'db_path': db_path}))
+            return
+
         if keyword == '__YEARS__':
             cursor.execute("SELECT DISTINCT tahun FROM ref_acuan_barang WHERE tahun IS NOT NULL ORDER BY tahun DESC")
             years = [str(row[0]) for row in cursor.fetchall() if row[0] is not None]
@@ -92,7 +126,17 @@ def main():
         if keyword == '__ALL__':
             if has_year_filter:
                 query = """
-                    SELECT a.id_barang, a.nama_barang, a.kode_rekening, b.rekening, a.satuan, a.batas_atas, a.tahun
+                    SELECT
+                        a.id_barang,
+                        a.nama_barang,
+                        a.kode_rekening,
+                        b.rekening,
+                        a.satuan,
+                        a.blok_id,
+                        a.kode_belanja,
+                        CASE WHEN a.expired_date IS NOT NULL AND TRIM(CAST(a.expired_date AS TEXT)) != '' THEN 1 ELSE 0 END AS is_expired,
+                        a.batas_atas,
+                        a.tahun
                     FROM ref_acuan_barang AS a
                     LEFT JOIN ref_rekening AS b ON a.kode_rekening = b.kode_rekening AND a.tahun = b.tahun
                     WHERE a.tahun = ?
@@ -101,7 +145,17 @@ def main():
                 cursor.execute(query, (int(year),))
             else:
                 query = """
-                    SELECT a.id_barang, a.nama_barang, a.kode_rekening, b.rekening, a.satuan, a.batas_atas, a.tahun
+                    SELECT
+                        a.id_barang,
+                        a.nama_barang,
+                        a.kode_rekening,
+                        b.rekening,
+                        a.satuan,
+                        a.blok_id,
+                        a.kode_belanja,
+                        CASE WHEN a.expired_date IS NOT NULL AND TRIM(CAST(a.expired_date AS TEXT)) != '' THEN 1 ELSE 0 END AS is_expired,
+                        a.batas_atas,
+                        a.tahun
                     FROM ref_acuan_barang AS a
                     LEFT JOIN ref_rekening AS b ON a.kode_rekening = b.kode_rekening AND a.tahun = b.tahun
                     ORDER BY a.nama_barang, a.tahun
@@ -110,7 +164,17 @@ def main():
         else:
             if has_year_filter:
                 query = """
-                    SELECT a.id_barang, a.nama_barang, a.kode_rekening, b.rekening, a.satuan, a.batas_atas, a.tahun
+                    SELECT
+                        a.id_barang,
+                        a.nama_barang,
+                        a.kode_rekening,
+                        b.rekening,
+                        a.satuan,
+                        a.blok_id,
+                        a.kode_belanja,
+                        CASE WHEN a.expired_date IS NOT NULL AND TRIM(CAST(a.expired_date AS TEXT)) != '' THEN 1 ELSE 0 END AS is_expired,
+                        a.batas_atas,
+                        a.tahun
                     FROM ref_acuan_barang AS a
                     LEFT JOIN ref_rekening AS b ON a.kode_rekening = b.kode_rekening AND a.tahun = b.tahun
                     WHERE a.nama_barang LIKE ? AND a.tahun = ?
@@ -120,7 +184,17 @@ def main():
                 cursor.execute(query, (f'%{keyword}%', int(year)))
             else:
                 query = """
-                    SELECT a.id_barang, a.nama_barang, a.kode_rekening, b.rekening, a.satuan, a.batas_atas, a.tahun
+                    SELECT
+                        a.id_barang,
+                        a.nama_barang,
+                        a.kode_rekening,
+                        b.rekening,
+                        a.satuan,
+                        a.blok_id,
+                        a.kode_belanja,
+                        CASE WHEN a.expired_date IS NOT NULL AND TRIM(CAST(a.expired_date AS TEXT)) != '' THEN 1 ELSE 0 END AS is_expired,
+                        a.batas_atas,
+                        a.tahun
                     FROM ref_acuan_barang AS a
                     LEFT JOIN ref_rekening AS b ON a.kode_rekening = b.kode_rekening AND a.tahun = b.tahun
                     WHERE a.nama_barang LIKE ?
@@ -138,6 +212,7 @@ def main():
             # Format batas_atas jika None jadi 0
             if row_dict.get('batas_atas') is None:
                 row_dict['batas_atas'] = 0
+            row_dict['is_expired'] = bool(row_dict.get('is_expired'))
             results.append(row_dict)
 
         conn.close()

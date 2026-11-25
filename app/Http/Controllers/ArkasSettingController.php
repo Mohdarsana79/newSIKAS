@@ -2,10 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\ArkasAgentScriptGenerator;
+use App\Services\ArkasChunkUploadService;
 use App\Services\ArkasEngineService;
+use App\Services\ArkasStateStore;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\File;
@@ -14,36 +18,76 @@ use Illuminate\Support\Str;
 class ArkasSettingController extends Controller
 {
     /**
-     * Mengambil path & status sumber database ARKAS saat ini.
+     * Mengambil path, mode aktif, status sumber database ARKAS, metadata upload & status Agent Sync.
      */
-    public function getPath(ArkasEngineService $arkasEngine): JsonResponse
-    {
+    public function getPath(
+        ArkasEngineService $arkasEngine,
+        ArkasStateStore $stateStore,
+        ArkasChunkUploadService $chunkService
+    ): JsonResponse {
         $resolved = $arkasEngine->resolveDatabaseSource();
         $uploadedPath = $arkasEngine->getUploadedDbPath();
         $meta = $this->uploadedFileMetadata($uploadedPath);
+        $lastUpload = $stateStore->getLastUpload();
 
         return response()->json([
             'path' => (string) config('arkas.db_path', ''),
+            'active_mode' => $resolved['active_mode'],
             'active_path' => $resolved['path'],
             'source' => $resolved['source'],
             'exists' => $resolved['exists'],
             'uploaded_exists' => $meta['exists'],
-            'uploaded_at' => $meta['uploaded_at'],
+            'uploaded_at' => $lastUpload['uploaded_at'] ?? $meta['uploaded_at'],
             'uploaded_size' => $meta['uploaded_size'],
-            'max_upload_mb' => (int) config('arkas.max_upload_mb', 100),
+            'last_upload' => $meta['exists'] ? $lastUpload : null,
+            'agent' => $stateStore->getAgentSummary(),
+            'max_upload_mb' => $chunkService->getMaxUploadMb(),
+            'chunk_size_mb' => $chunkService->getChunkSizeMb(),
         ]);
     }
 
     /**
-     * Menyimpan path arkas baru ke .env dan menyinkronkan config cache bila aktif.
+     * Mengubah mode aktif sumber database ARKAS secara eksplisit ('local' atau 'online').
      */
-    public function savePath(Request $request, ArkasEngineService $arkasEngine): JsonResponse
-    {
+    public function setMode(
+        Request $request,
+        ArkasEngineService $arkasEngine,
+        ArkasStateStore $stateStore
+    ): JsonResponse {
+        $validated = $request->validate([
+            'mode' => ['required', 'in:local,online'],
+        ]);
+
+        $mode = $stateStore->setActiveMode((string) $validated['mode']);
+        $resolved = $arkasEngine->resolveDatabaseSource();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => $mode === ArkasStateStore::MODE_ONLINE
+                ? 'Mode Online / VPS berhasil diaktifkan.'
+                : 'Mode PC Lokal berhasil diaktifkan.',
+            'active_mode' => $mode,
+            'source' => $resolved['source'],
+            'exists' => $resolved['exists'],
+            'active_path' => $resolved['path'],
+        ]);
+    }
+
+    /**
+     * Menyimpan path arkas lokal ke .env, mengaktifkan Mode PC Lokal (default), dan menyinkronkan config cache bila aktif.
+     */
+    public function savePath(
+        Request $request,
+        ArkasEngineService $arkasEngine,
+        ArkasStateStore $stateStore
+    ): JsonResponse {
         $request->validate([
             'path' => 'nullable|string',
+            'activate_local' => 'nullable|boolean',
         ]);
 
         $path = $arkasEngine->normalizePath($request->input('path', ''));
+        $activateLocal = $request->boolean('activate_local', true);
 
         try {
             $this->updateDotEnv('ARKAS_DB_PATH', $path);
@@ -53,12 +97,19 @@ class ArkasSettingController extends Controller
                 Artisan::call('config:clear');
             }
 
+            if ($activateLocal) {
+                $stateStore->setActiveMode(ArkasStateStore::MODE_LOCAL);
+            }
+
             $resolved = $arkasEngine->resolveDatabaseSource();
 
             return response()->json([
                 'status' => 'success',
-                'message' => 'Path Arkas berhasil diperbarui.',
+                'message' => $activateLocal
+                    ? 'Mode PC Lokal diaktifkan & path Arkas berhasil diperbarui.'
+                    : 'Path Arkas berhasil diperbarui.',
                 'path' => $path,
+                'active_mode' => $resolved['active_mode'],
                 'source' => $resolved['source'],
                 'exists' => $resolved['exists'],
             ]);
@@ -71,17 +122,77 @@ class ArkasSettingController extends Controller
     }
 
     /**
-     * Mengunggah file arkas.db langsung melalui browser (untuk mode VPS / online tanpa akses folder lokal klien).
+     * Inisialisasi sesi unggah chunked arkas.db dari browser.
      */
-    public function uploadDb(Request $request, ArkasEngineService $arkasEngine): JsonResponse
+    public function uploadInit(Request $request, ArkasChunkUploadService $chunkService): JsonResponse
     {
-        $maxKb = max(1, (int) config('arkas.max_upload_mb', 100)) * 1024;
+        $validated = $request->validate([
+            'filename' => ['required', 'string', 'max:255'],
+            'total_size' => ['required', 'integer', 'min:1'],
+            'chunk_size' => ['required', 'integer', 'min:65536'],
+            'total_chunks' => ['required', 'integer', 'min:1'],
+            'sha256' => ['nullable', 'string', 'size:64'],
+        ]);
+
+        $result = $chunkService->initUpload($validated);
+
+        return response()->json($result, (int) ($result['http_status'] ?? 200));
+    }
+
+    /**
+     * Menerima satu potongan (chunk) arkas.db dari browser.
+     */
+    public function uploadChunk(Request $request, ArkasChunkUploadService $chunkService): JsonResponse
+    {
+        $validated = $request->validate([
+            'upload_id' => ['required', 'string', 'max:64'],
+            'chunk_index' => ['required', 'integer', 'min:0'],
+            'chunk' => ['required', 'file'],
+        ]);
+
+        $result = $chunkService->storeChunk(
+            (string) $validated['upload_id'],
+            (int) $validated['chunk_index'],
+            $request->file('chunk')
+        );
+
+        return response()->json($result, (int) ($result['http_status'] ?? 200));
+    }
+
+    /**
+     * Menggabungkan seluruh potongan dan memverifikasi arkas.db dari browser.
+     */
+    public function uploadFinalize(Request $request, ArkasChunkUploadService $chunkService): JsonResponse
+    {
+        $validated = $request->validate([
+            'upload_id' => ['required', 'string', 'max:64'],
+        ]);
+
+        $userName = $request->user()?->name ?: ($request->user()?->username ?: 'Browser');
+        $result = $chunkService->finalizeUpload((string) $validated['upload_id'], [
+            'via' => 'browser',
+            'device_name' => 'Browser Web',
+            'uploaded_by' => $userName,
+        ]);
+
+        return response()->json($result, (int) ($result['http_status'] ?? 200));
+    }
+
+    /**
+     * Legacy single-request upload arkas.db (dipertahankan untuk backward-compatibility).
+     */
+    public function uploadDb(
+        Request $request,
+        ArkasEngineService $arkasEngine,
+        ArkasStateStore $stateStore
+    ): JsonResponse {
+        $maxKb = max(1, (int) config('arkas.max_upload_mb', 500)) * 1024;
 
         $request->validate([
             'arkas_db' => ['required', 'file', 'max:'.$maxKb],
         ], [
             'arkas_db.required' => 'Pilih file arkas.db terlebih dahulu.',
-            'arkas_db.max' => 'Ukuran file melebihi batas maksimal ('.config('arkas.max_upload_mb', 100).' MB).',
+            'arkas_db.max' => 'Ukuran file melebihi batas maksimal ('.config('arkas.max_upload_mb', 500).' MB).',
         ]);
 
         $uploadedFile = $request->file('arkas_db');
@@ -104,7 +215,6 @@ class ArkasSettingController extends Controller
         try {
             $uploadedFile->move($tempDir, $tempFileName);
 
-            // Verifikasi bahwa file benar-benar SQLite/SQLCipher ARKAS yang dapat didekripsi (jika engine tersedia)
             $verification = $arkasEngine->verifyDatabaseFile($tempPath);
             if (! $verification['valid']) {
                 @unlink($tempPath);
@@ -137,12 +247,25 @@ class ArkasSettingController extends Controller
                 @unlink($tempPath);
             }
 
+            $sha256 = strtolower((string) hash_file('sha256', $destinationPath));
+            $userName = $request->user()?->name ?: ($request->user()?->username ?: 'Browser');
+            $stateStore->recordUpload([
+                'uploaded_at' => Carbon::now()->toIso8601String(),
+                'size_bytes' => (int) filesize($destinationPath),
+                'sha256' => $sha256,
+                'via' => 'browser',
+                'device_name' => 'Browser Web',
+                'uploaded_by' => $userName,
+                'years' => $verification['years'] ?? [],
+            ]);
+
             $meta = $this->uploadedFileMetadata($destinationPath);
 
             return response()->json([
                 'status' => 'success',
                 'message' => 'Database arkas.db berhasil diunggah dan diverifikasi.',
                 'years' => $verification['years'] ?? [],
+                'active_mode' => $stateStore->getActiveMode(),
                 'uploaded_exists' => $meta['exists'],
                 'uploaded_at' => $meta['uploaded_at'],
                 'uploaded_size' => $meta['uploaded_size'],
@@ -162,7 +285,7 @@ class ArkasSettingController extends Controller
     /**
      * Menghapus file arkas.db hasil unggahan di server.
      */
-    public function removeUploadedDb(ArkasEngineService $arkasEngine): JsonResponse
+    public function removeUploadedDb(ArkasEngineService $arkasEngine, ArkasStateStore $stateStore): JsonResponse
     {
         $uploadedPath = $arkasEngine->getUploadedDbPath();
 
@@ -175,10 +298,74 @@ class ArkasSettingController extends Controller
             }
         }
 
+        $stateStore->clearLastUpload();
+
         return response()->json([
             'status' => 'success',
             'message' => 'File unggahan arkas.db di server berhasil dihapus.',
             'uploaded_exists' => false,
+        ]);
+    }
+
+    /**
+     * Mengatur atau memperbarui PIN Sinkronisasi (4-6 digit angka) untuk Agent Tool.
+     */
+    public function saveAgentPin(Request $request, ArkasStateStore $stateStore): JsonResponse
+    {
+        $validated = $request->validate([
+            'pin' => ['required', 'string', 'regex:/^\d{4,6}$/'],
+        ], [
+            'pin.required' => 'PIN Sinkronisasi wajib diisi.',
+            'pin.regex' => 'PIN Sinkronisasi harus terdiri dari 4 sampai 6 digit angka.',
+        ]);
+
+        $stateStore->setAgentPin((string) $validated['pin']);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'PIN Sinkronisasi Agent berhasil disimpan.',
+            'agent' => $stateStore->getAgentSummary(),
+        ]);
+    }
+
+    /**
+     * Menghasilkan Sync Token baru (menonaktifkan file .bat lama) dan mengunduh SIKAS-Arkas-Sync.bat.
+     */
+    public function downloadAgentScript(
+        Request $request,
+        ArkasStateStore $stateStore,
+        ArkasChunkUploadService $chunkService,
+        ArkasAgentScriptGenerator $generator
+    ): Response|JsonResponse {
+        if (! $stateStore->hasAgentPin()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Atur PIN Sinkronisasi (4-6 digit) terlebih dahulu sebelum mengunduh Agent Tool.',
+            ], 422);
+        }
+
+        $plainToken = $stateStore->rotateAgentToken();
+        $serverBaseUrl = $request->getSchemeAndHttpHost();
+        $script = $generator->generateBatScript($serverBaseUrl, $plainToken, $chunkService->getChunkSizeMb());
+
+        return response($script, 200, [
+            'Content-Type' => 'application/octet-stream',
+            'Content-Disposition' => 'attachment; filename="SIKAS-Arkas-Sync.bat"',
+            'Cache-Control' => 'no-store, no-cache, must-revalidate',
+        ]);
+    }
+
+    /**
+     * Mencabut Sync Token Agent seketika sehingga file .bat lama tidak lagi dapat mengakses server.
+     */
+    public function revokeAgentToken(ArkasStateStore $stateStore): JsonResponse
+    {
+        $stateStore->revokeAgentToken();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Akses Agent Sync berhasil dicabut. File SIKAS-Arkas-Sync.bat sebelumnya tidak lagi berlaku.',
+            'agent' => $stateStore->getAgentSummary(),
         ]);
     }
 

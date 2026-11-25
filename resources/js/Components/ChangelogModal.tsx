@@ -61,6 +61,33 @@ export default function ChangelogModal() {
                             <li>
                                 <span className="font-medium">Penambahan Fitur Akses Jaringan :</span> Penambahan fitur akses jaringan atau mode online. sekarang newSIKAS bisa di onlinekan menggunakan ip public, hosting, ngrok dan kawan-kawan, vps, ataupun server lokal milik sekolah. hal ini di perlukan untuk membantu sekolah dalam akses jaringan newSIKAS agar bisa di akses dari luar jaringan sekolah.
                             </li>
+                            <li>
+                                <span className="font-medium">Penambahan Cek Anggaran :</span> Penambahan Cek anggaran pada input penganggaran baru untuk mengecek anggaran langsung dari ARKAS.
+                            </li>
+                            <li>
+                                <span className="font-medium">Penambahan Cek Penerimaan Dana :</span> Penambahan cek penerimaan dana dari ARKAS.
+                            </li>
+                            <li>
+                                <span className="font-medium">Penambahan Auto Backup :</span> Penambahan Auto Backup pada sistem agar data lebih aman dan tidak mudah hilang.
+                            </li>
+                            <li>
+                                <span className="font-medium">Penambahan Poster Transparansi :</span> Penambahan poster transparansi yang dapat di cetak guna untuk transparansi dana BOSP.
+                            </li>
+                            <li>
+                                <span className="font-medium">Penambahan Halaman Transparansi :</span> Penambahan halaman transparansi agar masyarakat dapat melihat langsung penggunaan dana BOSP yang telah di realisasikan.
+                            </li>
+                            <li>
+                                <span className="font-medium">Penambahan tools syncron arkas :</span> Penambahan tools sikas-arkas.bat untuk syncron data arkas secara online jika newSIKAS di onlinekan menggunakan vps atau cloudeFlare Tunnel.
+                            </li>
+                            <li>
+                                <span className="font-medium">Penambahan Notifikasi Update Aplikasi :</span> Penambahan Notifikasi update aplikasi apa bila tersedia versi terbaru.
+                            </li>
+                            <li>
+                                <span className="font-medium">Penambahan Form Pengaduan :</span> Penambahan form pengaduan pada halaman beranda untuk menghubungi pengembang.
+                            </li>
+                            <li>
+                                <span className="font-medium">Penambahan halaman Cetak SPJ :</span> Penambahan halaman Cetak SPJ yang berguna untuk mencetak cover dan laporan SPJ.
+                            </li>
                         </ul>
                     </div>
 
@@ -77,6 +104,7 @@ export default function ChangelogModal() {
                             <li><span className="font-medium">Perbaikan Penganggaran dan Penatausahaan:</span> Perbaikan pada fitur penganggaran dan penatausahaan. jika pengguna ingin menggunakan kop sekolah pada penganggaran dan penatausahaan maka sistem akan mengizinkan hal tersebut dengan mengikuti pilihan yang telah di simpan pada kop sekolah builder. </li>
                             <li><span className="font-medium">Perbaikan pada mode dark:</span> Perbaikan pada Mode Dark agar lebih nyaman dan halus. </li>
                             <li><span className="font-medium">Perbaikan Tarik Data Arkas:</span> Perbaikan penarikan data arkas untuk menyandingkan uraian arkas dengan uraian sikas. penyandingan ini berfungsi agar data arkas yang di tarik newSIKAS tidak akan menimpa data yang sudah ada di newSIKAS. hal ini juga berfungsi sebagai dasar pengguna untuk input data pada arkas lokal sehingga minim kesalahan. </li>
+                            <li><span className="font-medium">Perbaikan Upload Arkas.db:</span> Perbaikan Upload Arkas.db Saat Mode Online dan offline. </li>
                         </ul>
                     </div>
                 </div>

@@ -7,12 +7,23 @@ use Symfony\Component\Process\Process;
 
 class ArkasEngineService
 {
+    public function __construct(
+        protected ?ArkasStateStore $stateStore = null
+    ) {
+        $this->stateStore = $stateStore ?? new ArkasStateStore;
+    }
+
     /**
      * Cache per-request environment variables resolved via PowerShell so we don't spawn PowerShell repeatedly.
      *
      * @var array<string, string>|null
      */
     protected ?array $cachedWindowsEnv = null;
+
+    public function stateStore(): ArkasStateStore
+    {
+        return $this->stateStore;
+    }
 
     /**
      * Normalize a configured or submitted file path.
@@ -33,33 +44,59 @@ class ArkasEngineService
     }
 
     /**
-     * Resolve the effective arkas.db path and source without throwing.
+     * Resolve the effective arkas.db path and source strictly according to active_mode ('local' vs 'online').
      *
-     * Priority:
-     * 1. Explicit override / configured ARKAS_DB_PATH (if file exists)
-     * 2. Uploaded arkas.db in storage/app/arkas_uploads/arkas.db (VPS mode)
-     * 3. Configured ARKAS_DB_PATH even if missing (so user receives explicit invalid-path feedback)
-     * 4. Local Windows auto-detection (%APPDATA%\Arkas\arkas.db or C:\Users\*\AppData\...\Arkas\arkas.db)
-     *
-     * @return array{path: string, source: 'manual'|'uploaded'|'manual_missing'|'auto'|'none', exists: bool}
+     * @return array{path: string, source: 'manual'|'uploaded'|'manual_missing'|'uploaded_missing'|'auto'|'none', active_mode: 'local'|'online', exists: bool}
      */
     public function resolveDatabaseSource(?string $overridePath = null): array
     {
-        $manualPath = $this->normalizePath($overridePath !== null ? $overridePath : (string) config('arkas.db_path', ''));
+        $activeMode = $this->stateStore->getActiveMode();
+
+        if ($overridePath !== null) {
+            $normalizedOverride = $this->normalizePath($overridePath);
+            if ($normalizedOverride !== '' && is_file($normalizedOverride)) {
+                return [
+                    'path' => $normalizedOverride,
+                    'source' => 'manual',
+                    'active_mode' => $activeMode,
+                    'exists' => true,
+                ];
+            }
+
+            return [
+                'path' => $normalizedOverride,
+                'source' => $normalizedOverride !== '' ? 'manual_missing' : 'none',
+                'active_mode' => $activeMode,
+                'exists' => false,
+            ];
+        }
+
+        if ($activeMode === ArkasStateStore::MODE_ONLINE) {
+            $uploadPath = $this->getUploadedDbPath();
+            if ($uploadPath !== '' && is_file($uploadPath)) {
+                return [
+                    'path' => $uploadPath,
+                    'source' => 'uploaded',
+                    'active_mode' => ArkasStateStore::MODE_ONLINE,
+                    'exists' => true,
+                ];
+            }
+
+            return [
+                'path' => $uploadPath,
+                'source' => 'uploaded_missing',
+                'active_mode' => ArkasStateStore::MODE_ONLINE,
+                'exists' => false,
+            ];
+        }
+
+        $manualPath = $this->normalizePath((string) config('arkas.db_path', ''));
 
         if ($manualPath !== '' && is_file($manualPath)) {
             return [
                 'path' => $manualPath,
                 'source' => 'manual',
-                'exists' => true,
-            ];
-        }
-
-        $uploadPath = $this->getUploadedDbPath();
-        if ($uploadPath !== '' && is_file($uploadPath)) {
-            return [
-                'path' => $uploadPath,
-                'source' => 'uploaded',
+                'active_mode' => ArkasStateStore::MODE_LOCAL,
                 'exists' => true,
             ];
         }
@@ -68,6 +105,7 @@ class ArkasEngineService
             return [
                 'path' => $manualPath,
                 'source' => 'manual_missing',
+                'active_mode' => ArkasStateStore::MODE_LOCAL,
                 'exists' => false,
             ];
         }
@@ -77,6 +115,7 @@ class ArkasEngineService
             return [
                 'path' => $autoDetected,
                 'source' => 'auto',
+                'active_mode' => ArkasStateStore::MODE_LOCAL,
                 'exists' => true,
             ];
         }
@@ -84,7 +123,48 @@ class ArkasEngineService
         return [
             'path' => '',
             'source' => 'none',
+            'active_mode' => ArkasStateStore::MODE_LOCAL,
             'exists' => false,
+        ];
+    }
+
+    /**
+     * Lightweight status summary safe to share via HandleInertiaRequests (no Python process spawned).
+     *
+     * @return array{active_mode: 'local'|'online', source: string, exists: bool}
+     */
+    public function getSharedStatusSummary(): array
+    {
+        $activeMode = $this->stateStore->getActiveMode();
+
+        if ($activeMode === ArkasStateStore::MODE_ONLINE) {
+            $uploadPath = $this->getUploadedDbPath();
+            $exists = $uploadPath !== '' && is_file($uploadPath);
+
+            return [
+                'active_mode' => ArkasStateStore::MODE_ONLINE,
+                'source' => $exists ? 'uploaded' : 'uploaded_missing',
+                'exists' => $exists,
+            ];
+        }
+
+        $manualPath = $this->normalizePath((string) config('arkas.db_path', ''));
+        if ($manualPath !== '') {
+            $exists = is_file($manualPath);
+
+            return [
+                'active_mode' => ArkasStateStore::MODE_LOCAL,
+                'source' => $exists ? 'manual' : 'manual_missing',
+                'exists' => $exists,
+            ];
+        }
+
+        $autoDetected = $this->autoDetectWindowsDatabasePathFast();
+
+        return [
+            'active_mode' => ArkasStateStore::MODE_LOCAL,
+            'source' => $autoDetected !== null ? 'auto' : 'none',
+            'exists' => $autoDetected !== null,
         ];
     }
 
@@ -157,13 +237,15 @@ class ArkasEngineService
      * Execute an ARKAS Python script and return its decoded JSON response (never throws on missing DB/engine).
      *
      * @param  array<int, string>  $args
+     * @param  array<string, string>  $extraEnv
      * @return array<string, mixed>
      */
     public function runScriptRaw(
         string $scriptName,
         array $args = [],
         int $timeout = 60,
-        ?string $overridePath = null
+        ?string $overridePath = null,
+        array $extraEnv = []
     ): array {
         $engineDir = rtrim((string) config('arkas.engine_dir', storage_path('app/arkas_engine')), '\\/');
         $pythonExe = PHP_OS_FAMILY === 'Windows' ? 'python.exe' : 'python3';
@@ -181,9 +263,11 @@ class ArkasEngineService
 
         $resolved = $this->resolveDatabaseSource($overridePath);
         if (! $resolved['exists']) {
-            $missingMsg = $resolved['source'] === 'manual_missing'
-                ? "Database arkas.db tidak ditemukan pada jalur manual: {$resolved['path']}. Silakan periksa jalur file atau unggah file arkas.db melalui menu Path Arkas."
-                : 'Database arkas.db tidak ditemukan di server ini. Jika berjalan di VPS/server online, silakan unggah file arkas.db melalui menu Path Arkas.';
+            $missingMsg = match ($resolved['source']) {
+                'manual_missing' => "Database arkas.db tidak ditemukan pada jalur manual: {$resolved['path']}. Silakan periksa jalur file pada tab Mode PC Lokal di menu Path Arkas.",
+                'uploaded_missing' => 'Mode Online / VPS sedang aktif, tetapi belum ada file arkas.db yang diunggah ke server. Silakan unggah file arkas.db atau jalankan Agent Sync pada menu Path Arkas.',
+                default => 'Database arkas.db tidak ditemukan di server ini. Atur jalur lokal pada tab Mode PC Lokal atau aktifkan Mode Online / VPS dan unggah file arkas.db di menu Path Arkas.',
+            };
 
             return [
                 'status' => 'error',
@@ -194,8 +278,9 @@ class ArkasEngineService
         }
 
         $command = array_merge([$pythonPath, $scriptPath], $args, [$resolved['path']]);
+        $env = array_merge($this->buildExecutionEnvironment(), $extraEnv);
 
-        $process = new Process($command, null, $this->buildExecutionEnvironment());
+        $process = new Process($command, null, $env);
         $process->setTimeout($timeout);
         $process->run();
 
@@ -269,7 +354,13 @@ class ArkasEngineService
             ];
         }
 
-        $result = $this->runScriptRaw('query.py', ['__YEARS__', 'ALL'], 20, $normalized);
+        $result = $this->runScriptRaw(
+            'query.py',
+            ['__VERIFY__', 'ALL'],
+            60,
+            $normalized,
+            ['ARKAS_STRICT_PATH' => '1']
+        );
 
         if (($result['status'] ?? null) === 'success') {
             return [
@@ -329,6 +420,46 @@ class ArkasEngineService
             'valid' => true,
             'years' => [],
         ];
+    }
+
+    /**
+     * Ultra-fast Windows filesystem check without spawning PowerShell (safe for every Inertia request).
+     */
+    protected function autoDetectWindowsDatabasePathFast(): ?string
+    {
+        if (PHP_OS_FAMILY !== 'Windows') {
+            return null;
+        }
+
+        $candidates = [];
+        $appdata = (string) ($_SERVER['APPDATA'] ?? getenv('APPDATA') ?: '');
+        $userprofile = (string) ($_SERVER['USERPROFILE'] ?? getenv('USERPROFILE') ?: '');
+
+        if ($appdata !== '') {
+            $candidates[] = rtrim($appdata, '\\/').DIRECTORY_SEPARATOR.'Arkas'.DIRECTORY_SEPARATOR.'arkas.db';
+        }
+        if ($userprofile !== '') {
+            $candidates[] = rtrim($userprofile, '\\/').DIRECTORY_SEPARATOR.'AppData'.DIRECTORY_SEPARATOR.'Roaming'.DIRECTORY_SEPARATOR.'Arkas'.DIRECTORY_SEPARATOR.'arkas.db';
+        }
+
+        foreach ($candidates as $candidate) {
+            if (is_file($candidate)) {
+                return $this->normalizePath($candidate);
+            }
+        }
+
+        $systemDrive = rtrim((string) ($_SERVER['SystemDrive'] ?? getenv('SystemDrive') ?: 'C:'), '\\/');
+        foreach ([
+            $systemDrive.'/Users/*/AppData/Roaming/Arkas/arkas.db',
+            $systemDrive.'/Users/*/AppData/Local/Arkas/arkas.db',
+        ] as $pattern) {
+            $matches = glob($pattern);
+            if (is_array($matches) && ! empty($matches[0]) && is_file($matches[0])) {
+                return $this->normalizePath($matches[0]);
+            }
+        }
+
+        return null;
     }
 
     /**

@@ -442,7 +442,7 @@ export default function NotificationDropdown() {
                                     aria-hidden="true"
                                     className="flex h-7 w-7 items-center justify-center rounded-xl border border-lime-400/30 bg-lime-400/15 text-lime-300"
                                 >
-                                    <Sparkles className="h-3.5 w-3.5" />
+                                    <Bell className="h-4 w-4" aria-hidden="true" />
                                 </span>
                                 <div>
                                     <div className="flex items-center gap-2">

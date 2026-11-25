@@ -8,6 +8,7 @@ use App\Models\BukuKasUmumUraianDetail;
 use App\Models\SekolahProfile;
 use App\Models\SpjTemplate;
 use App\Services\SpjTemplateService;
+use App\Support\PdfPaperHelper;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -400,14 +401,10 @@ class BastController extends Controller
 
             $terbilangText = ucwords($this->convertToText($totalKeseluruhan).' Rupiah');
 
-            $fontSize = $request->query('fontSize', '11pt');
+            $fontSize = PdfPaperHelper::resolveFontSize($request->query('fontSize', '11pt'), '11pt');
             $paperSize = $request->query('paperSize', 'A4');
-            $paperConfig = match ($paperSize) {
-                'F4' => [0, 0, 612.00, 936.00],
-                'Letter' => 'letter',
-                'Legal' => 'legal',
-                default => 'a4',
-            };
+            $orientation = PdfPaperHelper::resolveOrientation($request->query('orientation'), 'portrait');
+            $paperConfig = PdfPaperHelper::resolvePaper($paperSize, 'A4');
 
             $data = [
                 'bast' => $bast,
@@ -421,7 +418,7 @@ class BastController extends Controller
             ];
 
             $pdf = Pdf::loadView('pelengkap.bast_pdf', $data);
-            $pdf->setPaper($paperConfig, 'portrait');
+            $pdf->setPaper($paperConfig, $orientation);
 
             if ($isPreview) {
                 return response($pdf->output(), 200)

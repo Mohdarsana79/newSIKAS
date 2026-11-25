@@ -7,6 +7,7 @@ use App\Models\Penganggaran;
 use App\Models\Sekolah;
 use App\Models\SekolahProfile;
 use App\Services\BukuKasService;
+use App\Support\PdfPaperHelper;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -505,8 +506,8 @@ class BeritaAcaraPenutupanController extends Controller
 
             $printSettings = [
                 'ukuran_kertas' => request()->input('paperSize', 'A4'),
-                'orientasi' => request()->input('orientation', 'portrait'),
-                'font_size' => request()->input('fontSize', '11pt'),
+                'orientasi' => PdfPaperHelper::resolveOrientation(request()->input('orientation'), 'portrait'),
+                'font_size' => PdfPaperHelper::resolveFontSize(request()->input('fontSize'), '11pt'),
             ];
 
             $data = [
@@ -517,7 +518,10 @@ class BeritaAcaraPenutupanController extends Controller
 
             $pdf = Pdf::loadView('laporan.berita_acara_pemeriksaan_kas_pdf', $data);
 
-            $pdf->setPaper($printSettings['ukuran_kertas'], $printSettings['orientasi']);
+            $pdf->setPaper(
+                PdfPaperHelper::resolvePaper($printSettings['ukuran_kertas'], 'A4'),
+                PdfPaperHelper::resolveOrientation($printSettings['orientasi'], 'portrait'),
+            );
 
             $pdf->setOptions([
                 'defaultFont' => 'Arial',

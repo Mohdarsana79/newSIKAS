@@ -1,0 +1,22 @@
+{
+    "agent": {
+        "pin_hash": "$2y$12$PiZRphnLYmHTZOpjPPTMueulL4/U6TWRYennlukE1h4XjqqsowfOK",
+        "pin_updated_at": "2026-11-23T03:42:31+00:00",
+        "token_hash": null,
+        "token_created_at": null
+    },
+    "last_upload": {
+        "uploaded_at": "2026-11-23T03:43:28+00:00",
+        "size_bytes": 30830592,
+        "sha256": "a9d1f19a33d1208faa7d80d48eeda8a885c92dd6e2f11aca6d91466a062fe57c",
+        "via": "agent",
+        "device_name": "WIN-JFSS710S4B5",
+        "uploaded_by": "Agent Sync (WIN-JFSS710S4B5)",
+        "years": [
+            "2027",
+            "2026",
+            "2025",
+            "2024"
+        ]
+    }
+}

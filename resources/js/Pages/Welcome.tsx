@@ -8,6 +8,7 @@ import Navbar from '@/Components/Landing/Navbar';
 import StatsSection from '@/Components/Landing/StatsSection';
 import { createEmptyWelcomeSummary, type WelcomeSummaryData } from '@/Components/Landing/types';
 import VideoGuideModal from '@/Components/Landing/VideoGuideModal';
+import WhatsAppComplaintWidget from '@/Components/Landing/WhatsAppComplaintWidget';
 import WhySection from '@/Components/Landing/WhySection';
 import { PageProps } from '@/types';
 
@@ -22,6 +23,7 @@ import { PageProps } from '@/types';
  */
 export default function Welcome({
     auth,
+    sekolah,
     hasUsers,
     welcomeData,
 }: PageProps<{
@@ -85,6 +87,8 @@ export default function Welcome({
                 authenticated={authenticated}
                 hasUsers={hasUsers}
             />
+
+            <WhatsAppComplaintWidget defaultSchoolName={sekolah?.nama_sekolah} />
         </div>
     );
 }

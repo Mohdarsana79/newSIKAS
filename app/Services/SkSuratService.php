@@ -6,7 +6,6 @@ use App\Models\Penganggaran;
 use App\Models\SekolahProfile;
 use App\Models\SkDokumen;
 use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpWord\TemplateProcessor;
 use Symfony\Component\Process\ExecutableFinder;
 use Symfony\Component\Process\Process;
@@ -233,34 +232,35 @@ class SkSuratService
     }
 
     /**
-     * Get auto-fill default data from school profile and penganggaran.
+     * Get auto-fill default data from school profile and latest penganggaran.
      */
     public function getSchoolAutoFillData(): array
     {
         $sekolah = SekolahProfile::first();
         $penganggaran = Penganggaran::latest('tahun_anggaran')->first();
 
-        $namaKepalaSekolah = $penganggaran->nama_kepala_sekolah ?? '';
-        $nipKepalaSekolah = $penganggaran->nip_kepala_sekolah ?? '';
-        $namaBendahara = $penganggaran->nama_bendahara ?? '';
-        $nipBendahara = $penganggaran->nip_bendahara ?? '';
-        $tahunAnggaran = $penganggaran->tahun_anggaran ?? date('Y');
+        $namaKepalaSekolah = (string) ($penganggaran->kepala_sekolah ?? '');
+        $nipKepalaSekolah = (string) ($penganggaran->nip_kepala_sekolah ?? '');
+        $namaBendahara = (string) ($penganggaran->bendahara ?? '');
+        $nipBendahara = (string) ($penganggaran->nip_bendahara ?? '');
+        $namaKomite = (string) ($penganggaran->komite ?? '');
+        $tahunAnggaran = (string) ($penganggaran->tahun_anggaran ?? date('Y'));
 
         return [
-            'nama_sekolah' => $sekolah->nama_sekolah ?? '',
-            'npsn' => $sekolah->npsn ?? '',
-            'status_sekolah' => $sekolah->status_sekolah ?? '',
-            'jenjang_sekolah' => $sekolah->jenjang_sekolah ?? '',
-            'alamat' => $sekolah->alamat ?? '',
-            'alamat_sekolah' => $sekolah->alamat ?? '',
-            'kelurahan_desa' => $sekolah->kelurahan_desa ?? '',
-            'desa' => $sekolah->kelurahan_desa ?? '',
-            'kelurahan' => $sekolah->kelurahan_desa ?? '',
-            'kecamatan' => $sekolah->kecamatan ?? '',
-            'kabupaten_kota' => $sekolah->kabupaten_kota ?? '',
-            'kabupaten' => $sekolah->kabupaten_kota ?? '',
-            'kota' => $sekolah->kabupaten_kota ?? '',
-            'provinsi' => $sekolah->provinsi ?? '',
+            'nama_sekolah' => (string) ($sekolah->nama_sekolah ?? ''),
+            'npsn' => (string) ($sekolah->npsn ?? ''),
+            'status_sekolah' => (string) ($sekolah->status_sekolah ?? ''),
+            'jenjang_sekolah' => (string) ($sekolah->jenjang_sekolah ?? ''),
+            'alamat' => (string) ($sekolah->alamat ?? ''),
+            'alamat_sekolah' => (string) ($sekolah->alamat ?? ''),
+            'kelurahan_desa' => (string) ($sekolah->kelurahan_desa ?? ''),
+            'desa' => (string) ($sekolah->kelurahan_desa ?? ''),
+            'kelurahan' => (string) ($sekolah->kelurahan_desa ?? ''),
+            'kecamatan' => (string) ($sekolah->kecamatan ?? ''),
+            'kabupaten_kota' => (string) ($sekolah->kabupaten_kota ?? ''),
+            'kabupaten' => (string) ($sekolah->kabupaten_kota ?? ''),
+            'kota' => (string) ($sekolah->kabupaten_kota ?? ''),
+            'provinsi' => (string) ($sekolah->provinsi ?? ''),
             'nama_kepala_sekolah' => $namaKepalaSekolah,
             'kepala_sekolah' => $namaKepalaSekolah,
             'nip_kepala_sekolah' => $nipKepalaSekolah,
@@ -268,6 +268,8 @@ class SkSuratService
             'nama_bendahara' => $namaBendahara,
             'bendahara' => $namaBendahara,
             'nip_bendahara' => $nipBendahara,
+            'komite' => $namaKomite,
+            'nama_komite' => $namaKomite,
             'tahun_anggaran' => $tahunAnggaran,
             'tahun' => $tahunAnggaran,
         ];
@@ -275,61 +277,13 @@ class SkSuratService
 
     /**
      * Generate compiled DOCX file from SkDokumen and its master template.
+     * Supports dynamic tables (cloneRow), school image placeholders (${kop_surat}, ${logo_*}),
+     * unclosed-tag normalization, and custom manual variables.
      * Returns full path to generated temporary file.
      */
     public function generateDocx(SkDokumen $dokumen): string
     {
-        $template = $dokumen->template;
-        if (! $template) {
-            throw new \RuntimeException('Dokumen tidak memiliki master template.');
-        }
-
-        $localDisk = Storage::disk('local');
-        if (! $template->file_path || ! $localDisk->exists($template->file_path)) {
-            throw new \RuntimeException('File master template tidak ditemukan di storage: '.$template->file_path);
-        }
-
-        $templatePath = $localDisk->path($template->file_path);
-
-        $tempDir = storage_path('app/temp');
-        if (! File::isDirectory($tempDir)) {
-            File::makeDirectory($tempDir, 0755, true);
-        }
-
-        $tempFileName = 'surat_'.uniqid().'.docx';
-        $tempFilePath = $tempDir.DIRECTORY_SEPARATOR.$tempFileName;
-
-        $normalizedTemplatePath = $this->createNormalizedTemplateIfNeeded($templatePath, $tempDir);
-
-        try {
-            $processor = new TemplateProcessor($normalizedTemplatePath ?? $templatePath);
-            $rawTemplateVars = $processor->getVariables();
-
-            // Inject all filled variables (including raw keys that had surrounding whitespace in XML)
-            $dataIsian = $dokumen->data_isian ?? [];
-            foreach ($dataIsian as $key => $value) {
-                $val = (string) ($value ?? '');
-                $replacement = str_contains($val, "\n")
-                    ? explode("\n", str_replace("\r", '', $val))
-                    : $val;
-
-                $processor->setValue($key, $replacement);
-
-                foreach ($rawTemplateVars as $rawVar) {
-                    if ($rawVar !== $key && trim($rawVar) === trim((string) $key)) {
-                        $processor->setValue($rawVar, $replacement);
-                    }
-                }
-            }
-
-            $processor->saveAs($tempFilePath);
-        } finally {
-            if ($normalizedTemplatePath !== null && is_file($normalizedTemplatePath)) {
-                @unlink($normalizedTemplatePath);
-            }
-        }
-
-        return $tempFilePath;
+        return app(SkSuratTagService::class)->compileSkDokumenDocx($dokumen);
     }
 
     /**

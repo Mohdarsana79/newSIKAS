@@ -28,6 +28,7 @@ import { cn } from '@/lib/utils';
 
 export interface RekeningBelanjaItem {
     id: number;
+    tahun?: number;
     kode_rekening: string;
     rincian_objek: string;
     kategori: string;
@@ -39,6 +40,7 @@ export interface RekeningBelanjaItem {
 }
 
 export interface RekeningBelanjaFormData {
+    tahun: number;
     kode_rekening: string;
     rincian_objek: string;
     kategori: string;
@@ -50,6 +52,7 @@ export interface RekeningBelanjaFormData {
 }
 
 export interface RekeningBelanjaModalsProps {
+    selectedYear: number;
     // Modal Tambah & Edit (disatukan melalui RekeningBelanjaFormModal)
     isAddOpen: boolean;
     onCloseAdd: () => void;
@@ -237,6 +240,7 @@ function RekeningBelanjaModalHeader({
 
 interface RekeningBelanjaFormModalProps {
     mode: 'add' | 'edit';
+    selectedYear: number;
     show: boolean;
     onClose: () => void;
     onSubmit: FormEventHandler;
@@ -269,6 +273,7 @@ const FORM_MODE_META = {
 
 function RekeningBelanjaFormModal({
     mode,
+    selectedYear,
     show,
     onClose,
     onSubmit,
@@ -319,9 +324,14 @@ function RekeningBelanjaFormModal({
                     title={meta.title}
                     subtitle={meta.subtitle}
                     badge={
-                        <StatusBadge tone={meta.badgeTone} dot={false}>
-                            {meta.badgeLabel}
-                        </StatusBadge>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                            <StatusBadge tone={meta.badgeTone} dot={false}>
+                                {meta.badgeLabel}
+                            </StatusBadge>
+                            <StatusBadge tone="violet" dot={false}>
+                                Tahun {data.tahun || selectedYear}
+                            </StatusBadge>
+                        </div>
                     }
                     onClose={onClose}
                     disabledClose={processing}
@@ -459,6 +469,7 @@ function RekeningBelanjaFormModal({
 }
 
 interface RekeningBelanjaImportModalProps {
+    selectedYear: number;
     show: boolean;
     onClose: () => void;
     importFile: File | null;
@@ -471,6 +482,7 @@ interface RekeningBelanjaImportModalProps {
 }
 
 function RekeningBelanjaImportModal({
+    selectedYear,
     show,
     onClose,
     importFile,
@@ -510,11 +522,11 @@ function RekeningBelanjaImportModal({
                 <RekeningBelanjaModalHeader
                     tone="sky"
                     icon={<FileSpreadsheet />}
-                    title="Import Data Excel"
-                    subtitle="Unggah berkas Excel (.xlsx / .xls) untuk import rekening belanja massal."
+                    title={`Import Data Excel (Tahun ${selectedYear})`}
+                    subtitle={`Unggah berkas Excel (.xlsx / .xls) untuk import rekening belanja tahun ${selectedYear}.`}
                     badge={
                         <StatusBadge tone="info" dot={false}>
-                            Import Excel
+                            Tahun {selectedYear}
                         </StatusBadge>
                     }
                     onClose={onClose}
@@ -775,6 +787,7 @@ function RekeningBelanjaDeleteModal({
 }
 
 export default function RekeningBelanjaModals({
+    selectedYear,
     isAddOpen,
     onCloseAdd,
     onSubmitAdd,
@@ -804,6 +817,7 @@ export default function RekeningBelanjaModals({
         <>
             <RekeningBelanjaFormModal
                 mode="add"
+                selectedYear={selectedYear}
                 show={isAddOpen}
                 onClose={onCloseAdd}
                 onSubmit={onSubmitAdd}
@@ -815,6 +829,7 @@ export default function RekeningBelanjaModals({
 
             <RekeningBelanjaFormModal
                 mode="edit"
+                selectedYear={selectedYear}
                 show={isEditOpen}
                 onClose={onCloseEdit}
                 onSubmit={onSubmitEdit}
@@ -825,6 +840,7 @@ export default function RekeningBelanjaModals({
             />
 
             <RekeningBelanjaImportModal
+                selectedYear={selectedYear}
                 show={isImportOpen}
                 onClose={onCloseImport}
                 importFile={importFile}

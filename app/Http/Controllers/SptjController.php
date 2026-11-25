@@ -9,6 +9,7 @@ use App\Models\SekolahProfile;
 use App\Models\SpjTemplate;
 use App\Services\BukuKasService;
 use App\Services\SpjTemplateService;
+use App\Support\PdfPaperHelper;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -19,6 +20,7 @@ use Inertia\Inertia;
 class SptjController extends Controller
 {
     use HandlesSpjCustomTemplates;
+
     protected string $variant;
 
     protected string $Penganggaran;
@@ -280,7 +282,8 @@ class SptjController extends Controller
         $sekolah = SekolahProfile::find($penganggaran->sekolah_id); // Fallback if no relation on model
 
         $paperSize = request()->input('paper_size', 'A4');
-        $fontSize = request()->input('font_size', '12pt');
+        $orientation = PdfPaperHelper::resolveOrientation(request()->input('orientation'), 'portrait');
+        $fontSize = PdfPaperHelper::resolveFontSize(request()->input('font_size'), '12pt');
 
         $data = [
             'sumberDana' => VariantConfig::title($this->variant),
@@ -296,12 +299,7 @@ class SptjController extends Controller
         ];
 
         $pdf = Pdf::loadView('laporan.sptj_pdf', $data);
-
-        if (strtolower($paperSize) === 'folio') {
-            $pdf->setPaper([0, 0, 595.28, 935.43], 'portrait');
-        } else {
-            $pdf->setPaper($paperSize, 'portrait');
-        }
+        $pdf->setPaper(PdfPaperHelper::resolvePaper($paperSize, 'A4'), $orientation);
 
         return $pdf->stream('sptj.pdf');
     }

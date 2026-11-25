@@ -5,12 +5,11 @@
     <title>Rekapitulasi Realisasi LK 2</title>
     <style>
         @page {
-            size: Legal landscape;
             margin: 1cm 1.5cm;
         }
         body {
             font-family: Arial, sans-serif;
-            font-size: 10pt;
+            font-size: {{ $fontSize ?? '10pt' }};
             line-height: 1.3;
         }
         .header {
@@ -22,7 +21,7 @@
         .meta-table {
             width: 100%;
             margin-bottom: 15px;
-            font-size: 10pt;
+            font-size: {{ $fontSize ?? '10pt' }};
         }
         .meta-table td {
             vertical-align: top;
@@ -31,7 +30,7 @@
         .main-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 9pt;
+            font-size: {{ $fontSize ?? '9pt' }};
             margin-bottom: 20px;
         }
         .main-table th, .main-table td {

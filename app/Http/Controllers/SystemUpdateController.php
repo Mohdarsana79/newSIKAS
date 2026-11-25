@@ -34,6 +34,22 @@ class SystemUpdateController extends Controller
     }
 
     /**
+     * Memeriksa ketersediaan versi terbaru di latar belakang secara non-blocking
+     * (menggunakan cache TTL 1 jam agar hemat kuota GitHub API dan fail-safe saat offline).
+     */
+    public function backgroundCheck(Request $request): JsonResponse
+    {
+        $this->ensureAuthorized($request);
+
+        $this->updaterService->getUpdateDetails(false);
+
+        return response()->json([
+            'success' => true,
+            'systemUpdate' => $this->updaterService->getSharedUpdateSummary(),
+        ]);
+    }
+
+    /**
      * Memeriksa ketersediaan versi terbaru secara langsung ke GitHub Releases API.
      */
     public function check(Request $request): JsonResponse

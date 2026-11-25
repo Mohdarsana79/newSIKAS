@@ -9,6 +9,7 @@ use App\Models\KwitansiTemplate;
 use App\Models\SekolahProfile;
 use App\Services\KwitansiTemplateService;
 use App\Support\PdfHtmlSanitizer;
+use App\Support\PdfPaperHelper;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -390,7 +391,7 @@ class KwitansiController extends Controller
             ]);
 
             if ($tahun) {
-                $query->where(VariantConfig::penganggaranFk($this->variant), $tahun);
+                $this->applyTahunFilter($query, $tahun);
             }
 
             if ($startDate) {
@@ -714,7 +715,7 @@ class KwitansiController extends Controller
             ]);
 
             if ($tahun) {
-                $query->where(VariantConfig::penganggaranFk($this->variant), $tahun);
+                $this->applyTahunFilter($query, $tahun);
             }
 
             if ($startDate) {
@@ -898,7 +899,7 @@ class KwitansiController extends Controller
                 ->where('is_bunga_record', false);
 
             if ($tahun) {
-                $query->where(VariantConfig::penganggaranFk($this->variant), $tahun);
+                $this->applyTahunFilter($query, $tahun);
             }
 
             $availableCount = $query->count();
@@ -945,7 +946,7 @@ class KwitansiController extends Controller
                 ->orderBy('id');
 
             if ($tahun) {
-                $query->where(VariantConfig::penganggaranFk($this->variant), $tahun);
+                $this->applyTahunFilter($query, $tahun);
             }
 
             $totalWithoutKwitansi = $query->count(); // Count total matching query
@@ -1299,20 +1300,18 @@ class KwitansiController extends Controller
             }
 
             if ($tahun) {
-                $query->whereHas('penganggaran', function ($q) use ($tahun) {
-                    $q->where('tahun_anggaran', $tahun);
-                });
+                $this->applyTahunFilter($query, $tahun);
             }
 
             if ($startDate) {
                 $query->whereHas('bukuKasUmum', function ($q) use ($startDate) {
-                    $q->where('tanggal_transaksi', '>=', $startDate);
+                    $q->whereDate('tanggal_transaksi', '>=', $startDate);
                 });
             }
 
             if ($endDate) {
                 $query->whereHas('bukuKasUmum', function ($q) use ($endDate) {
-                    $q->where('tanggal_transaksi', '<=', $endDate);
+                    $q->whereDate('tanggal_transaksi', '<=', $endDate);
                 });
             }
 
@@ -1518,20 +1517,18 @@ class KwitansiController extends Controller
             }
 
             if ($tahun) {
-                $query->whereHas('penganggaran', function ($q) use ($tahun) {
-                    $q->where('tahun_anggaran', $tahun);
-                });
+                $this->applyTahunFilter($query, $tahun);
             }
 
             if ($startDate) {
                 $query->whereHas('bukuKasUmum', function ($q) use ($startDate) {
-                    $q->where('tanggal_transaksi', '>=', $startDate);
+                    $q->whereDate('tanggal_transaksi', '>=', $startDate);
                 });
             }
 
             if ($endDate) {
                 $query->whereHas('bukuKasUmum', function ($q) use ($endDate) {
-                    $q->where('tanggal_transaksi', '<=', $endDate);
+                    $q->whereDate('tanggal_transaksi', '<=', $endDate);
                 });
             }
 
@@ -1909,14 +1906,34 @@ class KwitansiController extends Controller
      */
     protected function loadSanitizedPdf(string $view, array $data, mixed $paperSize = 'Folio', mixed $orientation = 'portrait'): \Barryvdh\DomPDF\PDF
     {
-        $resolvedPaper = is_string($paperSize) && trim($paperSize) !== '' ? trim($paperSize) : 'Folio';
-        $resolvedOrientation = is_string($orientation) && trim($orientation) !== '' ? trim($orientation) : 'portrait';
+        $resolvedPaper = PdfPaperHelper::resolvePaper($paperSize, 'Folio');
+        $resolvedOrientation = PdfPaperHelper::resolveOrientation($orientation, 'portrait');
+        if (array_key_exists('fontSize', $data)) {
+            $data['fontSize'] = PdfPaperHelper::resolveFontSize($data['fontSize'], '11pt');
+        }
 
         $html = PdfHtmlSanitizer::sanitizeHtml(view($view, $data)->render());
         $pdf = Pdf::loadHTML($html, 'UTF-8');
         $pdf->setPaper($resolvedPaper, $resolvedOrientation);
 
         return $pdf;
+    }
+
+    protected function applyTahunFilter($query, mixed $tahun): void
+    {
+        $raw = trim((string) $tahun);
+        if ($raw === '' || ! ctype_digit($raw)) {
+            return;
+        }
+
+        $tahunInt = (int) $raw;
+        if (strlen($raw) === 4 && $tahunInt >= 2000 && $tahunInt <= 2100) {
+            $query->whereHas('penganggaran', function ($pq) use ($tahunInt) {
+                $pq->where('tahun_anggaran', $tahunInt);
+            });
+        } else {
+            $query->where(VariantConfig::penganggaranFk($this->variant), $tahunInt);
+        }
     }
 
     protected function renderVariant($component, $props = [])

@@ -6,6 +6,7 @@ use App\Config\VariantConfig;
 use App\Http\Controllers\Concerns\HandlesSpjCustomTemplates;
 use App\Models\SpjTemplate;
 use App\Services\SpjTemplateService;
+use App\Support\PdfPaperHelper;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -16,6 +17,7 @@ use Inertia\Inertia;
 class SpmthController extends Controller
 {
     use HandlesSpjCustomTemplates;
+
     protected string $variant;
 
     protected string $Penganggaran;
@@ -206,7 +208,8 @@ class SpmthController extends Controller
         $spmth = ($this->Spmth)::with(['sekolah', 'penganggaran'])->findOrFail($id);
 
         $paperSize = request()->input('paper_size', 'A4');
-        $fontSize = request()->input('font_size', '12pt');
+        $orientation = PdfPaperHelper::resolveOrientation(request()->input('orientation'), 'portrait');
+        $fontSize = PdfPaperHelper::resolveFontSize(request()->input('font_size'), '12pt');
 
         $data = [
             'sumberDana' => VariantConfig::title($this->variant),
@@ -225,13 +228,7 @@ class SpmthController extends Controller
         ];
 
         $pdf = Pdf::loadView('laporan.spmth_pdf', $data);
-
-        // Handle custom paper sizes if necessary, or just pass the string
-        if (strtolower($paperSize) === 'folio') {
-            $pdf->setPaper([0, 0, 595.28, 935.43], 'portrait'); // F4 / Folio approx
-        } else {
-            $pdf->setPaper($paperSize, 'portrait');
-        }
+        $pdf->setPaper(PdfPaperHelper::resolvePaper($paperSize, 'A4'), $orientation);
 
         return $pdf->stream('spmth.pdf');
     }

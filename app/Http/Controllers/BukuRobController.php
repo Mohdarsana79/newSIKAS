@@ -6,6 +6,7 @@ use App\Config\VariantConfig;
 use App\Models\SekolahProfile; // CHANGED FROM Sekolah
 use App\Services\BkuArkasDisplayService;
 use App\Services\BukuKasService;
+use App\Support\PdfPaperHelper;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -179,8 +180,8 @@ class BukuRobController extends Controller
 
             $printSettings = [
                 'ukuran_kertas' => request()->input('paperSize', 'A4'),
-                'orientasi' => request()->input('orientation', 'landscape'),
-                'font_size' => request()->input('fontSize', '10pt'),
+                'orientasi' => PdfPaperHelper::resolveOrientation(request()->input('orientation'), 'landscape'),
+                'font_size' => PdfPaperHelper::resolveFontSize(request()->input('fontSize'), '10pt'),
             ];
 
             $data = [
@@ -193,7 +194,10 @@ class BukuRobController extends Controller
             ];
 
             $pdf = Pdf::loadView('laporan.rob_pdf', $data);
-            $pdf->setPaper($printSettings['ukuran_kertas'], $printSettings['orientasi']);
+            $pdf->setPaper(
+                PdfPaperHelper::resolvePaper($printSettings['ukuran_kertas'], 'A4'),
+                PdfPaperHelper::resolveOrientation($printSettings['orientasi'], 'landscape'),
+            );
             $pdf->setOptions([
                 'defaultFont' => 'Arial',
                 'isHtml5ParserEnabled' => true,

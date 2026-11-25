@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Config\VariantConfig;
 use App\Models\SekolahProfile;
 use App\Services\BkuArkasDisplayService;
+use App\Support\PdfPaperHelper;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -125,8 +126,8 @@ class BhmController extends Controller
             }
 
             $paperSize = $request->get('paperSize', 'legal');
-            $orientation = $request->get('orientation', 'landscape');
-            $fontSize = $request->get('fontSize', '10pt');
+            $orientation = PdfPaperHelper::resolveOrientation($request->get('orientation'), 'landscape');
+            $fontSize = PdfPaperHelper::resolveFontSize($request->get('fontSize'), '10pt');
 
             $data = [
                 'tahun' => $tahun,
@@ -144,7 +145,10 @@ class BhmController extends Controller
             ];
 
             $pdf = Pdf::loadView('laporan.bhm_pdf', $data);
-            $pdf->setPaper($paperSize, $orientation);
+            $pdf->setPaper(
+                PdfPaperHelper::resolvePaper($paperSize, 'Legal'),
+                PdfPaperHelper::resolveOrientation($orientation, 'landscape'),
+            );
             $pdf->setOptions([
                 'defaultFont' => 'Arial',
                 'isHtml5ParserEnabled' => true,

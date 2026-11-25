@@ -1,42 +1,124 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, useForm } from '@inertiajs/react';
+import { Head, router, useForm } from '@inertiajs/react';
 import { PageProps } from '@/types';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import TextInput from '@/Components/TextInput';
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import PageHeader from '@/Components/ui/PageHeader';
 import Surface from '@/Components/ui/Surface';
 import DataTable from '@/Components/ui/DataTable';
 import EmptyState from '@/Components/ui/EmptyState';
 import IconTile from '@/Components/ui/IconTile';
 import StatusBadge from '@/Components/ui/StatusBadge';
+import ArkasYearSelect from '@/Components/Arkas/ArkasYearSelect';
+import CopyYearModal from '@/Components/DataMaster/CopyYearModal';
 import KodeKegiatanModals, { KodeKegiatanItem } from './Partials/KodeKegiatanModals';
 
-export default function Index({ auth, kode_kegiatan }: PageProps<{ kode_kegiatan: KodeKegiatanItem[] }>) {
+interface YearStats {
+    kegiatan: number;
+    rekening: number;
+}
+
+export default function Index({
+    auth,
+    kode_kegiatan,
+    selectedYear = new Date().getFullYear(),
+    availableYears = [],
+    statsPerYear = {},
+}: PageProps<{
+    kode_kegiatan: KodeKegiatanItem[];
+    selectedYear?: number;
+    availableYears?: string[];
+    statsPerYear?: Record<string, YearStats>;
+}>) {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+    const [isCopyYearModalOpen, setIsCopyYearModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [search, setSearch] = useState('');
+    const [sumberFilter, setSumberFilter] = useState<'all' | 'reguler' | 'kinerja'>('all');
     const [currentPage, setCurrentPage] = useState(1);
     const [editingId, setEditingId] = useState<number | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<KodeKegiatanItem | null>(null);
     const ITEMS_PER_PAGE = 10;
 
-    const { data, setData, post, put, delete: destroy, processing, errors, reset, clearErrors } = useForm({
+    const resolvedYears = useMemo(() => {
+        const list = availableYears.length > 0 ? [...availableYears] : [String(selectedYear)];
+        if (!list.includes(String(selectedYear))) {
+            list.unshift(String(selectedYear));
+        }
+        return list;
+    }, [availableYears, selectedYear]);
+
+    const countPerYear = useMemo<Record<string, number>>(() => {
+        const map: Record<string, number> = {};
+        resolvedYears.forEach((yr) => {
+            map[yr] = statsPerYear[yr]?.kegiatan ?? 0;
+        });
+        return map;
+    }, [resolvedYears, statsPerYear]);
+
+    const sourceYearOptions = useMemo(
+        () =>
+            Object.entries(statsPerYear)
+                .map(([year, st]) => ({ year, count: st?.kegiatan ?? 0 }))
+                .sort((a, b) => Number(b.year) - Number(a.year)),
+        [statsPerYear],
+    );
+
+    const { data, setData, post, put, delete: destroy, processing, errors, reset, clearErrors } = useForm<{
+        tahun: number;
+        sumber_dana: 'reguler' | 'kinerja' | 'semua';
+        kode: string;
+        program: string;
+        sub_program: string;
+        uraian: string;
+    }>({
+        tahun: selectedYear,
+        sumber_dana: 'reguler',
         kode: '',
         program: '',
         sub_program: '',
         uraian: '',
     });
 
-    const { data: importData, setData: setImportData, post: postImport, progress: importProgress, processing: importProcessing, errors: importErrors, reset: resetImport, clearErrors: clearImportErrors } = useForm<{ file: File | null }>({
+    const { data: importData, setData: setImportData, post: postImport, progress: importProgress, processing: importProcessing, errors: importErrors, reset: resetImport, clearErrors: clearImportErrors } = useForm<{ file: File | null; tahun: number }>({
         file: null,
+        tahun: selectedYear,
     });
+
+    const { data: copyData, setData: setCopyData, post: postCopy, processing: copyProcessing, errors: copyErrors, clearErrors: clearCopyErrors } = useForm({
+        source_year: '',
+        target_year: String(selectedYear),
+    });
+
+    useEffect(() => {
+        setData('tahun', selectedYear);
+        setImportData('tahun', selectedYear);
+        setCopyData('target_year', String(selectedYear));
+        setCurrentPage(1);
+    }, [selectedYear]);
+
+    const handleYearChange = (newYear: string) => {
+        router.get(route('kode-kegiatan.index'), { year: newYear }, { preserveScroll: true });
+    };
+
+    const regulerCount = useMemo(
+        () => kode_kegiatan.filter((i) => !i.sumber_dana || i.sumber_dana === 'reguler' || i.sumber_dana === 'semua').length,
+        [kode_kegiatan],
+    );
+    const kinerjaCount = useMemo(
+        () => kode_kegiatan.filter((i) => i.sumber_dana === 'kinerja' || i.sumber_dana === 'semua').length,
+        [kode_kegiatan],
+    );
 
     // Client-side filtering and pagination
     const filteredData = kode_kegiatan.filter((item) => {
+        const sd = item.sumber_dana || 'reguler';
+        if (sumberFilter === 'reguler' && sd !== 'reguler' && sd !== 'semua') return false;
+        if (sumberFilter === 'kinerja' && sd !== 'kinerja' && sd !== 'semua') return false;
         if (!search) return true;
         const lowerSearch = search.toLowerCase();
         return (
@@ -53,13 +135,14 @@ export default function Index({ auth, kode_kegiatan }: PageProps<{ kode_kegiatan
         currentPage * ITEMS_PER_PAGE
     );
 
-    // Reset page to 1 when search changes
+    // Reset page to 1 when search or sumberFilter changes
     useEffect(() => {
         setCurrentPage(1);
-    }, [search]);
+    }, [search, sumberFilter]);
 
     const resetForm = () => {
         reset();
+        setData('tahun', selectedYear);
         clearErrors();
         setEditingId(null);
     };
@@ -77,7 +160,13 @@ export default function Index({ auth, kode_kegiatan }: PageProps<{ kode_kegiatan
     const closeImportModal = () => {
         setIsImportModalOpen(false);
         resetImport();
+        setImportData('tahun', selectedYear);
         clearImportErrors();
+    };
+
+    const closeCopyYearModal = () => {
+        setIsCopyYearModalOpen(false);
+        clearCopyErrors();
     };
 
     const closeDeleteModal = () => {
@@ -114,10 +203,25 @@ export default function Index({ auth, kode_kegiatan }: PageProps<{ kode_kegiatan
         });
     };
 
+    const submitCopyYear = (e: React.FormEvent) => {
+        e.preventDefault();
+        postCopy(route('kode-kegiatan.copy-year'), {
+            onSuccess: () => {
+                closeCopyYearModal();
+                if (copyData.target_year && copyData.target_year !== String(selectedYear)) {
+                    router.get(route('kode-kegiatan.index'), { year: copyData.target_year }, { preserveScroll: true });
+                }
+            },
+        });
+    };
+
     const handleEdit = (item: KodeKegiatanItem) => {
         clearErrors();
         setEditingId(item.id);
+        const sd = item.sumber_dana === 'kinerja' || item.sumber_dana === 'semua' ? item.sumber_dana : 'reguler';
         setData({
+            tahun: item.tahun ?? selectedYear,
+            sumber_dana: sd,
             kode: item.kode,
             program: item.program,
             sub_program: item.sub_program,
@@ -154,10 +258,21 @@ export default function Index({ auth, kode_kegiatan }: PageProps<{ kode_kegiatan
                         { label: 'Kode Kegiatan' },
                     ]}
                     title="Data Kode Kegiatan"
-                    badge={<StatusBadge tone="violet" dot={false}>Data Master</StatusBadge>}
-                    subtitle="Kelola kode kegiatan, program, dan sub program untuk penyusunan anggaran."
+                    badge={<StatusBadge tone="violet" dot={false}>Tahun {selectedYear}</StatusBadge>}
+                    subtitle={`Kelola kode kegiatan, program, dan sub program terisolasi untuk Tahun Anggaran ${selectedYear}.`}
                     actions={
                         <>
+                            <SecondaryButton
+                                onClick={() => {
+                                    setCopyData('target_year', String(selectedYear));
+                                    setIsCopyYearModalOpen(true);
+                                }}
+                            >
+                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                </svg>
+                                Salin Tahun
+                            </SecondaryButton>
                             <SecondaryButton onClick={() => setIsImportModalOpen(true)}>
                                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
@@ -230,11 +345,11 @@ export default function Index({ auth, kode_kegiatan }: PageProps<{ kode_kegiatan
                     </div>
                 </div>
 
-                {/* Toolbar pencarian */}
-                <div className="animate-rise" style={{ animationDelay: '210ms' }}>
-                    <Surface padding="sm">
+                {/* Toolbar pencarian & filter tahun */}
+                <div className="animate-rise relative z-20" style={{ animationDelay: '210ms' }}>
+                    <Surface padding="sm" overflowVisible>
                         <div className="flex flex-wrap items-center justify-between gap-3">
-                            <div className="flex w-full items-center gap-3 md:w-auto">
+                            <div className="flex w-full flex-wrap items-center gap-3 md:w-auto">
                                 <IconTile tone="ink" size="sm">
                                     <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                                         <circle cx="11" cy="11" r="7" />
@@ -249,9 +364,42 @@ export default function Index({ auth, kode_kegiatan }: PageProps<{ kode_kegiatan
                                         onChange={(e) => setSearch(e.target.value)}
                                     />
                                 </div>
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                    {(
+                                        [
+                                            { key: 'all', label: `Semua (${kode_kegiatan.length})` },
+                                            { key: 'reguler', label: `Reguler (${regulerCount})` },
+                                            { key: 'kinerja', label: `Kinerja (${kinerjaCount})` },
+                                        ] as const
+                                    ).map((pill) => (
+                                        <button
+                                            key={pill.key}
+                                            type="button"
+                                            onClick={() => setSumberFilter(pill.key)}
+                                            className={`rounded-xl px-3 py-1.5 text-[10.5px] font-extrabold transition ${
+                                                sumberFilter === pill.key
+                                                    ? 'bg-lime-400 text-slate-950 shadow-lime'
+                                                    : 'bg-slate-100/80 text-slate-600 hover:bg-slate-200/80 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10'
+                                            }`}
+                                        >
+                                            {pill.label}
+                                        </button>
+                                    ))}
+                                </div>
+                                <div className="w-44">
+                                    <ArkasYearSelect
+                                        inputId="kode-kegiatan-year-filter"
+                                        value={String(selectedYear)}
+                                        onChange={handleYearChange}
+                                        activeYears={resolvedYears}
+                                        includeAllOption={false}
+                                        localStatsPerYear={countPerYear}
+                                        placeholder="Pilih Tahun..."
+                                    />
+                                </div>
                             </div>
                             <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">
-                                <span className="text-sikas-num font-extrabold text-slate-700 dark:text-slate-200">{filteredData.length}</span> data ditemukan
+                                <span className="text-sikas-num font-extrabold text-slate-700 dark:text-slate-200">{filteredData.length}</span> data tahun {selectedYear}
                             </span>
                         </div>
                     </Surface>
@@ -312,6 +460,7 @@ export default function Index({ auth, kode_kegiatan }: PageProps<{ kode_kegiatan
                             <thead>
                                 <tr>
                                     <th className="text-left">Kode</th>
+                                    <th className="text-center">Sumber Dana</th>
                                     <th className="text-left">Program</th>
                                     <th className="text-left">Sub Program</th>
                                     <th className="text-left">Uraian</th>
@@ -323,6 +472,15 @@ export default function Index({ auth, kode_kegiatan }: PageProps<{ kode_kegiatan
                                     currentData.map((item) => (
                                         <tr key={item.id}>
                                             <td className="whitespace-nowrap font-extrabold text-slate-900 dark:text-white">{item.kode}</td>
+                                            <td className="whitespace-nowrap text-center">
+                                                {item.sumber_dana === 'kinerja' ? (
+                                                    <StatusBadge tone="violet" dot={false}>Kinerja</StatusBadge>
+                                                ) : item.sumber_dana === 'semua' ? (
+                                                    <StatusBadge tone="success" dot={false}>Semua</StatusBadge>
+                                                ) : (
+                                                    <StatusBadge tone="info" dot={false}>Reguler</StatusBadge>
+                                                )}
+                                            </td>
                                             <td className="text-slate-600 dark:text-slate-300">{item.program}</td>
                                             <td className="max-w-xs truncate text-slate-500 dark:text-slate-400" title={item.sub_program}>{item.sub_program}</td>
                                             <td className="max-w-xs truncate text-slate-500 dark:text-slate-400" title={item.uraian}>{item.uraian}</td>
@@ -352,7 +510,7 @@ export default function Index({ auth, kode_kegiatan }: PageProps<{ kode_kegiatan
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan={5} className="p-0">
+                                        <td colSpan={6} className="p-0">
                                             <EmptyState
                                                 className="border-0 bg-transparent py-9 dark:bg-transparent"
                                                 icon={
@@ -373,6 +531,7 @@ export default function Index({ auth, kode_kegiatan }: PageProps<{ kode_kegiatan
             </div>
 
             <KodeKegiatanModals
+                selectedYear={selectedYear}
                 isAddOpen={isAddModalOpen}
                 onCloseAdd={closeAddModal}
                 onSubmitAdd={submitAdd}
@@ -397,6 +556,21 @@ export default function Index({ auth, kode_kegiatan }: PageProps<{ kode_kegiatan
                 deleteProcessing={processing}
                 onCloseDelete={closeDeleteModal}
                 onConfirmDelete={confirmDelete}
+            />
+
+            <CopyYearModal
+                show={isCopyYearModalOpen}
+                onClose={closeCopyYearModal}
+                title="Salin Kode Kegiatan Antar Tahun"
+                itemLabel="kode kegiatan"
+                sourceYear={copyData.source_year}
+                targetYear={copyData.target_year}
+                onChangeSourceYear={(yr) => setCopyData('source_year', yr)}
+                onChangeTargetYear={(yr) => setCopyData('target_year', yr)}
+                sourceYearOptions={sourceYearOptions}
+                errors={copyErrors}
+                processing={copyProcessing}
+                onSubmit={submitCopyYear}
             />
         </AuthenticatedLayout>
     );

@@ -9,6 +9,7 @@ use App\Models\SekolahProfile;
 use App\Models\SpjTemplate;
 use App\Models\TandaTerima;
 use App\Services\SpjTemplateService;
+use App\Support\PdfPaperHelper;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -484,8 +485,8 @@ class TandaTerimaController extends Controller
 
             // Get Settings
             $paperSize = $request->input('paper_size', 'Folio');
-            $fontSize = $request->input('font_size', '10pt');
-            $orientation = $request->input('orientation', 'landscape');
+            $fontSize = PdfPaperHelper::resolveFontSize($request->input('font_size'), '10pt');
+            $orientation = PdfPaperHelper::resolveOrientation($request->input('orientation'), 'landscape');
 
             $data = [
                 'sumberDana' => VariantConfig::title($this->variant),
@@ -504,14 +505,10 @@ class TandaTerimaController extends Controller
 
             $pdf = Pdf::loadView('pelengkap.tanda_terima_pdf', $data);
 
-            // Handle Paper Size
-            if ($paperSize === 'Folio') {
-                // F4 / Folio size in points (approx 21.5cm x 33cm)
-                // 33cm = ~935.43 pt, 21.6cm = ~612.28 pt
-                $pdf->setPaper([0, 0, 612.28, 935.43], $orientation);
-            } else {
-                $pdf->setPaper($paperSize, $orientation);
-            }
+            $pdf->setPaper(
+                PdfPaperHelper::resolvePaper($paperSize, 'Folio'),
+                PdfPaperHelper::resolveOrientation($orientation, 'landscape'),
+            );
 
             return $pdf->stream('Tanda_Terima_Honor_'.$tandaTerima->id.'.pdf');
 
@@ -538,8 +535,8 @@ class TandaTerimaController extends Controller
 
             // Get Settings
             $paperSize = $request->input('paper_size', 'Folio');
-            $fontSize = $request->input('font_size', '10pt');
-            $orientation = $request->input('orientation', 'landscape');
+            $fontSize = PdfPaperHelper::resolveFontSize($request->input('font_size'), '10pt');
+            $orientation = PdfPaperHelper::resolveOrientation($request->input('orientation'), 'landscape');
 
             $query = ($this->TandaTerima)::with([
                 'sekolah',
@@ -615,11 +612,10 @@ class TandaTerimaController extends Controller
             $pdf = Pdf::loadView('pelengkap.download_all_tanda_terima_pdf', $data);
 
             // Handle Paper Size
-            if ($paperSize === 'Folio') {
-                $pdf->setPaper([0, 0, 612.28, 935.43], $orientation);
-            } else {
-                $pdf->setPaper($paperSize, $orientation);
-            }
+            $pdf->setPaper(
+                PdfPaperHelper::resolvePaper($paperSize, 'Folio'),
+                PdfPaperHelper::resolveOrientation($orientation, 'landscape'),
+            );
 
             return $pdf->stream('Tanda_Terima_All.pdf');
 

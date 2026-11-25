@@ -26,6 +26,8 @@ import { cn } from '@/lib/utils';
 
 export interface KodeKegiatanItem {
     id: number;
+    tahun?: number;
+    sumber_dana?: 'reguler' | 'kinerja' | 'semua' | string;
     kode: string;
     program: string;
     sub_program: string;
@@ -33,6 +35,8 @@ export interface KodeKegiatanItem {
 }
 
 export interface KodeKegiatanFormData {
+    tahun: number;
+    sumber_dana: 'reguler' | 'kinerja' | 'semua';
     kode: string;
     program: string;
     sub_program: string;
@@ -40,6 +44,7 @@ export interface KodeKegiatanFormData {
 }
 
 export interface KodeKegiatanModalsProps {
+    selectedYear: number;
     // Modal Tambah & Edit (disatukan melalui KodeKegiatanFormModal)
     isAddOpen: boolean;
     onCloseAdd: () => void;
@@ -169,6 +174,7 @@ function KodeKegiatanModalHeader({
 
 interface KodeKegiatanFormModalProps {
     mode: 'add' | 'edit';
+    selectedYear: number;
     show: boolean;
     onClose: () => void;
     onSubmit: FormEventHandler;
@@ -209,6 +215,7 @@ const FORM_MODE_META = {
 
 function KodeKegiatanFormModal({
     mode,
+    selectedYear,
     show,
     onClose,
     onSubmit,
@@ -228,9 +235,14 @@ function KodeKegiatanFormModal({
                     title={meta.title}
                     subtitle={meta.subtitle}
                     badge={
-                        <StatusBadge tone={meta.badgeTone} dot={false}>
-                            {meta.badgeLabel}
-                        </StatusBadge>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                            <StatusBadge tone={meta.badgeTone} dot={false}>
+                                {meta.badgeLabel}
+                            </StatusBadge>
+                            <StatusBadge tone="violet" dot={false}>
+                                Tahun {data.tahun || selectedYear}
+                            </StatusBadge>
+                        </div>
                     }
                     onClose={onClose}
                     disabledClose={processing}
@@ -246,18 +258,37 @@ function KodeKegiatanFormModal({
                             </div>
 
                             <div className="space-y-3.5">
-                                <div>
-                                    <InputLabel htmlFor={`${mode}-kode`} value="Kode Kegiatan" />
-                                    <TextInput
-                                        id={`${mode}-kode`}
-                                        type="text"
-                                        value={data.kode}
-                                        onChange={(e) => setData('kode', e.target.value)}
-                                        className="mt-1.5 block w-full font-mono"
-                                        placeholder={meta.kodePlaceholder}
-                                        required
-                                    />
-                                    <InputError message={errors.kode} className="mt-1.5" />
+                                <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+                                    <div>
+                                        <InputLabel htmlFor={`${mode}-kode`} value="Kode Kegiatan" />
+                                        <TextInput
+                                            id={`${mode}-kode`}
+                                            type="text"
+                                            value={data.kode}
+                                            onChange={(e) => setData('kode', e.target.value)}
+                                            className="mt-1.5 block w-full font-mono"
+                                            placeholder={meta.kodePlaceholder}
+                                            required
+                                        />
+                                        <InputError message={errors.kode} className="mt-1.5" />
+                                    </div>
+
+                                    <div>
+                                        <InputLabel htmlFor={`${mode}-sumber_dana`} value="Sumber Dana BOSP" />
+                                        <select
+                                            id={`${mode}-sumber_dana`}
+                                            value={data.sumber_dana || 'reguler'}
+                                            onChange={(e) =>
+                                                setData('sumber_dana', e.target.value as 'reguler' | 'kinerja' | 'semua')
+                                            }
+                                            className="mt-1.5 block h-[42px] w-full rounded-xl border border-slate-200/90 bg-white px-3 text-xs font-semibold text-slate-800 shadow-sm focus:border-lime-400 focus:outline-none focus:ring-4 focus:ring-lime-200/60 dark:border-white/10 dark:bg-white/5 dark:text-white"
+                                        >
+                                            <option value="reguler" className="dark:bg-[#15131F]">BOSP Reguler (termasuk SiLPA)</option>
+                                            <option value="kinerja" className="dark:bg-[#15131F]">BOSP Kinerja (termasuk SiLPA)</option>
+                                            <option value="semua" className="dark:bg-[#15131F]">Semua (Reguler &amp; Kinerja)</option>
+                                        </select>
+                                        <InputError message={errors.sumber_dana} className="mt-1.5" />
+                                    </div>
                                 </div>
 
                                 <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
@@ -335,6 +366,7 @@ function KodeKegiatanFormModal({
 }
 
 interface KodeKegiatanImportModalProps {
+    selectedYear: number;
     show: boolean;
     onClose: () => void;
     importFile: File | null;
@@ -347,6 +379,7 @@ interface KodeKegiatanImportModalProps {
 }
 
 function KodeKegiatanImportModal({
+    selectedYear,
     show,
     onClose,
     importFile,
@@ -386,11 +419,11 @@ function KodeKegiatanImportModal({
                 <KodeKegiatanModalHeader
                     tone="sky"
                     icon={<FileSpreadsheet />}
-                    title="Import Data Excel"
-                    subtitle="Unggah berkas Excel (.xlsx / .xls) untuk import data kode kegiatan massal."
+                    title={`Import Data Excel (Tahun ${selectedYear})`}
+                    subtitle={`Unggah berkas Excel (.xlsx / .xls) untuk import data kode kegiatan tahun ${selectedYear}.`}
                     badge={
                         <StatusBadge tone="info" dot={false}>
-                            Import Excel
+                            Tahun {selectedYear}
                         </StatusBadge>
                     }
                     onClose={onClose}
@@ -649,6 +682,7 @@ function KodeKegiatanDeleteModal({
 }
 
 export default function KodeKegiatanModals({
+    selectedYear,
     isAddOpen,
     onCloseAdd,
     onSubmitAdd,
@@ -678,6 +712,7 @@ export default function KodeKegiatanModals({
         <>
             <KodeKegiatanFormModal
                 mode="add"
+                selectedYear={selectedYear}
                 show={isAddOpen}
                 onClose={onCloseAdd}
                 onSubmit={onSubmitAdd}
@@ -689,6 +724,7 @@ export default function KodeKegiatanModals({
 
             <KodeKegiatanFormModal
                 mode="edit"
+                selectedYear={selectedYear}
                 show={isEditOpen}
                 onClose={onCloseEdit}
                 onSubmit={onSubmitEdit}
@@ -699,6 +735,7 @@ export default function KodeKegiatanModals({
             />
 
             <KodeKegiatanImportModal
+                selectedYear={selectedYear}
                 show={isImportOpen}
                 onClose={onCloseImport}
                 importFile={importFile}

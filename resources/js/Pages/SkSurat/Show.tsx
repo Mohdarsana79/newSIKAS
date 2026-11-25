@@ -14,45 +14,20 @@ import {
     Settings,
     ArrowLeft,
     FileDown,
+    BookOpen,
 } from 'lucide-react';
 import ManageTemplatesModal from './Partials/ManageTemplatesModal';
 import GenerateDokumenModal from './Partials/GenerateDokumenModal';
 import UploadArsipModal from './Partials/UploadArsipModal';
+import TagReferenceModal from './Partials/TagReferenceModal';
 import ConfirmModal from './Partials/ConfirmModal';
 import FolderIconTile from './Partials/FolderIconTile';
 import { resolveFolderTheme } from './Partials/folderColors';
+import { canWriteSkSurat, SkDokumen, SkTagGroup, SkTemplate } from './Partials/types';
 import PageHeader from '@/Components/ui/PageHeader';
 import StatusBadge from '@/Components/ui/StatusBadge';
 import Surface from '@/Components/ui/Surface';
 import EmptyState from '@/Components/ui/EmptyState';
-
-interface SkTemplate {
-    id: number;
-    folder_id: number;
-    judul: string;
-    file_path: string;
-    file_name_original: string;
-    detected_variables: string[] | null;
-    created_at: string;
-    user?: { id: number; name: string };
-}
-
-interface SkDokumen {
-    id: number;
-    folder_id: number;
-    template_id: number;
-    tipe: 'generated' | 'uploaded';
-    nomor_surat: string | null;
-    perihal: string;
-    tanggal_surat: string | null;
-    data_isian: Record<string, any> | null;
-    file_path: string | null;
-    file_name_original: string | null;
-    keterangan: string | null;
-    created_at: string;
-    template?: SkTemplate;
-    user?: { id: number; name: string };
-}
 
 interface SkFolderDetail {
     id: number;
@@ -66,15 +41,17 @@ interface SkFolderDetail {
 interface Props {
     folder: SkFolderDetail;
     schoolData: Record<string, string>;
+    tagCatalog?: SkTagGroup[];
     filters: {
         search?: string;
         tipe?: string;
     };
 }
 
-export default function Show({ folder, schoolData = {}, filters = {} }: Props) {
+export default function Show({ folder, schoolData = {}, tagCatalog = [], filters = {} }: Props) {
     const { auth } = usePage<any>().props;
-    const isKepalaSekolah = auth?.user?.is_kepala_sekolah ?? false;
+    const canWrite = canWriteSkSurat(auth);
+    const isKepalaSekolah = !canWrite;
     const folderTheme = resolveFolderTheme(folder.warna);
 
     const [search, setSearch] = useState(filters.search || '');
@@ -84,6 +61,7 @@ export default function Show({ folder, schoolData = {}, filters = {} }: Props) {
     const [showManageTemplates, setShowManageTemplates] = useState(false);
     const [showGenerateDokumen, setShowGenerateDokumen] = useState(false);
     const [showUploadArsip, setShowUploadArsip] = useState(false);
+    const [showTagReference, setShowTagReference] = useState(false);
     const [editingDokumen, setEditingDokumen] = useState<SkDokumen | null>(null);
 
     // Delete confirmation state
@@ -181,6 +159,14 @@ export default function Show({ folder, schoolData = {}, filters = {} }: Props) {
                                 <ArrowLeft className="h-4 w-4" />
                                 Kembali
                             </Link>
+
+                            <button
+                                onClick={() => setShowTagReference(true)}
+                                className="inline-flex items-center gap-1.5 rounded-2xl border border-brand-200 bg-brand-50 px-3.5 py-2.5 text-[11px] font-extrabold text-brand-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-brand-100 dark:border-brand-400/20 dark:bg-brand-500/15 dark:text-brand-300 dark:hover:bg-brand-500/20"
+                            >
+                                <BookOpen className="w-4 h-4" />
+                                Referensi Tag
+                            </button>
 
                             <button
                                 onClick={() => setShowManageTemplates(true)}
@@ -468,7 +454,16 @@ export default function Show({ folder, schoolData = {}, filters = {} }: Props) {
                 onClose={() => setShowManageTemplates(false)}
                 folderId={folder.id}
                 templates={folder.templates}
+                tagCatalog={tagCatalog}
+                canWrite={canWrite}
                 isKepalaSekolah={isKepalaSekolah}
+            />
+
+            {/* Modal Referensi Tag SIKAS */}
+            <TagReferenceModal
+                show={showTagReference}
+                onClose={() => setShowTagReference(false)}
+                catalog={tagCatalog}
             />
 
             {/* Modal Generator Form Surat Dinamis */}
@@ -481,13 +476,16 @@ export default function Show({ folder, schoolData = {}, filters = {} }: Props) {
                 folderId={folder.id}
                 templates={folder.templates}
                 schoolData={schoolData}
+                tagCatalog={tagCatalog}
                 dokumen={editingDokumen}
+                canWrite={canWrite}
                 isKepalaSekolah={isKepalaSekolah}
                 onOpenManageTemplates={() => {
                     setShowGenerateDokumen(false);
                     setEditingDokumen(null);
                     setShowManageTemplates(true);
                 }}
+                onOpenTagReference={() => setShowTagReference(true)}
             />
 
             {/* Modal Upload Arsip Fisik */}

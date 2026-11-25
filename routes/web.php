@@ -2,6 +2,7 @@
 
 use App\Config\VariantConfig;
 use App\Http\Controllers\ActivityLogController;
+use App\Http\Controllers\ArkasAgentController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DatabaseController;
 use App\Http\Controllers\KwitansiTemplateController;
@@ -18,6 +19,7 @@ use App\Http\Middleware\CheckNpsnLicense;
 use App\Http\Middleware\EnforceModulePermissions;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\RecordUserActivity;
+use App\Http\Middleware\VerifyArkasAgentCredentials;
 use App\Models\SpjTemplate;
 use App\Models\User;
 use App\Services\WelcomeSummaryService;
@@ -103,6 +105,26 @@ Route::get('/pembaharuan/progress/{updateId}', [SystemUpdateController::class, '
     ])
     ->name('system-update.progress');
 
+// Endpoint Agent Sync Laptop ARKAS (autentikasi via X-Arkas-Sync-Token + X-Arkas-Sync-Pin + rate limiter)
+Route::prefix('arkas-agent')
+    ->name('arkas-agent.')
+    ->withoutMiddleware([
+        StartSession::class,
+        ShareErrorsFromSession::class,
+        ValidateCsrfToken::class,
+        PreventRequestForgery::class,
+        HandleInertiaRequests::class,
+        RecordUserActivity::class,
+        EnforceModulePermissions::class,
+    ])
+    ->middleware([VerifyArkasAgentCredentials::class])
+    ->group(function () {
+        Route::post('/ping', [ArkasAgentController::class, 'ping'])->name('ping');
+        Route::post('/upload/init', [ArkasAgentController::class, 'uploadInit'])->name('upload-init');
+        Route::post('/upload/chunk', [ArkasAgentController::class, 'uploadChunk'])->name('upload-chunk');
+        Route::post('/upload/finalize', [ArkasAgentController::class, 'uploadFinalize'])->name('upload-finalize');
+    });
+
 Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
 Route::get('/dashboard/data', [DashboardController::class, 'getDashboardNewData'])->middleware(['auth', 'verified'])->name('dashboard.data');
 
@@ -140,8 +162,9 @@ Route::middleware('auth')->group(function () {
         Route::delete('/user-management/{id}', [UserManagementController::class, 'destroy'])->name('user-management.destroy');
     });
 
-    Route::middleware(['role:bendahara'])->prefix('pembaharuan')->name('system-update.')->group(function () {
+    Route::prefix('pembaharuan')->name('system-update.')->group(function () {
         Route::get('/', [SystemUpdateController::class, 'index'])->name('index');
+        Route::get('/background-check', [SystemUpdateController::class, 'backgroundCheck'])->name('background-check');
         Route::post('/check', [SystemUpdateController::class, 'check'])->name('check');
         Route::post('/start-online', [SystemUpdateController::class, 'startOnline'])->name('start-online');
         Route::post('/upload-manual', [SystemUpdateController::class, 'uploadManual'])->name('upload-manual');
@@ -155,12 +178,16 @@ Route::middleware('auth')->group(function () {
 
     Route::prefix('sk-surat')->name('sk-surat.')->group(function () {
         Route::get('/', [SkSuratController::class, 'index'])->name('index');
+        Route::get('/tag-catalog', [SkSuratController::class, 'tagCatalog'])->name('tag-catalog');
+        Route::get('/data-sources/options', [SkSuratController::class, 'dataSourceOptions'])->name('data-sources.options');
+        Route::post('/data-sources/resolve', [SkSuratController::class, 'resolveDataSourceTags'])->name('data-sources.resolve');
         Route::post('/folder', [SkSuratController::class, 'storeFolder'])->name('folder.store');
         Route::put('/folder/{folder}', [SkSuratController::class, 'updateFolder'])->name('folder.update');
         Route::delete('/folder/{folder}', [SkSuratController::class, 'destroyFolder'])->name('folder.destroy');
         Route::get('/folder/{folder}', [SkSuratController::class, 'show'])->name('show');
         Route::post('/folder/{folder}/template', [SkSuratController::class, 'storeTemplate'])->name('template.store');
         Route::post('/template/{template}/rescan', [SkSuratController::class, 'rescanTemplate'])->name('template.rescan');
+        Route::put('/template/{template}/tag-mapping', [SkSuratController::class, 'updateTemplateTagMapping'])->name('template.tag-mapping');
         Route::delete('/template/{template}', [SkSuratController::class, 'destroyTemplate'])->name('template.destroy');
         Route::post('/folder/{folder}/dokumen', [SkSuratController::class, 'storeDokumen'])->name('dokumen.store');
         Route::put('/dokumen/{dokumen}', [SkSuratController::class, 'updateDokumen'])->name('dokumen.update');

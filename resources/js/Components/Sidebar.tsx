@@ -1,14 +1,11 @@
 import { Link, usePage } from '@inertiajs/react';
 import { ReactNode, useEffect, useState } from 'react';
-import Modal from '@/Components/Modal';
-import TextInput from '@/Components/TextInput';
-import PrimaryButton from '@/Components/PrimaryButton';
-import SecondaryButton from '@/Components/SecondaryButton';
+import ArkasConfigModal from '@/Components/Arkas/ArkasConfigModal';
+import { SharedArkasStatus } from '@/types';
 import {
     canAccessFeatureModule,
     OPEN_ARKAS_PATH_MODAL_EVENT,
 } from '@/Utils/featureSearchCatalog';
-import axios from 'axios';
 
 interface NavLinkProps {
     href: string;
@@ -18,6 +15,14 @@ interface NavLinkProps {
     isSidebarOpen?: boolean;
     badge?: string;
 }
+
+const IconCetakSpj = () => (
+    <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M6 9V2h12v7" />
+        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+        <rect x="6" y="14" width="12" height="8" rx="1" />
+    </svg>
+);
 
 const NavLink = ({ href, active, children, icon, isSidebarOpen = true, badge }: NavLinkProps) => (
     <Link
@@ -80,7 +85,11 @@ export default function Sidebar({
     const roleName = user?.role_name || (isKepalaSekolah ? 'Kepala Sekolah' : 'Bendahara / Admin');
     const canModule = (modKey: string, minLevel: 'read' | 'write' = 'read'): boolean =>
         canAccessFeatureModule(user, authPermissions, modKey, minLevel);
-    const showDataMaster = canModule('sekolah_profile') || canModule('kode_kegiatan') || canModule('rekening_belanja');
+    const showDataMaster =
+        canModule('sekolah_profile') ||
+        canModule('kode_kegiatan') ||
+        canModule('rekening_belanja') ||
+        canModule('data_ptk');
     const showFiturPelengkap =
         canModule('kwitansi') ||
         canModule('tanda_terima') ||
@@ -89,7 +98,8 @@ export default function Sidebar({
         canModule('dokumen') ||
         canModule('sk_surat') ||
         canModule('laporan') ||
-        canModule('poster_transparansi');
+        canModule('poster_transparansi') ||
+        canModule('cetak_spj');
     const showIntegrasi = canModule('path_arkas', 'write');
     const showSistem =
         canModule('backup') ||
@@ -105,143 +115,40 @@ export default function Sidebar({
         canModule('arkas_tools') ||
         canModule('referensi_kode');
     const hasSystemUpdate = Boolean((props as any)?.systemUpdate?.hasUpdate);
+    const sharedArkasStatus = (props as any)?.arkasStatus as SharedArkasStatus | undefined;
+    const [arkasStatus, setArkasStatus] = useState<SharedArkasStatus>(
+        sharedArkasStatus ?? {
+            active_mode: 'local',
+            source: 'none',
+            exists: false,
+        },
+    );
     const [isDataMasterOpen, setIsDataMasterOpen] = useState(true);
     const [isFiturPelengkapOpen, setIsFiturPelengkapOpen] = useState(true);
     const [isIntegrasiOpen, setIsIntegrasiOpen] = useState(true);
 
-    // Pengaturan path & upload database ARKAS (mode offline lokal & mode online VPS).
-    type ArkasSource = 'manual' | 'uploaded' | 'auto' | 'manual_missing' | 'none';
     const [showPathModal, setShowPathModal] = useState(false);
-    const [arkasPath, setArkasPath] = useState('');
-    const [arkasMeta, setArkasMeta] = useState<{
-        source: ArkasSource;
-        exists: boolean;
-        uploaded_exists: boolean;
-        uploaded_at: string | null;
-        uploaded_size: string | null;
-        max_upload_mb: number;
-    }>({
-        source: 'none',
-        exists: false,
-        uploaded_exists: false,
-        uploaded_at: null,
-        uploaded_size: null,
-        max_upload_mb: 100,
-    });
-    const [selectedDbFile, setSelectedDbFile] = useState<File | null>(null);
-    const [isUploadingDb, setIsUploadingDb] = useState(false);
-    const [isSaving, setIsSaving] = useState(false);
-    const [loadError, setLoadError] = useState('');
-    const [modalFeedback, setModalFeedback] = useState('');
 
-    const extractAxiosErrorMessage = (err: unknown, fallback: string): string => {
-        if (axios.isAxiosError(err)) {
-            const msg = (err.response?.data as { message?: string } | undefined)?.message;
-            if (typeof msg === 'string' && msg.trim() !== '') {
-                return msg;
-            }
+    useEffect(() => {
+        if (sharedArkasStatus) {
+            setArkasStatus(sharedArkasStatus);
         }
-        return fallback;
-    };
+    }, [sharedArkasStatus?.active_mode, sharedArkasStatus?.source, sharedArkasStatus?.exists]);
 
-    const fetchArkasPathInfo = async () => {
-        const res = await axios.get(route('arkas-tools.get-path'));
-        setArkasPath(res.data.path || '');
-        setArkasMeta({
-            source: (res.data.source || 'none') as ArkasSource,
-            exists: Boolean(res.data.exists),
-            uploaded_exists: Boolean(res.data.uploaded_exists),
-            uploaded_at: res.data.uploaded_at || null,
-            uploaded_size: res.data.uploaded_size || null,
-            max_upload_mb: Number(res.data.max_upload_mb || 100),
-        });
-    };
-
-    const openPathModal = async () => {
+    const openPathModal = () => {
         setShowPathModal(true);
-        setLoadError('');
-        setModalFeedback('');
-        setSelectedDbFile(null);
-        try {
-            await fetchArkasPathInfo();
-        } catch {
-            setLoadError('Gagal mengambil data path dan status ARKAS.');
-        }
     };
 
     useEffect(() => {
         if (!showIntegrasi) return;
 
         const handleOpenFromSearch = () => {
-            void openPathModal();
+            openPathModal();
         };
 
         window.addEventListener(OPEN_ARKAS_PATH_MODAL_EVENT, handleOpenFromSearch);
         return () => window.removeEventListener(OPEN_ARKAS_PATH_MODAL_EVENT, handleOpenFromSearch);
     }, [showIntegrasi]);
-
-    const handleSavePath = async () => {
-        setIsSaving(true);
-        setLoadError('');
-        setModalFeedback('');
-        try {
-            const res = await axios.post(route('arkas-tools.save-path'), { path: arkasPath });
-            if (res.data.status === 'success') {
-                await fetchArkasPathInfo();
-                setModalFeedback('Path Arkas berhasil disimpan!');
-            } else {
-                setLoadError(res.data.message || 'Gagal menyimpan path.');
-            }
-        } catch (err: unknown) {
-            setLoadError(extractAxiosErrorMessage(err, 'Terjadi kesalahan saat menyimpan.'));
-        } finally {
-            setIsSaving(false);
-        }
-    };
-
-    const handleUploadArkasDb = async () => {
-        if (!selectedDbFile) return;
-        setIsUploadingDb(true);
-        setLoadError('');
-        setModalFeedback('');
-
-        const formData = new FormData();
-        formData.append('arkas_db', selectedDbFile);
-
-        try {
-            const res = await axios.post(route('arkas-tools.upload-db'), formData, {
-                headers: { 'Content-Type': 'multipart/form-data' },
-            });
-            if (res.data.status === 'success') {
-                setSelectedDbFile(null);
-                await fetchArkasPathInfo();
-                setModalFeedback(res.data.message || 'File arkas.db berhasil diunggah.');
-            } else {
-                setLoadError(res.data.message || 'Gagal mengunggah file arkas.db.');
-            }
-        } catch (err: unknown) {
-            setLoadError(extractAxiosErrorMessage(err, 'Gagal mengunggah file arkas.db.'));
-        } finally {
-            setIsUploadingDb(false);
-        }
-    };
-
-    const handleRemoveUploadedDb = async () => {
-        setIsUploadingDb(true);
-        setLoadError('');
-        setModalFeedback('');
-        try {
-            const res = await axios.delete(route('arkas-tools.remove-uploaded-db'));
-            if (res.data.status === 'success') {
-                await fetchArkasPathInfo();
-                setModalFeedback(res.data.message || 'File arkas.db unggahan dihapus.');
-            }
-        } catch (err: unknown) {
-            setLoadError(extractAxiosErrorMessage(err, 'Gagal menghapus file unggahan.'));
-        } finally {
-            setIsUploadingDb(false);
-        }
-    };
 
     return (
         <>
@@ -389,6 +296,11 @@ export default function Sidebar({
                                             Rekening Belanja
                                         </NavLink>
                                     )}
+                                    {canModule('data_ptk') && (
+                                        <NavLink href={route('data-ptk.index')} active={route().current('data-ptk.*')} isSidebarOpen={isOpen} icon={<IconUsersRole />}>
+                                            Data PTK
+                                        </NavLink>
+                                    )}
                                 </div>
                             </div>
                         )}
@@ -446,6 +358,16 @@ export default function Sidebar({
                                             icon={<IconPosterTransparansi />}
                                         >
                                             Poster Transparansi
+                                        </NavLink>
+                                    )}
+                                    {canModule('cetak_spj') && (
+                                        <NavLink
+                                            href={route('cetak-spj.index')}
+                                            active={route().current('cetak-spj.*') || route().current('*-cetak-spj.*')}
+                                            isSidebarOpen={isOpen}
+                                            icon={<IconCetakSpj />}
+                                        >
+                                            Cetak SPJ
                                         </NavLink>
                                     )}
                                 </div>
@@ -530,16 +452,30 @@ export default function Sidebar({
                                 <div className="relative flex items-center justify-between">
                                     <div>
                                         <p className="text-[12.5px] font-extrabold leading-tight">ARKAS Desktop</p>
-                                        <p className="mt-0.5 text-[9.5px] font-semibold text-slate-950/65">Sinkronisasi database</p>
+                                        <p className="mt-0.5 text-[9.5px] font-semibold text-slate-950/65">
+                                            {arkasStatus.active_mode === 'online' ? 'Mode Online / VPS' : 'Mode PC Lokal'}
+                                        </p>
                                     </div>
                                     <span className="flex items-center gap-1 rounded-full bg-slate-950/10 px-1.5 py-0.5">
-                                        <span className="h-1.5 w-1.5 rounded-full bg-slate-950 animate-pulse-soft" />
-                                        <span className="text-[8px] font-extrabold">LIVE</span>
+                                        <span
+                                            className={`h-1.5 w-1.5 rounded-full ${
+                                                arkasStatus.exists ? 'bg-slate-950 animate-pulse-soft' : 'bg-rose-700'
+                                            }`}
+                                        />
+                                        <span className="text-[8px] font-extrabold">
+                                            {arkasStatus.exists ? 'LIVE' : 'OFF'}
+                                        </span>
                                     </span>
                                 </div>
                                 <div className="relative mt-2 flex items-center gap-1.5">
                                     <span className="h-1.5 w-1.5 rounded-full bg-slate-950/70" />
-                                    <span className="text-[9.5px] font-bold">Terhubung · arkas.db</span>
+                                    <span className="text-[9.5px] font-bold">
+                                        {arkasStatus.exists
+                                            ? arkasStatus.active_mode === 'online'
+                                                ? 'Terhubung · Unggahan Server'
+                                                : 'Terhubung · arkas.db Lokal'
+                                            : 'Belum terhubung · atur sumber'}
+                                    </span>
                                 </div>
                                 <button
                                     type="button"
@@ -591,149 +527,13 @@ export default function Sidebar({
                 </div>
             </aside>
 
-            {/* Modal pengaturan path & upload ARKAS */}
-            <Modal show={showPathModal} onClose={() => !isSaving && !isUploadingDb && setShowPathModal(false)} maxWidth="lg">
-                <div className="relative overflow-hidden">
-                    <div className="pointer-events-none absolute -right-10 -top-16 h-40 w-40 rounded-full bg-brand-500/10 blur-3xl" />
-                    <div className="relative flex items-start justify-between gap-3 border-b border-slate-100 px-6 py-4 dark:border-white/5">
-                        <div className="flex items-center gap-3">
-                            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-pastel-lavender text-brand-600 dark:bg-brand-500/15 dark:text-brand-300">
-                                <IconPath />
-                            </span>
-                            <div>
-                                <h2 className="text-[14px] font-extrabold text-slate-900 dark:text-white">Konfigurasi Database ARKAS</h2>
-                                <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500">
-                                    Atur lokasi file <code className="rounded bg-slate-100 px-1 py-0.5 text-[9px] font-bold text-brand-600 dark:bg-white/10 dark:text-brand-300">arkas.db</code> lokal atau unggah langsung untuk server VPS.
-                                </p>
-                            </div>
-                        </div>
-                        <button
-                            type="button"
-                            onClick={() => !isSaving && !isUploadingDb && setShowPathModal(false)}
-                            className="flex h-7 w-7 items-center justify-center rounded-xl bg-slate-50 text-slate-400 transition hover:bg-slate-100 hover:text-slate-800 dark:bg-white/5 dark:hover:bg-white/10 dark:hover:text-white"
-                            aria-label="Tutup"
-                        >
-                            <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
-                                <path d="M18 6 6 18M6 6l12 12" />
-                            </svg>
-                        </button>
-                    </div>
-
-                    <div className="space-y-4 px-6 py-5">
-                        <div className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50/70 px-3.5 py-2.5 text-[11px] dark:border-white/10 dark:bg-white/[0.03]">
-                            <span className="font-semibold text-slate-600 dark:text-slate-300">Status Sumber Aktif</span>
-                            <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
-                                arkasMeta.exists
-                                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300'
-                                    : 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300'
-                            }`}>
-                                {arkasMeta.source === 'manual' && 'Path Manual Server'}
-                                {arkasMeta.source === 'uploaded' && 'File Unggahan Server (VPS)'}
-                                {arkasMeta.source === 'auto' && 'Auto-Detect Windows Lokal'}
-                                {arkasMeta.source === 'manual_missing' && 'Path Manual Tidak Ditemukan'}
-                                {arkasMeta.source === 'none' && 'Belum Terhubung'}
-                            </span>
-                        </div>
-
-                        {!isKepalaSekolah ? (
-                            <>
-                                <div>
-                                    <label className="mb-1.5 block text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                                        1. Jalur File Lokal Server (opsional untuk PC/RDP lokal)
-                                    </label>
-                                    <TextInput
-                                        className="w-full"
-                                        placeholder="C:\Users\ASUS\AppData\Roaming\Arkas\arkas.db"
-                                        value={arkasPath}
-                                        onChange={(e) => setArkasPath(e.target.value)}
-                                        disabled={isSaving || isUploadingDb}
-                                    />
-                                    <p className="mt-1.5 text-[9.5px] font-medium leading-relaxed text-slate-400 dark:text-slate-500">
-                                        Contoh lokasi umum:{' '}
-                                        <span className="select-all font-semibold text-slate-500 dark:text-slate-400">
-                                            C:\Users\NAMA_USER\AppData\Roaming\Arkas\arkas.db
-                                        </span>
-                                    </p>
-                                </div>
-
-                                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-3.5 dark:border-white/10 dark:bg-white/[0.02]">
-                                    <div className="flex items-center justify-between gap-2">
-                                        <div>
-                                            <p className="text-[11px] font-extrabold text-slate-800 dark:text-slate-100">
-                                                2. Unggah File arkas.db (Untuk Mode VPS / Online)
-                                            </p>
-                                            <p className="mt-0.5 text-[9.5px] font-medium text-slate-400 dark:text-slate-500">
-                                                Unggah salinan <code className="font-bold">arkas.db</code> dari komputer bendahara (maks {arkasMeta.max_upload_mb} MB).
-                                            </p>
-                                        </div>
-                                        {arkasMeta.uploaded_exists && (
-                                            <button
-                                                type="button"
-                                                onClick={handleRemoveUploadedDb}
-                                                disabled={isUploadingDb || isSaving}
-                                                className="shrink-0 rounded-lg bg-rose-50 px-2.5 py-1 text-[10px] font-bold text-rose-600 transition hover:bg-rose-100 dark:bg-rose-500/15 dark:text-rose-300"
-                                            >
-                                                Hapus File
-                                            </button>
-                                        )}
-                                    </div>
-
-                                    {arkasMeta.uploaded_exists && (
-                                        <p className="mt-2 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
-                                            File tersimpan di server ({arkasMeta.uploaded_size} • {arkasMeta.uploaded_at})
-                                        </p>
-                                    )}
-
-                                    <div className="mt-2.5 flex flex-col gap-2 sm:flex-row sm:items-center">
-                                        <input
-                                            type="file"
-                                            accept=".db,.sqlite,.sqlite3"
-                                            onChange={(e) => setSelectedDbFile(e.target.files?.[0] || null)}
-                                            disabled={isUploadingDb || isSaving}
-                                            className="block w-full text-[11px] text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:px-3 file:py-1.5 file:text-[10.5px] file:font-bold file:text-brand-700 hover:file:bg-brand-100 dark:text-slate-400 dark:file:bg-brand-500/20 dark:file:text-brand-300"
-                                        />
-                                        <SecondaryButton
-                                            type="button"
-                                            onClick={handleUploadArkasDb}
-                                            disabled={!selectedDbFile || isUploadingDb || isSaving}
-                                            className="shrink-0 justify-center"
-                                        >
-                                            {isUploadingDb ? 'Memverifikasi...' : 'Unggah .db'}
-                                        </SecondaryButton>
-                                    </div>
-                                </div>
-                            </>
-                        ) : (
-                            <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
-                                Pengaturan sumber database ARKAS hanya dapat diubah oleh akun Bendahara/Operator.
-                            </p>
-                        )}
-
-                        {modalFeedback && (
-                            <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 px-3 py-2 text-[10.5px] font-semibold text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">
-                                {modalFeedback}
-                            </div>
-                        )}
-
-                        {loadError && (
-                            <div className="rounded-xl border border-rose-200 bg-pastel-rose/60 px-3 py-2 text-[10.5px] font-semibold text-rose-500 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300">
-                                {loadError}
-                            </div>
-                        )}
-
-                        <div className="flex justify-end gap-2 border-t border-slate-100 pt-4 dark:border-white/5">
-                            <SecondaryButton onClick={() => setShowPathModal(false)} disabled={isSaving || isUploadingDb}>
-                                Tutup
-                            </SecondaryButton>
-                            {!isKepalaSekolah && (
-                                <PrimaryButton onClick={handleSavePath} disabled={isSaving || isUploadingDb}>
-                                    {isSaving ? 'Menyimpan...' : 'Simpan Path'}
-                                </PrimaryButton>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </Modal>
+            {/* Modal pengaturan path, chunked upload & Agent Sync ARKAS */}
+            <ArkasConfigModal
+                show={showPathModal}
+                onClose={() => setShowPathModal(false)}
+                canWrite={canModule('path_arkas', 'write')}
+                onStatusChange={setArkasStatus}
+            />
         </>
     );
 }

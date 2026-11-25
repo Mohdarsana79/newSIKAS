@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Config\VariantConfig;
 use App\Models\Penganggaran;
 use App\Models\SekolahProfile;
+use App\Support\PdfPaperHelper;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -171,11 +172,22 @@ class RekapitulasiRealisasiController extends Controller
                 return redirect()->back()->with('error', 'Data tahun '.$tahun.' tidak ditemukan.');
             }
 
+            $paperInput = $request->input('ukuran_kertas') ?? $request->input('paper_size') ?? 'Legal';
+            $orientationInput = $request->input('orientasi') ?? $request->input('orientation') ?? 'landscape';
+            $fontSize = PdfPaperHelper::resolveFontSize(
+                $request->input('font_size') ?? $request->input('fontSize'),
+                '9pt',
+            );
+
             $pdf = Pdf::loadView('laporan.rek_realisasi_pdf', [
                 'data' => $data,
                 'tahun' => $tahun,
                 'fase' => $faseTarget,
-            ])->setPaper('legal', 'landscape');
+                'fontSize' => $fontSize,
+            ])->setPaper(
+                PdfPaperHelper::resolvePaper($paperInput, 'Legal'),
+                PdfPaperHelper::resolveOrientation($orientationInput, 'landscape'),
+            );
 
             return $pdf->stream('Rekap_Realisasi_Rekening_Tahun_'.$tahun.'.pdf');
 
@@ -1137,8 +1149,8 @@ class RekapitulasiRealisasiController extends Controller
 
             $printSettings = [
                 'ukuran_kertas' => $request->input('ukuran_kertas', 'Legal'),
-                'orientasi' => $request->input('orientasi', 'landscape'),
-                'font_size' => $request->input('font_size', '9pt'),
+                'orientasi' => PdfPaperHelper::resolveOrientation($request->input('orientasi'), 'landscape'),
+                'font_size' => PdfPaperHelper::resolveFontSize($request->input('font_size'), '9pt'),
             ];
 
             // Tentukan tanggal periode untuk PDF
@@ -1216,7 +1228,10 @@ class RekapitulasiRealisasiController extends Controller
             $pdf = Pdf::loadView('laporan.rekapitulasi_realisasi_pdf', $data);
 
             // Set paper configuration
-            $pdf->setPaper($printSettings['ukuran_kertas'], $printSettings['orientasi']);
+            $pdf->setPaper(
+                PdfPaperHelper::resolvePaper($printSettings['ukuran_kertas'], 'Legal'),
+                PdfPaperHelper::resolveOrientation($printSettings['orientasi'], 'landscape'),
+            );
 
             // PDF options untuk hasil yang lebih baik
             $pdf->setOptions([

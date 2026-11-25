@@ -1,11 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { format } from 'date-fns';
 import Modal from '@/Components/Modal';
 import TextInput from '@/Components/TextInput';
+import DatePicker from '@/Components/DatePicker';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import IconTile from '@/Components/ui/IconTile';
 import { router } from '@inertiajs/react';
-import { UploadCloud, AlertCircle } from 'lucide-react';
+import { UploadCloud, AlertCircle, X } from 'lucide-react';
 
 interface Props {
     show: boolean;
@@ -137,11 +139,25 @@ export default function UploadArsipModal({ show, onClose, folderId }: Props) {
                             <label className={LABEL_CLASS}>
                                 Tanggal Surat
                             </label>
-                            <TextInput
-                                type="date"
-                                value={tanggalSurat}
-                                onChange={(e) => setTanggalSurat(e.target.value)}
-                            />
+                            <div className="relative flex items-center gap-1.5">
+                                <DatePicker
+                                    value={tanggalSurat || undefined}
+                                    onChange={(date) =>
+                                        setTanggalSurat(date ? format(date, 'yyyy-MM-dd') : '')
+                                    }
+                                    placeholder="Pilih tanggal surat"
+                                />
+                                {tanggalSurat && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setTanggalSurat('')}
+                                        title="Kosongkan tanggal"
+                                        className="inline-flex h-[42px] w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200/90 bg-white text-slate-400 transition hover:bg-slate-50 hover:text-slate-700 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
+                                    >
+                                        <X className="h-3.5 w-3.5" />
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     </div>
 

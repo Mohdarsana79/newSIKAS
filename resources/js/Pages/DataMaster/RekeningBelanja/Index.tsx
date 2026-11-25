@@ -1,22 +1,41 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, useForm } from '@inertiajs/react';
+import { Head, router, useForm } from '@inertiajs/react';
 import { PageProps } from '@/types';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import TextInput from '@/Components/TextInput';
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import PageHeader from '@/Components/ui/PageHeader';
 import Surface from '@/Components/ui/Surface';
 import DataTable from '@/Components/ui/DataTable';
 import EmptyState from '@/Components/ui/EmptyState';
 import IconTile from '@/Components/ui/IconTile';
 import StatusBadge from '@/Components/ui/StatusBadge';
+import ArkasYearSelect from '@/Components/Arkas/ArkasYearSelect';
+import CopyYearModal from '@/Components/DataMaster/CopyYearModal';
 import RekeningBelanjaModals, { RekeningBelanjaItem } from './Partials/RekeningBelanjaModals';
 
-export default function Index({ auth, rekening_belanja }: PageProps<{ rekening_belanja: RekeningBelanjaItem[] }>) {
+interface YearStats {
+    kegiatan: number;
+    rekening: number;
+}
+
+export default function Index({
+    auth,
+    rekening_belanja,
+    selectedYear = new Date().getFullYear(),
+    availableYears = [],
+    statsPerYear = {},
+}: PageProps<{
+    rekening_belanja: RekeningBelanjaItem[];
+    selectedYear?: number;
+    availableYears?: string[];
+    statsPerYear?: Record<string, YearStats>;
+}>) {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+    const [isCopyYearModalOpen, setIsCopyYearModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [search, setSearch] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
@@ -24,7 +43,32 @@ export default function Index({ auth, rekening_belanja }: PageProps<{ rekening_b
     const [deleteTarget, setDeleteTarget] = useState<RekeningBelanjaItem | null>(null);
     const ITEMS_PER_PAGE = 10;
 
+    const resolvedYears = useMemo(() => {
+        const list = availableYears.length > 0 ? [...availableYears] : [String(selectedYear)];
+        if (!list.includes(String(selectedYear))) {
+            list.unshift(String(selectedYear));
+        }
+        return list;
+    }, [availableYears, selectedYear]);
+
+    const countPerYear = useMemo<Record<string, number>>(() => {
+        const map: Record<string, number> = {};
+        resolvedYears.forEach((yr) => {
+            map[yr] = statsPerYear[yr]?.rekening ?? 0;
+        });
+        return map;
+    }, [resolvedYears, statsPerYear]);
+
+    const sourceYearOptions = useMemo(
+        () =>
+            Object.entries(statsPerYear)
+                .map(([year, st]) => ({ year, count: st?.rekening ?? 0 }))
+                .sort((a, b) => Number(b.year) - Number(a.year)),
+        [statsPerYear],
+    );
+
     const { data, setData, post, put, delete: destroy, processing, errors, reset, clearErrors } = useForm({
+        tahun: selectedYear,
         kode_rekening: '',
         rincian_objek: '',
         kategori: '',
@@ -35,9 +79,26 @@ export default function Index({ auth, rekening_belanja }: PageProps<{ rekening_b
         is_pph4: false,
     });
 
-    const { data: importData, setData: setImportData, post: postImport, progress: importProgress, processing: importProcessing, errors: importErrors, reset: resetImport, clearErrors: clearImportErrors } = useForm<{ file: File | null }>({
+    const { data: importData, setData: setImportData, post: postImport, progress: importProgress, processing: importProcessing, errors: importErrors, reset: resetImport, clearErrors: clearImportErrors } = useForm<{ file: File | null; tahun: number }>({
         file: null,
+        tahun: selectedYear,
     });
+
+    const { data: copyData, setData: setCopyData, post: postCopy, processing: copyProcessing, errors: copyErrors, clearErrors: clearCopyErrors } = useForm({
+        source_year: '',
+        target_year: String(selectedYear),
+    });
+
+    useEffect(() => {
+        setData('tahun', selectedYear);
+        setImportData('tahun', selectedYear);
+        setCopyData('target_year', String(selectedYear));
+        setCurrentPage(1);
+    }, [selectedYear]);
+
+    const handleYearChange = (newYear: string) => {
+        router.get(route('rekening-belanja.index'), { year: newYear }, { preserveScroll: true });
+    };
 
     // Client-side filtering and pagination
     const filteredData = rekening_belanja.filter((item) => {
@@ -63,6 +124,7 @@ export default function Index({ auth, rekening_belanja }: PageProps<{ rekening_b
 
     const resetForm = () => {
         reset();
+        setData('tahun', selectedYear);
         clearErrors();
         setEditingId(null);
     };
@@ -80,7 +142,13 @@ export default function Index({ auth, rekening_belanja }: PageProps<{ rekening_b
     const closeImportModal = () => {
         setIsImportModalOpen(false);
         resetImport();
+        setImportData('tahun', selectedYear);
         clearImportErrors();
+    };
+
+    const closeCopyYearModal = () => {
+        setIsCopyYearModalOpen(false);
+        clearCopyErrors();
     };
 
     const closeDeleteModal = () => {
@@ -117,10 +185,23 @@ export default function Index({ auth, rekening_belanja }: PageProps<{ rekening_b
         });
     };
 
+    const submitCopyYear = (e: React.FormEvent) => {
+        e.preventDefault();
+        postCopy(route('rekening-belanja.copy-year'), {
+            onSuccess: () => {
+                closeCopyYearModal();
+                if (copyData.target_year && copyData.target_year !== String(selectedYear)) {
+                    router.get(route('rekening-belanja.index'), { year: copyData.target_year }, { preserveScroll: true });
+                }
+            },
+        });
+    };
+
     const handleEdit = (item: RekeningBelanjaItem) => {
         clearErrors();
         setEditingId(item.id);
         setData({
+            tahun: item.tahun ?? selectedYear,
             kode_rekening: item.kode_rekening,
             rincian_objek: item.rincian_objek,
             kategori: item.kategori,
@@ -167,10 +248,21 @@ export default function Index({ auth, rekening_belanja }: PageProps<{ rekening_b
                         { label: 'Rekening Belanja' },
                     ]}
                     title="Data Rekening Belanja"
-                    badge={<StatusBadge tone="violet" dot={false}>Data Master</StatusBadge>}
-                    subtitle="Referensi kode rekening, rincian objek, dan pengaturan pajak belanja."
+                    badge={<StatusBadge tone="violet" dot={false}>Tahun {selectedYear}</StatusBadge>}
+                    subtitle={`Referensi kode rekening, rincian objek, dan pengaturan pajak terisolasi untuk Tahun Anggaran ${selectedYear}.`}
                     actions={
                         <>
+                            <SecondaryButton
+                                onClick={() => {
+                                    setCopyData('target_year', String(selectedYear));
+                                    setIsCopyYearModalOpen(true);
+                                }}
+                            >
+                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                </svg>
+                                Salin Tahun
+                            </SecondaryButton>
                             <SecondaryButton onClick={() => setIsImportModalOpen(true)}>
                                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
@@ -245,11 +337,11 @@ export default function Index({ auth, rekening_belanja }: PageProps<{ rekening_b
                     </div>
                 </div>
 
-                {/* Toolbar pencarian */}
-                <div className="animate-rise" style={{ animationDelay: '210ms' }}>
-                    <Surface padding="sm">
+                {/* Toolbar pencarian & filter tahun */}
+                <div className="animate-rise relative z-20" style={{ animationDelay: '210ms' }}>
+                    <Surface padding="sm" overflowVisible>
                         <div className="flex flex-wrap items-center justify-between gap-3">
-                            <div className="flex w-full items-center gap-3 md:w-auto">
+                            <div className="flex w-full flex-wrap items-center gap-3 md:w-auto">
                                 <IconTile tone="ink" size="sm">
                                     <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                                         <circle cx="11" cy="11" r="7" />
@@ -264,9 +356,20 @@ export default function Index({ auth, rekening_belanja }: PageProps<{ rekening_b
                                         onChange={(e) => setSearch(e.target.value)}
                                     />
                                 </div>
+                                <div className="w-44">
+                                    <ArkasYearSelect
+                                        inputId="rekening-belanja-year-filter"
+                                        value={String(selectedYear)}
+                                        onChange={handleYearChange}
+                                        activeYears={resolvedYears}
+                                        includeAllOption={false}
+                                        localStatsPerYear={countPerYear}
+                                        placeholder="Pilih Tahun..."
+                                    />
+                                </div>
                             </div>
                             <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">
-                                <span className="text-sikas-num font-extrabold text-slate-700 dark:text-slate-200">{filteredData.length}</span> data ditemukan
+                                <span className="text-sikas-num font-extrabold text-slate-700 dark:text-slate-200">{filteredData.length}</span> data tahun {selectedYear}
                             </span>
                         </div>
                     </Surface>
@@ -396,6 +499,7 @@ export default function Index({ auth, rekening_belanja }: PageProps<{ rekening_b
             </div>
 
             <RekeningBelanjaModals
+                selectedYear={selectedYear}
                 isAddOpen={isAddModalOpen}
                 onCloseAdd={closeAddModal}
                 onSubmitAdd={submitAdd}
@@ -420,6 +524,21 @@ export default function Index({ auth, rekening_belanja }: PageProps<{ rekening_b
                 deleteProcessing={processing}
                 onCloseDelete={closeDeleteModal}
                 onConfirmDelete={confirmDelete}
+            />
+
+            <CopyYearModal
+                show={isCopyYearModalOpen}
+                onClose={closeCopyYearModal}
+                title="Salin Rekening Belanja Antar Tahun"
+                itemLabel="rekening belanja"
+                sourceYear={copyData.source_year}
+                targetYear={copyData.target_year}
+                onChangeSourceYear={(yr) => setCopyData('source_year', yr)}
+                onChangeTargetYear={(yr) => setCopyData('target_year', yr)}
+                sourceYearOptions={sourceYearOptions}
+                errors={copyErrors}
+                processing={copyProcessing}
+                onSubmit={submitCopyYear}
             />
         </AuthenticatedLayout>
     );

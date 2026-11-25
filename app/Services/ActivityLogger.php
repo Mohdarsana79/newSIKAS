@@ -28,6 +28,7 @@ class ActivityLogger
         'token',
         'secret',
         'otp',
+        'pin',
         'npsn',
         'authorization',
         'cookie',
@@ -645,8 +646,13 @@ class ActivityLogger
             'system-update.start-online' => 'Menjalankan pembaruan aplikasi secara online',
             'system-update.upload-manual' => 'Menjalankan pembaruan aplikasi via unggah manual',
             'arkas-tools.save-path' => 'Menyimpan jalur folder database ARKAS',
+            'arkas-tools.set-mode' => 'Mengubah mode aktif sumber database ARKAS',
             'arkas-tools.upload-db' => 'Mengunggah file database arkas.db',
+            'arkas-tools.upload-finalize' => 'Menyelesaikan unggahan chunked database arkas.db',
             'arkas-tools.remove-uploaded-db' => 'Menghapus file database arkas.db unggahan',
+            'arkas-tools.agent-pin' => 'Memperbarui PIN Sinkronisasi Agent ARKAS',
+            'arkas-tools.agent-download' => 'Membuat token baru & mengunduh Agent Sync ARKAS (.bat)',
+            'arkas-tools.agent-revoke' => 'Mencabut akses token Agent Sync ARKAS',
         ];
 
         if (isset($exactMap[$normalizedRoute])) {

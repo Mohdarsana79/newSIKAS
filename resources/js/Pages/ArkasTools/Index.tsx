@@ -534,10 +534,26 @@ export default function Index({ auth, initialData, defaultYear = '2026', activeY
                                                         <td className="whitespace-nowrap font-mono font-bold text-slate-500 dark:text-slate-400">{item.id_barang}</td>
                                                         <td className="font-bold text-slate-900 dark:text-white">{item.nama_barang}</td>
                                                         <td className="whitespace-nowrap text-slate-600 dark:text-slate-300">
-                                                            {item.kode_rekening ? item.kode_rekening : <span className="italic text-slate-400 dark:text-slate-500">none</span>}
+                                                            {item.kode_rekening ? (
+                                                                item.kode_rekening
+                                                            ) : item.kode_belanja === 'RBM' ? (
+                                                                <span className="inline-flex rounded-md bg-pastel-sky px-2 py-0.5 text-[10px] font-bold text-sky-700 dark:bg-sky/15 dark:text-sky-300">
+                                                                    Katalog Buku (RBM)
+                                                                </span>
+                                                            ) : (
+                                                                <span className="italic text-slate-400 dark:text-slate-500">none</span>
+                                                            )}
                                                         </td>
                                                         <td className="whitespace-nowrap text-slate-600 dark:text-slate-300">
-                                                            {item.rekening ? item.rekening : <span className="italic text-slate-400 dark:text-slate-500">none</span>}
+                                                            {item.rekening ? (
+                                                                item.rekening
+                                                            ) : item.kode_belanja === 'RBM' ? (
+                                                                <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                                                                    Belanja Modal Buku (5.2.05.01.01.*)
+                                                                </span>
+                                                            ) : (
+                                                                <span className="italic text-slate-400 dark:text-slate-500">none</span>
+                                                            )}
                                                         </td>
                                                         <td className="whitespace-nowrap text-slate-600 dark:text-slate-300">{item.satuan}</td>
                                                         <td className="whitespace-nowrap text-center text-sikas-num font-bold text-brand-600 dark:text-brand-300">{item.tahun}</td>
@@ -545,13 +561,18 @@ export default function Index({ auth, initialData, defaultYear = '2026', activeY
                                                             {item.batas_atas ? new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(item.batas_atas) : 'Rp 0'}
                                                         </td>
                                                         <td className="whitespace-nowrap text-center">
-                                                            {item.status === 'Data Baru' ? (
-                                                                <StatusBadge tone="success" dot={false}>Data Baru</StatusBadge>
-                                                            ) : item.status === 'Perlu Update' ? (
-                                                                <StatusBadge tone="warning" dot={false}>Perlu Update</StatusBadge>
-                                                            ) : (
-                                                                <StatusBadge tone="neutral" dot={false}>Sudah Ada</StatusBadge>
-                                                            )}
+                                                            <div className="inline-flex flex-wrap items-center justify-center gap-1">
+                                                                {item.status === 'Data Baru' ? (
+                                                                    <StatusBadge tone="success" dot={false}>Data Baru</StatusBadge>
+                                                                ) : item.status === 'Perlu Update' ? (
+                                                                    <StatusBadge tone="warning" dot={false}>Perlu Update</StatusBadge>
+                                                                ) : (
+                                                                    <StatusBadge tone="neutral" dot={false}>Sudah Ada</StatusBadge>
+                                                                )}
+                                                                {item.is_expired && (
+                                                                    <StatusBadge tone="danger" dot={false}>Kedaluwarsa</StatusBadge>
+                                                                )}
+                                                            </div>
                                                         </td>
                                                     </tr>
                                                 ))

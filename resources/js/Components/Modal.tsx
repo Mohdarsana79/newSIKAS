@@ -19,7 +19,7 @@ export default function Modal({
     ariaDescribedBy,
 }: PropsWithChildren<{
     show: boolean;
-    maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl' | '6xl' | '7xl';
+    maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl' | '6xl' | '7xl' | 'full';
     closeable?: boolean;
     onClose: CallableFunction;
     /** Kelas tambahan untuk panel dialog (mis. sudut/aksen halaman auth). */
@@ -37,6 +37,8 @@ export default function Modal({
         }
     };
 
+    const isFullscreen = maxWidth === 'full';
+
     const maxWidthClass = {
         sm: 'sm:max-w-sm',
         md: 'sm:max-w-md',
@@ -48,6 +50,7 @@ export default function Modal({
         '5xl': 'sm:max-w-5xl',
         '6xl': 'sm:max-w-6xl',
         '7xl': 'sm:max-w-7xl',
+        full: 'max-w-none w-full h-screen min-h-screen',
     }[maxWidth];
 
     return (
@@ -57,7 +60,10 @@ export default function Modal({
                 id="modal"
                 aria-labelledby={ariaLabelledBy}
                 aria-describedby={ariaDescribedBy}
-                className="fixed inset-0 z-50 overflow-y-auto transition-all"
+                className={cn(
+                    'fixed inset-0 z-50 transition-all',
+                    isFullscreen ? 'overflow-hidden' : 'overflow-y-auto',
+                )}
                 onClose={close}
             >
                 <TransitionChild
@@ -71,20 +77,28 @@ export default function Modal({
                     <div className={cn('fixed inset-0 backdrop-blur-sm', overlayClassName ?? 'bg-slate-950/50')} />
                 </TransitionChild>
 
-                <div className="flex min-h-full items-center justify-center p-4 sm:p-6">
+                <div
+                    className={cn(
+                        'flex min-h-full',
+                        isFullscreen ? 'h-screen items-stretch justify-stretch p-0' : 'items-center justify-center p-4 sm:p-6',
+                    )}
+                >
                     <TransitionChild
                         as="div"
-                        className="w-full"
+                        className={cn('w-full', isFullscreen && 'h-full')}
                         enter="ease-out duration-300"
-                        enterFrom="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-[0.97]"
-                        enterTo="opacity-100 translate-y-0 sm:scale-100"
+                        enterFrom={isFullscreen ? 'opacity-0' : 'opacity-0 translate-y-4 sm:translate-y-0 sm:scale-[0.97]'}
+                        enterTo={isFullscreen ? 'opacity-100' : 'opacity-100 translate-y-0 sm:scale-100'}
                         leave="ease-in duration-200"
-                        leaveFrom="opacity-100 translate-y-0 sm:scale-100"
-                        leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-[0.97]"
+                        leaveFrom={isFullscreen ? 'opacity-100' : 'opacity-100 translate-y-0 sm:scale-100'}
+                        leaveTo={isFullscreen ? 'opacity-0' : 'opacity-0 translate-y-4 sm:translate-y-0 sm:scale-[0.97]'}
                     >
                         <DialogPanel
                             className={cn(
-                                'mx-auto transform overflow-visible rounded-[26px] border border-white/70 bg-white shadow-float transition-all dark:border-white/10 dark:bg-[#15131F] sm:w-full',
+                                'mx-auto transform bg-white transition-all dark:bg-[#15131F] sm:w-full',
+                                isFullscreen
+                                    ? 'overflow-hidden rounded-none border-0 shadow-none'
+                                    : 'overflow-visible rounded-[26px] border border-white/70 shadow-float dark:border-white/10',
                                 maxWidthClass,
                                 panelClassName,
                             )}

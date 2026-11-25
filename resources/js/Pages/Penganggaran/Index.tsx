@@ -194,19 +194,21 @@ function resolvePreviousOfficialSource(
     return null;
 }
 
-export default function Index({ 
-    auth, 
-    items = [], 
-    anggarans = [], 
+export default function Index({
+    auth,
+    items = [],
+    anggarans = [],
     official_history = [],
     variant = 'reguler',
-    can_create = false
+    can_create = false,
+    referensi_stats_per_year = {},
 }: PageProps<{
     items: PenganggaranItem[];
     anggarans: Anggaran[];
     official_history?: OfficialHistoryItem[];
     variant?: BudgetVariant;
     can_create: boolean;
+    referensi_stats_per_year?: Record<string, { kegiatan: number; rekening: number }>;
 }>) {
     const isKepalaSekolah = Boolean(auth?.user?.is_kepala_sekolah || auth?.user?.role === 'kepala_sekolah');
     const vroute = useVariantRoute();
@@ -306,6 +308,16 @@ export default function Index({
     const [copyOfficialFeedback, setCopyOfficialFeedback] = useState<string | null>(null);
     const arkasBudgetAbortRef = useRef<AbortController | null>(null);
 
+    const [referensiStatsMap, setReferensiStatsMap] = useState<Record<string, { kegiatan: number; rekening: number }>>(
+        referensi_stats_per_year,
+    );
+    const [referensiActionBusy, setReferensiActionBusy] = useState<'sync' | 'copy' | null>(null);
+    const [referensiActionFeedback, setReferensiActionFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+    useEffect(() => {
+        setReferensiStatsMap(referensi_stats_per_year);
+    }, [referensi_stats_per_year]);
+
     const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({
         pagu_anggaran: '',
         tahun_anggaran: new Date().getFullYear().toString(),
@@ -341,6 +353,88 @@ export default function Index({
         setIsCheckingArkasBudget(false);
         setArkasBudgetFeedback(null);
         setCopyOfficialFeedback(null);
+        setReferensiActionBusy(null);
+        setReferensiActionFeedback(null);
+    };
+
+    const targetTahunClean = String(data.tahun_anggaran ?? '').trim();
+    const isValidTargetTahun = /^\d{4}$/.test(targetTahunClean);
+    const targetRefStats = isValidTargetTahun
+        ? (referensiStatsMap[targetTahunClean] ?? { kegiatan: 0, rekening: 0 })
+        : null;
+    const isTargetRefReady = Boolean(targetRefStats && targetRefStats.kegiatan > 0 && targetRefStats.rekening > 0);
+    const prevRefSourceYear = useMemo(() => {
+        if (!isValidTargetTahun) return null;
+        const targetInt = Number(targetTahunClean);
+        const candidates = Object.entries(referensiStatsMap)
+            .filter(([yr, st]) => Number(yr) < targetInt && ((st?.kegiatan ?? 0) > 0 || (st?.rekening ?? 0) > 0))
+            .map(([yr]) => Number(yr))
+            .sort((a, b) => b - a);
+        return candidates[0] ?? null;
+    }, [isValidTargetTahun, targetTahunClean, referensiStatsMap]);
+
+    const handleQuickSyncReferensi = async () => {
+        if (!isValidTargetTahun) return;
+        setReferensiActionBusy('sync');
+        setReferensiActionFeedback(null);
+        try {
+            const res = await axios.post(vroute('referensi-kode.sync-all'), { year: targetTahunClean });
+            if (res.data?.status === 'success') {
+                if (res.data.stats_per_year) {
+                    setReferensiStatsMap(res.data.stats_per_year);
+                }
+                setReferensiActionFeedback({
+                    type: 'success',
+                    text: res.data.message || `Referensi tahun ${targetTahunClean} berhasil disinkronkan dari ARKAS.`,
+                });
+            } else {
+                setReferensiActionFeedback({
+                    type: 'error',
+                    text: res.data?.message || 'Gagal menyinkronkan referensi dari ARKAS.',
+                });
+            }
+        } catch (err: any) {
+            setReferensiActionFeedback({
+                type: 'error',
+                text: err.response?.data?.message || 'Gagal menghubungi engine ARKAS. Pastikan database arkas.db tersedia.',
+            });
+        } finally {
+            setReferensiActionBusy(null);
+        }
+    };
+
+    const handleQuickCopyReferensi = async () => {
+        if (!isValidTargetTahun || !prevRefSourceYear) return;
+        setReferensiActionBusy('copy');
+        setReferensiActionFeedback(null);
+        try {
+            const res = await axios.post(vroute('referensi-kode.copy-year'), {
+                source_year: prevRefSourceYear,
+                target_year: Number(targetTahunClean),
+                tipe: 'both',
+            });
+            if (res.data?.status === 'success') {
+                if (res.data.stats_per_year) {
+                    setReferensiStatsMap(res.data.stats_per_year);
+                }
+                setReferensiActionFeedback({
+                    type: 'success',
+                    text: res.data.message || `Referensi berhasil disalin dari tahun ${prevRefSourceYear}.`,
+                });
+            } else {
+                setReferensiActionFeedback({
+                    type: 'error',
+                    text: res.data?.message || 'Gagal menyalin referensi tahun sebelumnya.',
+                });
+            }
+        } catch (err: any) {
+            setReferensiActionFeedback({
+                type: 'error',
+                text: err.response?.data?.message || 'Terjadi kesalahan saat menyalin referensi.',
+            });
+        } finally {
+            setReferensiActionBusy(null);
+        }
     };
 
     const handleCheckArkasBudget = async (overrideYear?: string) => {
@@ -1113,6 +1207,84 @@ export default function Index({
                                     </div>
                                 </div>
                             </div>
+
+                            {/* Soft-Guard Status Referensi Kode Kegiatan & Rekening Belanja Tahun Target */}
+                            {isValidTargetTahun && targetRefStats && (
+                                <div
+                                    className={`rounded-2xl border px-4 py-3 shadow-sm ${
+                                        isTargetRefReady
+                                            ? 'border-emerald-200/80 bg-pastel-mint/55 dark:border-mint/25 dark:bg-mint/10'
+                                            : 'border-amber-200/90 bg-pastel-amber/65 dark:border-amber-400/25 dark:bg-amber-500/10'
+                                    }`}
+                                >
+                                    <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+                                        <div className="min-w-0">
+                                            <p
+                                                className={`text-[11px] font-extrabold ${
+                                                    isTargetRefReady
+                                                        ? 'text-emerald-900 dark:text-emerald-200'
+                                                        : 'text-amber-950 dark:text-amber-100'
+                                                }`}
+                                            >
+                                                {isTargetRefReady
+                                                    ? `Referensi Tahun ${targetTahunClean} Siap (${targetRefStats.kegiatan} Kegiatan • ${targetRefStats.rekening} Rekening)`
+                                                    : `Referensi Kode Tahun ${targetTahunClean} Belum Lengkap (${targetRefStats.kegiatan} Kegiatan • ${targetRefStats.rekening} Rekening)`}
+                                            </p>
+                                            <p
+                                                className={`mt-0.5 text-[10.5px] font-medium ${
+                                                    isTargetRefReady
+                                                        ? 'text-emerald-800/80 dark:text-emerald-200/80'
+                                                        : 'text-amber-900/80 dark:text-amber-200/80'
+                                                }`}
+                                            >
+                                                {isTargetRefReady
+                                                    ? `Kode kegiatan & rekening belanja tahun ${targetTahunClean} terisolasi dari tahun anggaran lain.`
+                                                    : 'Anda tetap bisa menyimpan penganggaran, atau tarik/salin referensi tahun ini sekarang tanpa mengubah tahun sebelumnya.'}
+                                            </p>
+                                        </div>
+
+                                        {!isTargetRefReady && (
+                                            <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => void handleQuickSyncReferensi()}
+                                                    disabled={referensiActionBusy !== null}
+                                                    className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-3 py-1.5 text-[10.5px] font-extrabold text-white shadow-sm transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-brand-500 dark:hover:bg-brand-400"
+                                                >
+                                                    {referensiActionBusy === 'sync'
+                                                        ? `Menarik ${targetTahunClean}...`
+                                                        : `Tarik ${targetTahunClean} (ARKAS)`}
+                                                </button>
+                                                {prevRefSourceYear && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => void handleQuickCopyReferensi()}
+                                                        disabled={referensiActionBusy !== null}
+                                                        className="inline-flex items-center gap-1.5 rounded-xl border border-amber-300 bg-white px-3 py-1.5 text-[10.5px] font-extrabold text-amber-900 shadow-sm transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-amber-400/30 dark:bg-white/10 dark:text-amber-100 dark:hover:bg-white/15"
+                                                    >
+                                                        {referensiActionBusy === 'copy'
+                                                            ? 'Menyalin...'
+                                                            : `Salin dari ${prevRefSourceYear}`}
+                                                    </button>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {referensiActionFeedback && (
+                                        <div
+                                            role={referensiActionFeedback.type === 'error' ? 'alert' : 'status'}
+                                            className={`mt-2.5 rounded-xl border px-3 py-2 text-[10.5px] font-bold ${
+                                                referensiActionFeedback.type === 'success'
+                                                    ? 'border-emerald-200 bg-emerald-50/90 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-200'
+                                                    : 'border-rose-200 bg-rose-50/90 text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/15 dark:text-rose-200'
+                                            }`}
+                                        >
+                                            {referensiActionFeedback.text}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
 
                             {/* Aksi Bantu: Salin Data Penanggung Jawab Tahun Sebelumnya */}
                             <div className="rounded-2xl border border-slate-200/80 bg-white px-4 py-3 shadow-sm dark:border-white/10 dark:bg-white/[0.03]">

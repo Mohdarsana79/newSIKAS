@@ -30,6 +30,7 @@ export type FeatureIconKey =
     | 'sk_surat'
     | 'laporan'
     | 'poster_transparansi'
+    | 'cetak_spj'
     | 'backup'
     | 'network'
     | 'roles'
@@ -220,6 +221,16 @@ const VARIANT_MODULE_TEMPLATES: VariantModuleTemplate[] = [
         moduleKey: 'poster_transparansi',
         keywords: ['poster', 'infografis', 'transparansi', 'papan pengumuman', 'publikasi', 'cetak', 'png'],
     },
+    {
+        idPrefix: 'cetak-spj',
+        baseTitle: 'Cetak SPJ Terpadu',
+        descriptionPrefix: 'Susun bendel SPJ per tahap, desain cover LPJ modern, dan cetak/gabung seluruh dokumen',
+        routeSuffix: 'cetak-spj.index',
+        iconKey: 'cetak_spj',
+        tone: 'mint',
+        moduleKey: 'cetak_spj',
+        keywords: ['cetak spj', 'lpj', 'cover spj', 'cover lpj', 'gabung pdf', 'jilid', 'pertahap', 'bendel'],
+    },
 ];
 
 const VARIANT_ITEMS: FeatureSearchItem[] = VARIANT_MODULE_TEMPLATES.flatMap((tpl) =>
@@ -360,6 +371,17 @@ export const FEATURE_SEARCH_ITEMS: FeatureSearchItem[] = [
         moduleKey: 'rekening_belanja',
         action: { type: 'route', routeName: 'rekening-belanja.index' },
     },
+    {
+        id: 'data-ptk',
+        title: 'Data PTK (Guru & Tendik)',
+        description: 'Master data Guru & Tenaga Kependidikan per tahun dari ARKAS maupun input manual untuk honor RKAS.',
+        category: 'Data Master',
+        iconKey: 'roles',
+        tone: 'violet',
+        keywords: ['master', 'ptk', 'guru', 'tendik', 'nuptk', 'honor', 'pendidik', 'kependidikan', 'arkas'],
+        moduleKey: 'data_ptk',
+        action: { type: 'route', routeName: 'data-ptk.index' },
+    },
 
     // Fitur Pelengkap
     {
@@ -449,6 +471,17 @@ export const FEATURE_SEARCH_ITEMS: FeatureSearchItem[] = [
         keywords: ['poster', 'infografis', 'transparansi', 'papan pengumuman', 'publikasi', 'cetak', 'bosp', 'png'],
         moduleKey: 'poster_transparansi',
         action: { type: 'route', routeName: 'poster-transparansi.index' },
+    },
+    {
+        id: 'cetak-spj',
+        title: 'Cetak SPJ Terpadu',
+        description: 'Rakit & cetak seluruh SPJ (Cover LPJ Modern, Daftar Isi, RKAS, BKU, Kwitansi, BAST, SP2B-LPH) per tahap atau tahunan.',
+        category: 'Fitur Pelengkap',
+        iconKey: 'cetak_spj',
+        tone: 'mint',
+        keywords: ['cetak spj', 'lpj', 'cover spj', 'cover lpj', 'gabung pdf', 'jilid', 'pertahap', 'bendel', 'rkas', 'bku'],
+        moduleKey: 'cetak_spj',
+        action: { type: 'route', routeName: 'cetak-spj.index' },
     },
 
     // Sistem & Integrasi

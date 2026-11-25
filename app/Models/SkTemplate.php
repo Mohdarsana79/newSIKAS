@@ -19,11 +19,13 @@ class SkTemplate extends Model
         'file_path',
         'file_name_original',
         'detected_variables',
+        'tag_mappings',
         'created_by',
     ];
 
     protected $casts = [
         'detected_variables' => 'array',
+        'tag_mappings' => 'array',
     ];
 
     public function folder(): BelongsTo
